@@ -7,11 +7,11 @@ documentation = "https://docs.rs/canvist"
 edition = "2021"
 homepage = "https://github.com/ifiokjr/canvist"
 include = ["src/**/*.rs", "Cargo.toml", "readme.md"]
-keywords = ["text", "canvas", "font", "font-rendering"]
+keywords = ["text-editor", "canvas"]
 license = "Unlicense"
 readme = "readme.md"
 repository = "https://github.com/ifiokjr/canvist"
-description = "canvist is a fully typed atomic css compiler for rust, node, deno and the browser"
+description = "a canvas based text editor written in rust"
 
 [dependencies]
 fontdue = { workspace = true }

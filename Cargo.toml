@@ -25,5 +25,5 @@ wasm-bindgen-test = "0.3"
 
 canvist = { path = "./crates/canvist", version = "0.0.0" }
 
-[profile.release.package.skribble]
+[profile.release.package.canvist]
 opt-level = "s"
