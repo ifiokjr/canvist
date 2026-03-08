@@ -1,190 +1,94 @@
-# Extensions and Plugins (Deterministic Model)
+# Extensions and Plugins (Deterministic Runtime Model)
 
-This guide proposes a TipTap-like extension surface for canvist that remains fully deterministic and replayable from an operation log.
+canvist exposes a deterministic extension model inspired by editors like TipTap:
 
-## Current public API surface
+- extensions can react to events
+- extensions can synthesize transactions
+- only canonical operations/transactions mutate the `Document`
 
-Today, the public API is intentionally small:
+This keeps replay and collaboration reliable.
 
-- `canvist` umbrella crate re-exports:
-  - `canvist::core` (`canvist_core`)
-  - `canvist::render` (`canvist_render`)
-  - `canvist::wasm` (feature-gated)
-  - `canvist::prelude::{Document, NodeId, Position, Selection, Style, Canvas, Renderer, Viewport}`
-- `canvist_core` exports document + editing primitives:
-  - `Document`, `Node`, `NodeId`, `NodeKind`
-  - `Position`, `Selection`
-  - `Style` (+ `Color`, `FontWeight`)
-  - `operation::{Operation, Transaction}`
-  - `event::{EditorEvent, EventSource, EditorKey, PointerEvent, ...}`
-  - `collaboration::CollaborationSession`
+## Current extension API surface
 
-This gives a strong foundation, but there is no first-class extension registry, command abstraction, or plugin hooks yet.
+`canvist_core` currently exposes first-class extension/runtime types:
 
-## Design goals for extension model
+- `Extension`, `Command`, `InputRule`, `TransactionHook`
+- `ExtensionRuntime`, `RuntimeTransaction`, `TransactionMeta`
+- `EditorRuntime` (event/action/operation orchestration)
+- `Action`, `ActionMeta`, `ActionIntent`, `ActionArgs`
 
-A plugin system should be:
+Core mutation/replay contracts remain:
 
-1. **Deterministic**: same initial state + same ordered intent stream => same result.
-2. **Replayable**: every accepted change is representable as canonical operations.
-3. **Side-effect isolated**: extension logic can inspect context, but persisted changes must flow through transactions.
-4. **Composable**: many extensions can coexist with predictable ordering.
+- `Operation`, `Transaction`
+- `LogEntry`, `OperationLog`
 
-## Proposed core concepts
+## Deterministic runtime pipeline
 
-### 1) Command layer
+Use this pipeline for extension-safe behavior:
 
-Commands are high-level actions that synthesize one or more operations.
+1. Platform input is normalized into `EditorEvent`.
+2. Runtime validates and envelopes event as an `Action`.
+3. Runtime resolves built-in action mappings and extension rules/commands in deterministic order.
+4. Runtime applies final `Transaction` to `Document`.
+5. Runtime appends `LogEntry` values for deterministic replay.
+6. Runtime emits invalidation output for rendering.
 
-```rust
-pub struct CommandContext<'a> {
-	pub doc: &'a Document,
-	pub selection: Selection,
-	pub event: Option<&'a EditorEvent>,
-}
-
-pub trait Command: Send + Sync {
-	fn name(&self) -> &'static str;
-	fn execute(&self, ctx: &CommandContext<'_>) -> Option<Transaction>;
-}
-```
-
-Rules:
-
-- Commands are pure decision functions over context.
-- Output is `Transaction` only (no direct document mutation).
-- Runtime applies returned transaction through one canonical pipeline.
-
-### 2) Schema-like extension specs
-
-Extensions declare document capabilities and behavior slices.
+## Minimal extension example
 
 ```rust
-pub trait Extension: Send + Sync {
-	fn name(&self) -> &'static str;
+use canvist_core::{
+    Document, EditorEvent, EditorRuntime, Extension, ExtensionRuntime,
+    Position, Selection, Command,
+};
+use canvist_core::operation::{Operation, Transaction};
 
-	// Optional command registrations
-	fn commands(&self) -> Vec<Box<dyn Command>> {
-		vec![]
-	}
+struct InsertHello;
+impl Command for InsertHello {
+    fn id(&self) -> &'static str { "insert_hello" }
 
-	// Optional text/input rules
-	fn input_rules(&self) -> Vec<Box<dyn InputRule>> {
-		vec![]
-	}
-
-	// Optional transaction hooks
-	fn transaction_hooks(&self) -> Vec<Box<dyn TransactionHook>> {
-		vec![]
-	}
+    fn execute(
+        &self,
+        _doc: &Document,
+        _selection: Selection,
+        event: &EditorEvent,
+    ) -> Option<Transaction> {
+        match event {
+            EditorEvent::Focus => Some(
+                Transaction::new().push(Operation::insert(Position::zero(), "Hello"))
+            ),
+            _ => None,
+        }
+    }
 }
+
+struct HelloExtension;
+impl Extension for HelloExtension {
+    fn id(&self) -> &'static str { "hello" }
+
+    fn commands(&self) -> Vec<Box<dyn Command>> {
+        vec![Box::new(InsertHello)]
+    }
+}
+
+let mut runtime = EditorRuntime::new(
+    Document::new(),
+    Selection::collapsed(Position::zero()),
+    "user:demo",
+)
+.with_extensions(ExtensionRuntime::new(vec![Box::new(HelloExtension)]));
+
+runtime.handle_event(EditorEvent::Focus).expect("focus handled");
+assert_eq!(runtime.document().plain_text(), "Hello");
+assert_eq!(runtime.export_log().entries().len(), 1);
 ```
 
-This is analogous to TipTap’s extension packs while preserving Rust trait-based typing.
+## Best practices
 
-### 3) Input rules
+- Keep command/rule logic pure and deterministic.
+- Avoid non-deterministic side effects in hooks.
+- Treat runtime log output as the source of replay truth.
+- Use stable extension IDs and priorities for predictable ordering.
 
-Input rules map recent text/event context into canonical transactions.
+## Roadmap
 
-```rust
-pub trait InputRule: Send + Sync {
-	fn name(&self) -> &'static str;
-	fn apply(
-		&self,
-		doc: &Document,
-		selection: Selection,
-		event: &EditorEvent,
-	) -> Option<Transaction>;
-}
-```
-
-Examples:
-
-- `"-- "` at paragraph start => em dash or horizontal rule insertion transaction.
-- Markdown-like `"# "` => heading style transaction.
-
-### 4) Transaction hooks (pre/post)
-
-Hooks can validate, annotate, or derive metadata from transactions.
-
-```rust
-pub struct TransactionMeta {
-	pub origin: &'static str, // e.g. "keyboard", "command.toggle_bold"
-	pub timestamp_ms: u64,
-}
-
-pub trait TransactionHook: Send + Sync {
-	fn before_apply(
-		&self,
-		tx: &Transaction,
-		meta: &TransactionMeta,
-		doc: &Document,
-	) -> HookDecision {
-		HookDecision::Accept
-	}
-
-	fn after_apply(&self, _tx: &Transaction, _meta: &TransactionMeta, _doc: &Document) {}
-}
-
-pub enum HookDecision {
-	Accept,
-	Reject { reason: String },
-	Replace(Transaction),
-}
-```
-
-Determinism constraints:
-
-- `before_apply` must not depend on wall-clock/network randomness unless captured in `meta`.
-- `Replace` must produce canonical operations only.
-
-## Deterministic replay contract
-
-To guarantee replay:
-
-- Persist **ordered transaction log** as `(meta, transaction)`.
-- Rehydrate by applying each transaction in order on a fresh document.
-- Extensions may assist generation-time decisions, but persisted artifact stays `Transaction`.
-
-In other words: extensions influence _how we create ops_, never the shape of replay runtime.
-
-## Suggested runtime pipeline
-
-1. Normalize platform input into `EditorEvent`.
-2. Run extension input rules in deterministic priority order.
-3. Optionally run a bound command.
-4. Produce candidate `Transaction`.
-5. Run `before_apply` hooks (ordered).
-6. Apply final transaction to `Document`.
-7. Append `(meta, transaction)` to log.
-8. Emit to collaboration bridge / CRDT adapter.
-9. Run `after_apply` hooks.
-
-## Ordering and priority
-
-Each extension should declare:
-
-- `priority: i32` (higher first)
-- stable registration `name`
-
-Tie-break on name for deterministic ordering.
-
-## Interop with collaboration
-
-Current `CollaborationSession` is plain-text oriented. For extension-safe replay, collaboration should transport canonical transactions (or a lossless projection) instead of extension callbacks.
-
-Until tree-CRDT mapping exists, keep collaboration boundary explicit:
-
-- local extension logic => `Transaction`
-- sync layer => diff/update encoding of that transaction
-- remote apply => same transaction semantics
-
-## Migration plan (incremental)
-
-1. Add command/input-rule/hook traits in `canvist_core`.
-2. Introduce an `EditorRuntime` coordinator to host extension registry.
-3. Keep existing `Document` mutators as low-level primitives used by runtime.
-4. Add transaction metadata + persistent log API.
-5. Bridge transaction log with collaboration codec.
-
-This sequence keeps API growth additive while preserving today’s simple model.
+Future work will likely add higher-level packaging/distribution ergonomics (preset bundles, registry helpers, multi-language extension SDKs), while preserving the same deterministic core contract.
