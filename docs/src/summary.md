@@ -1,8 +1,7 @@
 # Summary
 
-[Introduction](./readme.md)
-
-# User Guide
-
-- [Installation](guide/installation.md)
-- [Creating a project](guide/creating.md)
+- [Introduction](./readme.md)
+- [Architecture](./architecture.md)
+- [Getting Started](./getting-started.md)
+- [API Overview](./api-overview.md)
+- [Contributing](./contributing.md)

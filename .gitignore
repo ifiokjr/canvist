@@ -2,7 +2,6 @@
 /.helix
 /result
 /.direnv
-# Devenv
 .devenv*
 devenv.local.nix
 
@@ -12,6 +11,17 @@ devenv.local.nix
 *.pending-snap
 *.snap.new
 
-# setup
+# editor config
 /.helix
 /.vscode
+
+# cargo binaries
+.bin/
+.local-cache/
+
+# wasm
+**/pkg/
+
+# node
+**/node_modules
+.ant-colony/

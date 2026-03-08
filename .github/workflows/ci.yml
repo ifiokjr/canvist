@@ -1,38 +1,231 @@
 name: "ci"
-
+permissions:
+  pull-requests: write
+  contents: write
 on:
   push:
     branches:
       - main
-
   pull_request:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
-  checks:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  lint:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: setup development environment
+      - name: setup
         uses: ./.github/actions/devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: cache rust dependencies
-        uses: Swatinem/rust-cache@v2
+      - name: lint clippy
+        run: lint:clippy
+        shell: devenv shell -c -- bash -e {0}
+
+      - name: lint formatting
+        run: lint:format
+        shell: devenv shell -c -- bash -e {0}
+
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: setup
+        uses: ./.github/actions/devenv
         with:
-          key: ${{ runner.os }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: run tests
+        run: test:all
+        shell: devenv shell -c -- bash -e {0}
+
+  build:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: build
-        run: build:all
-        shell: bash
+        run: cargo build --locked
+        shell: devenv shell -c -- bash -e {0}
 
-      - name: lint
-        run: lint:all
+      - name: build all features
+        run: cargo build --all-features --locked
+        shell: devenv shell -c -- bash -e {0}
+
+  security:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: run cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+
+  semver-checks:
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: run cargo-semver-checks
+        id: semver
+        shell: devenv shell -c -- bash {0}
+        run: |
+          set +e
+          FAILED_PACKAGES=""
+          FULL_OUTPUT=""
+
+          PACKAGES=("canvist" "canvist_core" "canvist_render" "canvist_wasm")
+
+          for pkg in "${PACKAGES[@]}"; do
+            echo "::group::Checking $pkg"
+            OUTPUT=$(cargo semver-checks --package "$pkg" 2>&1)
+            EXIT_CODE=$?
+            echo "$OUTPUT"
+            echo "::endgroup::"
+
+            if [ $EXIT_CODE -ne 0 ]; then
+              FAILED_PACKAGES="$FAILED_PACKAGES $pkg"
+              FULL_OUTPUT="$FULL_OUTPUT
+          ### \`$pkg\`
+
+          \`\`\`
+          $OUTPUT
+          \`\`\`
+          "
+            fi
+          done
+
+          echo "$FAILED_PACKAGES" > /tmp/semver_failed_packages.txt
+          echo "$FULL_OUTPUT" > /tmp/semver_output.txt
+
+      - name: set semver-checks outputs
+        id: semver-output
         shell: bash
+        run: |
+          FAILED_PACKAGES=$(cat /tmp/semver_failed_packages.txt 2>/dev/null | xargs || echo "")
+          echo "failed_packages=$FAILED_PACKAGES" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "output<<SEMVER_EOF"
+            cat /tmp/semver_output.txt 2>/dev/null || echo ""
+            echo "SEMVER_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ -n "$FAILED_PACKAGES" ]; then
+            echo "has_breaking=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_breaking=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: verify changeset for breaking changes
+        id: verify
+        if: steps.semver-output.outputs.has_breaking == 'true'
+        shell: bash
+        run: |
+          FAILED="${{ steps.semver-output.outputs.failed_packages }}"
+          MISSING_CHANGESETS=""
+
+          for pkg in $FAILED; do
+            FOUND=false
+            for f in .changeset/*.md; do
+              [ -f "$f" ] || continue
+              if grep -qP "^${pkg}:\s*major\s*$" "$f"; then
+                FOUND=true
+                break
+              fi
+            done
+
+            if [ "$FOUND" = false ]; then
+              MISSING_CHANGESETS="$MISSING_CHANGESETS $pkg"
+            fi
+          done
+
+          echo "missing=$MISSING_CHANGESETS" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$MISSING_CHANGESETS" ]; then
+            echo "has_missing=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_missing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: comment on PR with semver-checks output
+        if: steps.verify.outputs.has_missing == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const missing = '${{ steps.verify.outputs.missing }}'.trim().split(/\s+/);
+            const body = [
+              '## :warning: Breaking API changes detected',
+              '',
+              `The following package(s) have breaking API changes but are missing a \`major\` changeset: ${missing.map(p => '`' + p + '`').join(', ')}`,
+              '',
+              'Please add a changeset file in `.changeset/` with the breaking change documented:',
+              '',
+              '```sh',
+              'knope document-change',
+              '```',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const marker = '## :warning: Breaking API changes detected';
+            const existing = comments.find(c => c.body?.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+        env:
+          SEMVER_OUTPUT: ${{ steps.semver-output.outputs.output }}
+
+      - name: fail if missing changeset for breaking changes
+        if: steps.verify.outputs.has_missing == 'true'
+        run: |
+          echo "::error::Breaking API changes detected in:${{ steps.verify.outputs.missing }}"
+          echo "Please add a changeset with 'major' change type for each affected package."
+          exit 1

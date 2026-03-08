@@ -1,29 +1,115 @@
 [workspace]
-members = ["crates/*"]
-default-members = ["crates/*"]
+members = [
+	"crates/canvist",
+	"crates/canvist_core",
+	"crates/canvist_render",
+	"crates/canvist_test",
+	"crates/canvist_wasm",
+	"docs",
+]
+default-members = [
+	"crates/canvist",
+	"crates/canvist_core",
+	"crates/canvist_render",
+	"crates/canvist_wasm",
+	"docs",
+]
 resolver = "2"
 
+[workspace.package]
+version = "0.1.0"
+authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
+categories = ["wasm", "accessibility", "multimedia", "text-processing", "text-editors"]
+edition = "2024"
+homepage = "https://github.com/ifiokjr/canvist"
+include = ["src/**/*.rs", "Cargo.toml", "readme.md"]
+license = "Unlicense"
+readme = "readme.md"
+repository = "https://github.com/ifiokjr/canvist"
+rust-version = "1.93.0"
+
 [workspace.dependencies]
-yrs = "*"
-lib0 = "*"
-fontdue = "*"
-insta = "1"
-log = "0.4"
-napi = "2"
-napi-build = "2"
-napi-derive = "2"
-owo-colors = "*"
-parcel_sourcemap = "2"
-readonly = "0.2"
-regex = "1"
-serde = "1"
-serde_json = "1"
-thiserror = "1"
-typed-builder = "0.12"
-wasm-bindgen = "0.2"
-wasm-bindgen-test = "0.3"
+fontdue = { default-features = false, version = "^0.9" }
+insta = { default-features = false, version = "^1" }
+js-sys = { default-features = false, version = "^0.3" }
+lib0 = { default-features = false, version = "^0.16" }
+log = { default-features = false, version = "^0.4" }
+playwright-rs = { default-features = false, version = "^0.8" }
+serde = { default-features = false, version = "^1" }
+serde_json = { default-features = false, version = "^1" }
+thiserror = { default-features = false, version = "^2" }
+tokio = { default-features = false, version = "^1" }
+typed-builder = { default-features = false, version = "^0.23" }
+unicode-linebreak = { default-features = false, version = "^0.1" }
+unicode-segmentation = { default-features = false, version = "^1" }
+wasm-bindgen = { default-features = false, version = "^0.2" }
+wasm-bindgen-futures = { default-features = false, version = "^0.4" }
+wasm-bindgen-test = { default-features = false, version = "^0.3" }
+web-sys = { default-features = false, version = "^0.3" }
+yrs = { default-features = false, version = "^0.25" }
 
-canvist = { path = "./crates/canvist", version = "0.0.0" }
+# Internal crates
+canvist = { path = "./crates/canvist", version = "0.1.0" }
+canvist_core = { path = "./crates/canvist_core", version = "0.1.0" }
+canvist_render = { path = "./crates/canvist_render", version = "0.1.0" }
+canvist_wasm = { path = "./crates/canvist_wasm", version = "0.1.0" }
 
-[profile.release.package.canvist]
+[workspace.metadata.bin]
+cargo-insta = { version = "1.46.3" }
+cargo-llvm-cov = { version = "0.8.4" }
+cargo-nextest = { version = "0.9.129" }
+cargo-semver-checks = { version = "0.46.0" }
+cargo-deny = { version = "0.19.0" }
+cargo-workspaces = { version = "0.4.2" }
+knope = { version = "0.22.3", bins = ["knope"] }
+
+[workspace.lints.rust]
+# Group lints
+rust_2021_compatibility = { level = "warn", priority = -1 }
+rust_2024_compatibility = { level = "warn", priority = -1 }
+
+# Individual lints
+unsafe_code = "deny"
+unstable_features = "deny"
+unused_extern_crates = "warn"
+unused_import_braces = "warn"
+unused_lifetimes = "warn"
+unused_macro_rules = "warn"
+unused_qualifications = "warn"
+variant_size_differences = "warn"
+edition_2024_expr_fragment_specifier = "allow"
+
+[workspace.lints.clippy]
+# Group lints
+complexity = { level = "warn", priority = -1 }
+correctness = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+
+# Individual lints
+blocks_in_conditions = "allow"
+cargo_common_metadata = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+expl_impl_clone_on_copy = "allow"
+items_after_statements = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+no_effect_underscore_binding = "allow"
+tabs-in-doc-comments = "allow"
+too_many_lines = "allow"
+wildcard_dependencies = "deny"
+wildcard_imports = "allow"
+
+[profile.release]
+lto = true
+codegen-units = 1
+
+[profile.release.package.canvist_wasm]
 opt-level = "s"

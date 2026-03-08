@@ -1,44 +1,81 @@
-# cavnvist
+# canvist
 
-> a canvas based text editor written in rust.
+> A canvas-based text editor written in Rust — build your own Google Docs.
 
-## Motivation
+[![ci](https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg)](https://github.com/ifiokjr/canvist/actions/workflows/ci.yml)
 
-**Figma** and **Google Docs** manage to do this really well. It would be cool to build a wasm first implementation of rendering to the canvas which is fully open source.
+**canvist** gives you full control over the editing experience by rendering text through a custom canvas engine, just like [Figma](https://www.figma.com) and [Google Docs](https://docs.google.com) do. Instead of relying on `contenteditable` or platform text views, canvist owns every pixel.
 
-- Convert document events to canvas actions
-- Render to the canvas
-- Use `yrs` for managing the editor state and supporting first class collaboration
-- Support both a json data model and a binary data model
-- Full accessibility support similar to Google Docs (via parallel hidden svg dom)
-- Potentially render via `skia`
-- Support server rendering (print canvas to image)
+## Features
 
-The canvas renderer should be an implementation detail, so that in the future we can rendering to non-web canvas.
+- 🎨 **Custom render engine** — platform-agnostic rendering via canvas APIs
+- 🤝 **Real-time collaboration** — built-in CRDT support via [Yjs](https://yjs.dev)
+- ♿ **Full accessibility** — parallel hidden DOM for screen readers (like Google Docs)
+- 🌐 **Cross-platform** — WebAssembly, native, and server-side rendering
+- ✨ **Beautiful API** — ergonomic builder patterns for documents, styles, and operations
 
-**Non-goals:**
+## Architecture
 
-- Currently, size is not a concern as WASM builds tend to be larger.
+```text
+┌─────────────────────────────────────────────┐
+│                  canvist                     │  ← Umbrella crate
+├──────────────┬──────────────┬───────────────┤
+│ canvist_core │canvist_render│ canvist_wasm  │
+│              │              │               │
+│ • Document   │ • Canvas     │ • Canvas2D    │
+│ • Selection  │ • Renderer   │ • DOM events  │
+│ • Operations │ • Viewport   │ • A11y DOM    │
+│ • Style      │ • FontCache  │ • JS bridge   │
+│ • Layout     │              │               │
+│ • CRDT sync  │              │               │
+└──────────────┴──────────────┴───────────────┘
+```
+
+| Crate | Description |
+|-------|-------------|
+| [`canvist`](./crates/canvist) | Umbrella re-export crate |
+| [`canvist_core`](./crates/canvist_core) | Document model, operations, selections, CRDT collaboration |
+| [`canvist_render`](./crates/canvist_render) | Platform-agnostic rendering traits and text layout |
+| [`canvist_wasm`](./crates/canvist_wasm) | WebAssembly + Canvas2D rendering backend |
+| [`canvist_test`](./crates/canvist_test) | Playwright browser integration tests |
+
+## Quick start
+
+```rust
+use canvist::prelude::*;
+
+// Create a new document.
+let mut doc = Document::new();
+
+// Insert styled text.
+let style = Style::new().bold().font_size(24.0).font_family("Inter");
+doc.insert_text(Position::zero(), "Hello, canvist!");
+doc.apply_style(Selection::all(&doc), &style);
+```
 
 ## Contributing
 
-[`devenv`](https://devenv.sh/) is used to provide a reproducible development environment for this
-project. Follow the [getting started instructions](https://devenv.sh/getting-started/).
-
-To automatically load the environment you should
-[install direnv](https://devenv.sh/automatic-shell-activation/) and then load the `direnv`.
+[`devenv`](https://devenv.sh/) is used to provide a reproducible development environment. Follow the [getting started instructions](https://devenv.sh/getting-started/).
 
 ```bash
-# The security mechanism didn't allow to load the `.envrc`.
-# Since we trust it, let's allow it execution.
+# Allow direnv to load the environment.
 direnv allow .
+
+# Install dependencies.
+install:all
+
+# Build everything.
+build:all
+
+# Run tests.
+test:all
+
+# Fix formatting and lints.
+fix:all
 ```
 
-At this point you should see the `nix` commands available in your terminal.
+See the [contributing guide](./docs/src/contributing.md) for more details.
 
-To setup recommended configuration for your favourite editor run the following commands.
+## License
 
-```bash
-setup:vscode # Setup vscode
-setup:helix  # Setup helix configuration
-```
+This project is licensed under the [Unlicense](https://unlicense.org/).

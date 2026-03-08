@@ -1,85 +1,217 @@
-{ pkgs, ... }:
+{
+  pkgs,
+  lib,
+  config,
+  inputs,
+  ...
+}:
+
+let
+  extra = inputs.ifiokjr-nixpkgs.packages.${pkgs.stdenv.system};
+in
 
 {
-  packages = [
-    pkgs.cargo-all-features
-    pkgs.cargo-edit
-    pkgs.cargo-generate
-    pkgs.cargo-insta
-    pkgs.cargo-make
-    pkgs.cargo-workspaces
-    pkgs.deno
-    pkgs.dprint
-    pkgs.fnm
-    pkgs.git
-    pkgs.mdbook
-    pkgs.ripgrep
-    pkgs.rust-analyzer
-    pkgs.rustup
-    pkgs.trunk
-  ];
+  packages =
+    with pkgs;
+    [
+      cargo-binstall
+      cargo-run-bin
+      deno
+      dprint
+      extra.knope
+      mdbook
+      nixfmt
+      rustup
+      shfmt
+      wasm-pack
+    ]
+    ++ lib.optionals stdenv.isDarwin [
+      coreutils
+    ];
 
-  difftastic.enable = true;
-  devcontainer.enable = true;
+  enterShell = ''
+    set -e
+    # Ensure the nightly toolchain is available for rustfmt (used by dprint)
+    rustup toolchain install nightly --component rustfmt --no-self-update 2>/dev/null || true
+    # Ensure stable is at least 1.86 (required for edition 2024)
+    rustup update stable --no-self-update 2>/dev/null || true
+  '';
 
+  # disable dotenv since it breaks the variable interpolation supported by `direnv`
+  dotenv.disableHint = true;
 
-  # Scripts
-
-  scripts."build:all".exec = ''
-    cargo build
-  '';
-  scripts."fix:all".exec = ''
-    fix:format
-    fix:clippy
-  '';
-  scripts."fix:format".exec = ''
-    dprint fmt
-  '';
-  scripts."fix:clippy".exec = ''
-    cargo clippy --fix --allow-dirty --allow-staged
-  '';
-  scripts."lint:all".exec = ''
-    lint:format
-    lint:clippy
-  '';
-  scripts."lint:format".exec = ''
-    dprint check
-  '';
-  scripts."lint:clippy".exec = ''
-    cargo clippy
-  '';
-  scripts."test:snapshot".exec = ''
-    cargo insta accept
-  '';
-  scripts."test:all".exec = ''
-    cargo test
-  '';
-  scripts."setup:helix".exec = ''
-    rm -rf .helix
-    cp -r setup/editors/helix .helix
-  '';
-  scripts."setup:vscode".exec = ''
-    rm -rf .vscode
-    cp -r ./setup/editors/vscode .vscode
-  '';
-  scripts."setup:ci".exec = ''
-    # update GitHub CI Path
-    echo "$DEVENV_PROFILE/bin" >> $GITHUB_PATH
-    echo "DEVENV_PROFILE=$DEVENV_PROFILE" >> $GITHUB_ENV
-
-    # prepend common compilation lookup paths
-    echo PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
-    echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH" >> $GITHUB_ENV
-    echo LIBRARY_PATH=$LIBRARY_PATH" >> $GITHUB_ENV
-    echo C_INCLUDE_PATH=$C_INCLUDE_PATH" >> $GITHUB_ENV
-
-    # these provide shell completions / default config options
-    echo XDG_DATA_DIRS=$XDG_DATA_DIRS" >> $GITHUB_ENV
-    echo XDG_CONFIG_DIRS=$XDG_CONFIG_DIRS" >> $GITHUB_ENV
-
-    echo DEVENV_DOTFILE=$DEVENV_DOTFILE" >> $GITHUB_ENV
-    echo DEVENV_PROFILE=$DEVENV_PROFILE" >> $GITHUB_ENV
-    echo DEVENV_ROOT=$DEVENV_ROOT" >> $GITHUB_ENV
-    echo DEVENV_STATE=$DEVENV_STATE" >> $GITHUB_ENV
-  '';
+  scripts = {
+    "install:all" = {
+      exec = ''
+        set -e
+        install:cargo:bin
+      '';
+      description = "Install all packages.";
+      binary = "bash";
+    };
+    "install:cargo:bin" = {
+      exec = ''
+        set -e
+        cargo bin --install
+      '';
+      description = "Install cargo binaries locally.";
+      binary = "bash";
+    };
+    "update:deps" = {
+      exec = ''
+        set -e
+        cargo update
+        devenv update
+      '';
+      description = "Update dependencies.";
+      binary = "bash";
+    };
+    "build:all" = {
+      exec = ''
+        set -e
+        if [ -z "$CI" ]; then
+          echo "Building project locally"
+          cargo build --all-features
+        else
+          echo "Building in CI"
+          cargo build --all-features --locked
+        fi
+      '';
+      description = "Build all crates with all features activated.";
+      binary = "bash";
+    };
+    "build:book" = {
+      exec = ''
+        set -e
+        mdbook build docs
+      '';
+      description = "Build the mdbook documentation.";
+      binary = "bash";
+    };
+    "build:wasm" = {
+      exec = ''
+        set -e
+        wasm-pack build crates/canvist_wasm --target web
+      '';
+      description = "Build the WASM package for the web.";
+      binary = "bash";
+    };
+    "test:all" = {
+      exec = ''
+        set -e
+        test:cargo
+        test:docs
+      '';
+      description = "Run all tests across the crates.";
+      binary = "bash";
+    };
+    "test:cargo" = {
+      exec = ''
+        set -e
+        cargo nextest run --workspace --exclude canvist_wasm --exclude canvist_test
+      '';
+      description = "Run cargo tests with nextest.";
+      binary = "bash";
+    };
+    "test:docs" = {
+      exec = ''
+        set -e
+        cargo test --doc --workspace --exclude canvist_wasm --exclude canvist_test
+      '';
+      description = "Run documentation tests.";
+      binary = "bash";
+    };
+    "test:playwright" = {
+      exec = ''
+        set -e
+        cargo nextest run --package canvist_test
+      '';
+      description = "Run playwright browser integration tests.";
+      binary = "bash";
+    };
+    "coverage:all" = {
+      exec = ''
+        set -e
+        cargo llvm-cov nextest --lcov --output-path lcov.info
+      '';
+      description = "Run coverage across the crates.";
+      binary = "bash";
+    };
+    "fix:all" = {
+      exec = ''
+        set -e
+        fix:clippy
+        fix:format
+      '';
+      description = "Fix all autofixable problems.";
+      binary = "bash";
+    };
+    "fix:format" = {
+      exec = ''
+        set -e
+        dprint fmt --config "$DEVENV_ROOT/dprint.json"
+      '';
+      description = "Format files with dprint.";
+      binary = "bash";
+    };
+    "fix:clippy" = {
+      exec = ''
+        set -e
+        cargo clippy --workspace --fix --allow-dirty --allow-staged --all-features --all-targets
+      '';
+      description = "Fix clippy lints for rust.";
+      binary = "bash";
+    };
+    "deny:check" = {
+      exec = ''
+        set -e
+        cargo deny check
+      '';
+      description = "Run cargo-deny checks for security advisories and license compliance.";
+      binary = "bash";
+    };
+    "lint:all" = {
+      exec = ''
+        set -e
+        lint:clippy
+        lint:format
+        deny:check
+      '';
+      description = "Run all checks.";
+      binary = "bash";
+    };
+    "lint:format" = {
+      exec = ''
+        set -e
+        dprint check
+      '';
+      description = "Check that all files are formatted.";
+      binary = "bash";
+    };
+    "lint:clippy" = {
+      exec = ''
+        set -e
+        cargo clippy --workspace --all-features --all-targets
+      '';
+      description = "Check that all rust lints are passing.";
+      binary = "bash";
+    };
+    "snapshot:review" = {
+      exec = ''
+        set -e
+        cargo insta review
+      '';
+      description = "Review insta snapshots.";
+      binary = "bash";
+    };
+    "snapshot:update" = {
+      exec = ''
+        set -e
+        cargo nextest run
+        cargo insta accept
+      '';
+      description = "Update insta snapshots.";
+      binary = "bash";
+    };
+  };
 }
