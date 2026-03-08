@@ -12,6 +12,13 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: free disk space
+      shell: bash
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+        sudo docker image prune --all --force || true
+        df -h /
+
     - name: cache rust dependencies
       uses: Swatinem/rust-cache@v2
       with:

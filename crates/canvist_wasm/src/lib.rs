@@ -59,11 +59,28 @@ impl CanvistEditor {
 		})
 	}
 
-	/// Insert text at the current cursor position.
+	/// Insert text at the current cursor position (start of document).
 	#[wasm_bindgen]
 	pub fn insert_text(&mut self, text: &str) {
-		let position = Position::zero(); // TODO: track cursor state
+		let position = Position::zero();
 		self.document.insert_text(position, text);
+	}
+
+	/// Insert text at a specific character offset.
+	#[wasm_bindgen]
+	pub fn insert_text_at(&mut self, offset: usize, text: &str) {
+		let position = Position::new(offset);
+		self.document.insert_text(position, text);
+	}
+
+	/// Delete a range of characters from `start` to `end`.
+	#[wasm_bindgen]
+	pub fn delete_range(&mut self, start: usize, end: usize) {
+		let selection = canvist_core::Selection::range(
+			Position::new(start),
+			Position::new(end),
+		);
+		self.document.delete(&selection);
 	}
 
 	/// Return the full plain-text content of the document.

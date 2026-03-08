@@ -24,4 +24,14 @@ devenv.local.nix
 
 # node
 **/node_modules
+
+# wasm build output gitignore (keep package.json and .gitignore from wasm-pack)
+packages/canvist/wasm/.gitignore
+packages/canvist/wasm/package.json
+
+# deno
+.deno/
+
+# ant colony
+.ant-colony/
 .ant-colony/

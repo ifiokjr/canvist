@@ -28,7 +28,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: lint clippy
-        run: lint:clippy
+        run: cargo clippy --workspace --exclude canvist_wasm --exclude canvist_test --all-features --all-targets
         shell: devenv shell -c -- bash -e {0}
 
       - name: lint formatting
@@ -96,6 +96,9 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Run cargo-semver-checks for each published crate. Crates that have
+      # never been published to crates.io are silently skipped (exit code
+      # from "not found in registry" is not treated as a breaking change).
       - name: run cargo-semver-checks
         id: semver
         shell: devenv shell -c -- bash {0}
@@ -112,6 +115,13 @@ jobs:
             EXIT_CODE=$?
             echo "$OUTPUT"
             echo "::endgroup::"
+
+            # Skip crates that aren't published yet — "not found in registry"
+            # is not a semver violation.
+            if echo "$OUTPUT" | grep -q "not found in registry"; then
+              echo "Skipping $pkg — not yet published to crates.io"
+              continue
+            fi
 
             if [ $EXIT_CODE -ne 0 ]; then
               FAILED_PACKAGES="$FAILED_PACKAGES $pkg"

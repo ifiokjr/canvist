@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>canvist editor demo</title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			body {
+				font-family: system-ui, sans-serif;
+				background: #f5f5f5;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				padding: 2rem;
+				min-height: 100vh;
+			}
+
+			h1 {
+				margin-bottom: 1rem;
+				color: #333;
+			}
+
+			.editor-container {
+				position: relative;
+				background: white;
+				border: 1px solid #ddd;
+				border-radius: 8px;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+				overflow: hidden;
+			}
+
+			#editor-canvas {
+				display: block;
+				cursor: text;
+			}
+
+			#contenteditable-editor {
+				width: 800px;
+				min-height: 400px;
+				padding: 20px;
+				font-family: sans-serif;
+				font-size: 16px;
+				line-height: 1.5;
+				background: white;
+				border: 1px solid #ddd;
+				border-radius: 8px;
+				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+				outline: none;
+				white-space: pre-wrap;
+			}
+
+			.controls {
+				margin: 1rem 0;
+				display: flex;
+				gap: 1rem;
+			}
+
+			button {
+				padding: 0.5rem 1rem;
+				border: 1px solid #ccc;
+				border-radius: 4px;
+				background: white;
+				cursor: pointer;
+			}
+
+			button:hover {
+				background: #eee;
+			}
+
+			.info {
+				margin-top: 1rem;
+				color: #666;
+				font-size: 0.9rem;
+			}
+
+			#text-output {
+				margin-top: 1rem;
+				padding: 1rem;
+				background: #f0f0f0;
+				border-radius: 4px;
+				font-family: monospace;
+				white-space: pre-wrap;
+				max-width: 800px;
+				word-break: break-all;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>canvist editor</h1>
+
+		<div class="controls">
+			<button id="btn-canvas" class="active">Canvas Editor</button>
+			<button id="btn-contenteditable">contenteditable (comparison)</button>
+		</div>
+
+		<div id="canvas-section">
+			<div class="editor-container">
+				<canvas id="editor-canvas" width="800" height="400"></canvas>
+			</div>
+		</div>
+
+		<div id="ce-section" style="display: none">
+			<div
+				id="contenteditable-editor"
+				contenteditable="true"
+				data-placeholder="Type here..."
+			></div>
+		</div>
+
+		<div class="info">
+			<span id="char-count">Characters: 0</span>
+		</div>
+		<pre id="text-output"></pre>
+
+		<script type="module">
+			import init, { CanvistEditor } from "../wasm/canvist_wasm.js";
+
+			let editor = null;
+			let cursorOffset = 0;
+
+			async function setup() {
+				await init();
+				editor = CanvistEditor.create("editor-canvas");
+				editor.render();
+
+				// --- Hidden textarea for keyboard capture ---
+				const canvas = document.getElementById("editor-canvas");
+				const textarea = document.createElement("textarea");
+				textarea.id = "canvist-input";
+				textarea.setAttribute("autocomplete", "off");
+				textarea.setAttribute("autocorrect", "off");
+				textarea.setAttribute("autocapitalize", "off");
+				textarea.setAttribute("spellcheck", "false");
+				textarea.style.cssText =
+					"position:absolute;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;";
+				canvas.parentElement.appendChild(textarea);
+
+				canvas.addEventListener("click", () => textarea.focus());
+				canvas.setAttribute("tabindex", "0");
+
+				function renderFrame() {
+					try {
+						editor.render();
+						// Draw caret
+						const ctx = canvas.getContext("2d");
+						if (ctx) {
+							const text = editor.plain_text();
+							const before = text.slice(0, cursorOffset);
+							ctx.font = "16px sans-serif";
+							const m = ctx.measureText(before);
+							ctx.fillStyle = "black";
+							ctx.fillRect(20 + m.width, 24, 1.5, 20);
+						}
+					} catch (e) {}
+				}
+
+				textarea.addEventListener("beforeinput", (e) => {
+					if (e.isComposing) return;
+					const data = e.data;
+					if (e.inputType === "insertText" && data) {
+						e.preventDefault();
+						editor.insert_text_at(cursorOffset, data);
+						cursorOffset += data.length;
+						textarea.value = "";
+						renderFrame();
+					} else if (e.inputType === "deleteContentBackward") {
+						e.preventDefault();
+						handledByBeforeInput = true;
+						if (cursorOffset > 0) {
+							editor.delete_range(cursorOffset - 1, cursorOffset);
+							cursorOffset -= 1;
+						}
+						textarea.value = "";
+						renderFrame();
+					} else if (e.inputType === "deleteContentForward") {
+						e.preventDefault();
+						handledByBeforeInput = true;
+						const t = editor.plain_text();
+						if (cursorOffset < t.length) {
+							editor.delete_range(cursorOffset, cursorOffset + 1);
+						}
+						textarea.value = "";
+						renderFrame();
+					} else if (e.inputType === "insertLineBreak" || e.inputType === "insertParagraph") {
+						e.preventDefault();
+						editor.insert_text_at(cursorOffset, "\n");
+						cursorOffset += 1;
+						textarea.value = "";
+						renderFrame();
+					}
+				});
+
+				// Track whether beforeinput already handled the event
+				let handledByBeforeInput = false;
+
+				textarea.addEventListener("keydown", (e) => {
+					if (e.isComposing) return;
+					handledByBeforeInput = false;
+
+					if (e.key === "Backspace") {
+						e.preventDefault();
+						// Defer to let beforeinput fire first if it will
+						setTimeout(() => {
+							if (!handledByBeforeInput && cursorOffset > 0) {
+								editor.delete_range(cursorOffset - 1, cursorOffset);
+								cursorOffset -= 1;
+								textarea.value = "";
+								renderFrame();
+							}
+						}, 0);
+					} else if (e.key === "Delete") {
+						e.preventDefault();
+						setTimeout(() => {
+							if (!handledByBeforeInput) {
+								const t = editor.plain_text();
+								if (cursorOffset < t.length) {
+									editor.delete_range(cursorOffset, cursorOffset + 1);
+									textarea.value = "";
+									renderFrame();
+								}
+							}
+						}, 0);
+					} else if (e.key === "Enter") {
+						e.preventDefault();
+						editor.insert_text_at(cursorOffset, "\n");
+						cursorOffset += 1;
+						textarea.value = "";
+						renderFrame();
+					} else if (e.key === "ArrowLeft") {
+						e.preventDefault();
+						if (cursorOffset > 0) cursorOffset--;
+						renderFrame();
+					} else if (e.key === "ArrowRight") {
+						e.preventDefault();
+						if (cursorOffset < editor.plain_text().length) cursorOffset++;
+						renderFrame();
+					}
+				});
+
+				textarea.addEventListener("compositionend", (e) => {
+					if (e.data) {
+						editor.insert_text_at(cursorOffset, e.data);
+						cursorOffset += e.data.length;
+						renderFrame();
+					}
+					textarea.value = "";
+				});
+
+				// Update display
+				setInterval(() => {
+					if (editor) {
+						const text = editor.plain_text();
+						document.getElementById("char-count").textContent =
+							`Characters: ${editor.char_count()}`;
+						document.getElementById("text-output").textContent =
+							text || "(empty)";
+					}
+				}, 100);
+
+				textarea.focus();
+			}
+
+			// Tab switching.
+			document.getElementById("btn-canvas").addEventListener("click", () => {
+				document.getElementById("canvas-section").style.display = "";
+				document.getElementById("ce-section").style.display = "none";
+			});
+			document
+				.getElementById("btn-contenteditable")
+				.addEventListener("click", () => {
+					document.getElementById("canvas-section").style.display = "none";
+					document.getElementById("ce-section").style.display = "";
+				});
+
+			// contenteditable char count.
+			const ceEditor = document.getElementById("contenteditable-editor");
+			ceEditor.addEventListener("input", () => {
+				document.getElementById("char-count").textContent =
+					`Characters: ${ceEditor.textContent.length}`;
+				document.getElementById("text-output").textContent =
+					ceEditor.textContent || "(empty)";
+			});
+
+			// Expose editor globally for Playwright tests.
+			window.__canvistSetup = setup();
+			window.__canvistEditor = null;
+			window.__canvistSetup.then(() => {
+				window.__canvistEditor = editor;
+			});
+		</script>
+	</body>
+</html>
