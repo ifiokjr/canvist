@@ -235,7 +235,7 @@ pub enum ReplayError {
 }
 
 impl Operation {
-	/// Convert this operation into a CRDT text delta operation (offset, delete_len, insert_text).
+	/// Convert this operation into a CRDT text delta operation (`offset`, `delete_len`, `insert_text`).
 	///
 	/// Returns [`None`] for non-textual operations (e.g. formatting).
 	#[must_use]

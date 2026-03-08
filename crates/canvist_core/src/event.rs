@@ -9,10 +9,15 @@ use crate::Selection;
 
 /// Modifier state attached to keyboard and pointer events.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Modifiers {
+	/// Whether the Shift key is held.
 	pub shift: bool,
+	/// Whether the Control key is held.
 	pub control: bool,
+	/// Whether the Alt/Option key is held.
 	pub alt: bool,
+	/// Whether the Meta/Command/Windows key is held.
 	pub meta: bool,
 }
 
@@ -98,7 +103,7 @@ pub enum EditorEvent {
 
 /// Source of canonical editor events.
 ///
-/// Implementors normalize platform input (DOM, UIKit, Android View, desktop
+/// Implementors normalize platform input (DOM, `UIKit`, Android View, desktop
 /// windowing systems, etc.) into [`EditorEvent`] values.
 pub trait EventSource {
 	/// Returns the next pending event, if available.

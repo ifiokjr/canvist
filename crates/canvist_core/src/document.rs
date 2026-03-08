@@ -319,10 +319,10 @@ impl Document {
 		};
 		self.nodes.insert(NodeId::ROOT, root);
 
-		if !text.is_empty() {
-			self.insert_text(Position::zero(), text);
-		} else {
+		if text.is_empty() {
 			self.rebuild_indexes();
+		} else {
+			self.insert_text(Position::zero(), text);
 		}
 	}
 
