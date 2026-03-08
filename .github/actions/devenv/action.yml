@@ -32,17 +32,10 @@ runs:
         restore-keys: |
           ${{ runner.os }}-cargo-bin-${{ inputs.cache-version }}-
 
-    - name: install nix
-      uses: cachix/install-nix-action@v31
+    - name: setup devenv
+      uses: cachix/devenv-action@v2
       with:
-        github_access_token: ${{ inputs.github-token }}
-
-    - name: setup nix environment
-      run: |
-        nix profile add --accept-flake-config nixpkgs#cachix
-        cachix use devenv
-        nix profile add nixpkgs#devenv
-      shell: bash
+        github-token: ${{ inputs.github-token }}
 
     - name: install dependencies
       run: cargo bin --install || true
