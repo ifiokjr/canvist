@@ -1,19 +1,30 @@
 [package]
 name = "canvist"
-version = "0.0.0"
-authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
-categories = ["wasm", "accessibility", "multimedia", "text-processing", "text-editors"]
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
 documentation = "https://docs.rs/canvist"
-edition = "2021"
-homepage = "https://github.com/ifiokjr/canvist"
-include = ["src/**/*.rs", "Cargo.toml", "readme.md"]
-keywords = ["text-editor", "canvas"]
-license = "Unlicense"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["text-editor", "canvas", "crdt", "document"]
+license.workspace = true
 readme = "readme.md"
-repository = "https://github.com/ifiokjr/canvist"
-description = "a canvas based text editor written in rust"
+repository.workspace = true
+rust-version.workspace = true
+description = "A canvas-based text editor written in Rust — build your own Google Docs"
 
 [dependencies]
-fontdue = { workspace = true }
-lib0 = { workspace = true }
-yrs = { workspace = true }
+canvist_core = { workspace = true }
+canvist_render = { workspace = true }
+
+[features]
+default = []
+wasm = ["dep:canvist_wasm"]
+
+[dependencies.canvist_wasm]
+workspace = true
+optional = true
+
+[lints]
+workspace = true

@@ -1,0 +1,39 @@
+[package]
+name = "canvist_wasm"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_wasm"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["text-editor", "canvas", "wasm", "webassembly"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "WebAssembly + Canvas2D rendering backend for the canvist canvas editor"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+canvist_core = { workspace = true }
+canvist_render = { workspace = true }
+js-sys = { workspace = true }
+wasm-bindgen = { workspace = true }
+wasm-bindgen-futures = { workspace = true }
+web-sys = { workspace = true, features = [
+	"CanvasRenderingContext2d",
+	"Document",
+	"Element",
+	"HtmlCanvasElement",
+	"Window",
+	"console",
+] }
+
+[dev-dependencies]
+wasm-bindgen-test = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,23 @@
+[package]
+name = "canvist_test"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "Integration tests for the canvist canvas editor using playwright-rs"
+publish = false
+
+[dependencies]
+canvist_core = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+
+[dev-dependencies]
+insta = { workspace = true, features = ["json"] }
+playwright-rs = { workspace = true }
+
+[lints]
+workspace = true

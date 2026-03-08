@@ -1,0 +1,77 @@
+[changes]
+ignore_conventional_commits = true
+
+[package]
+versioned_files = [
+	"Cargo.toml",
+	{ dependency = "canvist", path = "Cargo.lock" },
+	{ dependency = "canvist", path = "Cargo.toml" },
+	{ dependency = "canvist_core", path = "Cargo.lock" },
+	{ dependency = "canvist_core", path = "Cargo.toml" },
+	{ dependency = "canvist_render", path = "Cargo.lock" },
+	{ dependency = "canvist_render", path = "Cargo.toml" },
+	{ dependency = "canvist_wasm", path = "Cargo.lock" },
+	{ dependency = "canvist_wasm", path = "Cargo.toml" },
+]
+changelog = "changelog.md"
+scopes = ["canvist", "core", "render", "wasm"]
+extra_changelog_sections = [
+	{ name = "Notes", footers = [], types = ["note"] },
+	{ name = "Documentation", footers = [], types = ["docs"] },
+]
+
+[[workflows]]
+name = "release"
+
+[[workflows.steps]]
+type = "PrepareRelease"
+
+[[workflows.steps]]
+type = "Command"
+command = "dprint fmt"
+
+[[workflows.steps]]
+type = "Command"
+command = "cargo check --workspace"
+
+[[workflows.steps]]
+type = "Command"
+command = "git add --all"
+
+[[workflows.steps]]
+type = "Command"
+command = 'git commit -m "chore: prepare releases $version"'
+
+[[workflows.steps]]
+type = "Command"
+command = "git push"
+
+[[workflows.steps]]
+type = "Release"
+
+[[workflows]]
+name = "document-change"
+
+[[workflows.steps]]
+type = "CreateChangeFile"
+
+[[workflows.steps]]
+type = "Command"
+command = "dprint fmt .changeset/* --allow-no-files"
+
+[[workflows]]
+name = "forced-release"
+
+[[workflows.steps]]
+type = "Release"
+
+[[workflows]]
+name = "publish"
+
+[[workflows.steps]]
+type = "Command"
+command = "cargo publish --workspace"
+
+[github]
+owner = "ifiokjr"
+repo = "canvist"
