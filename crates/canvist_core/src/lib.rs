@@ -32,6 +32,7 @@
 
 pub mod collaboration;
 pub mod document;
+pub mod event;
 pub mod layout;
 pub mod operation;
 mod position;
@@ -43,6 +44,13 @@ pub use document::Document;
 pub use document::Node;
 pub use document::NodeId;
 pub use document::NodeKind;
+pub use event::CompositionPhase;
+pub use event::EditorEvent;
+pub use event::EditorKey;
+pub use event::EventSource;
+pub use event::Modifiers;
+pub use event::PointerEvent;
+pub use event::PointerPhase;
 pub use position::Position;
 pub use selection::Selection;
 pub use style::Color;

@@ -288,6 +288,27 @@ impl Document {
 		}
 	}
 
+	/// Replace document text content from plain text.
+	///
+	/// This resets the document tree to a single paragraph with one text run
+	/// containing `text` (or empty root-only state if `text` is empty).
+	pub fn set_plain_text(&mut self, text: &str) {
+		self.nodes.clear();
+		self.next_id = 1;
+
+		let root = Node {
+			id: NodeId::ROOT,
+			kind: NodeKind::Root,
+			children: Vec::new(),
+			parent: None,
+		};
+		self.nodes.insert(NodeId::ROOT, root);
+
+		if !text.is_empty() {
+			self.insert_text(Position::zero(), text);
+		}
+	}
+
 	/// Return the full plain-text content of the document.
 	#[must_use]
 	pub fn plain_text(&self) -> String {

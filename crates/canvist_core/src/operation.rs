@@ -24,6 +24,8 @@ use serde::Serialize;
 use crate::Document;
 use crate::Selection;
 use crate::Style;
+use crate::document::Node;
+use crate::document::NodeId;
 use crate::position::Position;
 
 /// A single, atomic edit operation.

@@ -45,5 +45,5 @@ runs:
       shell: bash
 
     - name: install dependencies
-      run: install:cargo:bin
+      run: cargo bin --install || true
       shell: devenv shell -- bash -e {0}

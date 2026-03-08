@@ -41,6 +41,30 @@ Defines abstract rendering traits that platform backends implement:
 The WebAssembly backend that runs in the browser:
 
 - Implements `Renderer` using `CanvasRenderingContext2d`
-- Handles DOM events (keyboard, mouse, IME)
+- Maps hidden-input + DOM events into canonical `EditorEvent` values via `WebEventSource`
 - Generates an accessibility shadow DOM
 - Exposes a `CanvistEditor` class to JavaScript via wasm-bindgen
+
+## Canonical editor event pipeline
+
+Before any edit operations are produced, every platform normalizes raw input
+into a shared core event model (`canvist_core::event`):
+
+- `EditorEvent` — canonical user intent (text insert/delete, key, pointer,
+  composition, selection, clipboard, focus)
+- `EventSource` — trait for polling normalized events from a platform adapter
+
+This enables web, mobile, and desktop backends to converge on one input
+contract:
+
+1. Platform APIs emit native events (DOM events, hidden input deltas, UIKit,
+   Android, desktop window events)
+2. Backend-specific adapters map those into `EditorEvent`
+3. Core editor logic consumes `EventSource` and translates events into
+   operations/transactions
+
+Current adapters include:
+
+- `WebEventSource` (`canvist_wasm::dom`) for DOM + hidden-input integration
+- `NativeEventSource` (`canvist_wasm::dom`) as a reference shape for mobile
+  event mapping into the same canonical stream
