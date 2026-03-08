@@ -18,10 +18,15 @@
 use yrs::Doc;
 use yrs::GetString;
 use yrs::ReadTxn;
+use yrs::StateVector;
 use yrs::Text;
 use yrs::TextRef;
 use yrs::Transact;
 use yrs::updates::decoder::Decode;
+use yrs::updates::encoder::Encode;
+
+use crate::Document;
+use crate::operation::Operation;
 
 /// A collaboration session backed by a Yrs CRDT document.
 ///
@@ -108,8 +113,76 @@ impl CollaborationSession {
 	/// Send this to a new peer so they can bootstrap their local copy.
 	#[must_use]
 	pub fn encode_state(&self) -> Vec<u8> {
+		self.encode_diff_from_state_vector(&StateVector::default())
+	}
+
+	/// Encode the local state vector for incremental sync handshakes.
+	///
+	/// Peers can exchange state vectors and request only missing updates.
+	#[must_use]
+	pub fn encode_state_vector(&self) -> Vec<u8> {
 		let txn = self.doc.transact();
-		txn.encode_state_as_update_v1(&yrs::StateVector::default())
+		txn.state_vector().encode_v1()
+	}
+
+	/// Decode a binary state vector payload.
+	pub fn decode_state_vector(payload: &[u8]) -> Result<StateVector, yrs::encoding::read::Error> {
+		StateVector::decode_v1(payload)
+	}
+
+	/// Encode an incremental update containing changes missing from `state_vector`.
+	#[must_use]
+	pub fn encode_diff_from_state_vector(&self, state_vector: &StateVector) -> Vec<u8> {
+		let txn = self.doc.transact();
+		txn.encode_state_as_update_v1(state_vector)
+	}
+
+	/// Encode an incremental update from a previously encoded state-vector payload.
+	pub fn encode_diff_from_state_vector_payload(
+		&self,
+		payload: &[u8],
+	) -> Result<Vec<u8>, yrs::encoding::read::Error> {
+		let state_vector = Self::decode_state_vector(payload)?;
+		Ok(self.encode_diff_from_state_vector(&state_vector))
+	}
+
+	/// Apply a semantic operation into the CRDT shared text.
+	///
+	/// Returns `true` if the operation was mapped to text changes.
+	pub fn apply_operation(&self, operation: &Operation) -> bool {
+		if let Some((offset, delete_len, insert_text)) = operation.as_text_delta() {
+			let text_ref = self.shared_text();
+			let mut txn = self.doc.transact_mut();
+			if delete_len > 0 {
+				text_ref.remove_range(&mut txn, offset, delete_len);
+			}
+			if !insert_text.is_empty() {
+				text_ref.insert(&mut txn, offset, &insert_text);
+			}
+			true
+		} else {
+			false
+		}
+	}
+
+	/// Sync the current plain text from a canvist [`Document`] into CRDT state.
+	pub fn sync_from_document(&self, document: &Document) {
+		let text_ref = self.shared_text();
+		let mut txn = self.doc.transact_mut();
+		let current = text_ref.get_string(&txn);
+		if !current.is_empty() {
+			let len = text_ref.len(&txn);
+			text_ref.remove_range(&mut txn, 0, len);
+		}
+		let next = document.plain_text();
+		if !next.is_empty() {
+			text_ref.insert(&mut txn, 0, &next);
+		}
+	}
+
+	/// Sync CRDT text content into a canvist [`Document`].
+	pub fn sync_to_document(&self, document: &mut Document) {
+		document.set_plain_text(&self.text());
 	}
 
 	/// Apply a binary update from a remote peer.
@@ -118,6 +191,13 @@ impl CollaborationSession {
 		let update = yrs::Update::decode_v1(update)
 			.unwrap_or_else(|e| panic!("failed to decode Yrs update: {e}"));
 		let _ = txn.apply_update(update);
+	}
+
+	/// Apply a binary update and then project the resulting CRDT text into
+	/// the provided canvist [`Document`].
+	pub fn apply_remote_update_to_document(&self, update: &[u8], document: &mut Document) {
+		self.apply_update(update);
+		self.sync_to_document(document);
 	}
 
 	// -- internal helpers --
@@ -181,5 +261,75 @@ mod tests {
 
 		session.insert(0, "x");
 		assert!(!session.is_empty());
+	}
+
+	#[test]
+	fn sync_from_and_to_document() {
+		let session = CollaborationSession::new();
+		let mut doc = Document::new();
+		doc.insert_text(crate::Position::zero(), "Hello bridge");
+
+		session.sync_from_document(&doc);
+		assert_eq!(session.text(), "Hello bridge");
+
+		let mut projected = Document::new();
+		session.sync_to_document(&mut projected);
+		assert_eq!(projected.plain_text(), "Hello bridge");
+	}
+
+	#[test]
+	fn apply_operation_maps_into_crdt() {
+		let session = CollaborationSession::new();
+		let inserted = Operation::insert(crate::Position::zero(), "Hello");
+		assert!(session.apply_operation(&inserted));
+		assert_eq!(session.text(), "Hello");
+
+		let deleted = Operation::delete(crate::Selection::range(
+			crate::Position::new(1),
+			crate::Position::new(4),
+		));
+		assert!(session.apply_operation(&deleted));
+		assert_eq!(session.text(), "Ho");
+	}
+
+	#[test]
+	fn remote_update_projects_back_into_document() {
+		let peer_a = CollaborationSession::new();
+		let peer_b = CollaborationSession::new();
+		let mut doc_b = Document::new();
+
+		peer_a.insert(0, "Remote text");
+		let update = peer_a.encode_state();
+
+		peer_b.apply_remote_update_to_document(&update, &mut doc_b);
+		assert_eq!(peer_b.text(), "Remote text");
+		assert_eq!(doc_b.plain_text(), "Remote text");
+	}
+
+	#[test]
+	fn state_vector_round_trip_and_incremental_diff() {
+		let peer_a = CollaborationSession::new();
+		let peer_b = CollaborationSession::new();
+
+		peer_a.insert(0, "Hello");
+		let bootstrap = peer_a.encode_state();
+		peer_b.apply_update(&bootstrap);
+		assert_eq!(peer_b.text(), "Hello");
+
+		let b_sv_payload = peer_b.encode_state_vector();
+		peer_a.insert(5, " world");
+		let incremental = peer_a
+			.encode_diff_from_state_vector_payload(&b_sv_payload)
+			.expect("valid state vector payload should encode diff");
+		peer_b.apply_update(&incremental);
+
+		assert_eq!(peer_b.text(), "Hello world");
+	}
+
+	#[test]
+	fn encode_diff_from_state_vector_payload_rejects_invalid_payload() {
+		let session = CollaborationSession::new();
+		let result = session.encode_diff_from_state_vector_payload(&[0xff, 0x00, 0x01]);
+		assert!(result.is_err());
 	}
 }

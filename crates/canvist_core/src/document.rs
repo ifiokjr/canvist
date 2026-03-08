@@ -24,6 +24,9 @@
 //! ```
 
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hash;
+use std::hash::Hasher;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -109,6 +112,17 @@ pub struct Document {
 	next_id: u64,
 	/// Optional document title (metadata, not part of the node tree).
 	title: Option<String>,
+	/// Cached full plain-text projection of the document.
+	plain_text_cache: String,
+	/// Incremental index of text runs in document order.
+	run_index: Vec<RunIndexEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct RunIndexEntry {
+	run_id: NodeId,
+	start_char: usize,
+	len_chars: usize,
 }
 
 impl Document {
@@ -125,16 +139,25 @@ impl Document {
 		let mut nodes = HashMap::new();
 		nodes.insert(NodeId::ROOT, root);
 
-		Self {
+		let mut document = Self {
 			nodes,
 			next_id: 1,
 			title: None,
-		}
+			plain_text_cache: String::new(),
+			run_index: Vec::new(),
+		};
+		document.rebuild_indexes();
+		document
 	}
 
 	/// Set the document title.
 	pub fn set_title(&mut self, title: impl Into<String>) {
 		self.title = Some(title.into());
+	}
+
+	/// Set or clear the document title.
+	pub fn set_title_opt(&mut self, title: Option<String>) {
+		self.title = title;
 	}
 
 	/// Get the document title, if set.
@@ -206,6 +229,7 @@ impl Document {
 				root.children.push(para_id);
 			}
 
+			self.rebuild_indexes();
 			return;
 		}
 
@@ -215,8 +239,9 @@ impl Document {
 			&& let Some(node) = self.nodes.get_mut(&run_id)
 			&& let NodeKind::TextRun { text: ref mut t, .. } = node.kind
 		{
-			let clamped = local_offset.min(t.len());
-			t.insert_str(clamped, text);
+			let byte_offset = char_to_byte_offset(t, local_offset);
+			t.insert_str(byte_offset, text);
+			self.rebuild_indexes();
 		}
 	}
 
@@ -228,25 +253,15 @@ impl Document {
 
 		let start = selection.start().offset();
 		let end = selection.end().offset();
+		if start >= end {
+			return;
+		}
 
-		// Walk through runs, removing the range [start..end).
-		let mut remaining_start = start;
-		let mut remaining_end = end;
-		let run_ids = self.ordered_run_ids();
-
-		let mut global_offset = 0usize;
-		for run_id in run_ids {
-			let run_len = self.run_text_len(run_id);
-			let run_start = global_offset;
-			let run_end = global_offset + run_len;
-
-			if remaining_start >= run_end || remaining_end <= run_start {
-				global_offset = run_end;
+		let mut dirty = false;
+		for (run_id, local_start, local_end) in self.overlapping_runs(start, end) {
+			if local_start >= local_end {
 				continue;
 			}
-
-			let local_start = remaining_start.saturating_sub(run_start);
-			let local_end = (remaining_end - run_start).min(run_len);
 
 			if let Some(node) = self.nodes.get_mut(&run_id)
 				&& let NodeKind::TextRun { text: ref mut t, .. } = node.kind
@@ -254,12 +269,12 @@ impl Document {
 				let byte_start = char_to_byte_offset(t, local_start);
 				let byte_end = char_to_byte_offset(t, local_end);
 				t.drain(byte_start..byte_end);
+				dirty = true;
 			}
+		}
 
-			let deleted = local_end - local_start;
-			remaining_start = remaining_start.max(run_end) - deleted;
-			remaining_end -= deleted;
-			global_offset = run_end - deleted;
+		if dirty {
+			self.rebuild_indexes();
 		}
 	}
 
@@ -306,38 +321,51 @@ impl Document {
 
 		if !text.is_empty() {
 			self.insert_text(Position::zero(), text);
+		} else {
+			self.rebuild_indexes();
 		}
 	}
 
 	/// Return the full plain-text content of the document.
 	#[must_use]
 	pub fn plain_text(&self) -> String {
-		let mut out = String::new();
-		let paragraphs: Vec<_> = self.root().children.clone();
-
-		for (i, para_id) in paragraphs.iter().enumerate() {
-			if i > 0 {
-				out.push('\n');
-			}
-
-			if let Some(para) = self.nodes.get(para_id) {
-				for run_id in &para.children {
-					if let Some(run) = self.nodes.get(run_id)
-						&& let NodeKind::TextRun { ref text, .. } = run.kind
-					{
-						out.push_str(text);
-					}
-				}
-			}
-		}
-
-		out
+		self.plain_text_cache.clone()
 	}
 
 	/// Return the total character count across all text runs.
 	#[must_use]
 	pub fn char_count(&self) -> usize {
 		self.plain_text().chars().count()
+	}
+
+	/// Compute a deterministic hash of semantic document state.
+	#[must_use]
+	pub fn state_hash(&self) -> String {
+		let mut hasher = DefaultHasher::new();
+		self.title.hash(&mut hasher);
+		self.plain_text().hash(&mut hasher);
+		format!("{:016x}", hasher.finish())
+	}
+
+	/// Upsert a node directly into the document node map.
+	///
+	/// If a node with the same ID already exists, it is replaced.
+	/// Parent/child consistency is the caller's responsibility.
+	pub fn upsert_node(&mut self, node: Node) {
+		self.nodes.insert(node.id, node);
+		self.rebuild_indexes();
+	}
+
+	/// Remove a node directly from the document node map.
+	///
+	/// Root node removal is ignored.
+	pub fn remove_node(&mut self, id: NodeId) {
+		if id == NodeId::ROOT {
+			return;
+		}
+
+		self.nodes.remove(&id);
+		self.rebuild_indexes();
 	}
 
 	/// Serialize the document to a JSON string.
@@ -369,19 +397,7 @@ impl Document {
 
 	/// Return an ordered list of all text run node IDs in document order.
 	fn ordered_run_ids(&self) -> Vec<NodeId> {
-		let mut ids = Vec::new();
-		for para_id in &self.root().children.clone() {
-			if let Some(para) = self.nodes.get(para_id) {
-				for run_id in &para.children {
-					if let Some(run) = self.nodes.get(run_id)
-						&& matches!(run.kind, NodeKind::TextRun { .. })
-					{
-						ids.push(run.id);
-					}
-				}
-			}
-		}
-		ids
+		self.run_index.iter().map(|entry| entry.run_id).collect()
 	}
 
 	/// Return the character length of a text run.
@@ -401,27 +417,69 @@ impl Document {
 	/// Find the text run and local character offset for a global character
 	/// offset.
 	fn find_run_at_offset(&self, global_offset: usize) -> Option<(NodeId, usize)> {
-		let mut remaining = global_offset;
+		if self.run_index.is_empty() {
+			return None;
+		}
 
-		for para_id in &self.root().children.clone() {
+		for entry in &self.run_index {
+			let run_end = entry.start_char + entry.len_chars;
+			if global_offset <= run_end {
+				let local = global_offset.saturating_sub(entry.start_char).min(entry.len_chars);
+				return Some((entry.run_id, local));
+			}
+		}
+
+		self.run_index
+			.last()
+			.map(|entry| (entry.run_id, entry.len_chars))
+	}
+
+	fn overlapping_runs(&self, start: usize, end: usize) -> Vec<(NodeId, usize, usize)> {
+		self
+			.run_index
+			.iter()
+			.filter_map(|entry| {
+				let run_start = entry.start_char;
+				let run_end = entry.start_char + entry.len_chars;
+				if start >= run_end || end <= run_start {
+					return None;
+				}
+				let local_start = start.saturating_sub(run_start);
+				let local_end = end.saturating_sub(run_start).min(entry.len_chars);
+				Some((entry.run_id, local_start, local_end))
+			})
+			.collect()
+	}
+
+	fn rebuild_indexes(&mut self) {
+		self.run_index.clear();
+		self.plain_text_cache.clear();
+
+		let mut global_char = 0usize;
+		let paragraphs: Vec<_> = self.root().children.clone();
+		for (i, para_id) in paragraphs.iter().enumerate() {
+			if i > 0 {
+				self.plain_text_cache.push('\n');
+				global_char += 1;
+			}
+
 			if let Some(para) = self.nodes.get(para_id) {
 				for run_id in &para.children {
 					if let Some(run) = self.nodes.get(run_id)
 						&& let NodeKind::TextRun { ref text, .. } = run.kind
 					{
-						let len = text.chars().count();
-						if remaining <= len {
-							return Some((run.id, remaining));
-						}
-						remaining -= len;
+						let len_chars = text.chars().count();
+						self.run_index.push(RunIndexEntry {
+							run_id: run.id,
+							start_char: global_char,
+							len_chars,
+						});
+						self.plain_text_cache.push_str(text);
+						global_char += len_chars;
 					}
 				}
 			}
 		}
-
-		// If offset is past end, return the last run at its end.
-		let ids = self.ordered_run_ids();
-		ids.last().map(|&id| (id, self.run_text_len(id)))
 	}
 }
 
