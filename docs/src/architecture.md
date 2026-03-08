@@ -3,6 +3,18 @@
 canvist is organised into layered crates, each with a clear responsibility:
 
 ```text
+┌────────────────────────────────────────────────────────────────────────────┐
+│                              App / Agent Layer                            │
+│  User UI, macros, autonomous planners, external automations               │
+└────────────────────────────────────────────────────────────────────────────┘
+                                    │ intents
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│                        Command / Action Layer                              │
+│  Validation, policy checks, argument resolution, command IDs               │
+└────────────────────────────────────────────────────────────────────────────┘
+                                    │ validated actions
+                                    ▼
 ┌─────────────────────────────────────────────┐
 │                  canvist                     │  ← Umbrella re-export crate
 ├──────────────┬──────────────┬───────────────┤
@@ -11,11 +23,39 @@ canvist is organised into layered crates, each with a clear responsibility:
 │ • Document   │ • Canvas     │ • Canvas2D    │
 │ • Selection  │ • Renderer   │ • DOM events  │
 │ • Operations │ • Viewport   │ • A11y DOM    │
-│ • Style      │ • FontCache  │ • JS bridge   │
+│ • Event API  │ • FontCache  │ • JS bridge   │
+│ • Op Log     │              │               │
+│ • Style      │              │               │
 │ • Layout     │              │               │
 │ • CRDT sync  │              │               │
 └──────────────┴──────────────┴───────────────┘
+                                    │ render deltas
+                                    ▼
+                           Platform drawing surfaces
 ```
+
+## End-to-end contract (intent → action → operation → render)
+
+Every edit path (human or agent) should follow this lifecycle:
+
+1. **Intent capture**
+   - Source: DOM/native events, command UI, API call, automation agent
+   - Output: high-level intent (goal-oriented, may be ambiguous)
+2. **Action resolution**
+   - Validate permissions/policies and resolve concrete targets
+   - Output: deterministic validated command payload
+3. **Operation generation**
+   - Translate one action into one or more ordered core `Operation`s
+   - Optionally package in `Transaction`
+4. **Deterministic state transition**
+   - Wrap operations in `LogEntry` and append to `OperationLog`
+   - Enforce preconditions (`state_hash`, char_count, etc.)
+   - Apply to `Document` in stable logical-clock order
+5. **Render delta + paint**
+   - Compute layout/viewport invalidation from changed state
+   - Render backend repaints only affected regions
+
+This contract is the shared API boundary for product code, tests, and agents.
 
 ## canvist_core
 
@@ -24,9 +64,17 @@ The core crate is platform-agnostic. It contains:
 - **Document model** — a tree of nodes (root → paragraphs → text runs)
 - **Selections** — cursor positions and range selections
 - **Operations** — atomic edit operations with transaction batching
+- **Operation log** — immutable replay envelope for deterministic application
+- **Event model** — canonical `EditorEvent` and `EventSource`
 - **Style** — composable text styling with builder pattern
 - **Layout** — line breaking and paragraph layout computation
 - **Collaboration** — Yjs CRDT integration for real-time sync
+
+Core invariants:
+
+- same starting state + same ordered log = same resulting state
+- failed preconditions reject a transition instead of applying partial edits
+- operations are the only mutation path into `Document`
 
 ## canvist_render
 
@@ -35,6 +83,12 @@ Defines abstract rendering traits that platform backends implement:
 - `Canvas` — fill rects, draw text, draw lines, clip, transform
 - `Renderer` — manages a viewport and implements Canvas
 - `FontCache` — font loading and glyph caching via fontdue
+
+Render contract:
+
+- consume already-validated state/layout results
+- do not mutate core document state
+- provide deterministic draw behavior for a given layout snapshot
 
 ## canvist_wasm
 
@@ -60,8 +114,9 @@ contract:
 1. Platform APIs emit native events (DOM events, hidden input deltas, UIKit,
    Android, desktop window events)
 2. Backend-specific adapters map those into `EditorEvent`
-3. Core editor logic consumes `EventSource` and translates events into
-   operations/transactions
+3. Core editor logic consumes `EventSource` and translates events into actions
+4. Actions compile into operations/log entries
+5. Renderer paints deltas from new state
 
 Current adapters include:
 
