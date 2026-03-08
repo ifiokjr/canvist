@@ -14,25 +14,14 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  playwright:
+  playwright-linux:
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # Chromium and Firefox on Linux
-          - os: ubuntu-latest
-            browsers: "chromium firefox"
-          # WebKit needs macOS
-          - os: macos-latest
-            browsers: "webkit"
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
 
-      - name: free disk space (Linux)
-        if: runner.os == 'Linux'
+      - name: free disk space
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force || true
@@ -47,7 +36,7 @@ jobs:
         shell: devenv shell -c -- bash -e {0}
 
       - name: install playwright browsers
-        run: deno run -A npm:playwright@1.58 install --with-deps ${{ matrix.browsers }}
+        run: deno run -A npm:playwright@1.58 install --with-deps chromium firefox
         shell: devenv shell -c -- bash -e {0}
 
       - name: run playwright tests
@@ -55,5 +44,41 @@ jobs:
           cd packages/canvist
           deno test --allow-all tests/playwright/
         shell: devenv shell -c -- bash -e {0}
+        env:
+          CI: "true"
+
+  playwright-webkit:
+    timeout-minutes: 30
+    runs-on: macos-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: install wasm-pack
+        run: cargo install wasm-pack --locked
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: build wasm
+        run: wasm-pack build crates/canvist_wasm --target web --out-dir ../../packages/canvist/wasm
+
+      - name: install playwright webkit
+        run: deno run -A npm:playwright@1.58 install --with-deps webkit
+
+      - name: run playwright tests
+        run: |
+          cd packages/canvist
+          deno test --allow-all tests/playwright/
         env:
           CI: "true"
