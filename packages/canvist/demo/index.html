@@ -143,6 +143,17 @@
 
 				canvas.addEventListener("click", () => textarea.focus());
 				canvas.setAttribute("tabindex", "0");
+				canvas.setAttribute("role", "textbox");
+				canvas.setAttribute("aria-multiline", "true");
+				canvas.setAttribute("aria-label", "Canvist document editor");
+				canvas.setAttribute("aria-controls", "canvist-input");
+
+				function syncA11yState() {
+					const text = editor.plain_text();
+					textarea.value = text;
+					textarea.setSelectionRange(cursorOffset, cursorOffset);
+					canvas.setAttribute("aria-valuetext", text);
+				}
 
 				function renderFrame() {
 					try {
@@ -157,6 +168,7 @@
 							ctx.fillStyle = "black";
 							ctx.fillRect(20 + m.width, 24, 1.5, 20);
 						}
+						syncA11yState();
 					} catch (e) {}
 				}
 

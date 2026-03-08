@@ -2,19 +2,19 @@
 //!
 //! Integration test utilities for the canvist canvas editor.
 //!
-//! This crate provides helpers for running Playwright-based browser tests
-//! against the WASM build of canvist. Tests in `tests/` use these helpers to
-//! automate a real browser and verify that the editor renders and behaves
-//! correctly.
+//! ## Current status
 //!
-//! ## Running tests
+//! This crate currently provides helper utilities (workspace/package paths)
+//! and supports non-browser smoke testing in `tests/`.
+//!
+//! Browser automation is currently executed from `packages/canvist` using
+//! Deno + Playwright, including CI coverage. Playwright-driven Rust crate
+//! tests are planned but are not yet implemented in this crate.
+//!
+//! ## Running tests in this crate
 //!
 //! ```bash
-//! # Build the WASM package first.
-//! build:wasm
-//!
-//! # Run the Playwright tests.
-//! test:playwright
+//! cargo test -p canvist_test
 //! ```
 
 use std::path::Path;

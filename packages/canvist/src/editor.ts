@@ -52,6 +52,7 @@ export async function createEditor(
 	// --- Hidden textarea for capturing keyboard input ---
 	const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
 	const textarea = document.createElement("textarea");
+	textarea.id = "canvist-input";
 	textarea.setAttribute("autocomplete", "off");
 	textarea.setAttribute("autocorrect", "off");
 	textarea.setAttribute("autocapitalize", "off");
@@ -60,6 +61,10 @@ export async function createEditor(
 	textarea.style.cssText =
 		"position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;";
 	canvas.parentElement?.appendChild(textarea);
+	canvas.setAttribute("role", "textbox");
+	canvas.setAttribute("aria-multiline", "true");
+	canvas.setAttribute("aria-label", "Canvist document editor");
+	canvas.setAttribute("aria-controls", textarea.id);
 
 	// Keep textarea focused so we receive keyboard events.
 	canvas.addEventListener("click", () => textarea.focus());
@@ -71,6 +76,7 @@ export async function createEditor(
 		try {
 			inner.render();
 			renderCursor();
+			syncA11yState();
 		} catch {
 			// Canvas may not be in DOM during tests.
 		}
@@ -118,6 +124,13 @@ export async function createEditor(
 		// Clear the textarea so next composition starts fresh.
 		textarea.value = "";
 	});
+
+	function syncA11yState() {
+		const text = inner.plain_text();
+		textarea.value = text;
+		textarea.setSelectionRange(cursorOffset, cursorOffset);
+		canvas.setAttribute("aria-valuetext", text);
+	}
 
 	textarea.addEventListener("keydown", (e: KeyboardEvent) => {
 		if (e.isComposing) return;
@@ -178,6 +191,26 @@ export async function createEditor(
 			insertText(text: string) {
 				ref.insert_text_at(cursorOffset, text);
 				cursorOffset += text.length;
+				renderFrame();
+			},
+			insertTextAt(offset: number, text: string) {
+				ref.insert_text_at(offset, text);
+				cursorOffset = offset + text.length;
+				renderFrame();
+			},
+			deleteRange(start: number, end: number) {
+				ref.delete_range(start, end);
+				cursorOffset = start;
+				renderFrame();
+			},
+			queueTextInput(text: string) {
+				ref.queue_text_input(text);
+			},
+			queueKeyDown(key: string) {
+				ref.queue_key_down(key);
+			},
+			processEvents() {
+				ref.process_events();
 				renderFrame();
 			},
 			setTitle(title: string) {

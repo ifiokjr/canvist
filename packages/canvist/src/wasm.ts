@@ -6,11 +6,32 @@
  * multiple times is safe.
  */
 
-// deno-lint-ignore-file no-explicit-any
-
 let _initialised = false;
 let _initPromise: Promise<void> | null = null;
-let _wasmModule: any = null;
+let _wasmModule: CanvistWasmModule | null = null;
+
+export interface WasmCanvistEditor {
+	canvas_id(): string;
+	plain_text(): string;
+	char_count(): number;
+	insert_text(text: string): void;
+	insert_text_at(offset: number, text: string): void;
+	delete_range(start: number, end: number): void;
+	set_title(title: string): void;
+	to_json(): string;
+	queue_text_input(text: string): void;
+	queue_key_down(key: string): void;
+	process_events(): void;
+	render(): void;
+	free(): void;
+}
+
+export interface CanvistWasmModule {
+	default(input?: unknown): Promise<unknown>;
+	CanvistEditor: {
+		create(canvasId: string): WasmCanvistEditor;
+	};
+}
 
 /**
  * Dynamically import the WASM glue module.
@@ -18,10 +39,10 @@ let _wasmModule: any = null;
  * This is split out so the import path works in both Deno and Node/bundler
  * environments.
  */
-async function loadWasmModule(): Promise<any> {
+async function loadWasmModule(): Promise<CanvistWasmModule> {
 	if (_wasmModule) return _wasmModule;
 	// The wasm glue JS is co-located in the package.
-	_wasmModule = await import("../wasm/canvist_wasm.js");
+	_wasmModule = (await import("../wasm/canvist_wasm.js")) as CanvistWasmModule;
 	return _wasmModule;
 }
 
@@ -54,7 +75,7 @@ export async function initWasm(): Promise<void> {
  * Return the raw WASM module exports (for internal use).
  * @internal
  */
-export async function getWasmModule(): Promise<any> {
+export async function getWasmModule(): Promise<CanvistWasmModule> {
 	await initWasm();
 	return loadWasmModule();
 }

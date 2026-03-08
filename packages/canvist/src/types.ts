@@ -18,6 +18,21 @@ export interface CanvistEditor {
 	/** Insert text at the current cursor position. */
 	insertText(text: string): void;
 
+	/** Insert text at a specific character offset. */
+	insertTextAt(offset: number, text: string): void;
+
+	/** Delete text in the half-open range `[start, end)`. */
+	deleteRange(start: number, end: number): void;
+
+	/** Queue plain text input for runtime event processing. */
+	queueTextInput(text: string): void;
+
+	/** Queue a keydown event for runtime event processing. */
+	queueKeyDown(key: string): void;
+
+	/** Process queued runtime events. */
+	processEvents(): void;
+
 	/** Set the document title (metadata). */
 	setTitle(title: string): void;
 

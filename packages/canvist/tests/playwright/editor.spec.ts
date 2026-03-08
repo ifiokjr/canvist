@@ -82,6 +82,31 @@ async function getEditorCharCount(page: any): Promise<number> {
 	return page.evaluate("window.__canvistEditor?.char_count() ?? 0");
 }
 
+async function pressKey(page: any, key: string, settleMs = 120) {
+	await page.keyboard.press(key);
+	await page.waitForTimeout(settleMs);
+}
+
+async function getA11ySnapshot(page: any) {
+	return page.evaluate(() => {
+		const canvas = document.getElementById("editor-canvas");
+		const input = document.getElementById("canvist-input") as
+			| HTMLTextAreaElement
+			| null;
+		return {
+			canvasRole: canvas?.getAttribute("role") ?? null,
+			canvasAriaMultiline: canvas?.getAttribute("aria-multiline") ?? null,
+			canvasAriaControls: canvas?.getAttribute("aria-controls") ?? null,
+			canvasAriaValueText: canvas?.getAttribute("aria-valuetext") ?? null,
+			inputExists: Boolean(input),
+			inputAriaLabel: input?.getAttribute("aria-label") ?? null,
+			inputValue: input?.value ?? null,
+			inputSelectionStart: input?.selectionStart ?? null,
+			activeElementId: document.activeElement?.id ?? null,
+		};
+	});
+}
+
 // Determine which browsers to test based on CI environment.
 // CI_BROWSERS env var can be set to a space-separated list (e.g. "chromium firefox").
 // Locally, test all three.
@@ -229,6 +254,201 @@ for (const browserName of BROWSERS) {
 					const text = await getEditorText(page);
 					assertEquals(text, "abcdefghi");
 					assertEquals(await getEditorCharCount(page), 9);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] delete removes character in front of cursor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "abcde");
+					await pressKey(page, "ArrowLeft");
+					await pressKey(page, "ArrowLeft");
+					await pressKey(page, "Delete");
+
+					assertEquals(await getEditorText(page), "abce");
+					assertEquals(await getEditorCharCount(page), 4);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] arrow keys move cursor for deterministic mid-string insert`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "ABEF");
+					await pressKey(page, "ArrowLeft");
+					await pressKey(page, "ArrowLeft");
+					await typeInEditor(page, "CD");
+
+					assertEquals(await getEditorText(page), "ABCDEF");
+					assertEquals(await getEditorCharCount(page), 6);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] shift+arrow selection replaced by typing`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "abcdef");
+					await pressKey(page, "ArrowLeft");
+					await pressKey(page, "ArrowLeft");
+					await pressKey(page, "Shift+ArrowLeft");
+					await pressKey(page, "Shift+ArrowLeft");
+					await typeInEditor(page, "XY");
+
+					assertEquals(await getEditorText(page), "abcdXY");
+					assertEquals(await getEditorCharCount(page), 6);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] accessibility wiring exposes hidden input and textbox semantics`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+					await typeInEditor(page, "A11y");
+
+					const snapshot = await getA11ySnapshot(page);
+					assertEquals(snapshot.inputExists, true);
+					assertEquals(snapshot.canvasRole, "textbox");
+					assertEquals(snapshot.canvasAriaMultiline, "true");
+					assertEquals(snapshot.canvasAriaControls, "canvist-input");
+					assertEquals(snapshot.inputAriaLabel, "Document editor input");
+					assertEquals(snapshot.canvasAriaValueText, "A11y");
+					assertEquals(snapshot.inputValue, "A11y");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] focus and keyboard routing keeps hidden textarea active`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+					await page.focus("#editor-canvas");
+					await page.waitForTimeout(80);
+					await page.keyboard.type("Focus");
+					await page.waitForTimeout(120);
+
+					const snapshot = await getA11ySnapshot(page);
+					assertEquals(snapshot.activeElementId, "canvist-input");
+					assertEquals(snapshot.inputSelectionStart, 5);
+					assertEquals(await getEditorText(page), "Focus");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] compositionend commits IME text exactly once`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+					await page.focus("#canvist-input");
+
+					await page.evaluate(() => {
+						const input = document.getElementById("canvist-input") as HTMLTextAreaElement;
+						input.dispatchEvent(new CompositionEvent("compositionstart", { data: "" }));
+						input.dispatchEvent(new InputEvent("input", {
+							data: "あ",
+							inputType: "insertCompositionText",
+							bubbles: true,
+							composed: true,
+						}));
+						input.dispatchEvent(new CompositionEvent("compositionend", {
+							data: "あ",
+							bubbles: true,
+							composed: true,
+						}));
+					});
+					await page.waitForTimeout(120);
+
+					assertEquals(await getEditorText(page), "あ");
+					assertEquals(await getEditorCharCount(page), 1);
+					const snapshot = await getA11ySnapshot(page);
+					assertEquals(snapshot.inputValue, "あ");
+					assertEquals(snapshot.canvasAriaValueText, "あ");
 				} finally {
 					await browser.close();
 				}

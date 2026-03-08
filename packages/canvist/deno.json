@@ -16,7 +16,9 @@
 	"tasks": {
 		"build:wasm": "cd ../.. && wasm-pack build crates/canvist_wasm --target web --out-dir ../../packages/canvist/wasm",
 		"test": "deno test --allow-read --allow-net --allow-env --allow-run tests/",
-		"test:playwright": "deno test --allow-all tests/playwright/"
+		"test:unit": "deno test --allow-read --allow-net --allow-env --allow-run",
+		"test:playwright": "deno test --allow-read --allow-write --allow-net --allow-env --allow-run --allow-sys tests/playwright/**/*.spec.ts",
+		"ci:test": "deno task test:unit && deno task test:playwright"
 	},
 	"imports": {
 		"@std/assert": "jsr:@std/assert@^1",
