@@ -22,6 +22,7 @@ mod dom;
 use canvist_core::Document;
 use canvist_core::EditorEvent;
 use canvist_core::EditorKey;
+use canvist_core::EditorRuntime;
 use canvist_core::EventSource;
 use canvist_core::Modifiers;
 use canvist_core::Position;
@@ -37,59 +38,13 @@ use wasm_bindgen::prelude::*;
 /// `<canvas>` element.
 #[wasm_bindgen]
 pub struct CanvistEditor {
-	document: Document,
+	runtime: EditorRuntime,
 	canvas_id: String,
 	event_source: dom::WebEventSource,
 }
 
 #[wasm_bindgen]
 impl CanvistEditor {
-	fn map_event_to_operation(&self, event: EditorEvent) -> Option<Operation> {
-		match event {
-			EditorEvent::TextInsert { text } => {
-				Some(Operation::insert(
-					Position::new(self.document.char_count()),
-					text,
-				))
-			}
-			EditorEvent::KeyDown { key, .. } => self.map_key_down_to_operation(key),
-			_ => None,
-		}
-	}
-
-	fn map_key_down_to_operation(&self, key: EditorKey) -> Option<Operation> {
-		match key {
-			EditorKey::Backspace | EditorKey::Delete => {
-				let end = self.document.char_count();
-				if end == 0 {
-					None
-				} else {
-					Some(Operation::delete(Selection::range(
-						Position::new(end - 1),
-						Position::new(end),
-					)))
-				}
-			}
-			EditorKey::Enter => {
-				Some(Operation::insert(
-					Position::new(self.document.char_count()),
-					"\n",
-				))
-			}
-			_ => None,
-		}
-	}
-
-	fn drain_actions(&mut self) -> Vec<Operation> {
-		let mut operations = Vec::new();
-		while let Some(event) = self.event_source.poll_event() {
-			if let Some(op) = self.map_event_to_operation(event) {
-				operations.push(op);
-			}
-		}
-		operations
-	}
-
 	/// Create a new editor attached to the canvas element with the given ID.
 	///
 	/// # Errors
@@ -107,7 +62,11 @@ impl CanvistEditor {
 			.ok_or_else(|| JsValue::from_str(&format!("canvas '{canvas_id}' not found")))?;
 
 		Ok(Self {
-			document: Document::new(),
+			runtime: EditorRuntime::new(
+				Document::new(),
+				Selection::collapsed(Position::new(0)),
+				"wasm",
+			),
 			canvas_id: canvas_id.to_string(),
 			event_source: dom::WebEventSource::new(),
 		})
@@ -123,32 +82,48 @@ impl CanvistEditor {
 	/// Insert text at a specific character offset.
 	#[wasm_bindgen]
 	pub fn insert_text_at(&mut self, offset: usize, text: &str) {
-		Operation::insert(Position::new(offset), text).apply(&mut self.document);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(offset)),
+		});
+		let _ = self.runtime.handle_event(EditorEvent::TextInsert {
+			text: text.to_string(),
+		});
 	}
 
 	/// Delete a range of characters from `start` to `end`.
 	#[wasm_bindgen]
 	pub fn delete_range(&mut self, start: usize, end: usize) {
-		Operation::delete(Selection::range(Position::new(start), Position::new(end)))
-			.apply(&mut self.document);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(end)),
+		});
+		let key = if start == end {
+			EditorKey::Backspace
+		} else {
+			EditorKey::Delete
+		};
+		let _ = self.runtime.handle_event(EditorEvent::KeyDown {
+			key,
+			modifiers: Modifiers::default(),
+			repeat: false,
+		});
 	}
 
 	/// Return the full plain-text content of the document.
 	#[wasm_bindgen]
 	pub fn plain_text(&self) -> String {
-		self.document.plain_text()
+		self.runtime.document().plain_text()
 	}
 
 	/// Return the character count.
 	#[wasm_bindgen]
 	pub fn char_count(&self) -> usize {
-		self.document.char_count()
+		self.runtime.document().char_count()
 	}
 
 	/// Set the document title.
 	#[wasm_bindgen]
 	pub fn set_title(&mut self, title: &str) {
-		self.document.set_title(title);
+		self.runtime.document_mut().set_title(title);
 	}
 
 	/// Return the canvas element ID this editor is attached to.
@@ -160,7 +135,8 @@ impl CanvistEditor {
 	/// Export the document as a JSON string.
 	#[wasm_bindgen]
 	pub fn to_json(&self) -> Result<String, JsValue> {
-		self.document
+		self.runtime
+			.document()
 			.to_json()
 			.map_err(|e| JsValue::from_str(&e.to_string()))
 	}
@@ -175,24 +151,148 @@ impl CanvistEditor {
 	/// Queue a key down event and process resulting operations.
 	#[wasm_bindgen]
 	pub fn queue_key_down(&mut self, key: &str) {
-		self.event_source
-			.push_key_down(key, Modifiers::default(), false);
+		self.queue_key_down_with_modifiers(key, false, false, false, false, false);
+	}
+
+	/// Queue key down with explicit modifier + repeat state.
+	#[wasm_bindgen]
+	pub fn queue_key_down_with_modifiers(
+		&mut self,
+		key: &str,
+		shift: bool,
+		control: bool,
+		alt: bool,
+		meta: bool,
+		repeat: bool,
+	) {
+		self.event_source.push_key_down(
+			key,
+			Modifiers {
+				shift,
+				control,
+				alt,
+				meta,
+			},
+			repeat,
+		);
 		self.process_events();
 	}
 
-	/// Process all pending canonical events into document operations.
+	/// Process all pending canonical events via the editor runtime.
 	#[wasm_bindgen]
 	pub fn process_events(&mut self) {
-		let operations = self.drain_actions();
-		if operations.is_empty() {
-			return;
+		while let Some(event) = self.event_source.poll_event() {
+			let _ = self.runtime.handle_event(event);
+		}
+	}
+
+	/// Get selection start offset.
+	#[wasm_bindgen]
+	pub fn selection_start(&self) -> usize {
+		self.runtime.selection().start().offset()
+	}
+
+	/// Get selection end offset.
+	#[wasm_bindgen]
+	pub fn selection_end(&self) -> usize {
+		self.runtime.selection().end().offset()
+	}
+
+	/// Set selection range.
+	#[wasm_bindgen]
+	pub fn set_selection(&mut self, start: usize, end: usize) {
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(end)),
+		});
+	}
+
+	/// Move cursor to an absolute position; extend toggles range selection.
+	#[wasm_bindgen]
+	pub fn move_cursor_to(&mut self, position: usize, extend: bool) {
+		let _ = self.runtime.handle_event(EditorEvent::CursorMove {
+			position: Position::new(position),
+			extend,
+		});
+	}
+
+	/// Move cursor one character left.
+	#[wasm_bindgen]
+	pub fn move_cursor_left(&mut self, extend: bool) {
+		let caret = self.runtime.selection().end().offset();
+		self.move_cursor_to(caret.saturating_sub(1), extend);
+	}
+
+	/// Move cursor one character right.
+	#[wasm_bindgen]
+	pub fn move_cursor_right(&mut self, extend: bool) {
+		let caret = self.runtime.selection().end().offset();
+		let max = self.runtime.document().char_count();
+		self.move_cursor_to(caret.saturating_add(1).min(max), extend);
+	}
+
+	/// Apply style to the given character range.
+	#[wasm_bindgen]
+	pub fn apply_style_range(
+		&mut self,
+		start: usize,
+		end: usize,
+		bold: bool,
+		italic: bool,
+		underline: bool,
+		font_size: Option<f32>,
+		font_family: Option<String>,
+		color_rgba: Option<Vec<u8>>,
+	) {
+		let mut style = Style::new();
+		if bold {
+			style = style.bold();
+		}
+		if italic {
+			style = style.italic();
+		}
+		if underline {
+			style = style.underline();
+		}
+		if let Some(size) = font_size {
+			style = style.font_size(size);
+		}
+		if let Some(family) = font_family {
+			style = style.font_family(family);
+		}
+		if let Some(rgba) = color_rgba {
+			if rgba.len() == 4 {
+				style = style.color(rgba[0], rgba[1], rgba[2], rgba[3]);
+			}
 		}
 
-		let mut tx = Transaction::new();
-		for op in operations {
-			tx = tx.push(op);
+		self.runtime.apply_operation(Operation::format(
+			Selection::range(Position::new(start), Position::new(end)),
+			style,
+		));
+	}
+
+	/// Undo by replaying operation log minus the last operation.
+	#[wasm_bindgen]
+	pub fn undo_last_operation(&mut self) -> Result<(), JsValue> {
+		let entries = self.runtime.operation_log().entries().to_vec();
+		if entries.is_empty() {
+			return Ok(());
 		}
-		tx.apply(&mut self.document);
+		let mut document = Document::new();
+		for entry in &entries[..entries.len() - 1] {
+			entry.operation.clone().apply(&mut document);
+		}
+		self.runtime = EditorRuntime::new(document, Selection::collapsed(Position::new(0)), "wasm");
+		Ok(())
+	}
+
+	/// Replay a JSON-encoded operation list into current runtime.
+	#[wasm_bindgen]
+	pub fn replay_operations_json(&mut self, operations_json: &str) -> Result<(), JsValue> {
+		let tx: Transaction = serde_json::from_str(operations_json)
+			.map_err(|e| JsValue::from_str(&format!("failed to parse transaction: {e}")))?;
+		self.runtime.apply_transaction(tx);
+		Ok(())
 	}
 
 	/// Request a re-render of the document to the canvas.
@@ -225,7 +325,7 @@ impl CanvistEditor {
 		ctx.fill_rect(0.0, 0.0, width, height);
 
 		// Draw the plain text as a simple proof-of-concept.
-		let text = self.document.plain_text();
+		let text = self.runtime.document().plain_text();
 		let default_style = Style::new().font_size(16.0).font_family("sans-serif");
 		let resolved = default_style.resolve();
 
