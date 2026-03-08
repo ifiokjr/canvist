@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   playwright-linux:
-    timeout-minutes: 30
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
@@ -46,6 +46,7 @@ jobs:
         shell: devenv shell -c -- bash -e {0}
         env:
           CI: "true"
+          CI_BROWSERS: "chromium firefox"
 
   playwright-webkit:
     timeout-minutes: 30
@@ -82,3 +83,4 @@ jobs:
           deno test --allow-all tests/playwright/
         env:
           CI: "true"
+          CI_BROWSERS: "webkit"

@@ -82,14 +82,20 @@ async function getEditorCharCount(page: any): Promise<number> {
 	return page.evaluate("window.__canvistEditor?.char_count() ?? 0");
 }
 
-const BROWSERS = ["chromium", "firefox", "webkit"];
+// Determine which browsers to test based on CI environment.
+// CI_BROWSERS env var can be set to a space-separated list (e.g. "chromium firefox").
+// Locally, test all three.
+function getBrowsers(): string[] {
+	const envBrowsers = Deno.env.get("CI_BROWSERS");
+	if (envBrowsers) return envBrowsers.trim().split(/\s+/);
+	return ["chromium", "firefox", "webkit"];
+}
+
+const BROWSERS = getBrowsers();
 
 for (const browserName of BROWSERS) {
 	Deno.test({
 		name: `[${browserName}] editor loads and renders`,
-		ignore: Deno.env.get("CI") === "true" &&
-			browserName === "webkit" &&
-			Deno.build.os !== "darwin",
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
 
@@ -118,9 +124,6 @@ for (const browserName of BROWSERS) {
 
 	Deno.test({
 		name: `[${browserName}] typing inserts text`,
-		ignore: Deno.env.get("CI") === "true" &&
-			browserName === "webkit" &&
-			Deno.build.os !== "darwin",
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
 
@@ -150,9 +153,6 @@ for (const browserName of BROWSERS) {
 
 	Deno.test({
 		name: `[${browserName}] backspace deletes characters`,
-		ignore: Deno.env.get("CI") === "true" &&
-			browserName === "webkit" &&
-			Deno.build.os !== "darwin",
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
 
@@ -181,9 +181,6 @@ for (const browserName of BROWSERS) {
 
 	Deno.test({
 		name: `[${browserName}] enter creates newline`,
-		ignore: Deno.env.get("CI") === "true" &&
-			browserName === "webkit" &&
-			Deno.build.os !== "darwin",
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
 
@@ -216,9 +213,6 @@ for (const browserName of BROWSERS) {
 
 	Deno.test({
 		name: `[${browserName}] multiple sequential inserts`,
-		ignore: Deno.env.get("CI") === "true" &&
-			browserName === "webkit" &&
-			Deno.build.os !== "darwin",
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
 
