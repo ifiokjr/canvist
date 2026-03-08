@@ -124,9 +124,10 @@ in
     "test:playwright" = {
       exec = ''
         set -e
-        cargo nextest run --package canvist_test
+        cd packages/canvist
+        deno test --allow-all tests/playwright/
       '';
-      description = "Run playwright browser integration tests.";
+      description = "Run Playwright browser tests for the JS/WASM package.";
       binary = "bash";
     };
     "coverage:all" = {
@@ -157,7 +158,7 @@ in
     "fix:clippy" = {
       exec = ''
         set -e
-        cargo clippy --workspace --fix --allow-dirty --allow-staged --all-features --all-targets
+        cargo clippy --workspace --exclude canvist_wasm --exclude canvist_test --fix --allow-dirty --allow-staged --all-features --all-targets
       '';
       description = "Fix clippy lints for rust.";
       binary = "bash";
@@ -191,7 +192,7 @@ in
     "lint:clippy" = {
       exec = ''
         set -e
-        cargo clippy --workspace --all-features --all-targets
+        cargo clippy --workspace --exclude canvist_wasm --exclude canvist_test --all-features --all-targets
       '';
       description = "Check that all rust lints are passing.";
       binary = "bash";

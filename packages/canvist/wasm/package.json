@@ -1,0 +1,31 @@
+{
+  "name": "canvist_wasm",
+  "type": "module",
+  "collaborators": [
+    "Ifiok Jr. <ifiokotung@gmail.com>"
+  ],
+  "description": "WebAssembly + Canvas2D rendering backend for the canvist canvas editor",
+  "version": "0.1.0",
+  "license": "Unlicense",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ifiokjr/canvist"
+  },
+  "files": [
+    "canvist_wasm_bg.wasm",
+    "canvist_wasm.js",
+    "canvist_wasm.d.ts"
+  ],
+  "main": "canvist_wasm.js",
+  "homepage": "https://github.com/ifiokjr/canvist",
+  "types": "canvist_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ],
+  "keywords": [
+    "text-editor",
+    "canvas",
+    "wasm",
+    "webassembly"
+  ]
+}

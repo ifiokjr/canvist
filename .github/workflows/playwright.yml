@@ -1,0 +1,59 @@
+name: "playwright"
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  playwright:
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Chromium and Firefox on Linux
+          - os: ubuntu-latest
+            browsers: "chromium firefox"
+          # WebKit needs macOS
+          - os: macos-latest
+            browsers: "webkit"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: free disk space (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force || true
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build wasm
+        run: build:wasm
+        shell: devenv shell -c -- bash -e {0}
+
+      - name: install playwright browsers
+        run: deno run -A npm:playwright@1.58 install --with-deps ${{ matrix.browsers }}
+        shell: devenv shell -c -- bash -e {0}
+
+      - name: run playwright tests
+        run: |
+          cd packages/canvist
+          deno test --allow-all tests/playwright/
+        shell: devenv shell -c -- bash -e {0}
+        env:
+          CI: "true"
