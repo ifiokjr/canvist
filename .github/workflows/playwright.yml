@@ -15,35 +15,24 @@ concurrency:
 
 jobs:
   playwright-linux:
-    timeout-minutes: 45
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
 
-      - name: free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force || true
-
-      - name: setup
-        uses: ./.github/actions/devenv
+      - name: install deno
+        uses: denoland/setup-deno@v2
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: build wasm
-        run: build:wasm
-        shell: devenv shell -c -- bash -e {0}
+          deno-version: v2.x
 
       - name: install playwright browsers
         run: deno run -A npm:playwright@1.58 install --with-deps chromium firefox
-        shell: devenv shell -c -- bash -e {0}
 
       - name: run playwright tests
         run: |
           cd packages/canvist
           deno test --allow-all tests/playwright/
-        shell: devenv shell -c -- bash -e {0}
         env:
           CI: "true"
           CI_BROWSERS: "chromium firefox"
