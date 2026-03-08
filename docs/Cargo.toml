@@ -5,10 +5,10 @@ authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
+publish = false
 repository.workspace = true
 rust-version.workspace = true
 description = "Documentation for the canvist canvas editor"
-publish = false
 
 [lints]
 workspace = true

@@ -110,6 +110,30 @@ export class CanvistEditor {
         }
     }
     /**
+     * Process all pending canonical events into document operations.
+     */
+    process_events() {
+        wasm.canvisteditor_process_events(this.__wbg_ptr);
+    }
+    /**
+     * Queue a key down event and process resulting operations.
+     * @param {string} key
+     */
+    queue_key_down(key) {
+        const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_queue_key_down(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Queue canonical text input and process it into operations.
+     * @param {string} text
+     */
+    queue_text_input(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_queue_text_input(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Request a re-render of the document to the canvas.
      *
      * This reads the document state and draws it using the Canvas 2D API.

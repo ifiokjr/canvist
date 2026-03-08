@@ -2,9 +2,7 @@
 
 > WebAssembly + Canvas2D rendering backend for the canvist canvas editor.
 
-This crate provides the browser-side rendering backend that connects the
-canvist editor to an HTML `<canvas>` element. It implements the
-`canvist_render::Renderer` trait using the Canvas 2D API.
+This crate provides the browser-side rendering backend that connects the canvist editor to an HTML `<canvas>` element. It implements the `canvist_render::Renderer` trait using the Canvas 2D API.
 
 ## Features
 

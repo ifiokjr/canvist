@@ -77,19 +77,34 @@ impl TransactionMeta {
 /// An executable command contributed by an extension.
 pub trait Command: Send + Sync {
 	fn id(&self) -> &'static str;
-	fn execute(&self, doc: &Document, selection: Selection, event: &EditorEvent) -> Option<Transaction>;
+	fn execute(
+		&self,
+		doc: &Document,
+		selection: Selection,
+		event: &EditorEvent,
+	) -> Option<Transaction>;
 }
 
 /// A text/input rule that may emit a transaction when its condition matches.
 pub trait InputRule: Send + Sync {
 	fn id(&self) -> &'static str;
-	fn on_event(&self, doc: &Document, selection: Selection, event: &EditorEvent) -> Option<Transaction>;
+	fn on_event(
+		&self,
+		doc: &Document,
+		selection: Selection,
+		event: &EditorEvent,
+	) -> Option<Transaction>;
 }
 
 /// A hook invoked around transaction dispatch.
 pub trait TransactionHook: Send + Sync {
 	fn id(&self) -> &'static str;
-	fn before_apply(&self, _doc: &Document, _meta: &TransactionMeta, tx: Transaction) -> Transaction {
+	fn before_apply(
+		&self,
+		_doc: &Document,
+		_meta: &TransactionMeta,
+		tx: Transaction,
+	) -> Transaction {
 		tx
 	}
 	fn after_apply(&self, _doc: &Document, _meta: &TransactionMeta, _tx: &Transaction) {}
@@ -266,10 +281,12 @@ impl ExtensionRuntime {
 
 #[cfg(test)]
 mod tests {
+	use std::sync::Arc;
+	use std::sync::Mutex;
+
 	use super::*;
 	use crate::Position;
 	use crate::operation::Operation;
-	use std::sync::{Arc, Mutex};
 
 	struct TestCommand {
 		id: &'static str,
@@ -281,7 +298,12 @@ mod tests {
 			self.id
 		}
 
-		fn execute(&self, _doc: &Document, _selection: Selection, _event: &EditorEvent) -> Option<Transaction> {
+		fn execute(
+			&self,
+			_doc: &Document,
+			_selection: Selection,
+			_event: &EditorEvent,
+		) -> Option<Transaction> {
 			Some(Transaction::new().push(Operation::insert(Position::zero(), self.text)))
 		}
 	}
@@ -296,7 +318,12 @@ mod tests {
 			self.id
 		}
 
-		fn on_event(&self, _doc: &Document, _selection: Selection, _event: &EditorEvent) -> Option<Transaction> {
+		fn on_event(
+			&self,
+			_doc: &Document,
+			_selection: Selection,
+			_event: &EditorEvent,
+		) -> Option<Transaction> {
 			Some(Transaction::new().push(Operation::insert(Position::zero(), self.text)))
 		}
 	}
@@ -311,7 +338,12 @@ mod tests {
 			self.id
 		}
 
-		fn before_apply(&self, _doc: &Document, _meta: &TransactionMeta, tx: Transaction) -> Transaction {
+		fn before_apply(
+			&self,
+			_doc: &Document,
+			_meta: &TransactionMeta,
+			tx: Transaction,
+		) -> Transaction {
 			self.trace
 				.lock()
 				.expect("record hook")
@@ -377,25 +409,47 @@ mod tests {
 	fn command_order_is_deterministic_by_priority_then_id() {
 		struct ExtA;
 		impl Extension for ExtA {
-			fn id(&self) -> &'static str { "a" }
-			fn priority(&self) -> i32 { 1 }
+			fn id(&self) -> &'static str {
+				"a"
+			}
+
+			fn priority(&self) -> i32 {
+				1
+			}
+
 			fn commands(&self) -> Vec<Box<dyn Command>> {
-				vec![Box::new(TestCommand { id: "cmd", text: "a" })]
+				vec![Box::new(TestCommand {
+					id: "cmd",
+					text: "a",
+				})]
 			}
 		}
 		struct ExtB;
 		impl Extension for ExtB {
-			fn id(&self) -> &'static str { "b" }
-			fn priority(&self) -> i32 { 2 }
+			fn id(&self) -> &'static str {
+				"b"
+			}
+
+			fn priority(&self) -> i32 {
+				2
+			}
+
 			fn commands(&self) -> Vec<Box<dyn Command>> {
-				vec![Box::new(TestCommand { id: "cmd", text: "b" })]
+				vec![Box::new(TestCommand {
+					id: "cmd",
+					text: "b",
+				})]
 			}
 		}
 
 		let runtime = ExtensionRuntime::new(vec![Box::new(ExtA), Box::new(ExtB)]);
 		let doc = Document::new();
 		let tx = runtime
-			.run_commands(&doc, Selection::collapsed(Position::zero()), &EditorEvent::Focus)
+			.run_commands(
+				&doc,
+				Selection::collapsed(Position::zero()),
+				&EditorEvent::Focus,
+			)
 			.expect("transaction");
 
 		assert_eq!(tx.meta.origin(), "b");
@@ -406,25 +460,47 @@ mod tests {
 	fn input_rule_order_is_deterministic_by_priority_then_id() {
 		struct ExtA;
 		impl Extension for ExtA {
-			fn id(&self) -> &'static str { "a" }
-			fn priority(&self) -> i32 { 5 }
+			fn id(&self) -> &'static str {
+				"a"
+			}
+
+			fn priority(&self) -> i32 {
+				5
+			}
+
 			fn input_rules(&self) -> Vec<Box<dyn InputRule>> {
-				vec![Box::new(TestRule { id: "rule", text: "a" })]
+				vec![Box::new(TestRule {
+					id: "rule",
+					text: "a",
+				})]
 			}
 		}
 		struct ExtB;
 		impl Extension for ExtB {
-			fn id(&self) -> &'static str { "b" }
-			fn priority(&self) -> i32 { 5 }
+			fn id(&self) -> &'static str {
+				"b"
+			}
+
+			fn priority(&self) -> i32 {
+				5
+			}
+
 			fn input_rules(&self) -> Vec<Box<dyn InputRule>> {
-				vec![Box::new(TestRule { id: "rule", text: "b" })]
+				vec![Box::new(TestRule {
+					id: "rule",
+					text: "b",
+				})]
 			}
 		}
 
 		let runtime = ExtensionRuntime::new(vec![Box::new(ExtB), Box::new(ExtA)]);
 		let doc = Document::new();
 		let tx = runtime
-			.run_input_rules(&doc, Selection::collapsed(Position::zero()), &EditorEvent::Focus)
+			.run_input_rules(
+				&doc,
+				Selection::collapsed(Position::zero()),
+				&EditorEvent::Focus,
+			)
 			.expect("transaction");
 
 		assert_eq!(tx.meta.origin(), "a");
@@ -439,28 +515,59 @@ mod tests {
 			hook: Box<dyn TransactionHook>,
 		}
 		impl Extension for HookExt {
-			fn id(&self) -> &'static str { self.id }
-			fn priority(&self) -> i32 { self.priority }
+			fn id(&self) -> &'static str {
+				self.id
+			}
+
+			fn priority(&self) -> i32 {
+				self.priority
+			}
+
 			fn transaction_hooks(&self) -> Vec<Box<dyn TransactionHook>> {
-				vec![Box::new(RecordingHook { id: self.hook.id(), trace: Arc::new(Mutex::new(Vec::new())) })]
+				vec![Box::new(RecordingHook {
+					id: self.hook.id(),
+					trace: Arc::new(Mutex::new(Vec::new())),
+				})]
 			}
 		}
 
 		let trace = Arc::new(Mutex::new(Vec::new()));
-		struct Ext1 { trace: Arc<Mutex<Vec<String>>> }
+		struct Ext1 {
+			trace: Arc<Mutex<Vec<String>>>,
+		}
 		impl Extension for Ext1 {
-			fn id(&self) -> &'static str { "a" }
-			fn priority(&self) -> i32 { 1 }
+			fn id(&self) -> &'static str {
+				"a"
+			}
+
+			fn priority(&self) -> i32 {
+				1
+			}
+
 			fn transaction_hooks(&self) -> Vec<Box<dyn TransactionHook>> {
-				vec![Box::new(RecordingHook { id: "h1", trace: self.trace.clone() })]
+				vec![Box::new(RecordingHook {
+					id: "h1",
+					trace: self.trace.clone(),
+				})]
 			}
 		}
-		struct Ext2 { trace: Arc<Mutex<Vec<String>>> }
+		struct Ext2 {
+			trace: Arc<Mutex<Vec<String>>>,
+		}
 		impl Extension for Ext2 {
-			fn id(&self) -> &'static str { "b" }
-			fn priority(&self) -> i32 { 2 }
+			fn id(&self) -> &'static str {
+				"b"
+			}
+
+			fn priority(&self) -> i32 {
+				2
+			}
+
 			fn transaction_hooks(&self) -> Vec<Box<dyn TransactionHook>> {
-				vec![Box::new(RecordingHook { id: "h2", trace: self.trace.clone() })]
+				vec![Box::new(RecordingHook {
+					id: "h2",
+					trace: self.trace.clone(),
+				})]
 			}
 		}
 

@@ -21,5 +21,5 @@
  */
 
 export { createEditor, type EditorOptions } from "./editor.ts";
-export { initWasm } from "./wasm.ts";
 export type { CanvistEditor } from "./types.ts";
+export { initWasm } from "./wasm.ts";

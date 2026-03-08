@@ -2,9 +2,7 @@
 
 > A canvas-based text editor written in Rust — build your own Google Docs.
 
-**canvist** gives you full control over the editing experience by rendering text
-through a custom canvas engine, just like Figma and Google Docs do. Instead of
-relying on `contenteditable` or platform text views, canvist owns every pixel.
+**canvist** gives you full control over the editing experience by rendering text through a custom canvas engine, just like Figma and Google Docs do. Instead of relying on `contenteditable` or platform text views, canvist owns every pixel.
 
 ## Features
 
@@ -30,12 +28,12 @@ doc.apply_style(Selection::all(&doc), &style);
 
 ## Crate structure
 
-| Crate | Description |
-|-------|-------------|
-| [`canvist`](https://crates.io/crates/canvist) | Umbrella re-export crate (this crate) |
-| [`canvist_core`](https://crates.io/crates/canvist_core) | Document model, operations, selections, collaboration |
-| [`canvist_render`](https://crates.io/crates/canvist_render) | Platform-agnostic rendering traits and text layout |
-| [`canvist_wasm`](https://crates.io/crates/canvist_wasm) | WebAssembly + Canvas2D rendering backend |
+| Crate                                                       | Description                                           |
+| ----------------------------------------------------------- | ----------------------------------------------------- |
+| [`canvist`](https://crates.io/crates/canvist)               | Umbrella re-export crate (this crate)                 |
+| [`canvist_core`](https://crates.io/crates/canvist_core)     | Document model, operations, selections, collaboration |
+| [`canvist_render`](https://crates.io/crates/canvist_render) | Platform-agnostic rendering traits and text layout    |
+| [`canvist_wasm`](https://crates.io/crates/canvist_wasm)     | WebAssembly + Canvas2D rendering backend              |
 
 ## License
 

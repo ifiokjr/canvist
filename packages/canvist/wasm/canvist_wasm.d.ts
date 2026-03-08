@@ -44,6 +44,18 @@ export class CanvistEditor {
      */
     plain_text(): string;
     /**
+     * Process all pending canonical events into document operations.
+     */
+    process_events(): void;
+    /**
+     * Queue a key down event and process resulting operations.
+     */
+    queue_key_down(key: string): void;
+    /**
+     * Queue canonical text input and process it into operations.
+     */
+    queue_text_input(text: string): void;
+    /**
      * Request a re-render of the document to the canvas.
      *
      * This reads the document state and draws it using the Canvas 2D API.
@@ -71,9 +83,12 @@ export interface InitOutput {
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_text_at: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_plain_text: (a: number) => [number, number];
+    readonly canvisteditor_process_events: (a: number) => void;
+    readonly canvisteditor_queue_key_down: (a: number, b: number, c: number) => void;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
+    readonly canvisteditor_queue_text_input: (a: number, b: number, c: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __externref_table_alloc: () => number;

@@ -20,24 +20,24 @@ install:all
 
 ## Development commands
 
-| Command | Description |
-|---------|-------------|
-| `build:all` | Build all crates |
-| `build:wasm` | Build the WASM package |
-| `build:book` | Build the mdbook documentation |
-| `test:all` | Run all tests |
-| `test:cargo` | Run cargo tests with nextest |
-| `test:docs` | Run documentation tests |
-| `test:playwright` | Run Playwright browser tests |
-| `fix:all` | Auto-fix lints and formatting |
-| `fix:format` | Format with dprint |
-| `fix:clippy` | Fix clippy lints |
-| `lint:all` | Run all linters |
-| `lint:format` | Check formatting |
-| `lint:clippy` | Check clippy lints |
-| `deny:check` | Run cargo-deny security checks |
-| `coverage:all` | Generate code coverage |
-| `snapshot:review` | Review insta snapshots |
+| Command           | Description                    |
+| ----------------- | ------------------------------ |
+| `build:all`       | Build all crates               |
+| `build:wasm`      | Build the WASM package         |
+| `build:book`      | Build the mdbook documentation |
+| `test:all`        | Run all tests                  |
+| `test:cargo`      | Run cargo tests with nextest   |
+| `test:docs`       | Run documentation tests        |
+| `test:playwright` | Run Playwright browser tests   |
+| `fix:all`         | Auto-fix lints and formatting  |
+| `fix:format`      | Format with dprint             |
+| `fix:clippy`      | Fix clippy lints               |
+| `lint:all`        | Run all linters                |
+| `lint:format`     | Check formatting               |
+| `lint:clippy`     | Check clippy lints             |
+| `deny:check`      | Run cargo-deny security checks |
+| `coverage:all`    | Generate code coverage         |
+| `snapshot:review` | Review insta snapshots         |
 
 ## Building for the web
 

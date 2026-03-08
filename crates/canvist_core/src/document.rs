@@ -237,7 +237,9 @@ impl Document {
 		let offset = position.offset();
 		if let Some((run_id, local_offset)) = self.find_run_at_offset(offset)
 			&& let Some(node) = self.nodes.get_mut(&run_id)
-			&& let NodeKind::TextRun { text: ref mut t, .. } = node.kind
+			&& let NodeKind::TextRun {
+				text: ref mut t, ..
+			} = node.kind
 		{
 			let byte_offset = char_to_byte_offset(t, local_offset);
 			t.insert_str(byte_offset, text);
@@ -264,7 +266,9 @@ impl Document {
 			}
 
 			if let Some(node) = self.nodes.get_mut(&run_id)
-				&& let NodeKind::TextRun { text: ref mut t, .. } = node.kind
+				&& let NodeKind::TextRun {
+					text: ref mut t, ..
+				} = node.kind
 			{
 				let byte_start = char_to_byte_offset(t, local_start);
 				let byte_end = char_to_byte_offset(t, local_end);
@@ -294,7 +298,9 @@ impl Document {
 			if start < run_end
 				&& end > run_start
 				&& let Some(node) = self.nodes.get_mut(&run_id)
-				&& let NodeKind::TextRun { style: ref mut s, .. } = node.kind
+				&& let NodeKind::TextRun {
+					style: ref mut s, ..
+				} = node.kind
 			{
 				*s = s.merge(style);
 			}
@@ -424,7 +430,9 @@ impl Document {
 		for entry in &self.run_index {
 			let run_end = entry.start_char + entry.len_chars;
 			if global_offset <= run_end {
-				let local = global_offset.saturating_sub(entry.start_char).min(entry.len_chars);
+				let local = global_offset
+					.saturating_sub(entry.start_char)
+					.min(entry.len_chars);
 				return Some((entry.run_id, local));
 			}
 		}
@@ -435,8 +443,7 @@ impl Document {
 	}
 
 	fn overlapping_runs(&self, start: usize, end: usize) -> Vec<(NodeId, usize, usize)> {
-		self
-			.run_index
+		self.run_index
 			.iter()
 			.filter_map(|entry| {
 				let run_start = entry.start_char;

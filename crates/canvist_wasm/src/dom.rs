@@ -35,7 +35,8 @@ pub fn create_accessibility_container(document: &Document) -> Result<Element, Js
 	// Position off-screen but still accessible to screen readers.
 	container.set_attribute(
 		"style",
-		"position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden;",
+		"position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: \
+		 hidden;",
 	)?;
 
 	Ok(container)
@@ -61,12 +62,7 @@ impl WebEventSource {
 			.push_back(EditorEvent::TextInsert { text: text.into() });
 	}
 
-	pub fn push_key_down(
-		&mut self,
-		key: &str,
-		modifiers: Modifiers,
-		repeat: bool,
-	) {
+	pub fn push_key_down(&mut self, key: &str, modifiers: Modifiers, repeat: bool) {
 		self.queue.push_back(EditorEvent::KeyDown {
 			key: map_dom_key(key),
 			modifiers,
@@ -100,11 +96,7 @@ impl WebEventSource {
 		}));
 	}
 
-	pub fn push_composition(
-		&mut self,
-		phase: CompositionPhase,
-		text: impl Into<String>,
-	) {
+	pub fn push_composition(&mut self, phase: CompositionPhase, text: impl Into<String>) {
 		self.queue.push_back(EditorEvent::Composition {
 			phase,
 			text: text.into(),

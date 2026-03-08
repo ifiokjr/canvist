@@ -2,8 +2,7 @@
 
 > Platform-agnostic rendering traits and text layout for the canvist canvas editor.
 
-This crate defines the abstract rendering interface that platform backends
-implement. It provides:
+This crate defines the abstract rendering interface that platform backends implement. It provides:
 
 - **`Renderer` trait** — the contract every rendering backend must fulfil
 - **`Canvas` trait** — drawing primitives (rectangles, text, paths)

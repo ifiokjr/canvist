@@ -5,11 +5,11 @@ authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
+publish = false
 readme = "readme.md"
 repository.workspace = true
 rust-version.workspace = true
 description = "Integration tests for the canvist canvas editor using playwright-rs"
-publish = false
 
 [dependencies]
 canvist_core = { workspace = true }

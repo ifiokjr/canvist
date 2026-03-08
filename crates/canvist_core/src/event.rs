@@ -75,9 +75,15 @@ pub enum CompositionPhase {
 /// operation generation occurs.
 #[derive(Debug, Clone, PartialEq)]
 pub enum EditorEvent {
-	TextInsert { text: String },
-	TextDeleteBackward { count: usize },
-	TextDeleteForward { count: usize },
+	TextInsert {
+		text: String,
+	},
+	TextDeleteBackward {
+		count: usize,
+	},
+	TextDeleteForward {
+		count: usize,
+	},
 	KeyDown {
 		key: EditorKey,
 		modifiers: Modifiers,
@@ -88,15 +94,22 @@ pub enum EditorEvent {
 		modifiers: Modifiers,
 	},
 	Pointer(PointerEvent),
-	SelectionSet { selection: Selection },
-	CursorMove { position: Position, extend: bool },
+	SelectionSet {
+		selection: Selection,
+	},
+	CursorMove {
+		position: Position,
+		extend: bool,
+	},
 	Composition {
 		phase: CompositionPhase,
 		text: String,
 	},
 	ClipboardCopy,
 	ClipboardCut,
-	ClipboardPaste { text: String },
+	ClipboardPaste {
+		text: String,
+	},
 	Focus,
 	Blur,
 }

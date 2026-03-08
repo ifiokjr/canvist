@@ -47,7 +47,10 @@ impl CanvistEditor {
 	fn map_event_to_operation(&self, event: EditorEvent) -> Option<Operation> {
 		match event {
 			EditorEvent::TextInsert { text } => {
-				Some(Operation::insert(Position::new(self.document.char_count()), text))
+				Some(Operation::insert(
+					Position::new(self.document.char_count()),
+					text,
+				))
 			}
 			EditorEvent::KeyDown { key, .. } => self.map_key_down_to_operation(key),
 			_ => None,
@@ -68,7 +71,10 @@ impl CanvistEditor {
 				}
 			}
 			EditorKey::Enter => {
-				Some(Operation::insert(Position::new(self.document.char_count()), "\n"))
+				Some(Operation::insert(
+					Position::new(self.document.char_count()),
+					"\n",
+				))
 			}
 			_ => None,
 		}
@@ -83,6 +89,7 @@ impl CanvistEditor {
 		}
 		operations
 	}
+
 	/// Create a new editor attached to the canvas element with the given ID.
 	///
 	/// # Errors
@@ -90,8 +97,7 @@ impl CanvistEditor {
 	/// Returns an error if the canvas element is not found.
 	#[wasm_bindgen]
 	pub fn create(canvas_id: &str) -> Result<CanvistEditor, JsValue> {
-		let window =
-			web_sys::window().ok_or_else(|| JsValue::from_str("no global window"))?;
+		let window = web_sys::window().ok_or_else(|| JsValue::from_str("no global window"))?;
 		let document = window
 			.document()
 			.ok_or_else(|| JsValue::from_str("no document"))?;
@@ -194,8 +200,7 @@ impl CanvistEditor {
 	/// This reads the document state and draws it using the Canvas 2D API.
 	#[wasm_bindgen]
 	pub fn render(&self) -> Result<(), JsValue> {
-		let window =
-			web_sys::window().ok_or_else(|| JsValue::from_str("no global window"))?;
+		let window = web_sys::window().ok_or_else(|| JsValue::from_str("no global window"))?;
 		let document = window
 			.document()
 			.ok_or_else(|| JsValue::from_str("no document"))?;
@@ -225,7 +230,10 @@ impl CanvistEditor {
 		let resolved = default_style.resolve();
 
 		ctx.set_fill_style_str(&resolved.color.to_css());
-		ctx.set_font(&format!("{}px {}", resolved.font_size, resolved.font_family));
+		ctx.set_font(&format!(
+			"{}px {}",
+			resolved.font_size, resolved.font_family
+		));
 		ctx.fill_text(&text, 20.0, 40.0)
 			.map_err(|e| JsValue::from_str(&format!("fill_text failed: {e:?}")))?;
 

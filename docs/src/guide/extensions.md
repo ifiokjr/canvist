@@ -1,7 +1,6 @@
 # Extensions and Plugins (Deterministic Model)
 
-This guide proposes a TipTap-like extension surface for canvist that remains
-fully deterministic and replayable from an operation log.
+This guide proposes a TipTap-like extension surface for canvist that remains fully deterministic and replayable from an operation log.
 
 ## Current public API surface
 
@@ -20,8 +19,7 @@ Today, the public API is intentionally small:
   - `event::{EditorEvent, EventSource, EditorKey, PointerEvent, ...}`
   - `collaboration::CollaborationSession`
 
-This gives a strong foundation, but there is no first-class extension registry,
-command abstraction, or plugin hooks yet.
+This gives a strong foundation, but there is no first-class extension registry, command abstraction, or plugin hooks yet.
 
 ## Design goals for extension model
 
@@ -29,8 +27,7 @@ A plugin system should be:
 
 1. **Deterministic**: same initial state + same ordered intent stream => same result.
 2. **Replayable**: every accepted change is representable as canonical operations.
-3. **Side-effect isolated**: extension logic can inspect context, but persisted changes
-   must flow through transactions.
+3. **Side-effect isolated**: extension logic can inspect context, but persisted changes must flow through transactions.
 4. **Composable**: many extensions can coexist with predictable ordering.
 
 ## Proposed core concepts
@@ -41,14 +38,14 @@ Commands are high-level actions that synthesize one or more operations.
 
 ```rust
 pub struct CommandContext<'a> {
-    pub doc: &'a Document,
-    pub selection: Selection,
-    pub event: Option<&'a EditorEvent>,
+	pub doc: &'a Document,
+	pub selection: Selection,
+	pub event: Option<&'a EditorEvent>,
 }
 
 pub trait Command: Send + Sync {
-    fn name(&self) -> &'static str;
-    fn execute(&self, ctx: &CommandContext<'_>) -> Option<Transaction>;
+	fn name(&self) -> &'static str;
+	fn execute(&self, ctx: &CommandContext<'_>) -> Option<Transaction>;
 }
 ```
 
@@ -64,16 +61,22 @@ Extensions declare document capabilities and behavior slices.
 
 ```rust
 pub trait Extension: Send + Sync {
-    fn name(&self) -> &'static str;
+	fn name(&self) -> &'static str;
 
-    // Optional command registrations
-    fn commands(&self) -> Vec<Box<dyn Command>> { vec![] }
+	// Optional command registrations
+	fn commands(&self) -> Vec<Box<dyn Command>> {
+		vec![]
+	}
 
-    // Optional text/input rules
-    fn input_rules(&self) -> Vec<Box<dyn InputRule>> { vec![] }
+	// Optional text/input rules
+	fn input_rules(&self) -> Vec<Box<dyn InputRule>> {
+		vec![]
+	}
 
-    // Optional transaction hooks
-    fn transaction_hooks(&self) -> Vec<Box<dyn TransactionHook>> { vec![] }
+	// Optional transaction hooks
+	fn transaction_hooks(&self) -> Vec<Box<dyn TransactionHook>> {
+		vec![]
+	}
 }
 ```
 
@@ -85,8 +88,13 @@ Input rules map recent text/event context into canonical transactions.
 
 ```rust
 pub trait InputRule: Send + Sync {
-    fn name(&self) -> &'static str;
-    fn apply(&self, doc: &Document, selection: Selection, event: &EditorEvent) -> Option<Transaction>;
+	fn name(&self) -> &'static str;
+	fn apply(
+		&self,
+		doc: &Document,
+		selection: Selection,
+		event: &EditorEvent,
+	) -> Option<Transaction>;
 }
 ```
 
@@ -101,22 +109,27 @@ Hooks can validate, annotate, or derive metadata from transactions.
 
 ```rust
 pub struct TransactionMeta {
-    pub origin: &'static str, // e.g. "keyboard", "command.toggle_bold"
-    pub timestamp_ms: u64,
+	pub origin: &'static str, // e.g. "keyboard", "command.toggle_bold"
+	pub timestamp_ms: u64,
 }
 
 pub trait TransactionHook: Send + Sync {
-    fn before_apply(&self, tx: &Transaction, meta: &TransactionMeta, doc: &Document) -> HookDecision {
-        HookDecision::Accept
-    }
+	fn before_apply(
+		&self,
+		tx: &Transaction,
+		meta: &TransactionMeta,
+		doc: &Document,
+	) -> HookDecision {
+		HookDecision::Accept
+	}
 
-    fn after_apply(&self, _tx: &Transaction, _meta: &TransactionMeta, _doc: &Document) {}
+	fn after_apply(&self, _tx: &Transaction, _meta: &TransactionMeta, _doc: &Document) {}
 }
 
 pub enum HookDecision {
-    Accept,
-    Reject { reason: String },
-    Replace(Transaction),
+	Accept,
+	Reject { reason: String },
+	Replace(Transaction),
 }
 ```
 
@@ -133,7 +146,7 @@ To guarantee replay:
 - Rehydrate by applying each transaction in order on a fresh document.
 - Extensions may assist generation-time decisions, but persisted artifact stays `Transaction`.
 
-In other words: extensions influence *how we create ops*, never the shape of replay runtime.
+In other words: extensions influence _how we create ops_, never the shape of replay runtime.
 
 ## Suggested runtime pipeline
 
@@ -158,9 +171,7 @@ Tie-break on name for deterministic ordering.
 
 ## Interop with collaboration
 
-Current `CollaborationSession` is plain-text oriented. For extension-safe replay,
-collaboration should transport canonical transactions (or a lossless projection)
-instead of extension callbacks.
+Current `CollaborationSession` is plain-text oriented. For extension-safe replay, collaboration should transport canonical transactions (or a lossless projection) instead of extension callbacks.
 
 Until tree-CRDT mapping exists, keep collaboration boundary explicit:
 

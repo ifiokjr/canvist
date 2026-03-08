@@ -1,7 +1,6 @@
 # API Overview
 
-This document defines the public programming model used by both human-driven
-applications and autonomous agents.
+This document defines the public programming model used by both human-driven applications and autonomous agents.
 
 The model is intentionally layered:
 
@@ -11,13 +10,11 @@ The model is intentionally layered:
 4. **State transition** — verified application of operations/log entries
 5. **Render delta** — visual updates derived from the new state
 
-Keeping these layers explicit makes replay, undo/redo, automation, and
-cross-platform behavior predictable.
+Keeping these layers explicit makes replay, undo/redo, automation, and cross-platform behavior predictable.
 
 ## Layer 0: Document state
 
-The `Document` is the canonical editor state. It holds a tree of nodes
-representing rich text content.
+The `Document` is the canonical editor state. It holds a tree of nodes representing rich text content.
 
 ```rust
 use canvist_core::Document;
@@ -51,13 +48,11 @@ Intents can be produced by:
 - application integrations
 - autonomous agents/planners
 
-At this layer, payloads may still be ambiguous (e.g. “at cursor” needs a
-resolved position) and must not mutate state directly.
+At this layer, payloads may still be ambiguous (e.g. “at cursor” needs a resolved position) and must not mutate state directly.
 
 ## Layer 2: Action API (validated commands)
 
-An **action** is an intent transformed into a fully-specified command after
-validation and policy checks.
+An **action** is an intent transformed into a fully-specified command after validation and policy checks.
 
 Typical validation/normalization includes:
 
@@ -104,8 +99,7 @@ Contract:
 
 ## Layer 4: Deterministic state transition (operation log)
 
-For replay, undo/redo, and agent workflows, wrap operations in immutable
-`LogEntry` envelopes and append them to an `OperationLog`.
+For replay, undo/redo, and agent workflows, wrap operations in immutable `LogEntry` envelopes and append them to an `OperationLog`.
 
 Each `LogEntry` includes:
 
@@ -153,8 +147,7 @@ Replay guarantees:
 
 ## Layer 5: Render delta contract
 
-Rendering is derived from document state and layout, not from ad-hoc UI side
-effects.
+Rendering is derived from document state and layout, not from ad-hoc UI side effects.
 
 Expected flow:
 
@@ -228,6 +221,4 @@ peer_b.apply_update(&update);
 assert_eq!(peer_b.text(), "Hello");
 ```
 
-When integrating collaboration with operation logs, treat remote updates as
-inputs that must still pass through action/operation/state-transition contracts
-before local rendering.
+When integrating collaboration with operation logs, treat remote updates as inputs that must still pass through action/operation/state-transition contracts before local rendering.

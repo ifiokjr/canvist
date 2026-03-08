@@ -250,6 +250,7 @@ impl Operation {
 			Self::Format { .. } => None,
 		}
 	}
+
 	/// Create an insert operation.
 	#[must_use]
 	pub fn insert(position: Position, text: impl Into<String>) -> Self {
@@ -313,17 +314,11 @@ pub enum Change {
 	/// Apply a semantic edit operation.
 	Operation(Operation),
 	/// Set or clear document title metadata.
-	SetTitle {
-		title: Option<String>,
-	},
+	SetTitle { title: Option<String> },
 	/// Upsert a node in the document tree.
-	UpsertNode {
-		node: Node,
-	},
+	UpsertNode { node: Node },
 	/// Remove a node from the document tree.
-	RemoveNode {
-		node_id: NodeId,
-	},
+	RemoveNode { node_id: NodeId },
 }
 
 impl Patch {
@@ -470,7 +465,10 @@ mod tests {
 		let mut doc = Document::new();
 
 		let patch = Patch::new()
-			.push(Change::Operation(Operation::insert(Position::zero(), "Hello")))
+			.push(Change::Operation(Operation::insert(
+				Position::zero(),
+				"Hello",
+			)))
 			.push(Change::SetTitle {
 				title: Some("Patched".to_string()),
 			});

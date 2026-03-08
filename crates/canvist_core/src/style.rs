@@ -152,7 +152,10 @@ impl Style {
 	#[must_use]
 	pub fn merge(&self, other: &Self) -> Self {
 		Self {
-			font_family: other.font_family.clone().or_else(|| self.font_family.clone()),
+			font_family: other
+				.font_family
+				.clone()
+				.or_else(|| self.font_family.clone()),
 			font_size: other.font_size.or(self.font_size),
 			font_weight: other.font_weight.or(self.font_weight),
 			italic: other.italic.or(self.italic),
@@ -265,8 +268,6 @@ impl FontWeight {
 	}
 }
 
-
-
 /// An RGBA color value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Color {
@@ -288,21 +289,19 @@ impl Color {
 		b: 0,
 		a: 255,
 	};
-
-	/// Fully opaque white.
-	pub const WHITE: Self = Self {
-		r: 255,
-		g: 255,
-		b: 255,
-		a: 255,
-	};
-
 	/// Fully transparent.
 	pub const TRANSPARENT: Self = Self {
 		r: 0,
 		g: 0,
 		b: 0,
 		a: 0,
+	};
+	/// Fully opaque white.
+	pub const WHITE: Self = Self {
+		r: 255,
+		g: 255,
+		b: 255,
+		a: 255,
 	};
 
 	/// Create a new color from RGBA components.
@@ -392,6 +391,9 @@ mod tests {
 	#[test]
 	fn color_to_css() {
 		assert_eq!(Color::BLACK.to_css(), "rgb(0, 0, 0)");
-		assert_eq!(Color::new(255, 128, 0, 128).to_css(), "rgba(255, 128, 0, 0.502)");
+		assert_eq!(
+			Color::new(255, 128, 0, 128).to_css(),
+			"rgba(255, 128, 0, 0.502)"
+		);
 	}
 }

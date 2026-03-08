@@ -2,9 +2,7 @@
 
 > A canvas-based text editor for the browser — build your own Google Docs.
 
-**canvist** renders text through a custom WASM-powered canvas engine, giving you
-full control over every pixel. Instead of relying on `contenteditable`, it
-manages its own rendering, selection, input handling, and accessibility.
+**canvist** renders text through a custom WASM-powered canvas engine, giving you full control over every pixel. Instead of relying on `contenteditable`, it manages its own rendering, selection, input handling, and accessibility.
 
 ## Install
 
@@ -33,8 +31,7 @@ console.log(editor.charCount); // 15
 
 ### `createEditor(canvasId: string, options?: EditorOptions): Promise<CanvistEditor>`
 
-Create an editor attached to a `<canvas>` element. Initialises the WASM module
-automatically on first call.
+Create an editor attached to a `<canvas>` element. Initialises the WASM module automatically on first call.
 
 ### `initWasm(): Promise<void>`
 
@@ -42,16 +39,16 @@ Explicitly initialise the WASM module. Idempotent — safe to call multiple time
 
 ### `CanvistEditor`
 
-| Property / Method | Description |
-| --- | --- |
-| `text` | Current plain-text content |
-| `charCount` | Number of characters |
-| `canvasId` | The canvas element ID |
-| `insertText(text)` | Insert text at cursor |
-| `setTitle(title)` | Set document title |
-| `render()` | Re-render to canvas |
-| `toJSON()` | Export document as JSON |
-| `destroy()` | Release resources |
+| Property / Method  | Description                |
+| ------------------ | -------------------------- |
+| `text`             | Current plain-text content |
+| `charCount`        | Number of characters       |
+| `canvasId`         | The canvas element ID      |
+| `insertText(text)` | Insert text at cursor      |
+| `setTitle(title)`  | Set document title         |
+| `render()`         | Re-render to canvas        |
+| `toJSON()`         | Export document as JSON    |
+| `destroy()`        | Release resources          |
 
 ## License
 

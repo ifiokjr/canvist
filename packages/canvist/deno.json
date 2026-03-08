@@ -4,7 +4,13 @@
 	"license": "Unlicense",
 	"exports": "./src/mod.ts",
 	"publish": {
-		"include": ["src/**/*.ts", "wasm/**/*.js", "wasm/**/*.wasm", "wasm/**/*.d.ts", "README.md"],
+		"include": [
+			"src/**/*.ts",
+			"wasm/**/*.js",
+			"wasm/**/*.wasm",
+			"wasm/**/*.d.ts",
+			"README.md"
+		],
 		"exclude": ["**/*_test.ts", "tests/"]
 	},
 	"tasks": {
