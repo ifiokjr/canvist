@@ -20,8 +20,15 @@ mod canvas_renderer;
 mod dom;
 
 use canvist_core::Document;
+use canvist_core::EditorEvent;
+use canvist_core::EditorKey;
+use canvist_core::EventSource;
+use canvist_core::Modifiers;
 use canvist_core::Position;
+use canvist_core::Selection;
 use canvist_core::Style;
+use canvist_core::Transaction;
+use canvist_core::operation::Operation;
 use wasm_bindgen::prelude::*;
 
 /// The main editor handle exposed to JavaScript.
@@ -32,10 +39,50 @@ use wasm_bindgen::prelude::*;
 pub struct CanvistEditor {
 	document: Document,
 	canvas_id: String,
+	event_source: dom::WebEventSource,
 }
 
 #[wasm_bindgen]
 impl CanvistEditor {
+	fn map_event_to_operation(&self, event: EditorEvent) -> Option<Operation> {
+		match event {
+			EditorEvent::TextInsert { text } => {
+				Some(Operation::insert(Position::new(self.document.char_count()), text))
+			}
+			EditorEvent::KeyDown { key, .. } => self.map_key_down_to_operation(key),
+			_ => None,
+		}
+	}
+
+	fn map_key_down_to_operation(&self, key: EditorKey) -> Option<Operation> {
+		match key {
+			EditorKey::Backspace | EditorKey::Delete => {
+				let end = self.document.char_count();
+				if end == 0 {
+					None
+				} else {
+					Some(Operation::delete(Selection::range(
+						Position::new(end - 1),
+						Position::new(end),
+					)))
+				}
+			}
+			EditorKey::Enter => {
+				Some(Operation::insert(Position::new(self.document.char_count()), "\n"))
+			}
+			_ => None,
+		}
+	}
+
+	fn drain_actions(&mut self) -> Vec<Operation> {
+		let mut operations = Vec::new();
+		while let Some(event) = self.event_source.poll_event() {
+			if let Some(op) = self.map_event_to_operation(event) {
+				operations.push(op);
+			}
+		}
+		operations
+	}
 	/// Create a new editor attached to the canvas element with the given ID.
 	///
 	/// # Errors
@@ -56,31 +103,28 @@ impl CanvistEditor {
 		Ok(Self {
 			document: Document::new(),
 			canvas_id: canvas_id.to_string(),
+			event_source: dom::WebEventSource::new(),
 		})
 	}
 
 	/// Insert text at the current cursor position (start of document).
 	#[wasm_bindgen]
 	pub fn insert_text(&mut self, text: &str) {
-		let position = Position::zero();
-		self.document.insert_text(position, text);
+		self.event_source.push_text_input(text);
+		self.process_events();
 	}
 
 	/// Insert text at a specific character offset.
 	#[wasm_bindgen]
 	pub fn insert_text_at(&mut self, offset: usize, text: &str) {
-		let position = Position::new(offset);
-		self.document.insert_text(position, text);
+		Operation::insert(Position::new(offset), text).apply(&mut self.document);
 	}
 
 	/// Delete a range of characters from `start` to `end`.
 	#[wasm_bindgen]
 	pub fn delete_range(&mut self, start: usize, end: usize) {
-		let selection = canvist_core::Selection::range(
-			Position::new(start),
-			Position::new(end),
-		);
-		self.document.delete(&selection);
+		Operation::delete(Selection::range(Position::new(start), Position::new(end)))
+			.apply(&mut self.document);
 	}
 
 	/// Return the full plain-text content of the document.
@@ -113,6 +157,36 @@ impl CanvistEditor {
 		self.document
 			.to_json()
 			.map_err(|e| JsValue::from_str(&e.to_string()))
+	}
+
+	/// Queue canonical text input and process it into operations.
+	#[wasm_bindgen]
+	pub fn queue_text_input(&mut self, text: &str) {
+		self.event_source.push_text_input(text);
+		self.process_events();
+	}
+
+	/// Queue a key down event and process resulting operations.
+	#[wasm_bindgen]
+	pub fn queue_key_down(&mut self, key: &str) {
+		self.event_source
+			.push_key_down(key, Modifiers::default(), false);
+		self.process_events();
+	}
+
+	/// Process all pending canonical events into document operations.
+	#[wasm_bindgen]
+	pub fn process_events(&mut self) {
+		let operations = self.drain_actions();
+		if operations.is_empty() {
+			return;
+		}
+
+		let mut tx = Transaction::new();
+		for op in operations {
+			tx = tx.push(op);
+		}
+		tx.apply(&mut self.document);
 	}
 
 	/// Request a re-render of the document to the canvas.
