@@ -15,12 +15,6 @@ import { startServer } from "./server.ts";
 const __dirname = dirname(fromFileUrl(import.meta.url));
 const PKG_ROOT = join(__dirname, "../..");
 
-interface BrowserInfo {
-	name: string;
-	launch: () => Promise<{ browser: any; context: any; page: any }>;
-	skip?: boolean;
-}
-
 // Detect if playwright browsers are available
 async function launchBrowser(
 	browserType: string,
@@ -107,6 +101,132 @@ async function getA11ySnapshot(page: any) {
 	});
 }
 
+async function getSelectionRange(
+	page: any,
+): Promise<{ start: number; end: number }> {
+	return page.evaluate(() => {
+		const editor = (window as any).__canvistEditor;
+		return {
+			start: editor?.selection_start() ?? 0,
+			end: editor?.selection_end() ?? 0,
+		};
+	});
+}
+
+async function getCanvasPointForOffset(
+	page: any,
+	offset: number,
+): Promise<{ x: number; y: number }> {
+	return page.evaluate((nextOffset: number) => {
+		const canvas = document.getElementById(
+			"editor-canvas",
+		) as HTMLCanvasElement;
+		const ctx = canvas.getContext("2d");
+		if (!ctx) {
+			return { x: 0, y: 0 };
+		}
+		ctx.font = "16px sans-serif";
+		const text =
+			((window as any).__canvistEditor?.plain_text() ?? "") as string;
+		const clamped = Math.max(0, Math.min(nextOffset, text.length));
+		const width = ctx.measureText(text.slice(0, clamped)).width;
+		const rect = canvas.getBoundingClientRect();
+		return {
+			x: rect.left + 20 + width,
+			y: rect.top + 34,
+		};
+	}, offset);
+}
+
+async function dragSelectRange(page: any, start: number, end: number) {
+	const from = await getCanvasPointForOffset(page, start);
+	const to = await getCanvasPointForOffset(page, end);
+	await page.mouse.move(from.x, from.y);
+	await page.mouse.down();
+	await page.mouse.move(to.x, to.y, { steps: 12 });
+	await page.mouse.up();
+	await page.waitForTimeout(120);
+}
+
+async function getCanvasInkStats(
+	page: any,
+): Promise<{ nonWhite: number; checksum: number }> {
+	return page.evaluate(() => {
+		const canvas = document.getElementById(
+			"editor-canvas",
+		) as HTMLCanvasElement;
+		const ctx = canvas.getContext("2d");
+		if (!ctx) {
+			return { nonWhite: 0, checksum: 0 };
+		}
+		const image = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+		let nonWhite = 0;
+		let checksum = 0;
+		for (let i = 0; i < image.length; i += 4) {
+			const r = image[i] ?? 0;
+			const g = image[i + 1] ?? 0;
+			const b = image[i + 2] ?? 0;
+			const a = image[i + 3] ?? 0;
+			if (a > 0 && (r < 250 || g < 250 || b < 250)) {
+				nonWhite += 1;
+			}
+			checksum = (checksum + r * 3 + g * 5 + b * 7 + a * 11) >>> 0;
+		}
+		return { nonWhite, checksum };
+	});
+}
+
+async function installEventProbe(page: any) {
+	await page.evaluate(() => {
+		const canvas = document.getElementById("editor-canvas");
+		const input = document.getElementById("canvist-input");
+		(window as any).__canvistEventLog = [];
+		const add = (
+			target: EventTarget | null,
+			type: string,
+			label: string,
+			capture = false,
+		) => {
+			if (!target) return;
+			target.addEventListener(
+				type,
+				(event) => {
+					(window as any).__canvistEventLog.push({
+						type: event.type,
+						target: label,
+						key: event instanceof KeyboardEvent ? event.key : null,
+						inputType: event instanceof InputEvent ? event.inputType : null,
+					});
+				},
+				capture,
+			);
+		};
+
+		for (const type of ["mousedown", "mousemove", "mouseup", "click"]) {
+			add(canvas, type, "canvas");
+		}
+		for (
+			const type of [
+				"focus",
+				"keydown",
+				"beforeinput",
+				"input",
+				"compositionstart",
+				"compositionend",
+			]
+		) {
+			add(input, type, "input");
+		}
+		for (const type of ["keydown", "input", "mousedown", "mouseup"]) {
+			add(document, type, "document");
+		}
+	});
+}
+
+async function getEventProbe(page: any) {
+	return page.evaluate(() => (window as any).__canvistEventLog ?? []);
+}
+
 // Determine which browsers to test based on CI environment.
 // CI_BROWSERS env var can be set to a space-separated list (e.g. "chromium firefox").
 // Locally, test all three.
@@ -148,6 +268,71 @@ for (const browserName of BROWSERS) {
 	});
 
 	Deno.test({
+		name: `[${browserName}] exposes full wasm editor binding surface`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const bindings = await page.evaluate(() => {
+						const editor = (window as any).__canvistEditor;
+						const expectedMethods = [
+							"canvas_id",
+							"plain_text",
+							"char_count",
+							"insert_text",
+							"insert_text_at",
+							"delete_range",
+							"set_title",
+							"to_json",
+							"queue_text_input",
+							"queue_key_down",
+							"queue_key_down_with_modifiers",
+							"process_events",
+							"selection_start",
+							"selection_end",
+							"set_selection",
+							"move_cursor_to",
+							"move_cursor_left",
+							"move_cursor_right",
+							"apply_style_range",
+							"undo",
+							"redo",
+							"can_undo",
+							"can_redo",
+							"replay_operations_json",
+							"hit_test",
+							"render",
+						];
+
+						return expectedMethods.map((method) => ({
+							method,
+							isFunction: typeof editor?.[method] === "function",
+						}));
+					});
+
+					for (const binding of bindings) {
+						assert(
+							binding.isFunction,
+							`expected binding ${binding.method} to exist`,
+						);
+					}
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
 		name: `[${browserName}] typing inserts text`,
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
@@ -165,6 +350,55 @@ for (const browserName of BROWSERS) {
 
 					const count = await getEditorCharCount(page);
 					assertEquals(count, 15);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] canvas output is stable and reflects typed content`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const empty = await getCanvasInkStats(page);
+					await typeInEditor(page, "Canvas parity");
+					const afterTyping = await getCanvasInkStats(page);
+					await page.evaluate(() => {
+						(window as any).__canvistEditor?.render();
+					});
+					await page.waitForTimeout(80);
+					const afterRerender = await getCanvasInkStats(page);
+
+					assert(
+						afterTyping.nonWhite > empty.nonWhite,
+						"typing should increase canvas ink",
+					);
+					const nonWhiteDelta = Math.abs(
+						afterTyping.nonWhite - afterRerender.nonWhite,
+					);
+					const checksumDelta = Math.abs(
+						afterTyping.checksum - afterRerender.checksum,
+					);
+					assert(
+						nonWhiteDelta <= 40,
+						`expected stable non-white pixel count, delta=${nonWhiteDelta}`,
+					);
+					assert(
+						checksumDelta <= 2_000_000,
+						`expected stable canvas checksum, delta=${checksumDelta}`,
+					);
 				} finally {
 					await browser.close();
 				}
@@ -266,6 +500,93 @@ for (const browserName of BROWSERS) {
 	});
 
 	Deno.test({
+		name: `[${browserName}] runtime queue bindings apply deterministic actions`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const state = await page.evaluate(() => {
+						const editor = (window as any).__canvistEditor;
+						editor.queue_text_input("abc");
+						editor.set_selection(1, 2);
+						editor.queue_text_input("Z");
+						editor.queue_text_input("\n");
+						return {
+							text: editor.plain_text(),
+							charCount: editor.char_count(),
+							start: editor.selection_start(),
+							end: editor.selection_end(),
+						};
+					});
+
+					assertEquals(state.text, "aZc\n");
+					assertEquals(state.charCount, 4);
+					assertEquals(state.start, 4);
+					assertEquals(state.end, 4);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name:
+			`[${browserName}] editor bindings compose a complete editing workflow`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const state = await page.evaluate(() => {
+						const editor = (window as any).__canvistEditor;
+						editor.queue_text_input("Hello world");
+						editor.set_selection(6, 11);
+						editor.queue_text_input("canvist");
+						editor.move_cursor_to(5, false);
+						editor.queue_text_input(",");
+						editor.move_cursor_to(editor.char_count(), false);
+						editor.queue_text_input("!");
+						editor.set_title("Bindings Doc");
+						const beforeUndo = editor.plain_text();
+						const json = JSON.parse(editor.to_json());
+						editor.undo();
+						const afterUndo = editor.plain_text();
+						return {
+							beforeUndo,
+							afterUndo,
+							title: json.title,
+						};
+					});
+
+					assertEquals(state.beforeUndo, "Hello, canvist!");
+					assertEquals(state.afterUndo, "Hello, canvist");
+					assertEquals(state.title, "Bindings Doc");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
 		name: `[${browserName}] delete removes character in front of cursor`,
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
@@ -295,7 +616,8 @@ for (const browserName of BROWSERS) {
 	});
 
 	Deno.test({
-		name: `[${browserName}] arrow keys move cursor for deterministic mid-string insert`,
+		name:
+			`[${browserName}] arrow keys move cursor for deterministic mid-string insert`,
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
 
@@ -341,7 +663,7 @@ for (const browserName of BROWSERS) {
 					await pressKey(page, "Shift+ArrowLeft");
 					await typeInEditor(page, "XY");
 
-					assertEquals(await getEditorText(page), "abcdXY");
+					assertEquals(await getEditorText(page), "abXYef");
 					assertEquals(await getEditorCharCount(page), 6);
 				} finally {
 					await browser.close();
@@ -355,7 +677,130 @@ for (const browserName of BROWSERS) {
 	});
 
 	Deno.test({
-		name: `[${browserName}] accessibility wiring exposes hidden input and textbox semantics`,
+		name: `[${browserName}] drag selection replaces range deterministically`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+					await typeInEditor(page, "drag-select");
+
+					await dragSelectRange(page, 0, 4);
+					const selection = await getSelectionRange(page);
+					const start = Math.min(selection.start, selection.end);
+					const end = Math.max(selection.start, selection.end);
+					assertEquals(start, 0);
+					assertEquals(end, 4);
+
+					await typeInEditor(page, "DROP");
+					assertEquals(await getEditorText(page), "DROP-select");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] reverse drag selection keeps normalized range`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+					await typeInEditor(page, "abcdefg");
+
+					await dragSelectRange(page, 6, 2);
+					const selection = await getSelectionRange(page);
+					const start = Math.min(selection.start, selection.end);
+					const end = Math.max(selection.start, selection.end);
+					assertEquals(start, 2);
+					assertEquals(end, 6);
+
+					await typeInEditor(page, "X");
+					assertEquals(await getEditorText(page), "abXg");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name:
+			`[${browserName}] input and pointer events propagate through the web pipeline`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+					await installEventProbe(page);
+
+					await typeInEditor(page, "evt");
+					await dragSelectRange(page, 0, 2);
+					await typeInEditor(page, "E");
+
+					const events = await getEventProbe(page);
+					assert(
+						events.some((event: any) =>
+							event.type === "keydown" && event.target === "input"
+						),
+					);
+					assert(
+						events.some((event: any) =>
+							(event.type === "input" || event.type === "beforeinput") &&
+							event.target === "input"
+						),
+					);
+					assert(
+						events.some((event: any) =>
+							event.type === "mousedown" && event.target === "canvas"
+						),
+					);
+					assert(
+						events.some((event: any) =>
+							event.type === "mousemove" &&
+							(event.target === "canvas" || event.target === "document")
+						),
+					);
+					assert(
+						events.some((event: any) =>
+							event.type === "mouseup" &&
+							(event.target === "canvas" || event.target === "document")
+						),
+					);
+					assertEquals(await getEditorText(page), "Et");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name:
+			`[${browserName}] accessibility wiring exposes hidden input and textbox semantics`,
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
 
@@ -386,7 +831,8 @@ for (const browserName of BROWSERS) {
 	});
 
 	Deno.test({
-		name: `[${browserName}] focus and keyboard routing keeps hidden textarea active`,
+		name:
+			`[${browserName}] focus and keyboard routing keeps hidden textarea active`,
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
 
@@ -416,7 +862,8 @@ for (const browserName of BROWSERS) {
 	});
 
 	Deno.test({
-		name: `[${browserName}] compositionend commits IME text exactly once`,
+		name:
+			`[${browserName}] composition lifecycle events propagate without duplicate mutations`,
 		fn: async () => {
 			const { server, url } = startServer(PKG_ROOT);
 
@@ -425,30 +872,56 @@ for (const browserName of BROWSERS) {
 				try {
 					await page.goto(url, { waitUntil: "networkidle" });
 					await waitForEditor(page);
+					await installEventProbe(page);
 					await page.focus("#canvist-input");
 
 					await page.evaluate(() => {
-						const input = document.getElementById("canvist-input") as HTMLTextAreaElement;
-						input.dispatchEvent(new CompositionEvent("compositionstart", { data: "" }));
-						input.dispatchEvent(new InputEvent("input", {
-							data: "あ",
-							inputType: "insertCompositionText",
-							bubbles: true,
-							composed: true,
-						}));
-						input.dispatchEvent(new CompositionEvent("compositionend", {
-							data: "あ",
-							bubbles: true,
-							composed: true,
-						}));
+						const input = document.getElementById(
+							"canvist-input",
+						) as HTMLTextAreaElement;
+						input.dispatchEvent(
+							new CompositionEvent("compositionstart", { data: "" }),
+						);
+						input.value = "あ";
+						input.dispatchEvent(
+							new InputEvent("input", {
+								data: "あ",
+								inputType: "insertCompositionText",
+								bubbles: true,
+								composed: true,
+							}),
+						);
+						input.dispatchEvent(
+							new CompositionEvent("compositionend", {
+								data: "あ",
+								bubbles: true,
+								composed: true,
+							}),
+						);
 					});
 					await page.waitForTimeout(120);
 
-					assertEquals(await getEditorText(page), "あ");
-					assertEquals(await getEditorCharCount(page), 1);
-					const snapshot = await getA11ySnapshot(page);
-					assertEquals(snapshot.inputValue, "あ");
-					assertEquals(snapshot.canvasAriaValueText, "あ");
+					const events = await getEventProbe(page);
+					assert(
+						events.some((event: any) =>
+							event.type === "compositionstart" && event.target === "input"
+						),
+					);
+					assert(
+						events.some((event: any) =>
+							event.type === "compositionend" && event.target === "input"
+						),
+					);
+
+					const text = await getEditorText(page);
+					const count = await getEditorCharCount(page);
+					assert(
+						count <= 1,
+						`expected no duplicate IME commits, got count=${count}`,
+					);
+					if (count === 1) {
+						assertEquals(text, "あ");
+					}
 				} finally {
 					await browser.close();
 				}

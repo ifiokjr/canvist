@@ -25,6 +25,56 @@ export class CanvistEditor {
         wasm.__wbg_canvisteditor_free(ptr, 0);
     }
     /**
+     * Apply style to the given character range.
+     * @param {number} start
+     * @param {number} end
+     * @param {boolean} bold
+     * @param {boolean} italic
+     * @param {boolean} underline
+     * @param {number | null} [font_size]
+     * @param {string | null} [font_family]
+     * @param {Uint8Array | null} [color_rgba]
+     */
+    apply_style_range(start, end, bold, italic, underline, font_size, font_family, color_rgba) {
+        var ptr0 = isLikeNone(font_family) ? 0 : passStringToWasm0(font_family, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        var len0 = WASM_VECTOR_LEN;
+        var ptr1 = isLikeNone(color_rgba) ? 0 : passArray8ToWasm0(color_rgba, wasm.__wbindgen_malloc);
+        var len1 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_apply_style_range(this.__wbg_ptr, start, end, bold, italic, underline, isLikeNone(font_size) ? 0x100000001 : Math.fround(font_size), ptr0, len0, ptr1, len1);
+    }
+    /**
+     * Force-break the current undo coalescing chain.
+     *
+     * Normally, rapid single-character inserts are merged into a single undo
+     * group so that `undo()` reverses a whole burst of typing at once. Call
+     * this method to ensure that the *next* insert starts a fresh undo
+     * group, even if it would otherwise be coalesced with the previous one.
+     *
+     * Typical use-cases:
+     * - Before programmatic (non-user) edits, so they form their own undo
+     *   entry.
+     * - After a focus change or explicit "save-point".
+     */
+    break_undo_coalescing() {
+        wasm.canvisteditor_break_undo_coalescing(this.__wbg_ptr);
+    }
+    /**
+     * Whether there are entries on the redo stack.
+     * @returns {boolean}
+     */
+    can_redo() {
+        const ret = wasm.canvisteditor_can_redo(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Whether there are entries on the undo stack.
+     * @returns {boolean}
+     */
+    can_undo() {
+        const ret = wasm.canvisteditor_can_undo(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Return the canvas element ID this editor is attached to.
      * @returns {string}
      */
@@ -47,6 +97,32 @@ export class CanvistEditor {
     char_count() {
         const ret = wasm.canvisteditor_char_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Perform a clipboard cut: delete the current selection.
+     *
+     * The caller is expected to have already read `get_selected_text()` and
+     * written it to the system clipboard before calling this method.
+     */
+    clipboard_cut() {
+        wasm.canvisteditor_clipboard_cut(this.__wbg_ptr);
+    }
+    /**
+     * Paste text at the current cursor position (replacing any selection).
+     * @param {string} text
+     */
+    clipboard_paste(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_clipboard_paste(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Return the current undo-coalescing timeout in milliseconds.
+     * @returns {number}
+     */
+    coalesce_timeout() {
+        const ret = wasm.canvisteditor_coalesce_timeout(this.__wbg_ptr);
+        return ret;
     }
     /**
      * Create a new editor attached to the canvas element with the given ID.
@@ -75,6 +151,61 @@ export class CanvistEditor {
         wasm.canvisteditor_delete_range(this.__wbg_ptr, start, end);
     }
     /**
+     * Return the currently selected text (empty string if selection is collapsed).
+     * @returns {string}
+     */
+    get_selected_text() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_get_selected_text(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Hit-test a screen-space point to determine the character offset at that
+     * position.
+     *
+     * Converts screen coordinates to document coordinates (accounting for
+     * scroll and zoom via `Viewport`), then performs layout and walks the
+     * resulting lines/characters to find the closest inter-character boundary.
+     *
+     * Returns a character offset suitable for setting the cursor position.
+     *
+     * # Arguments
+     *
+     * - `screen_x` — X coordinate in canvas/screen pixels
+     * - `screen_y` — Y coordinate in canvas/screen pixels
+     * Hit-test a screen-space point to determine the character offset at that
+     * position.
+     *
+     * Converts screen coordinates to document coordinates (accounting for
+     * scroll and zoom via `Viewport`), then walks the multi-paragraph layout
+     * to find the closest inter-character boundary. Each paragraph is laid out
+     * independently, so the hit-test accounts for paragraph spacing.
+     *
+     * Returns a character offset suitable for setting the cursor position.
+     *
+     * # Arguments
+     *
+     * - `screen_x` — X coordinate in canvas/screen pixels
+     * - `screen_y` — Y coordinate in canvas/screen pixels
+     * @param {number} screen_x
+     * @param {number} screen_y
+     * @returns {number}
+     */
+    hit_test(screen_x, screen_y) {
+        const ret = wasm.canvisteditor_hit_test(this.__wbg_ptr, screen_x, screen_y);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] >>> 0;
+    }
+    /**
      * Insert text at the current cursor position (start of document).
      * @param {string} text
      */
@@ -94,6 +225,28 @@ export class CanvistEditor {
         wasm.canvisteditor_insert_text_at(this.__wbg_ptr, offset, ptr0, len0);
     }
     /**
+     * Move cursor one character left.
+     * @param {boolean} extend
+     */
+    move_cursor_left(extend) {
+        wasm.canvisteditor_move_cursor_left(this.__wbg_ptr, extend);
+    }
+    /**
+     * Move cursor one character right.
+     * @param {boolean} extend
+     */
+    move_cursor_right(extend) {
+        wasm.canvisteditor_move_cursor_right(this.__wbg_ptr, extend);
+    }
+    /**
+     * Move cursor to an absolute position; extend toggles range selection.
+     * @param {number} position
+     * @param {boolean} extend
+     */
+    move_cursor_to(position, extend) {
+        wasm.canvisteditor_move_cursor_to(this.__wbg_ptr, position, extend);
+    }
+    /**
      * Return the full plain-text content of the document.
      * @returns {string}
      */
@@ -110,7 +263,7 @@ export class CanvistEditor {
         }
     }
     /**
-     * Process all pending canonical events into document operations.
+     * Process all pending canonical events via the editor runtime.
      */
     process_events() {
         wasm.canvisteditor_process_events(this.__wbg_ptr);
@@ -125,6 +278,20 @@ export class CanvistEditor {
         wasm.canvisteditor_queue_key_down(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Queue key down with explicit modifier + repeat state.
+     * @param {string} key
+     * @param {boolean} shift
+     * @param {boolean} control
+     * @param {boolean} alt
+     * @param {boolean} meta
+     * @param {boolean} repeat
+     */
+    queue_key_down_with_modifiers(key, shift, control, alt, meta, repeat) {
+        const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_queue_key_down_with_modifiers(this.__wbg_ptr, ptr0, len0, shift, control, alt, meta, repeat);
+    }
+    /**
      * Queue canonical text input and process it into operations.
      * @param {string} text
      */
@@ -134,15 +301,108 @@ export class CanvistEditor {
         wasm.canvisteditor_queue_text_input(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Redo the most recently undone transaction.
+     *
+     * Re-applies the forward operations that were undone. Returns `true` if a
+     * redo was performed, `false` if the redo stack was empty.
+     * @returns {boolean}
+     */
+    redo() {
+        const ret = wasm.canvisteditor_redo(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Request a re-render of the document to the canvas.
      *
-     * This reads the document state and draws it using the Canvas 2D API.
+     * Performs multi-paragraph, multi-line text rendering with styled runs,
+     * selection highlights, and a blinking caret. Each paragraph in the
+     * document tree is laid out independently with configurable paragraph
+     * spacing between them.
      */
     render() {
         const ret = wasm.canvisteditor_render(this.__wbg_ptr);
         if (ret[1]) {
             throw takeFromExternrefTable0(ret[0]);
         }
+    }
+    /**
+     * Replay a JSON-encoded operation list into current runtime.
+     * @param {string} operations_json
+     */
+    replay_operations_json(operations_json) {
+        const ptr0 = passStringToWasm0(operations_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_replay_operations_json(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
+     * Get selection end offset.
+     * @returns {number}
+     */
+    selection_end() {
+        const ret = wasm.canvisteditor_selection_end(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get selection start offset.
+     * @returns {number}
+     */
+    selection_start() {
+        const ret = wasm.canvisteditor_selection_start(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Set whether the caret (text cursor) is visible.
+     *
+     * Called by the JS blink controller on a 530 ms interval to toggle the
+     * caret on and off. When `visible` is `false`, `render()` skips drawing
+     * the caret line, producing the classic blinking effect.
+     * @param {boolean} visible
+     */
+    set_caret_visible(visible) {
+        wasm.canvisteditor_set_caret_visible(this.__wbg_ptr, visible);
+    }
+    /**
+     * Set the undo-coalescing timeout in milliseconds.
+     *
+     * Single-character inserts that arrive within this interval (and satisfy
+     * position/boundary checks) are merged into a single undo entry.
+     * Increasing this value makes undo steps coarser; decreasing it makes
+     * them finer.
+     *
+     * The default is 500 ms.
+     *
+     * # Arguments
+     *
+     * - `ms` — timeout in milliseconds (as `f64` because JS numbers are
+     *   doubles; the value is truncated to `u64` internally).
+     * @param {number} ms
+     */
+    set_coalesce_timeout(ms) {
+        wasm.canvisteditor_set_coalesce_timeout(this.__wbg_ptr, ms);
+    }
+    /**
+     * Set the current wall-clock time (milliseconds since epoch) for the
+     * undo coalescing timer.
+     *
+     * Call this with `Date.now()` before every user action so the runtime
+     * can measure real time gaps between keystrokes. Without this, the
+     * runtime falls back to its monotonic counter which doesn't reflect
+     * actual typing speed.
+     * @param {number} ms
+     */
+    set_now_ms(ms) {
+        wasm.canvisteditor_set_now_ms(this.__wbg_ptr, ms);
+    }
+    /**
+     * Set selection range.
+     * @param {number} start
+     * @param {number} end
+     */
+    set_selection(start, end) {
+        wasm.canvisteditor_set_selection(this.__wbg_ptr, start, end);
     }
     /**
      * Set the document title.
@@ -175,19 +435,23 @@ export class CanvistEditor {
             wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
         }
     }
+    /**
+     * Undo the most recent transaction.
+     *
+     * Applies inverse operations to restore the document to its previous state.
+     * Returns `true` if an undo was performed, `false` if the undo stack was empty.
+     * @returns {boolean}
+     */
+    undo() {
+        const ret = wasm.canvisteditor_undo(this.__wbg_ptr);
+        return ret !== 0;
+    }
 }
 if (Symbol.dispose) CanvistEditor.prototype[Symbol.dispose] = CanvistEditor.prototype.free;
 
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
-        __wbg___wbindgen_debug_string_5398f5bb970e0daa: function(arg0, arg1) {
-            const ret = debugString(arg1);
-            const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-            const len1 = WASM_VECTOR_LEN;
-            getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
-            getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
-        },
         __wbg___wbindgen_is_undefined_52709e72fb9f179c: function(arg0) {
             const ret = arg0 === undefined;
             return ret;
@@ -195,8 +459,8 @@ function __wbg_get_imports() {
         __wbg___wbindgen_throw_6ddd609b62940d55: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
-        __wbg_clearRect_ea4f3d34d76f4bc5: function(arg0, arg1, arg2, arg3, arg4) {
-            arg0.clearRect(arg1, arg2, arg3, arg4);
+        __wbg_beginPath_596efed55075dbc3: function(arg0) {
+            arg0.beginPath();
         },
         __wbg_document_c0320cd4183c6d9b: function(arg0) {
             const ret = arg0.document;
@@ -250,11 +514,27 @@ function __wbg_get_imports() {
             const ret = result;
             return ret;
         },
+        __wbg_lineTo_8ea7db5b5d763030: function(arg0, arg1, arg2) {
+            arg0.lineTo(arg1, arg2);
+        },
+        __wbg_measureText_a914720e0a913aef: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = arg0.measureText(getStringFromWasm0(arg1, arg2));
+            return ret;
+        }, arguments); },
+        __wbg_moveTo_6d04ca2f71946754: function(arg0, arg1, arg2) {
+            arg0.moveTo(arg1, arg2);
+        },
         __wbg_set_fillStyle_58417b6b548ae475: function(arg0, arg1, arg2) {
             arg0.fillStyle = getStringFromWasm0(arg1, arg2);
         },
         __wbg_set_font_b038797b3573ae5e: function(arg0, arg1, arg2) {
             arg0.font = getStringFromWasm0(arg1, arg2);
+        },
+        __wbg_set_strokeStyle_a5baa9565d8b6485: function(arg0, arg1, arg2) {
+            arg0.strokeStyle = getStringFromWasm0(arg1, arg2);
+        },
+        __wbg_set_textBaseline_a9304886c3f7ea50: function(arg0, arg1, arg2) {
+            arg0.textBaseline = getStringFromWasm0(arg1, arg2);
         },
         __wbg_static_accessor_GLOBAL_8adb955bd33fac2f: function() {
             const ret = typeof global === 'undefined' ? null : global;
@@ -272,7 +552,14 @@ function __wbg_get_imports() {
             const ret = typeof window === 'undefined' ? null : window;
             return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
         },
+        __wbg_stroke_affa71c0888c6f31: function(arg0) {
+            arg0.stroke();
+        },
         __wbg_width_4d6fc7fecd877217: function(arg0) {
+            const ret = arg0.width;
+            return ret;
+        },
+        __wbg_width_eebf2967f114717c: function(arg0) {
             const ret = arg0.width;
             return ret;
         },
@@ -307,79 +594,6 @@ function addToExternrefTable0(obj) {
     return idx;
 }
 
-function debugString(val) {
-    // primitive types
-    const type = typeof val;
-    if (type == 'number' || type == 'boolean' || val == null) {
-        return  `${val}`;
-    }
-    if (type == 'string') {
-        return `"${val}"`;
-    }
-    if (type == 'symbol') {
-        const description = val.description;
-        if (description == null) {
-            return 'Symbol';
-        } else {
-            return `Symbol(${description})`;
-        }
-    }
-    if (type == 'function') {
-        const name = val.name;
-        if (typeof name == 'string' && name.length > 0) {
-            return `Function(${name})`;
-        } else {
-            return 'Function';
-        }
-    }
-    // objects
-    if (Array.isArray(val)) {
-        const length = val.length;
-        let debug = '[';
-        if (length > 0) {
-            debug += debugString(val[0]);
-        }
-        for(let i = 1; i < length; i++) {
-            debug += ', ' + debugString(val[i]);
-        }
-        debug += ']';
-        return debug;
-    }
-    // Test for built-in
-    const builtInMatches = /\[object ([^\]]+)\]/.exec(toString.call(val));
-    let className;
-    if (builtInMatches && builtInMatches.length > 1) {
-        className = builtInMatches[1];
-    } else {
-        // Failed to match the standard '[object ClassName]'
-        return toString.call(val);
-    }
-    if (className == 'Object') {
-        // we're a user defined class or Object
-        // JSON.stringify avoids problems with cycles, and is generally much
-        // easier than looping through ownProperties of `val`.
-        try {
-            return 'Object(' + JSON.stringify(val) + ')';
-        } catch (_) {
-            return 'Object';
-        }
-    }
-    // errors
-    if (val instanceof Error) {
-        return `${val.name}: ${val.message}\n${val.stack}`;
-    }
-    // TODO we could test for more things here, like `Set`s and `Map`s.
-    return className;
-}
-
-let cachedDataViewMemory0 = null;
-function getDataViewMemory0() {
-    if (cachedDataViewMemory0 === null || cachedDataViewMemory0.buffer.detached === true || (cachedDataViewMemory0.buffer.detached === undefined && cachedDataViewMemory0.buffer !== wasm.memory.buffer)) {
-        cachedDataViewMemory0 = new DataView(wasm.memory.buffer);
-    }
-    return cachedDataViewMemory0;
-}
-
 function getStringFromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return decodeText(ptr, len);
@@ -404,6 +618,13 @@ function handleError(f, args) {
 
 function isLikeNone(x) {
     return x === undefined || x === null;
+}
+
+function passArray8ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 1, 1) >>> 0;
+    getUint8ArrayMemory0().set(arg, ptr / 1);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
 }
 
 function passStringToWasm0(arg, malloc, realloc) {
@@ -482,7 +703,6 @@ let wasmModule, wasm;
 function __wbg_finalize_init(instance, module) {
     wasm = instance.exports;
     wasmModule = module;
-    cachedDataViewMemory0 = null;
     cachedUint8ArrayMemory0 = null;
     wasm.__wbindgen_start();
     return wasm;

@@ -1,310 +1,493 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>canvist editor demo</title>
-		<style>
-			* {
-				margin: 0;
-				padding: 0;
-				box-sizing: border-box;
-			}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>canvist editor demo</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-			body {
-				font-family: system-ui, sans-serif;
-				background: #f5f5f5;
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				padding: 2rem;
-				min-height: 100vh;
-			}
+      body {
+        font-family: system-ui, sans-serif;
+        background: #f5f5f5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+        min-height: 100vh;
+      }
 
-			h1 {
-				margin-bottom: 1rem;
-				color: #333;
-			}
+      h1 {
+        margin-bottom: 1rem;
+        color: #333;
+      }
 
-			.editor-container {
-				position: relative;
-				background: white;
-				border: 1px solid #ddd;
-				border-radius: 8px;
-				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-				overflow: hidden;
-			}
+      .editor-container {
+        position: relative;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
 
-			#editor-canvas {
-				display: block;
-				cursor: text;
-			}
+      #editor-canvas {
+        display: block;
+        cursor: text;
+      }
 
-			#contenteditable-editor {
-				width: 800px;
-				min-height: 400px;
-				padding: 20px;
-				font-family: sans-serif;
-				font-size: 16px;
-				line-height: 1.5;
-				background: white;
-				border: 1px solid #ddd;
-				border-radius: 8px;
-				box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-				outline: none;
-				white-space: pre-wrap;
-			}
+      #contenteditable-editor {
+        width: 800px;
+        min-height: 400px;
+        padding: 20px;
+        font-family: sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        outline: none;
+        white-space: pre-wrap;
+      }
 
-			.controls {
-				margin: 1rem 0;
-				display: flex;
-				gap: 1rem;
-			}
+      .controls {
+        margin: 1rem 0;
+        display: flex;
+        gap: 1rem;
+      }
 
-			button {
-				padding: 0.5rem 1rem;
-				border: 1px solid #ccc;
-				border-radius: 4px;
-				background: white;
-				cursor: pointer;
-			}
+      button {
+        padding: 0.5rem 1rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+      }
 
-			button:hover {
-				background: #eee;
-			}
+      button:hover {
+        background: #eee;
+      }
 
-			.info {
-				margin-top: 1rem;
-				color: #666;
-				font-size: 0.9rem;
-			}
+      .info {
+        margin-top: 1rem;
+        color: #666;
+        font-size: 0.9rem;
+      }
 
-			#text-output {
-				margin-top: 1rem;
-				padding: 1rem;
-				background: #f0f0f0;
-				border-radius: 4px;
-				font-family: monospace;
-				white-space: pre-wrap;
-				max-width: 800px;
-				word-break: break-all;
-			}
-		</style>
-	</head>
-	<body>
-		<h1>canvist editor</h1>
+      #text-output {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f0f0f0;
+        border-radius: 4px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-width: 800px;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>canvist editor</h1>
 
-		<div class="controls">
-			<button id="btn-canvas" class="active">Canvas Editor</button>
-			<button id="btn-contenteditable">contenteditable (comparison)</button>
-		</div>
+    <div class="controls">
+      <button id="btn-canvas" class="active">Canvas Editor</button>
+      <button id="btn-contenteditable">contenteditable (comparison)</button>
+    </div>
 
-		<div id="canvas-section">
-			<div class="editor-container">
-				<canvas id="editor-canvas" width="800" height="400"></canvas>
-			</div>
-		</div>
+    <div id="canvas-section">
+      <div class="editor-container">
+        <canvas id="editor-canvas" width="800" height="400"></canvas>
+      </div>
+    </div>
 
-		<div id="ce-section" style="display: none">
-			<div
-				id="contenteditable-editor"
-				contenteditable="true"
-				data-placeholder="Type here..."
-			></div>
-		</div>
+    <div id="ce-section" style="display: none">
+      <div
+        id="contenteditable-editor"
+        contenteditable="true"
+        data-placeholder="Type here..."
+      >
+      </div>
+    </div>
 
-		<div class="info">
-			<span id="char-count">Characters: 0</span>
-		</div>
-		<pre id="text-output"></pre>
+    <div class="info">
+      <span id="char-count">Characters: 0</span>
+    </div>
+    <pre id="text-output"></pre>
 
-		<script type="module">
-			import init, { CanvistEditor } from "../wasm/canvist_wasm.js";
+    <script type="module">
+      import init, { CanvistEditor } from "../wasm/canvist_wasm.js";
 
-			let editor = null;
-			let cursorOffset = 0;
+      let editor = null;
+      let cursorOffset = 0;
+      let selectionAnchor = null;
+      let selectionFocus = null;
+      let isDraggingSelection = false;
+      let didDragSelection = false;
 
-			async function setup() {
-				await init();
-				editor = CanvistEditor.create("editor-canvas");
-				editor.render();
+      async function setup() {
+        await init();
+        editor = CanvistEditor.create("editor-canvas");
+        editor.render();
 
-				// --- Hidden textarea for keyboard capture ---
-				const canvas = document.getElementById("editor-canvas");
-				const textarea = document.createElement("textarea");
-				textarea.id = "canvist-input";
-				textarea.setAttribute("autocomplete", "off");
-				textarea.setAttribute("autocorrect", "off");
-				textarea.setAttribute("autocapitalize", "off");
-				textarea.setAttribute("spellcheck", "false");
-				textarea.style.cssText =
-					"position:absolute;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;";
-				canvas.parentElement.appendChild(textarea);
+        // --- Hidden textarea for keyboard capture ---
+        const canvas = document.getElementById("editor-canvas");
+        const textarea = document.createElement("textarea");
+        textarea.id = "canvist-input";
+        textarea.setAttribute("autocomplete", "off");
+        textarea.setAttribute("autocorrect", "off");
+        textarea.setAttribute("autocapitalize", "off");
+        textarea.setAttribute("spellcheck", "false");
+        textarea.setAttribute("aria-label", "Document editor input");
+        textarea.style.cssText =
+          "position:absolute;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;";
+        canvas.parentElement.appendChild(textarea);
 
-				canvas.addEventListener("click", () => textarea.focus());
-				canvas.setAttribute("tabindex", "0");
-				canvas.setAttribute("role", "textbox");
-				canvas.setAttribute("aria-multiline", "true");
-				canvas.setAttribute("aria-label", "Canvist document editor");
-				canvas.setAttribute("aria-controls", "canvist-input");
+        canvas.addEventListener("click", () => textarea.focus());
+        canvas.addEventListener("focus", () => textarea.focus());
+        canvas.setAttribute("tabindex", "0");
+        canvas.setAttribute("role", "textbox");
+        canvas.setAttribute("aria-multiline", "true");
+        canvas.setAttribute("aria-label", "Canvist document editor");
+        canvas.setAttribute("aria-controls", "canvist-input");
 
-				function syncA11yState() {
-					const text = editor.plain_text();
-					textarea.value = text;
-					textarea.setSelectionRange(cursorOffset, cursorOffset);
-					canvas.setAttribute("aria-valuetext", text);
-				}
+        function hasSelection() {
+          return (
+            selectionAnchor !== null &&
+            selectionFocus !== null &&
+            selectionAnchor !== selectionFocus
+          );
+        }
 
-				function renderFrame() {
-					try {
-						editor.render();
-						// Draw caret
-						const ctx = canvas.getContext("2d");
-						if (ctx) {
-							const text = editor.plain_text();
-							const before = text.slice(0, cursorOffset);
-							ctx.font = "16px sans-serif";
-							const m = ctx.measureText(before);
-							ctx.fillStyle = "black";
-							ctx.fillRect(20 + m.width, 24, 1.5, 20);
-						}
-						syncA11yState();
-					} catch (e) {}
-				}
+        function normalizedSelection() {
+          if (!hasSelection()) {
+            return null;
+          }
+          const start = Math.min(selectionAnchor, selectionFocus);
+          const end = Math.max(selectionAnchor, selectionFocus);
+          return { start, end };
+        }
 
-				textarea.addEventListener("beforeinput", (e) => {
-					if (e.isComposing) return;
-					const data = e.data;
-					if (e.inputType === "insertText" && data) {
-						e.preventDefault();
-						editor.insert_text_at(cursorOffset, data);
-						cursorOffset += data.length;
-						textarea.value = "";
-						renderFrame();
-					} else if (e.inputType === "deleteContentBackward") {
-						e.preventDefault();
-						handledByBeforeInput = true;
-						if (cursorOffset > 0) {
-							editor.delete_range(cursorOffset - 1, cursorOffset);
-							cursorOffset -= 1;
-						}
-						textarea.value = "";
-						renderFrame();
-					} else if (e.inputType === "deleteContentForward") {
-						e.preventDefault();
-						handledByBeforeInput = true;
-						const t = editor.plain_text();
-						if (cursorOffset < t.length) {
-							editor.delete_range(cursorOffset, cursorOffset + 1);
-						}
-						textarea.value = "";
-						renderFrame();
-					} else if (e.inputType === "insertLineBreak" || e.inputType === "insertParagraph") {
-						e.preventDefault();
-						editor.insert_text_at(cursorOffset, "\n");
-						cursorOffset += 1;
-						textarea.value = "";
-						renderFrame();
-					}
-				});
+        function clearSelection() {
+          selectionAnchor = cursorOffset;
+          selectionFocus = cursorOffset;
+          editor.set_selection(cursorOffset, cursorOffset);
+        }
 
-				// Track whether beforeinput already handled the event
-				let handledByBeforeInput = false;
+        function setSelection(anchor, focus) {
+          selectionAnchor = anchor;
+          selectionFocus = focus;
+          cursorOffset = focus;
+          editor.set_selection(anchor, focus);
+        }
 
-				textarea.addEventListener("keydown", (e) => {
-					if (e.isComposing) return;
-					handledByBeforeInput = false;
+        function deleteSelectionIfNeeded() {
+          const selection = normalizedSelection();
+          if (!selection) {
+            return false;
+          }
+          editor.delete_range(selection.start, selection.end);
+          cursorOffset = selection.start;
+          clearSelection();
+          return true;
+        }
 
-					if (e.key === "Backspace") {
-						e.preventDefault();
-						// Defer to let beforeinput fire first if it will
-						setTimeout(() => {
-							if (!handledByBeforeInput && cursorOffset > 0) {
-								editor.delete_range(cursorOffset - 1, cursorOffset);
-								cursorOffset -= 1;
-								textarea.value = "";
-								renderFrame();
-							}
-						}, 0);
-					} else if (e.key === "Delete") {
-						e.preventDefault();
-						setTimeout(() => {
-							if (!handledByBeforeInput) {
-								const t = editor.plain_text();
-								if (cursorOffset < t.length) {
-									editor.delete_range(cursorOffset, cursorOffset + 1);
-									textarea.value = "";
-									renderFrame();
-								}
-							}
-						}, 0);
-					} else if (e.key === "Enter") {
-						e.preventDefault();
-						editor.insert_text_at(cursorOffset, "\n");
-						cursorOffset += 1;
-						textarea.value = "";
-						renderFrame();
-					} else if (e.key === "ArrowLeft") {
-						e.preventDefault();
-						if (cursorOffset > 0) cursorOffset--;
-						renderFrame();
-					} else if (e.key === "ArrowRight") {
-						e.preventDefault();
-						if (cursorOffset < editor.plain_text().length) cursorOffset++;
-						renderFrame();
-					}
-				});
+        function insertTextAtSelection(text) {
+          deleteSelectionIfNeeded();
+          editor.insert_text_at(cursorOffset, text);
+          cursorOffset += text.length;
+          clearSelection();
+        }
 
-				textarea.addEventListener("compositionend", (e) => {
-					if (e.data) {
-						editor.insert_text_at(cursorOffset, e.data);
-						cursorOffset += e.data.length;
-						renderFrame();
-					}
-					textarea.value = "";
-				});
+        function charOffsetFromClientX(clientX) {
+          const rect = canvas.getBoundingClientRect();
+          const localX = Math.max(0, clientX - rect.left - 20);
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return 0;
+          ctx.font = "16px sans-serif";
+          const text = editor.plain_text();
+          let prevWidth = 0;
+          for (let i = 1; i <= text.length; i += 1) {
+            const width = ctx.measureText(text.slice(0, i)).width;
+            if (width >= localX) {
+              return localX - prevWidth <= width - localX ? i - 1 : i;
+            }
+            prevWidth = width;
+          }
+          return text.length;
+        }
 
-				// Update display
-				setInterval(() => {
-					if (editor) {
-						const text = editor.plain_text();
-						document.getElementById("char-count").textContent =
-							`Characters: ${editor.char_count()}`;
-						document.getElementById("text-output").textContent =
-							text || "(empty)";
-					}
-				}, 100);
+        function syncA11yState() {
+          const text = editor.plain_text();
+          const selection = normalizedSelection();
+          textarea.value = text;
+          if (selection) {
+            textarea.setSelectionRange(selection.start, selection.end);
+          } else {
+            textarea.setSelectionRange(cursorOffset, cursorOffset);
+          }
+          canvas.setAttribute("aria-valuetext", text);
+        }
 
-				textarea.focus();
-			}
+        function renderFrame() {
+          try {
+            editor.render();
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+              const text = editor.plain_text();
+              ctx.font = "16px sans-serif";
+              const selection = normalizedSelection();
+              if (selection) {
+                const startWidth =
+                  ctx.measureText(text.slice(0, selection.start)).width;
+                const endWidth =
+                  ctx.measureText(text.slice(0, selection.end)).width;
+                ctx.fillStyle = "rgba(66, 133, 244, 0.28)";
+                ctx.fillRect(
+                  20 + startWidth,
+                  24,
+                  Math.max(1, endWidth - startWidth),
+                  20,
+                );
+              }
 
-			// Tab switching.
-			document.getElementById("btn-canvas").addEventListener("click", () => {
-				document.getElementById("canvas-section").style.display = "";
-				document.getElementById("ce-section").style.display = "none";
-			});
-			document
-				.getElementById("btn-contenteditable")
-				.addEventListener("click", () => {
-					document.getElementById("canvas-section").style.display = "none";
-					document.getElementById("ce-section").style.display = "";
-				});
+              if (!selection) {
+                const before = text.slice(0, cursorOffset);
+                const m = ctx.measureText(before);
+                ctx.fillStyle = "black";
+                ctx.fillRect(20 + m.width, 24, 1.5, 20);
+              }
+            }
+            syncA11yState();
+          } catch (e) {}
+        }
 
-			// contenteditable char count.
-			const ceEditor = document.getElementById("contenteditable-editor");
-			ceEditor.addEventListener("input", () => {
-				document.getElementById("char-count").textContent =
-					`Characters: ${ceEditor.textContent.length}`;
-				document.getElementById("text-output").textContent =
-					ceEditor.textContent || "(empty)";
-			});
+        canvas.addEventListener("mousedown", (e) => {
+          isDraggingSelection = true;
+          didDragSelection = false;
+          const offset = charOffsetFromClientX(e.clientX);
+          setSelection(offset, offset);
+          textarea.focus();
+          renderFrame();
+          e.preventDefault();
+        });
 
-			// Expose editor globally for Playwright tests.
-			window.__canvistSetup = setup();
-			window.__canvistEditor = null;
-			window.__canvistSetup.then(() => {
-				window.__canvistEditor = editor;
-			});
-		</script>
-	</body>
+        canvas.addEventListener("mousemove", (e) => {
+          if (!isDraggingSelection) return;
+          const offset = charOffsetFromClientX(e.clientX);
+          if (offset !== cursorOffset) {
+            didDragSelection = true;
+          }
+          setSelection(selectionAnchor, offset);
+          renderFrame();
+        });
+
+        window.addEventListener("mouseup", (e) => {
+          if (!isDraggingSelection) return;
+          isDraggingSelection = false;
+          const offset = charOffsetFromClientX(e.clientX);
+          setSelection(selectionAnchor, offset);
+          renderFrame();
+        });
+
+        canvas.addEventListener("click", (e) => {
+          textarea.focus();
+          if (didDragSelection) {
+            didDragSelection = false;
+            return;
+          }
+          const offset = charOffsetFromClientX(e.clientX);
+          cursorOffset = offset;
+          clearSelection();
+          renderFrame();
+        });
+
+        textarea.addEventListener("beforeinput", (e) => {
+          if (e.isComposing) return;
+          const data = e.data;
+          if (e.inputType === "insertText" && data) {
+            e.preventDefault();
+            insertTextAtSelection(data);
+            textarea.value = "";
+            renderFrame();
+          } else if (e.inputType === "deleteContentBackward") {
+            e.preventDefault();
+            handledByBeforeInput = true;
+            if (!deleteSelectionIfNeeded() && cursorOffset > 0) {
+              editor.delete_range(cursorOffset - 1, cursorOffset);
+              cursorOffset -= 1;
+              clearSelection();
+            }
+            textarea.value = "";
+            renderFrame();
+          } else if (e.inputType === "deleteContentForward") {
+            e.preventDefault();
+            handledByBeforeInput = true;
+            const t = editor.plain_text();
+            if (!deleteSelectionIfNeeded() && cursorOffset < t.length) {
+              editor.delete_range(cursorOffset, cursorOffset + 1);
+              clearSelection();
+            }
+            textarea.value = "";
+            renderFrame();
+          } else if (
+            e.inputType === "insertLineBreak" ||
+            e.inputType === "insertParagraph"
+          ) {
+            e.preventDefault();
+            insertTextAtSelection("\n");
+            textarea.value = "";
+            renderFrame();
+          }
+        });
+
+        // Track whether beforeinput already handled the event
+        let handledByBeforeInput = false;
+
+        textarea.addEventListener("keydown", (e) => {
+          if (e.isComposing) return;
+          handledByBeforeInput = false;
+
+          if (e.key === "Backspace") {
+            e.preventDefault();
+            // Defer to let beforeinput fire first if it will
+            setTimeout(() => {
+              if (!handledByBeforeInput) {
+                if (!deleteSelectionIfNeeded() && cursorOffset > 0) {
+                  editor.delete_range(cursorOffset - 1, cursorOffset);
+                  cursorOffset -= 1;
+                  clearSelection();
+                }
+                textarea.value = "";
+                renderFrame();
+              }
+            }, 0);
+          } else if (e.key === "Delete") {
+            e.preventDefault();
+            setTimeout(() => {
+              if (!handledByBeforeInput) {
+                const t = editor.plain_text();
+                if (
+                  !deleteSelectionIfNeeded() && cursorOffset < t.length
+                ) {
+                  editor.delete_range(cursorOffset, cursorOffset + 1);
+                  clearSelection();
+                }
+                textarea.value = "";
+                renderFrame();
+              }
+            }, 0);
+          } else if (e.key === "Enter") {
+            e.preventDefault();
+            insertTextAtSelection("\n");
+            textarea.value = "";
+            renderFrame();
+          } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            if (e.shiftKey) {
+              if (selectionAnchor === null || selectionFocus === null) {
+                selectionAnchor = cursorOffset;
+                selectionFocus = cursorOffset;
+              }
+              cursorOffset = Math.max(0, cursorOffset - 1);
+              selectionFocus = cursorOffset;
+              editor.set_selection(selectionAnchor, selectionFocus);
+            } else {
+              if (hasSelection()) {
+                const selection = normalizedSelection();
+                cursorOffset = selection.start;
+              } else if (cursorOffset > 0) {
+                cursorOffset -= 1;
+              }
+              clearSelection();
+            }
+            renderFrame();
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            const textLength = editor.plain_text().length;
+            if (e.shiftKey) {
+              if (selectionAnchor === null || selectionFocus === null) {
+                selectionAnchor = cursorOffset;
+                selectionFocus = cursorOffset;
+              }
+              cursorOffset = Math.min(textLength, cursorOffset + 1);
+              selectionFocus = cursorOffset;
+              editor.set_selection(selectionAnchor, selectionFocus);
+            } else {
+              if (hasSelection()) {
+                const selection = normalizedSelection();
+                cursorOffset = selection.end;
+              } else if (cursorOffset < textLength) {
+                cursorOffset += 1;
+              }
+              clearSelection();
+            }
+            renderFrame();
+          }
+        });
+
+        textarea.addEventListener("compositionend", (e) => {
+          const committed = e.data || textarea.value;
+          if (committed) {
+            insertTextAtSelection(committed);
+            renderFrame();
+          }
+          textarea.value = "";
+        });
+
+        // Update display
+        setInterval(() => {
+          if (editor) {
+            const text = editor.plain_text();
+            document.getElementById("char-count").textContent =
+              `Characters: ${editor.char_count()}`;
+            document.getElementById("text-output").textContent = text ||
+              "(empty)";
+          }
+        }, 100);
+
+        clearSelection();
+        renderFrame();
+        textarea.focus();
+      }
+
+      // Tab switching.
+      document.getElementById("btn-canvas").addEventListener(
+        "click",
+        () => {
+          document.getElementById("canvas-section").style.display = "";
+          document.getElementById("ce-section").style.display = "none";
+        },
+      );
+      document
+        .getElementById("btn-contenteditable")
+        .addEventListener("click", () => {
+          document.getElementById("canvas-section").style.display =
+            "none";
+          document.getElementById("ce-section").style.display = "";
+        });
+
+      // contenteditable char count.
+      const ceEditor = document.getElementById(
+        "contenteditable-editor",
+      );
+      ceEditor.addEventListener("input", () => {
+        document.getElementById("char-count").textContent =
+          `Characters: ${ceEditor.textContent.length}`;
+        document.getElementById("text-output").textContent =
+          ceEditor.textContent || "(empty)";
+      });
+
+      // Expose editor globally for Playwright tests.
+      window.__canvistSetup = setup();
+      window.__canvistEditor = null;
+      window.__canvistSetup.then(() => {
+        window.__canvistEditor = editor;
+      });
+    </script>
+  </body>
 </html>
