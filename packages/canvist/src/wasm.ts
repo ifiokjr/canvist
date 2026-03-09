@@ -6,11 +6,70 @@
  * multiple times is safe.
  */
 
-// deno-lint-ignore-file no-explicit-any
-
 let _initialised = false;
 let _initPromise: Promise<void> | null = null;
-let _wasmModule: any = null;
+let _wasmModule: CanvistWasmModule | null = null;
+
+export interface WasmCanvistEditor {
+	canvas_id(): string;
+	plain_text(): string;
+	char_count(): number;
+	insert_text(text: string): void;
+	insert_text_at(offset: number, text: string): void;
+	delete_range(start: number, end: number): void;
+	set_title(title: string): void;
+	to_json(): string;
+	queue_text_input(text: string): void;
+	queue_key_down(key: string): void;
+	queue_key_down_with_modifiers(
+		key: string,
+		shift: boolean,
+		control: boolean,
+		alt: boolean,
+		meta: boolean,
+		repeat: boolean,
+	): void;
+	process_events(): void;
+	selection_start(): number;
+	selection_end(): number;
+	set_selection(start: number, end: number): void;
+	move_cursor_to(position: number, extend: boolean): void;
+	move_cursor_left(extend: boolean): void;
+	move_cursor_right(extend: boolean): void;
+	apply_style_range(
+		start: number,
+		end: number,
+		bold: boolean,
+		italic: boolean,
+		underline: boolean,
+		fontSize?: number,
+		fontFamily?: string,
+		colorRgba?: number[],
+	): void;
+	get_selected_text(): string;
+	clipboard_cut(): void;
+	clipboard_paste(text: string): void;
+	undo(): boolean;
+	redo(): boolean;
+	can_undo(): boolean;
+	can_redo(): boolean;
+	set_now_ms(ms: number): void;
+	break_undo_coalescing(): void;
+	set_coalesce_timeout(ms: number): void;
+	coalesce_timeout(): number;
+	replay_operations_json(operationsJson: string): void;
+	hit_test(screenX: number, screenY: number): number;
+	set_caret_visible(visible: boolean): void;
+	render(): void;
+	free(): void;
+}
+
+export interface CanvistWasmModule {
+	default(input?: unknown): Promise<unknown>;
+	CanvistEditor: {
+		create(canvasId: string): WasmCanvistEditor;
+	};
+}
 
 /**
  * Dynamically import the WASM glue module.
@@ -18,10 +77,10 @@ let _wasmModule: any = null;
  * This is split out so the import path works in both Deno and Node/bundler
  * environments.
  */
-async function loadWasmModule(): Promise<any> {
+async function loadWasmModule(): Promise<CanvistWasmModule> {
 	if (_wasmModule) return _wasmModule;
 	// The wasm glue JS is co-located in the package.
-	_wasmModule = await import("../wasm/canvist_wasm.js");
+	_wasmModule = (await import("../wasm/canvist_wasm.js")) as CanvistWasmModule;
 	return _wasmModule;
 }
 
@@ -54,7 +113,7 @@ export async function initWasm(): Promise<void> {
  * Return the raw WASM module exports (for internal use).
  * @internal
  */
-export async function getWasmModule(): Promise<any> {
+export async function getWasmModule(): Promise<CanvistWasmModule> {
 	await initWasm();
 	return loadWasmModule();
 }

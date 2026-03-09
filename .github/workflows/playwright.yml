@@ -16,6 +16,12 @@ concurrency:
 jobs:
   playwright-linux:
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - chromium
+          - firefox
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
@@ -26,16 +32,16 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: install playwright browsers
-        run: deno run -A npm:playwright@1.58 install --with-deps chromium firefox
+      - name: install playwright browser
+        run: deno run -A npm:playwright@1.58 install --with-deps ${{ matrix.browser }}
 
       - name: run playwright tests
         run: |
           cd packages/canvist
-          deno test --allow-all tests/playwright/
+          deno task test:playwright
         env:
           CI: "true"
-          CI_BROWSERS: "chromium firefox"
+          CI_BROWSERS: ${{ matrix.browser }}
 
   playwright-webkit:
     timeout-minutes: 30
@@ -69,7 +75,7 @@ jobs:
       - name: run playwright tests
         run: |
           cd packages/canvist
-          deno test --allow-all tests/playwright/
+          deno task test:playwright
         env:
           CI: "true"
           CI_BROWSERS: "webkit"

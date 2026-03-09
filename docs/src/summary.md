@@ -6,3 +6,4 @@
 - [API Overview](./api-overview.md)
 - [Contributing](./contributing.md)
 - [Guide: Extensions and Plugins](./guide/extensions.md)
+- [Testing Capability Matrix](./testing-capability-matrix.md)

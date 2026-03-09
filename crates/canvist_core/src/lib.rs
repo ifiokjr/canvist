@@ -9,7 +9,9 @@
 //! - [`Document`] — the hierarchical node tree representing rich text
 //! - [`Selection`] and [`Position`] — cursor and range selection model
 //! - [`Style`] — composable text styling with builder pattern
-//! - [`operation`] — atomic edit operations with transaction support
+//! - [`action`] — validated action envelope (`Action`, actor/meta/intent/args)
+//! - [`runtime`] — deterministic runtime orchestration (`EditorRuntime`)
+//! - [`operation`] — atomic edit operations with transaction support and replay log
 //! - [`collaboration`] — Yjs CRDT integration for real-time sync
 //! - [`layout`] — text layout computation with line breaking
 //!
@@ -30,6 +32,7 @@
 //! assert_eq!(doc.plain_text(), "Hello, canvist!");
 //! ```
 
+pub mod action;
 pub mod collaboration;
 pub mod document;
 pub mod event;
@@ -37,10 +40,19 @@ pub mod extension;
 pub mod layout;
 pub mod operation;
 mod position;
+pub mod runtime;
 pub mod selection;
 pub mod style;
 
 // Re-export the primary types at the crate root for convenience.
+pub use action::Action;
+pub use action::ActionArgs;
+pub use action::ActionId;
+pub use action::ActionIntent;
+pub use action::ActionMeta;
+pub use action::ActionValidationContext;
+pub use action::ActionValidationError;
+pub use action::ActorId;
 pub use document::Document;
 pub use document::Node;
 pub use document::NodeId;
@@ -63,6 +75,10 @@ pub use operation::Change;
 pub use operation::Patch;
 pub use operation::Transaction;
 pub use position::Position;
+pub use runtime::EditorRuntime;
+pub use runtime::Invalidation;
+pub use runtime::RuntimeError;
+pub use runtime::RuntimeOutput;
 pub use selection::Selection;
 pub use style::Color;
 pub use style::FontWeight;

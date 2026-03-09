@@ -34,24 +34,51 @@
 | Crate                                       | Description                                                |
 | ------------------------------------------- | ---------------------------------------------------------- |
 | [`canvist`](./crates/canvist)               | Umbrella re-export crate                                   |
-| [`canvist_core`](./crates/canvist_core)     | Document model, operations, selections, CRDT collaboration |
+| [`canvist_core`](./crates/canvist_core)     | Document model, runtime/action envelope, deterministic operation log, CRDT collaboration |
 | [`canvist_render`](./crates/canvist_render) | Platform-agnostic rendering traits and text layout         |
 | [`canvist_wasm`](./crates/canvist_wasm)     | WebAssembly + Canvas2D rendering backend                   |
 | [`canvist_test`](./crates/canvist_test)     | Playwright browser integration tests                       |
 
-## Quick start
+## Runtime/API model
+
+canvist uses a deterministic, layered runtime contract:
+
+1. **Intent** — user or extension intent (e.g. "insert text").
+2. **Action envelope** — normalized `EditorEvent` + `EventSource` context.
+3. **Operation transaction** — validated `Operation`s grouped into a `Transaction`.
+4. **Log + render** — append to `OperationLog`, then re-render from document state.
+
+This keeps input handling, collaboration, undo/redo, and rendering on the same pipeline.
+
+See [Architecture](./docs/src/architecture.md) and [API Overview](./docs/src/api-overview.md) for the full model.
+
+## Quick start (runtime-first)
 
 ```rust
-use canvist::prelude::*;
+use canvist::core::{Document, EditorEvent, EditorRuntime, Position, Selection};
 
-// Create a new document.
-let mut doc = Document::new();
+let mut runtime = EditorRuntime::new(
+    Document::new(),
+    Selection::collapsed(Position::zero()),
+    "user:demo",
+);
 
-// Insert styled text.
-let style = Style::new().bold().font_size(24.0).font_family("Inter");
-doc.insert_text(Position::zero(), "Hello, canvist!");
-doc.apply_style(Selection::all(&doc), &style);
+runtime
+    .handle_event(EditorEvent::TextInsert {
+        text: "Hello, canvist!".to_string(),
+    })
+    .expect("event should be accepted");
+
+assert_eq!(runtime.document().plain_text(), "Hello, canvist!");
+
+// Deterministic replay on a fresh document.
+let log = runtime.export_log();
+let mut replayed = Document::new();
+log.replay(&mut replayed).expect("replay should succeed");
+assert_eq!(replayed.plain_text(), "Hello, canvist!");
 ```
+
+If you only need low-level document manipulation, you can still work directly with `Document`, `Selection`, and `Style` APIs.
 
 ## Contributing
 

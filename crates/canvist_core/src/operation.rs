@@ -207,6 +207,11 @@ impl OperationLog {
 		self
 	}
 
+	/// Append an entry to the log in-place.
+	pub fn push_mut(&mut self, entry: LogEntry) {
+		self.entries.push(entry);
+	}
+
 	/// Borrow log entries in insertion order.
 	#[must_use]
 	pub fn entries(&self) -> &[LogEntry] {

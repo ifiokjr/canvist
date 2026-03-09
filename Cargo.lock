@@ -197,6 +197,7 @@ dependencies = [
  "canvist_core",
  "canvist_render",
  "js-sys",
+ "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",

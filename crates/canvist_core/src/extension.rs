@@ -261,21 +261,36 @@ impl ExtensionRuntime {
 		None
 	}
 
-	pub fn apply_with_hooks(&self, doc: &mut Document, mut runtime_tx: RuntimeTransaction) {
+	/// Resolve transaction transforms from `before_apply` hooks in deterministic order.
+	#[must_use]
+	pub fn resolve_before_hooks(
+		&self,
+		doc: &Document,
+		meta: &TransactionMeta,
+		mut transaction: Transaction,
+	) -> Transaction {
 		for entry in &self.hooks {
-			runtime_tx.transaction =
-				entry
-					.hook
-					.before_apply(doc, &runtime_tx.meta, runtime_tx.transaction);
+			transaction = entry.hook.before_apply(doc, meta, transaction);
 		}
+		transaction
+	}
 
-		runtime_tx.transaction.apply(doc);
-
+	/// Run `after_apply` hooks in deterministic order.
+	pub fn run_after_hooks(
+		&self,
+		doc: &Document,
+		meta: &TransactionMeta,
+		transaction: &Transaction,
+	) {
 		for entry in &self.hooks {
-			entry
-				.hook
-				.after_apply(doc, &runtime_tx.meta, &runtime_tx.transaction);
+			entry.hook.after_apply(doc, meta, transaction);
 		}
+	}
+
+	pub fn apply_with_hooks(&self, doc: &mut Document, runtime_tx: RuntimeTransaction) {
+		let transaction = self.resolve_before_hooks(doc, &runtime_tx.meta, runtime_tx.transaction);
+		transaction.apply(doc);
+		self.run_after_hooks(doc, &runtime_tx.meta, &transaction);
 	}
 }
 

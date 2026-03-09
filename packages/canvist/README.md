@@ -50,6 +50,25 @@ Explicitly initialise the WASM module. Idempotent — safe to call multiple time
 | `toJSON()`         | Export document as JSON    |
 | `destroy()`        | Release resources          |
 
+## Development
+
+From `packages/canvist`, use Deno tasks so local runs match CI:
+
+```bash
+# Build the WebAssembly bundle used by the package.
+deno task build:wasm
+
+# Run non-browser tests.
+deno task test:unit
+
+# Run browser E2E tests (Playwright). Includes --allow-sys for OS detection and --allow-write for local browser/temp artifacts.
+# Playwright specs use *.spec.ts so they stay out of Deno's default *_test.ts unit discovery.
+deno task test:playwright
+
+# Run the full web test matrix used by CI.
+deno task ci:test
+```
+
 ## License
 
 [Unlicense](https://unlicense.org/)

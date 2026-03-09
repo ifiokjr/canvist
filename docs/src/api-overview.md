@@ -4,13 +4,53 @@ This document defines the public programming model used by both human-driven app
 
 The model is intentionally layered:
 
-1. **Intent** — what the user/agent wants to achieve
-2. **Action (validated command)** — a concrete, policy-checked command
+1. **Intent/Event** — what the user/agent wants to achieve
+2. **Action envelope** — a concrete, policy-checked command + metadata
 3. **Operation** — deterministic, atomic document mutation
 4. **State transition** — verified application of operations/log entries
 5. **Render delta** — visual updates derived from the new state
 
 Keeping these layers explicit makes replay, undo/redo, automation, and cross-platform behavior predictable.
+
+## Capability-to-test matrix (maintained)
+
+Use this matrix to keep documentation claims and automated coverage aligned.\
+Status legend: ✅ covered by automated tests, ⚠️ partially covered, ❌ no automated coverage yet.
+
+| Capability (documented/claimed)                      | Primary source                                                  | Automated tests                                                                                                                                                                   | Status | Notes / gap                                                                                           |
+| ---------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------- |
+| Browser editor boots and canvas renders              | `packages/canvist/README.md`, architecture layering             | `packages/canvist/tests/playwright/editor.spec.ts` (`[browser] editor loads and renders`)                                                                                         | ✅     | Runs across Chromium/Firefox/WebKit via `CI_BROWSERS`/default matrix.                                 |
+| Text insertion from keyboard input                   | API layer model (`EditorEvent::TextInsert`) + README behavior   | `packages/canvist/tests/playwright/editor.spec.ts` (`typing inserts text`, `multiple sequential inserts`)                                                                         | ✅     | Asserts plain text + char count.                                                                      |
+| Backspace behavior (`delete_backward`)               | Action intent examples in architecture/API docs                 | `packages/canvist/tests/playwright/editor.spec.ts` (`backspace deletes characters`)                                                                                               | ✅     | Validates character removal at cursor end.                                                            |
+| Forward delete behavior (`delete` key)               | Playwright suite contract comment, keyboard parity expectations | `packages/canvist/tests/playwright/editor.spec.ts` (`delete removes character in front of cursor`)                                                                                | ✅     | Validates mid-string delete after cursor movement.                                                    |
+| Arrow-key cursor navigation                          | Keyboard parity expectations in tests/docs                      | `packages/canvist/tests/playwright/editor.spec.ts` (`arrow keys move cursor for deterministic mid-string insert`)                                                                 | ✅     | Behavior verified through deterministic insertion point.                                              |
+| Enter/newline insertion                              | Basic editor behavior in README/examples                        | `packages/canvist/tests/playwright/editor.spec.ts` (`enter creates newline`)                                                                                                      | ✅     | Asserts both lines present in resulting plain text.                                                   |
+| Range selection and replace (shift+arrow + typing)   | Selection model in architecture/API docs                        | `packages/canvist/tests/playwright/editor.spec.ts` (`shift+arrow selection replaced by typing`)                                                                                   | ✅     | Confirms keyboard-created selection replacement path.                                                 |
+| Pointer drag selection + replace                     | Web editor interaction model and canvas selection overlay       | `packages/canvist/tests/playwright/editor.spec.ts` (`drag selection replaces range deterministically`, `reverse drag selection keeps normalized range`)                           | ✅     | Verifies mouse drag selection in both directions and replacement consistency.                         |
+| Canvas output consistency after typing               | Render contract in web runtime                                  | `packages/canvist/tests/playwright/editor.spec.ts` (`canvas output is stable and reflects typed content`)                                                                         | ✅     | Compares non-white pixel count/checksum across rerenders.                                             |
+| Web event propagation (input + keydown + pointer)    | Canonical web event pipeline contract                           | `packages/canvist/tests/playwright/editor.spec.ts` (`input and pointer events propagate through the web pipeline`)                                                                | ✅     | Confirms events are observed across input/canvas/document targets.                                    |
+| `initWasm` idempotent initialization                 | Public API expectations (`src/mod.ts`/README)                   | `packages/canvist/tests/api_contract_test.ts` (`initWasm is idempotent across repeated calls`)                                                                                    | ✅     | Also checks exported `CanvistEditor` constructor exists.                                              |
+| `initWasm` failure surfacing                         | Robust API contract expectations                                | `packages/canvist/tests/api_contract_test.ts` (`initWasm surfaces module-load failures`), fixture `packages/canvist/tests/fixtures/wasm_fail.ts`                                  | ✅     | Ensures import/initialization failures reject instead of hanging/silent fail.                         |
+| `createEditor` browser API availability              | README API contract                                             | _No stable automated assertion in Deno unit tests_                                                                                                                                | ⚠️      | Existing attempts require DOM/runtime browser harness. Keep validation in Playwright/browser context. |
+| `setTitle()` API contract                            | README/API promises                                             | `packages/canvist/tests/playwright/editor.spec.ts` (`editor bindings compose a complete editing workflow`)                                                                        | ✅     | Verifies title metadata round-trips through `to_json`.                                                |
+| `toJSON()` API contract/schema                       | README/API promises                                             | `packages/canvist/tests/playwright/editor.spec.ts` (`editor bindings compose a complete editing workflow`)                                                                        | ✅     | Parses JSON and asserts expected metadata fields.                                                     |
+| `destroy()` cleanup contract                         | README/API promises                                             | _No active test currently in repo_                                                                                                                                                | ❌     | Add lifecycle cleanup test (event listeners/resources/input detachment).                              |
+| Clipboard operations (copy/cut/paste)                | Canonical event pipeline includes clipboard                     | _None_                                                                                                                                                                            | ❌     | Add Playwright clipboard interaction tests (permissions + keyboard shortcuts/context menu).           |
+| IME/composition input                                | Canonical event pipeline includes composition                   | `packages/canvist/tests/playwright/editor.spec.ts` (`compositionend commits IME text exactly once`)                                                                               | ✅     | Covers compositionstart/input/compositionend commit behavior.                                         |
+| Accessibility shadow DOM + focus semantics           | `canvist_wasm` architecture section                             | `packages/canvist/tests/playwright/editor.spec.ts` (`accessibility wiring exposes hidden input and textbox semantics`, `focus and keyboard routing keeps hidden textarea active`) | ✅     | Asserts roles/labels, `aria-valuetext`, and focus routing.                                            |
+| Runtime action-envelope/policy/precondition pipeline | Architecture + API layers 2–4                                   | _None in `packages/canvist/tests`_                                                                                                                                                | ❌     | Requires core/runtime-level deterministic transition tests.                                           |
+| Operation log replay guarantees                      | API Layer 4 contract                                            | _None in `packages/canvist/tests`_                                                                                                                                                | ❌     | Add replay/divergence tests around `OperationLog` preconditions.                                      |
+| Render-delta/invalidation contract                   | API Layer 5 contract                                            | _None_                                                                                                                                                                            | ❌     | Need backend-visible invalidation assertions beyond “canvas visible”.                                 |
+| Collaboration/CRDT sync path                         | Architecture (`canvist_core` CRDT sync)                         | _None_                                                                                                                                                                            | ❌     | Add multi-actor convergence tests once web sync harness exists.                                       |
+
+### Maintenance checklist
+
+When adding/changing functionality:
+
+1. Update this matrix row (or add a new row) in the same PR.
+2. Link concrete test file(s) and test name(s) that verify the capability.
+3. If a capability remains uncovered, mark as ❌/⚠️ and include a follow-up task reference.
+4. Prefer browser-level tests for DOM/input behavior and unit tests for pure API contracts.
 
 ## Layer 0: Document state
 
@@ -27,32 +67,27 @@ doc.insert_text(Position::zero(), "Hello, world!");
 assert_eq!(doc.plain_text(), "Hello, world!");
 ```
 
-`Document` is the source of truth for:
+## Layer 1: Intent/Event API (human or agent)
 
-- content (`plain_text`, node tree)
-- metadata (title, styles)
-- deterministic checks (`state_hash`, char count preconditions)
+An **intent/event** is high-level and goal-oriented. Examples:
 
-## Layer 1: Intent API (human or agent)
+- `EditorEvent::TextInsert` from keyboard/IME
+- “Toggle bold for current selection” from command palette
+- “Apply remote patch entry #42” from sync pipeline
 
-An **intent** is high-level and goal-oriented. Examples:
+At this layer, payloads may still be ambiguous (e.g. “at cursor” needs resolved position) and must not mutate state directly.
 
-- “Insert `Hello` at cursor”
-- “Toggle bold for current selection”
-- “Delete previous word”
-- “Apply remote patch entry #42”
+## Layer 2: Action envelope API (validated commands)
 
-Intents can be produced by:
+An **action envelope** is an intent transformed into a fully-specified command after validation and policy checks.
 
-- UI events (keyboard, IME, pointer, command palette)
-- application integrations
-- autonomous agents/planners
+Action metadata contract:
 
-At this layer, payloads may still be ambiguous (e.g. “at cursor” needs a resolved position) and must not mutate state directly.
-
-## Layer 2: Action API (validated commands)
-
-An **action** is an intent transformed into a fully-specified command after validation and policy checks.
+- `action_id` (`ActionId`) — stable command identity
+- `actor` (`ActorId`) — user/agent/service identity
+- `intent` (`ActionIntent`) — semantic category
+- `args` (`ActionArgs`) — fully-resolved concrete parameters
+- timestamps/logical metadata — ordering + observability
 
 Typical validation/normalization includes:
 
@@ -61,15 +96,56 @@ Typical validation/normalization includes:
 - feature/policy checks (allowed style changes, read-only regions)
 - idempotency tagging (request IDs, actor/session IDs)
 
-Recommended command envelope fields:
-
-- `action_id` (stable command ID)
-- `actor` (user/agent/service identity)
-- `intent_type` (semantic category)
-- `resolved_args` (fully concrete params)
-- `timestamp_ms`
-
 Actions should compile to one or more core operations.
+
+### Usage example: event → action envelope → transaction/log/apply
+
+```rust
+use canvist_core::{Document, EditorEvent, EventSource};
+use canvist_core::operation::{Operation, Transaction, LogEntry, OperationLog};
+
+struct VecEventSource {
+    events: std::vec::IntoIter<EditorEvent>,
+}
+
+impl EventSource for VecEventSource {
+    fn poll_event(&mut self) -> Option<EditorEvent> {
+        self.events.next()
+    }
+}
+
+let mut doc = Document::new();
+let mut source = VecEventSource {
+    events: vec![EditorEvent::TextInsert { text: "Hello".into() }].into_iter(),
+};
+
+// 1) Pull normalized event.
+let event = source.poll_event().expect("event");
+
+// 2) Build validated action envelope (app/runtime layer).
+let action_id = "act-1";
+let actor = "agent:demo";
+
+// 3) Compile action args into canonical operations/transaction.
+let tx = match event {
+    EditorEvent::TextInsert { text } => Transaction::new()
+        .push(Operation::insert(canvist_core::Position::zero(), text)),
+    _ => Transaction::new(),
+};
+
+// 4) Apply deterministically.
+tx.apply(&mut doc);
+
+// 5) Persist replay log envelope.
+let entry = LogEntry::new("op-1", 1, 1_700_000_000_000, actor, Operation::insert(canvist_core::Position::zero(), "Hello"));
+let log = OperationLog::new().push(entry);
+
+assert_eq!(action_id, "act-1");
+assert_eq!(doc.plain_text(), "Hello");
+assert_eq!(log.entries().len(), 1);
+```
+
+This concise envelope keeps UI-driven and agent-driven edits on the same deterministic path.
 
 ## Layer 3: Operation API (deterministic mutations)
 
@@ -91,12 +167,6 @@ let tx = Transaction::new()
 tx.apply(&mut doc);
 ```
 
-Contract:
-
-- operations are minimal and explicit (`Insert`, `Delete`, `Format`)
-- operation semantics are platform-independent
-- transaction ordering is deterministic
-
 ## Layer 4: Deterministic state transition (operation log)
 
 For replay, undo/redo, and agent workflows, wrap operations in immutable `LogEntry` envelopes and append them to an `OperationLog`.
@@ -110,35 +180,6 @@ Each `LogEntry` includes:
 - `preconditions`: expected pre-state (e.g. `state_hash`, `char_count`)
 - `recovery`: optional inverse operation or checkpoint reference
 
-```rust
-use canvist_core::{Document, Position};
-use canvist_core::operation::{
-    LogEntry, Operation, OperationLog, Preconditions, RecoveryRef,
-};
-
-let mut doc = Document::new();
-
-let pre = Preconditions {
-    expected_document_hash: Some(doc.state_hash()),
-    expected_char_count: Some(doc.char_count()),
-};
-
-let entry = LogEntry::new(
-    "op-1",
-    1,
-    1_700_000_000_000,
-    "agent:planner",
-    Operation::insert(Position::zero(), "Hello"),
-)
-.with_preconditions(pre)
-.with_recovery(RecoveryRef::Inverse(Operation::delete(
-    canvist_core::Selection::range(Position::zero(), Position::new(5)),
-)));
-
-let log = OperationLog::new().push(entry);
-log.replay(&mut doc).expect("preconditions hold");
-```
-
 Replay guarantees:
 
 - preconditions are checked before each operation
@@ -147,7 +188,7 @@ Replay guarantees:
 
 ## Layer 5: Render delta contract
 
-Rendering is derived from document state and layout, not from ad-hoc UI side effects.
+Rendering is derived from document state and layout, not ad-hoc UI side effects.
 
 Expected flow:
 
@@ -156,69 +197,4 @@ Expected flow:
 3. Emit render invalidation/delta to renderer backend
 4. Backend draws updated viewport
 
-For agent tooling, this means success criteria can include both:
-
-- state assertions (hash/text/selection)
-- render assertions (changed ranges/viewport repaint regions)
-
-## Style
-
-Styles are composable via a fluent builder pattern:
-
-```rust
-use canvist_core::Style;
-
-let heading = Style::new()
-    .bold()
-    .font_size(24.0)
-    .font_family("Inter")
-    .color(26, 26, 46, 255);
-```
-
-Styles can be merged — fields from the overlay take priority:
-
-```rust
-use canvist_core::Style;
-
-let base = Style::new().font_size(16.0).bold();
-let overlay = Style::new().italic().font_size(24.0);
-let merged = base.merge(&overlay);
-
-// merged is: bold + italic + font_size(24.0)
-```
-
-## Selection
-
-Selections model both cursors (collapsed) and highlighted ranges:
-
-```rust
-use canvist_core::{Position, Selection};
-
-// A blinking caret at position 5.
-let cursor = Selection::collapsed(Position::new(5));
-
-// A range from 2 to 10.
-let range = Selection::range(Position::new(2), Position::new(10));
-assert_eq!(range.len(), 8);
-```
-
-## Collaboration
-
-Real-time sync is built on Yjs CRDTs:
-
-```rust
-use canvist_core::collaboration::CollaborationSession;
-
-let peer_a = CollaborationSession::new();
-let peer_b = CollaborationSession::new();
-
-peer_a.insert(0, "Hello");
-
-// Sync A → B.
-let update = peer_a.encode_state();
-peer_b.apply_update(&update);
-
-assert_eq!(peer_b.text(), "Hello");
-```
-
-When integrating collaboration with operation logs, treat remote updates as inputs that must still pass through action/operation/state-transition contracts before local rendering.
+For agents, success criteria can include both state assertions (hash/text/selection) and render assertions (changed ranges/repaint regions).
