@@ -33,6 +33,7 @@ use serde::Serialize;
 
 use crate::Selection;
 use crate::Style;
+use crate::operation::StyleSnapshot;
 use crate::position::Position;
 
 /// A unique identifier for a node within a [`Document`].
@@ -309,6 +310,77 @@ impl Document {
 		}
 	}
 
+	/// Capture per-run style snapshots for all text runs overlapping a selection.
+	///
+	/// Each returned [`StyleSnapshot`] records the run's character range and
+	/// its current style *before* any format merge. This is used by
+	/// [`Operation::inverse`](crate::operation::Operation::inverse) to build a
+	/// [`FormatRestore`](crate::operation::Operation::FormatRestore) that can
+	/// undo a format operation with full fidelity.
+	#[must_use]
+	pub fn run_style_snapshots(&self, selection: Selection) -> Vec<StyleSnapshot> {
+		let start = selection.start().offset();
+		let end = selection.end().offset();
+
+		let mut snapshots = Vec::new();
+		let mut global_offset = 0usize;
+
+		for entry in &self.run_index {
+			let run_start = entry.start_char;
+			let run_end = entry.start_char + entry.len_chars;
+			global_offset = run_end;
+
+			if start >= run_end || end <= run_start {
+				continue;
+			}
+
+			if let Some(node) = self.nodes.get(&entry.run_id)
+				&& let NodeKind::TextRun { ref style, .. } = node.kind
+			{
+				snapshots.push(StyleSnapshot {
+					selection: Selection::range(Position::new(run_start), Position::new(run_end)),
+					style: style.clone(),
+				});
+			}
+		}
+
+		let _ = global_offset;
+		snapshots
+	}
+
+	/// Restore text-run styles from per-run snapshots.
+	///
+	/// Each [`StyleSnapshot`] identifies a run by its character range and
+	/// *replaces* (not merges) the run's style with the captured value.
+	/// This is the apply-side counterpart of
+	/// [`run_style_snapshots`](Self::run_style_snapshots).
+	pub fn restore_run_styles(&mut self, snapshots: &[StyleSnapshot]) {
+		for snapshot in snapshots {
+			let snap_start = snapshot.selection.start().offset();
+			let snap_end = snapshot.selection.end().offset();
+
+			// Find the run whose current range matches the snapshot range.
+			// In the normal undo path (inverse applied right after the forward
+			// op) the run boundaries haven't changed, so an exact match on
+			// start_char + len_chars is expected.
+			for entry in &self.run_index {
+				let run_start = entry.start_char;
+				let run_end = entry.start_char + entry.len_chars;
+
+				if run_start == snap_start && run_end == snap_end {
+					if let Some(node) = self.nodes.get_mut(&entry.run_id)
+						&& let NodeKind::TextRun {
+							style: ref mut s, ..
+						} = node.kind
+					{
+						*s = snapshot.style.clone();
+					}
+					break;
+				}
+			}
+		}
+	}
+
 	/// Replace document text content from plain text.
 	///
 	/// This resets the document tree to a single paragraph with one text run
@@ -342,6 +414,34 @@ impl Document {
 	#[must_use]
 	pub fn char_count(&self) -> usize {
 		self.plain_text().chars().count()
+	}
+
+	/// Return styled text runs in document order.
+	///
+	/// Each entry is `(text, style, global_char_offset, char_count)` for every
+	/// [`NodeKind::TextRun`] in the document.
+	#[must_use]
+	pub fn styled_runs(&self) -> Vec<(String, Style, usize, usize)> {
+		self.run_index
+			.iter()
+			.filter_map(|entry| {
+				let node = self.nodes.get(&entry.run_id)?;
+				if let NodeKind::TextRun {
+					ref text,
+					ref style,
+				} = node.kind
+				{
+					Some((
+						text.clone(),
+						style.clone(),
+						entry.start_char,
+						entry.len_chars,
+					))
+				} else {
+					None
+				}
+			})
+			.collect()
 	}
 
 	/// Compute a deterministic hash of semantic document state.

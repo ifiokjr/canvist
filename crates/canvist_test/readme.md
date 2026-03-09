@@ -4,14 +4,11 @@
 
 ## Current status
 
-This crate currently provides shared path/workspace helpers and smoke tests for
-core logic.
+This crate currently provides shared path/workspace helpers and smoke tests for core logic.
 
-- Browser automation is currently executed from `packages/canvist` via Deno +
-  Playwright (including CI workflow coverage).
+- Browser automation is currently executed from `packages/canvist` via Deno + Playwright (including CI workflow coverage).
 - `crates/canvist_test/tests/smoke.rs` contains non-browser smoke tests only.
-- Playwright-driven Rust crate tests are planned, but not implemented in this
-  crate yet.
+- Playwright-driven Rust crate tests are planned, but not implemented in this crate yet.
 
 ## Test coverage in this crate
 

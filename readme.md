@@ -31,13 +31,13 @@
 └──────────────┴──────────────┴───────────────┘
 ```
 
-| Crate                                       | Description                                                |
-| ------------------------------------------- | ---------------------------------------------------------- |
-| [`canvist`](./crates/canvist)               | Umbrella re-export crate                                   |
+| Crate                                       | Description                                                                              |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`canvist`](./crates/canvist)               | Umbrella re-export crate                                                                 |
 | [`canvist_core`](./crates/canvist_core)     | Document model, runtime/action envelope, deterministic operation log, CRDT collaboration |
-| [`canvist_render`](./crates/canvist_render) | Platform-agnostic rendering traits and text layout         |
-| [`canvist_wasm`](./crates/canvist_wasm)     | WebAssembly + Canvas2D rendering backend                   |
-| [`canvist_test`](./crates/canvist_test)     | Playwright browser integration tests                       |
+| [`canvist_render`](./crates/canvist_render) | Platform-agnostic rendering traits and text layout                                       |
+| [`canvist_wasm`](./crates/canvist_wasm)     | WebAssembly + Canvas2D rendering backend                                                 |
+| [`canvist_test`](./crates/canvist_test)     | Playwright browser integration tests                                                     |
 
 ## Runtime/API model
 

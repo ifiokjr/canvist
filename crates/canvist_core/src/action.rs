@@ -142,48 +142,62 @@ fn map_event(event: EditorEvent) -> (ActionIntent, ActionArgs) {
 		EditorEvent::TextInsert { text } => {
 			(ActionIntent::TextInsert, ActionArgs::TextInsert { text })
 		}
-		EditorEvent::TextDeleteBackward { count } => (
-			ActionIntent::TextDeleteBackward,
-			ActionArgs::TextDeleteBackward { count },
-		),
-		EditorEvent::TextDeleteForward { count } => (
-			ActionIntent::TextDeleteForward,
-			ActionArgs::TextDeleteForward { count },
-		),
+		EditorEvent::TextDeleteBackward { count } => {
+			(
+				ActionIntent::TextDeleteBackward,
+				ActionArgs::TextDeleteBackward { count },
+			)
+		}
+		EditorEvent::TextDeleteForward { count } => {
+			(
+				ActionIntent::TextDeleteForward,
+				ActionArgs::TextDeleteForward { count },
+			)
+		}
 		EditorEvent::KeyDown {
 			key,
 			modifiers,
 			repeat,
-		} => (
-			ActionIntent::KeyDown,
-			ActionArgs::KeyDown {
-				key,
-				modifiers,
-				repeat,
-			},
-		),
+		} => {
+			(
+				ActionIntent::KeyDown,
+				ActionArgs::KeyDown {
+					key,
+					modifiers,
+					repeat,
+				},
+			)
+		}
 		EditorEvent::KeyUp { key, modifiers } => {
 			(ActionIntent::KeyUp, ActionArgs::KeyUp { key, modifiers })
 		}
 		EditorEvent::Pointer(pointer) => (ActionIntent::Pointer, ActionArgs::Pointer(pointer)),
-		EditorEvent::SelectionSet { selection } => (
-			ActionIntent::SelectionSet,
-			ActionArgs::SelectionSet { selection },
-		),
-		EditorEvent::CursorMove { position, extend } => (
-			ActionIntent::CursorMove,
-			ActionArgs::CursorMove { position, extend },
-		),
-		EditorEvent::Composition { phase, text } => (
-			ActionIntent::Composition,
-			ActionArgs::Composition { phase, text },
-		),
+		EditorEvent::SelectionSet { selection } => {
+			(
+				ActionIntent::SelectionSet,
+				ActionArgs::SelectionSet { selection },
+			)
+		}
+		EditorEvent::CursorMove { position, extend } => {
+			(
+				ActionIntent::CursorMove,
+				ActionArgs::CursorMove { position, extend },
+			)
+		}
+		EditorEvent::Composition { phase, text } => {
+			(
+				ActionIntent::Composition,
+				ActionArgs::Composition { phase, text },
+			)
+		}
 		EditorEvent::ClipboardCopy => (ActionIntent::ClipboardCopy, ActionArgs::ClipboardCopy),
 		EditorEvent::ClipboardCut => (ActionIntent::ClipboardCut, ActionArgs::ClipboardCut),
-		EditorEvent::ClipboardPaste { text } => (
-			ActionIntent::ClipboardPaste,
-			ActionArgs::ClipboardPaste { text },
-		),
+		EditorEvent::ClipboardPaste { text } => {
+			(
+				ActionIntent::ClipboardPaste,
+				ActionArgs::ClipboardPaste { text },
+			)
+		}
 		EditorEvent::Focus => (ActionIntent::Focus, ActionArgs::Focus),
 		EditorEvent::Blur => (ActionIntent::Blur, ActionArgs::Blur),
 	}
@@ -199,10 +213,10 @@ fn validate_meta(
 	if meta.actor.trim().is_empty() {
 		return Err(ActionValidationError::EmptyActor);
 	}
-	if let Some(previous) = context.previous_logical_clock {
-		if meta.logical_clock <= previous {
-			return Err(ActionValidationError::NonMonotonicClock);
-		}
+	if let Some(previous) = context.previous_logical_clock
+		&& meta.logical_clock <= previous
+	{
+		return Err(ActionValidationError::NonMonotonicClock);
 	}
 	if meta.timestamp_ms < 0 {
 		return Err(ActionValidationError::NegativeTimestamp);

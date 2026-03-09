@@ -9,11 +9,14 @@ Deno.test({
 	fn: async () => {
 		const root = document.createElement("div");
 		document.body.appendChild(root);
-		root.innerHTML = `<canvas id="editor-main" width="640" height="240"></canvas>`;
+		root.innerHTML =
+			`<canvas id="editor-main" width="640" height="240"></canvas>`;
 
 		const editor = await createEditor("editor-main", { title: "Parity" });
 		const canvas = document.getElementById("editor-main") as HTMLCanvasElement;
-		const textarea = document.getElementById("canvist-input") as HTMLTextAreaElement;
+		const textarea = document.getElementById(
+			"canvist-input",
+		) as HTMLTextAreaElement;
 
 		// Direct API insertion.
 		editor.insertText("Hello");
@@ -28,7 +31,9 @@ Deno.test({
 				cancelable: true,
 			}),
 		);
-		textarea.dispatchEvent(new InputEvent("input", { data: "W", bubbles: true }));
+		textarea.dispatchEvent(
+			new InputEvent("input", { data: "W", bubbles: true }),
+		);
 		assertEquals(editor.text, "Hello\nW");
 
 		// Keyboard path: ArrowLeft then Backspace removes previous char.
@@ -89,7 +94,8 @@ Deno.test({
 	fn: async () => {
 		const root = document.createElement("div");
 		document.body.appendChild(root);
-		root.innerHTML = `<canvas id="editor-json" width="640" height="240"></canvas>`;
+		root.innerHTML =
+			`<canvas id="editor-json" width="640" height="240"></canvas>`;
 
 		const editor = await createEditor("editor-json");
 		editor.setTitle("Roundtrip Title");

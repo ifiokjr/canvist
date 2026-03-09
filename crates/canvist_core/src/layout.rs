@@ -87,11 +87,16 @@ pub struct ParagraphLayout {
 ///
 /// - `fragments` — ordered text fragments with styles
 /// - `config` — layout constraints
+/// - `measurer` — text measurement backend for accurate glyph widths
 ///
 /// # Returns
 ///
 /// A [`ParagraphLayout`] with computed line breaks and geometry.
-pub fn layout_paragraph(fragments: &[TextFragment<'_>], config: &LayoutConfig) -> ParagraphLayout {
+pub fn layout_paragraph(
+	fragments: &[TextFragment<'_>],
+	config: &LayoutConfig,
+	measurer: &dyn TextMeasure,
+) -> ParagraphLayout {
 	// Concatenate all fragment text for line-break analysis.
 	let full_text: String = fragments.iter().map(|f| f.text).collect();
 
@@ -108,9 +113,7 @@ pub fn layout_paragraph(fragments: &[TextFragment<'_>], config: &LayoutConfig) -
 		};
 	}
 
-	let avg_char_width = estimate_char_width(config);
 	let line_height = default_line_height(config);
-	let max_chars_per_line = (config.max_width / avg_char_width).floor().max(1.0) as usize;
 
 	let mut lines = Vec::new();
 	let mut line_start = 0usize;
@@ -120,28 +123,47 @@ pub fn layout_paragraph(fragments: &[TextFragment<'_>], config: &LayoutConfig) -
 	let total_chars = chars.len();
 
 	while line_start < total_chars {
-		let remaining = total_chars - line_start;
-		let tentative_end = line_start + remaining.min(max_chars_per_line);
+		// Walk forward, measuring character widths until we exceed max_width.
+		let mut line_width = 0.0f32;
+		let mut tentative_end = line_start;
+		let mut last_space = None;
+
+		while tentative_end < total_chars {
+			let ch = chars[tentative_end];
+			let style = fragment_style_at(fragments, tentative_end);
+			let char_width = measurer.measure_char(ch, style);
+
+			if line_width + char_width > config.max_width && tentative_end > line_start {
+				break;
+			}
+
+			line_width += char_width;
+			tentative_end += 1;
+
+			if ch == ' ' {
+				last_space = Some(tentative_end);
+			}
+		}
 
 		// Try to break at a space if we're not at the end.
 		let line_end = if tentative_end < total_chars {
-			// Look backward for a space to break at.
-			let mut break_at = tentative_end;
-			while break_at > line_start && chars[break_at - 1] != ' ' {
-				break_at -= 1;
-			}
-			if break_at == line_start {
-				// No space found — force break at max width.
-				tentative_end
-			} else {
+			if let Some(break_at) = last_space {
 				break_at
+			} else {
+				// No space found — force break at measured width.
+				tentative_end
 			}
 		} else {
 			tentative_end
 		};
 
-		let line_char_count = line_end - line_start;
-		let width = line_char_count as f32 * avg_char_width;
+		// Measure the final line width accurately.
+		let width = (line_start..line_end)
+			.map(|i| {
+				let style = fragment_style_at(fragments, i);
+				measurer.measure_char(chars[i], style)
+			})
+			.sum();
 
 		lines.push(LayoutLine {
 			start_offset: line_start,
@@ -161,13 +183,103 @@ pub fn layout_paragraph(fragments: &[TextFragment<'_>], config: &LayoutConfig) -
 	}
 }
 
-/// Estimate the average character width based on the default font size.
-fn estimate_char_width(config: &LayoutConfig) -> f32 {
-	let resolved = config.default_style.resolve();
-	// Rough heuristic: average character width ≈ 0.6 × font size.
-	resolved.font_size * 0.6
+/// Trait for measuring text width.
+///
+/// Backends like `Canvas2D` `measureText` or `HarfBuzz` implement this to
+/// provide accurate glyph widths to the layout engine.
+pub trait TextMeasure {
+	/// Measure the width of a single character in the given style.
+	fn measure_char(&self, ch: char, style: &Style) -> f32;
+
+	/// Measure the width of a string in the given style.
+	fn measure_text(&self, text: &str, style: &Style) -> f32 {
+		text.chars().map(|ch| self.measure_char(ch, style)).sum()
+	}
 }
 
+/// Heuristic text measurer using font size × 0.6 as average character width.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct HeuristicTextMeasure;
+
+impl TextMeasure for HeuristicTextMeasure {
+	fn measure_char(&self, _ch: char, style: &Style) -> f32 {
+		let resolved = style.resolve();
+		resolved.font_size * 0.6
+	}
+}
+
+/// Map a point (x, y) to a character offset within a laid-out paragraph.
+///
+/// Walks through the layout lines to find which line the y coordinate falls on,
+/// then walks character-by-character using the measurer to find the closest
+/// character offset.
+pub fn hit_test_point(
+	x: f32,
+	y: f32,
+	layout: &ParagraphLayout,
+	fragments: &[TextFragment<'_>],
+	measurer: &dyn TextMeasure,
+) -> usize {
+	if layout.lines.is_empty() {
+		return 0;
+	}
+
+	// Find which line the y coordinate falls on.
+	let line = layout
+		.lines
+		.iter()
+		.find(|l| y >= l.y && y < l.y + l.height)
+		.unwrap_or(layout.lines.last().unwrap());
+
+	let line_start = line.start_offset;
+	let line_end = line.end_offset;
+
+	if line_start >= line_end {
+		return line.start_offset;
+	}
+
+	// Build a flat list of (char, style) for the line range.
+	let styled_chars: Vec<(char, &Style)> = {
+		let full_text: String = fragments.iter().map(|f| f.text).collect();
+		let chars: Vec<char> = full_text.chars().collect();
+		(line_start..line_end)
+			.map(|i| {
+				let style = fragment_style_at(fragments, i);
+				(chars[i], style)
+			})
+			.collect()
+	};
+
+	// Walk character by character, accumulating widths.
+	let mut accumulated = 0.0f32;
+	for (i, &(ch, style)) in styled_chars.iter().enumerate() {
+		let char_width = measurer.measure_char(ch, style);
+		let midpoint = accumulated + char_width * 0.5;
+
+		if x < midpoint {
+			return line_start + i;
+		}
+
+		accumulated += char_width;
+	}
+
+	line_end
+}
+
+/// Find the style for a character at a given offset within the fragments.
+fn fragment_style_at<'a>(fragments: &[TextFragment<'a>], offset: usize) -> &'a Style {
+	let mut pos = 0;
+	for frag in fragments {
+		let len = frag.text.chars().count();
+		if offset < pos + len {
+			return frag.style;
+		}
+		pos += len;
+	}
+	// Fallback to last fragment's style or a static default.
+	static DEFAULT: std::sync::LazyLock<Style> = std::sync::LazyLock::new(Style::new);
+	fragments.last().map_or(&*DEFAULT, |f| f.style)
+}
 /// Compute the default line height from the config.
 fn default_line_height(config: &LayoutConfig) -> f32 {
 	let resolved = config.default_style.resolve();
@@ -180,7 +292,7 @@ mod tests {
 
 	#[test]
 	fn empty_text_produces_one_line() {
-		let layout = layout_paragraph(&[], &LayoutConfig::default());
+		let layout = layout_paragraph(&[], &LayoutConfig::default(), &HeuristicTextMeasure);
 		assert_eq!(layout.lines.len(), 1);
 		assert_eq!(layout.lines[0].start_offset, 0);
 		assert_eq!(layout.lines[0].end_offset, 0);
@@ -194,7 +306,7 @@ mod tests {
 			style: &style,
 		}];
 		let config = LayoutConfig::new(800.0);
-		let layout = layout_paragraph(&fragments, &config);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
 
 		assert_eq!(layout.lines.len(), 1);
 		assert_eq!(layout.lines[0].start_offset, 0);
@@ -211,7 +323,7 @@ mod tests {
 		}];
 		// Narrow width to force wrapping.
 		let config = LayoutConfig::new(100.0);
-		let layout = layout_paragraph(&fragments, &config);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
 
 		assert!(layout.lines.len() > 1, "expected multiple lines, got 1");
 		assert!(layout.total_height > 0.0);
@@ -231,7 +343,7 @@ mod tests {
 			style: &style,
 		}];
 		let config = LayoutConfig::new(200.0);
-		let layout = layout_paragraph(&fragments, &config);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
 
 		for window in layout.lines.windows(2) {
 			assert!(window[1].y > window[0].y);

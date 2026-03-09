@@ -5,6 +5,7 @@
 
 use canvist_core::Color;
 use canvist_core::Style;
+use canvist_core::layout::TextMeasure;
 use canvist_render::Canvas;
 use canvist_render::Rect;
 use canvist_render::Renderer;
@@ -28,6 +29,51 @@ impl Canvas2dRenderer {
 			ctx,
 			viewport: Viewport::new(width, height),
 		}
+	}
+
+	/// Returns a reference to the underlying `CanvasRenderingContext2d`.
+	pub fn ctx(&self) -> &CanvasRenderingContext2d {
+		&self.ctx
+	}
+
+	/// Build a CSS font string from a [`Style`], matching the format used in
+	/// [`Canvas::draw_text`].
+	fn css_font(style: &Style) -> String {
+		let resolved = style.resolve();
+		let weight = if resolved.font_weight.as_u16() >= 700 {
+			"bold "
+		} else {
+			""
+		};
+		let italic = if resolved.italic { "italic " } else { "" };
+		format!(
+			"{italic}{weight}{}px {}",
+			resolved.font_size, resolved.font_family
+		)
+	}
+
+	/// Measure the width of `text` rendered in the given `style` using the
+	/// Canvas 2D `measureText` API.
+	pub fn measure_text(&self, text: &str, style: &Style) -> f32 {
+		self.ctx.set_font(&Self::css_font(style));
+		self.ctx
+			.measure_text(text)
+			.map(|m| m.width() as f32)
+			.unwrap_or(0.0)
+	}
+}
+
+impl TextMeasure for Canvas2dRenderer {
+	fn measure_char(&self, ch: char, style: &Style) -> f32 {
+		let mut buf = [0u8; 4];
+		let s = ch.encode_utf8(&mut buf);
+		self.measure_text(s, style)
+	}
+
+	fn measure_text(&self, text: &str, style: &Style) -> f32 {
+		// Delegate to the inherent method which uses the Canvas2D measureText
+		// API for accurate glyph widths.
+		Canvas2dRenderer::measure_text(self, text, style)
 	}
 }
 

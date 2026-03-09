@@ -28,6 +28,18 @@ use crate::document::Node;
 use crate::document::NodeId;
 use crate::position::Position;
 
+/// A snapshot of a single text-run's style before a format operation.
+///
+/// Used by [`Operation::FormatRestore`] to capture the exact pre-format style
+/// of each affected run so that undo can restore it perfectly.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StyleSnapshot {
+	/// Character range of the run (global offsets).
+	pub selection: Selection,
+	/// The style that was present *before* the format was applied.
+	pub style: Style,
+}
+
 /// A single, atomic edit operation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Operation {
@@ -51,6 +63,28 @@ pub enum Operation {
 		selection: Selection,
 		/// The style to apply.
 		style: Style,
+	},
+
+	/// Restore per-run styles to their pre-format state.
+	///
+	/// This is the inverse of a [`Format`](Operation::Format) operation. Each
+	/// [`StyleSnapshot`] captures one text-run's exact style before the format
+	/// merge was applied. Applying this operation *replaces* (not merges) each
+	/// affected run's style with the captured snapshot.
+	///
+	/// The `original_selection` field records the selection that the forward
+	/// `Format` targeted, which is useful for computing the inverse of the
+	/// inverse (i.e. the re-do).
+	FormatRestore {
+		/// Per-run style snapshots to restore.
+		snapshots: Vec<StyleSnapshot>,
+		/// The style that was applied in the forward `Format` operation.
+		///
+		/// Kept so that `inverse()` of a `FormatRestore` can reconstruct the
+		/// original `Format`.
+		original_selection: Selection,
+		/// The style that was applied in the forward `Format` operation.
+		original_style: Style,
 	},
 }
 
@@ -252,7 +286,7 @@ impl Operation {
 				let end = selection.end().offset() as u32;
 				Some((start, end.saturating_sub(start), String::new()))
 			}
-			Self::Format { .. } => None,
+			Self::Format { .. } | Self::FormatRestore { .. } => None,
 		}
 	}
 
@@ -288,6 +322,76 @@ impl Operation {
 			}
 			Self::Format { selection, style } => {
 				doc.apply_style(*selection, style);
+			}
+			Self::FormatRestore { snapshots, .. } => {
+				doc.restore_run_styles(snapshots);
+			}
+		}
+	}
+
+	/// Compute the inverse of this operation against the current document state.
+	///
+	/// The inverse, when applied after this operation, restores the document to
+	/// its state before this operation was applied.
+	///
+	/// **Important:** This must be called *before* applying the operation,
+	/// because it reads the current document state to capture any text that
+	/// would be deleted or any styles that would be overwritten.
+	///
+	/// # Operation inverses
+	///
+	/// | Forward | Inverse |
+	/// |---------|---------|
+	/// | `Insert(pos, text)` | `Delete(selection covering inserted chars)` |
+	/// | `Delete(selection)` | `Insert(start, captured_deleted_text)` |
+	/// | `Format(sel, style)` | `FormatRestore(per-run style snapshots)` |
+	/// | `FormatRestore(snapshots, sel, style)` | `Format(sel, style)` |
+	#[must_use]
+	pub fn inverse(&self, doc: &Document) -> Self {
+		match self {
+			Self::Insert { position, text } => {
+				// The inverse of inserting N chars at `position` is deleting
+				// the range [position, position + N).
+				let char_count = text.chars().count();
+				let start = *position;
+				let end = Position::new(start.offset() + char_count);
+				Self::Delete {
+					selection: Selection::range(start, end),
+				}
+			}
+			Self::Delete { selection } => {
+				// The inverse of deleting a range is re-inserting the deleted
+				// text at the start of that range. We capture the text from the
+				// document *before* the delete is applied.
+				let start = selection.start().offset();
+				let end = selection.end().offset();
+				let plain = doc.plain_text();
+				let deleted_text: String = plain.chars().skip(start).take(end - start).collect();
+				Self::Insert {
+					position: selection.start(),
+					text: deleted_text,
+				}
+			}
+			Self::Format { selection, style } => {
+				// Snapshot every affected text-run's style before the merge so
+				// that undo can restore them exactly.
+				let snapshots = doc.run_style_snapshots(*selection);
+				Self::FormatRestore {
+					snapshots,
+					original_selection: *selection,
+					original_style: style.clone(),
+				}
+			}
+			Self::FormatRestore {
+				original_selection,
+				original_style,
+				..
+			} => {
+				// The inverse of a restore is re-applying the original format.
+				Self::Format {
+					selection: *original_selection,
+					style: original_style.clone(),
+				}
 			}
 		}
 	}
@@ -422,6 +526,54 @@ impl Transaction {
 	pub fn operations(&self) -> &[Operation] {
 		&self.operations
 	}
+
+	/// Compute the inverse of this transaction against the current document state.
+	///
+	/// Each operation's inverse is computed against a progressively-mutated
+	/// clone of the document (so that each inverse sees the state the forward
+	/// operation would see), and the resulting inverses are collected in
+	/// **reverse** order. Applying the returned transaction after the forward
+	/// transaction restores the original document state.
+	///
+	/// # Example
+	///
+	/// ```
+	/// use canvist_core::Document;
+	/// use canvist_core::Position;
+	/// use canvist_core::operation::{Operation, Transaction};
+	///
+	/// let mut doc = Document::new();
+	/// doc.insert_text(Position::zero(), "Hello");
+	///
+	/// let tx = Transaction::new()
+	///     .push(Operation::insert(Position::new(5), " world"));
+	///
+	/// let inverse = tx.inverse(&doc);
+	/// tx.apply(&mut doc);
+	/// assert_eq!(doc.plain_text(), "Hello world");
+	///
+	/// inverse.apply(&mut doc);
+	/// assert_eq!(doc.plain_text(), "Hello");
+	/// ```
+	#[must_use]
+	pub fn inverse(&self, doc: &Document) -> Self {
+		let mut scratch = doc.clone();
+		let mut inverses = Vec::with_capacity(self.operations.len());
+
+		for op in &self.operations {
+			// Capture the inverse *before* applying, so it sees the correct
+			// pre-operation state.
+			inverses.push(op.inverse(&scratch));
+			op.apply(&mut scratch);
+		}
+
+		// Reverse so that the last forward op is undone first.
+		inverses.reverse();
+
+		Self {
+			operations: inverses,
+		}
+	}
 }
 
 #[cfg(test)]
@@ -531,5 +683,266 @@ mod tests {
 				op_id: "op-2".to_string(),
 			})
 		);
+	}
+
+	#[test]
+	fn inverse_of_insert_is_delete() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+
+		let op = Operation::insert(Position::new(5), " world");
+		let inv = op.inverse(&doc);
+		op.apply(&mut doc);
+
+		assert_eq!(doc.plain_text(), "Hello world");
+
+		// The inverse should be a Delete covering positions 5..11.
+		assert_eq!(
+			inv,
+			Operation::delete(Selection::range(Position::new(5), Position::new(11)))
+		);
+
+		inv.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "Hello");
+	}
+
+	#[test]
+	fn inverse_of_delete_is_insert() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello, world!");
+
+		let sel = Selection::range(Position::new(5), Position::new(7));
+		let op = Operation::delete(sel);
+		let inv = op.inverse(&doc);
+
+		op.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "Helloworld!");
+
+		// The inverse should re-insert the deleted ", " at position 5.
+		assert_eq!(inv, Operation::insert(Position::new(5), ", "));
+
+		inv.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "Hello, world!");
+	}
+
+	#[test]
+	fn inverse_of_insert_at_beginning() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "world");
+
+		let op = Operation::insert(Position::zero(), "Hello ");
+		let inv = op.inverse(&doc);
+		op.apply(&mut doc);
+
+		assert_eq!(doc.plain_text(), "Hello world");
+
+		inv.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "world");
+	}
+
+	#[test]
+	fn inverse_of_delete_entire_content() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Gone");
+
+		let op = Operation::delete(Selection::range(Position::zero(), Position::new(4)));
+		let inv = op.inverse(&doc);
+		op.apply(&mut doc);
+
+		assert_eq!(doc.plain_text(), "");
+
+		inv.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "Gone");
+	}
+
+	#[test]
+	fn inverse_of_format_produces_format_restore() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Bold me");
+
+		let sel = Selection::range(Position::zero(), Position::new(7));
+		let style = Style::new().bold();
+		let op = Operation::format(sel, style.clone());
+		let inv = op.inverse(&doc);
+
+		// Inverse of format is a FormatRestore with per-run style snapshots.
+		assert!(matches!(inv, Operation::FormatRestore { .. }));
+		if let Operation::FormatRestore {
+			snapshots,
+			original_selection,
+			original_style,
+		} = &inv
+		{
+			assert_eq!(*original_selection, sel);
+			assert_eq!(*original_style, style);
+			// There's one text run spanning the entire text.
+			assert_eq!(snapshots.len(), 1);
+			// The snapshot captured the pre-format style (empty/default).
+			assert_eq!(snapshots[0].style, Style::new());
+			assert_eq!(
+				snapshots[0].selection,
+				Selection::range(Position::zero(), Position::new(7))
+			);
+		}
+	}
+
+	#[test]
+	fn format_inverse_restores_original_style() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Styled");
+
+		// First apply italic.
+		let sel = Selection::range(Position::zero(), Position::new(6));
+		let italic_style = Style::new().italic();
+		doc.apply_style(sel, &italic_style);
+
+		// Now bold on top.
+		let bold_op = Operation::format(sel, Style::new().bold());
+		let inv = bold_op.inverse(&doc);
+
+		// Apply bold.
+		bold_op.apply(&mut doc);
+
+		// The run should now be italic + bold.
+		let runs = doc.styled_runs();
+		assert_eq!(runs.len(), 1);
+		assert_eq!(runs[0].1.italic, Some(true));
+		assert_eq!(runs[0].1.font_weight, Some(crate::style::FontWeight::Bold));
+
+		// Apply inverse to undo the bold.
+		inv.apply(&mut doc);
+
+		// The run should be back to italic only (no bold).
+		let runs = doc.styled_runs();
+		assert_eq!(runs.len(), 1);
+		assert_eq!(runs[0].1.italic, Some(true));
+		assert_eq!(runs[0].1.font_weight, None);
+	}
+
+	#[test]
+	fn format_inverse_roundtrip_undo_redo() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+
+		let sel = Selection::range(Position::zero(), Position::new(5));
+		let style = Style::new().bold().font_size(24.0);
+		let op = Operation::format(sel, style);
+
+		// Capture inverse (undo).
+		let undo = op.inverse(&doc);
+
+		// Apply format.
+		op.apply(&mut doc);
+
+		// Capture redo from the undo inverse.
+		let redo = undo.inverse(&doc);
+
+		// Undo.
+		undo.apply(&mut doc);
+		let runs = doc.styled_runs();
+		assert_eq!(runs[0].1.font_weight, None);
+		assert_eq!(runs[0].1.font_size, None);
+
+		// Redo (re-apply format via inverse of FormatRestore).
+		redo.apply(&mut doc);
+		let runs = doc.styled_runs();
+		assert_eq!(runs[0].1.font_weight, Some(crate::style::FontWeight::Bold));
+		assert_eq!(runs[0].1.font_size, Some(24.0));
+	}
+
+	#[test]
+	fn format_inverse_with_transaction() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello world");
+
+		// Apply bold to first 5 chars and italic to next 6.
+		let tx = Transaction::new()
+			.push(Operation::format(
+				Selection::range(Position::zero(), Position::new(5)),
+				Style::new().bold(),
+			))
+			.push(Operation::format(
+				Selection::range(Position::new(5), Position::new(11)),
+				Style::new().italic(),
+			));
+
+		let inv = tx.inverse(&doc);
+		tx.apply(&mut doc);
+
+		// Verify styles applied.
+		let runs = doc.styled_runs();
+		assert_eq!(runs.len(), 1); // single run in current model
+		assert_eq!(runs[0].1.font_weight, Some(crate::style::FontWeight::Bold));
+		assert_eq!(runs[0].1.italic, Some(true));
+
+		// Undo the transaction.
+		inv.apply(&mut doc);
+
+		// Styles should be restored to default.
+		let runs = doc.styled_runs();
+		assert_eq!(runs[0].1.font_weight, None);
+		assert_eq!(runs[0].1.italic, None);
+	}
+
+	#[test]
+	fn transaction_inverse_restores_state() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+
+		let tx = Transaction::new()
+			.push(Operation::insert(Position::new(5), " beautiful"))
+			.push(Operation::insert(Position::new(15), " world"));
+
+		let inv = tx.inverse(&doc);
+		tx.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "Hello beautiful world");
+
+		inv.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "Hello");
+	}
+
+	#[test]
+	fn transaction_inverse_with_delete_and_insert() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello, world!");
+
+		// Replace ", world" with " there"
+		let tx = Transaction::new()
+			.push(Operation::delete(Selection::range(
+				Position::new(5),
+				Position::new(12),
+			)))
+			.push(Operation::insert(Position::new(5), " there"));
+
+		let inv = tx.inverse(&doc);
+		tx.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "Hello there!");
+
+		inv.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "Hello, world!");
+	}
+
+	#[test]
+	fn transaction_inverse_empty() {
+		let doc = Document::new();
+		let tx = Transaction::new();
+		let inv = tx.inverse(&doc);
+
+		assert!(inv.is_empty());
+	}
+
+	#[test]
+	fn inverse_roundtrip_with_unicode() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "café");
+
+		let op = Operation::delete(Selection::range(Position::new(2), Position::new(4)));
+		let inv = op.inverse(&doc);
+		op.apply(&mut doc);
+
+		assert_eq!(doc.plain_text(), "ca");
+
+		inv.apply(&mut doc);
+		assert_eq!(doc.plain_text(), "café");
 	}
 }

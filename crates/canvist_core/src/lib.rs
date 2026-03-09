@@ -73,6 +73,7 @@ pub use extension::TransactionHook;
 pub use extension::TransactionMeta;
 pub use operation::Change;
 pub use operation::Patch;
+pub use operation::StyleSnapshot;
 pub use operation::Transaction;
 pub use position::Position;
 pub use runtime::EditorRuntime;

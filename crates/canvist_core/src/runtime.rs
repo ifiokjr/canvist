@@ -38,6 +38,10 @@ pub struct EditorRuntime {
 	actor: String,
 	action_seq: u64,
 	timestamp_ms: u64,
+	undo_stack: Vec<Transaction>,
+	redo_stack: Vec<Transaction>,
+	coalesce_timeout_ms: u64,
+	force_new_group: bool,
 }
 
 impl EditorRuntime {
@@ -52,6 +56,7 @@ impl EditorRuntime {
 	) -> Result<(), crate::operation::ReplayError> {
 		self.op_log.replay(target)
 	}
+
 	#[must_use]
 	pub fn new(document: Document, selection: Selection, actor: impl Into<String>) -> Self {
 		Self {
@@ -63,6 +68,10 @@ impl EditorRuntime {
 			actor: actor.into(),
 			action_seq: 0,
 			timestamp_ms: 0,
+			undo_stack: Vec::new(),
+			redo_stack: Vec::new(),
+			coalesce_timeout_ms: 500,
+			force_new_group: false,
 		}
 	}
 
@@ -87,6 +96,94 @@ impl EditorRuntime {
 
 	pub fn apply_operation(&mut self, operation: Operation) {
 		self.apply_transaction(Transaction::new().push(operation));
+	}
+
+	/// Undo the most recent transaction.
+	///
+	/// Pops the inverse transaction from the undo stack, computes *its*
+	/// inverse (the forward redo transaction) against the current document,
+	/// applies the inverse to restore the previous state, and pushes the
+	/// forward transaction onto the redo stack.
+	///
+	/// Returns `true` if an undo was performed, `false` if the undo stack
+	/// was empty.
+	pub fn undo(&mut self) -> bool {
+		let Some(inverse_tx) = self.undo_stack.pop() else {
+			return false;
+		};
+
+		// The redo entry is the inverse of the inverse (i.e. the original
+		// forward transaction) computed against the *current* document state.
+		let redo_tx = inverse_tx.inverse(&self.document);
+		inverse_tx.apply(&mut self.document);
+		self.redo_stack.push(redo_tx);
+		self.selection = Selection::collapsed(Position::new(self.document.char_count()));
+		self.force_new_group = true;
+		true
+	}
+
+	/// Redo the most recently undone transaction.
+	///
+	/// Pops the forward transaction from the redo stack, computes its
+	/// inverse against the current document, applies the forward transaction,
+	/// and pushes the inverse back onto the undo stack.
+	///
+	/// Returns `true` if a redo was performed, `false` if the redo stack
+	/// was empty.
+	pub fn redo(&mut self) -> bool {
+		let Some(forward_tx) = self.redo_stack.pop() else {
+			return false;
+		};
+
+		let inverse_tx = forward_tx.inverse(&self.document);
+		forward_tx.apply(&mut self.document);
+		self.undo_stack.push(inverse_tx);
+		self.selection = Selection::collapsed(Position::new(self.document.char_count()));
+		self.force_new_group = true;
+		true
+	}
+
+	/// Whether there are entries on the undo stack.
+	#[must_use]
+	pub fn can_undo(&self) -> bool {
+		!self.undo_stack.is_empty()
+	}
+
+	/// Whether there are entries on the redo stack.
+	#[must_use]
+	pub fn can_redo(&self) -> bool {
+		!self.redo_stack.is_empty()
+	}
+
+	/// Force the next edit to start a new undo group.
+	///
+	/// Call this before programmatic (non-user) edits or after a focus
+	/// change so that the next keystroke doesn't coalesce with the
+	/// previous undo entry.
+	pub fn break_undo_coalescing(&mut self) {
+		self.force_new_group = true;
+	}
+
+	/// Set the undo-coalescing timeout in milliseconds.
+	///
+	/// Single-character inserts that arrive within this interval are merged
+	/// into a single undo entry. The default is 500 ms.
+	pub fn set_coalesce_timeout_ms(&mut self, ms: u64) {
+		self.coalesce_timeout_ms = ms;
+	}
+
+	/// Return the current undo-coalescing timeout in milliseconds.
+	#[must_use]
+	pub fn coalesce_timeout_ms(&self) -> u64 {
+		self.coalesce_timeout_ms
+	}
+
+	/// Set the current wall-clock time in milliseconds since epoch.
+	///
+	/// Called by the host (e.g. JS `Date.now()`) before user actions so the
+	/// runtime can measure real-time gaps for undo coalescing.
+	pub fn set_now_ms(&mut self, now: u64) {
+		self.timestamp_ms = now;
 	}
 
 	#[must_use]
@@ -150,6 +247,7 @@ impl EditorRuntime {
 		.map_err(RuntimeError::InvalidAction)
 	}
 
+	#[allow(clippy::needless_pass_by_value)]
 	fn dispatch(
 		&mut self,
 		event: EditorEvent,
@@ -198,7 +296,7 @@ impl EditorRuntime {
 		let selection = self.clamped_selection(doc_chars);
 		match &action.args {
 			ActionArgs::TextInsert { text } | ActionArgs::ClipboardPaste { text } => {
-				Some(self.replace_selection_with_text(selection, text.clone()))
+				Some(Self::replace_selection_with_text(selection, text.clone()))
 			}
 			ActionArgs::TextDeleteBackward { count } => {
 				if !selection.is_collapsed() {
@@ -228,7 +326,7 @@ impl EditorRuntime {
 		Selection::range(Position::new(start), Position::new(end))
 	}
 
-	fn replace_selection_with_text(&self, selection: Selection, text: String) -> Transaction {
+	fn replace_selection_with_text(selection: Selection, text: String) -> Transaction {
 		let mut tx = Transaction::new();
 		if !selection.is_collapsed() {
 			tx = tx.push(Operation::delete(selection));
@@ -250,6 +348,9 @@ impl EditorRuntime {
 		} else {
 			tx
 		};
+
+		// Compute the inverse *before* applying so it captures pre-apply state.
+		let inverse = tx.inverse(&self.document);
 
 		let mut replay_shadow = self.document.clone();
 		for (index, op) in tx.operations().iter().enumerate() {
@@ -273,6 +374,13 @@ impl EditorRuntime {
 		if let Some(runtime) = &self.extensions {
 			runtime.run_after_hooks(&self.document, &crate::TransactionMeta::new("runtime"), &tx);
 		}
+
+		// Push the inverse onto the undo stack so that calling `undo()` will
+		// apply it to restore the previous document state. The forward
+		// transaction is pushed to the redo stack when an undo is performed.
+		self.undo_stack.push(inverse);
+		self.redo_stack.clear();
+		self.force_new_group = false;
 
 		self.selection = Selection::collapsed(Position::new(self.document.char_count()));
 	}
