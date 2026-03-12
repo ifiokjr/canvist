@@ -134,6 +134,16 @@
         editor = CanvistEditor.create("editor-canvas");
         editor.render();
 
+        // --- Caret blink timer ---
+        let caretVisible = true;
+        setInterval(() => {
+          caretVisible = !caretVisible;
+          editor.set_caret_visible(caretVisible);
+          try {
+            editor.render();
+          } catch {}
+        }, 530);
+
         // --- Hidden textarea for keyboard capture ---
         const canvas = document.getElementById("editor-canvas");
         const textarea = document.createElement("textarea");
@@ -203,22 +213,15 @@
           clearSelection();
         }
 
-        function charOffsetFromClientX(clientX) {
+        function charOffsetFromMouse(e) {
           const rect = canvas.getBoundingClientRect();
-          const localX = Math.max(0, clientX - rect.left - 20);
-          const ctx = canvas.getContext("2d");
-          if (!ctx) return 0;
-          ctx.font = "16px sans-serif";
-          const text = editor.plain_text();
-          let prevWidth = 0;
-          for (let i = 1; i <= text.length; i += 1) {
-            const width = ctx.measureText(text.slice(0, i)).width;
-            if (width >= localX) {
-              return localX - prevWidth <= width - localX ? i - 1 : i;
-            }
-            prevWidth = width;
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          try {
+            return editor.hit_test(x, y);
+          } catch {
+            return cursorOffset;
           }
-          return text.length;
         }
 
         function syncA11yState() {
@@ -235,41 +238,20 @@
 
         function renderFrame() {
           try {
+            caretVisible = true;
+            editor.set_caret_visible(true);
+            editor.set_now_ms(Date.now());
             editor.render();
-            const ctx = canvas.getContext("2d");
-            if (ctx) {
-              const text = editor.plain_text();
-              ctx.font = "16px sans-serif";
-              const selection = normalizedSelection();
-              if (selection) {
-                const startWidth =
-                  ctx.measureText(text.slice(0, selection.start)).width;
-                const endWidth =
-                  ctx.measureText(text.slice(0, selection.end)).width;
-                ctx.fillStyle = "rgba(66, 133, 244, 0.28)";
-                ctx.fillRect(
-                  20 + startWidth,
-                  24,
-                  Math.max(1, endWidth - startWidth),
-                  20,
-                );
-              }
-
-              if (!selection) {
-                const before = text.slice(0, cursorOffset);
-                const m = ctx.measureText(before);
-                ctx.fillStyle = "black";
-                ctx.fillRect(20 + m.width, 24, 1.5, 20);
-              }
-            }
             syncA11yState();
-          } catch (e) {}
+          } catch (e) {
+            console.error("render error:", e);
+          }
         }
 
         canvas.addEventListener("mousedown", (e) => {
           isDraggingSelection = true;
           didDragSelection = false;
-          const offset = charOffsetFromClientX(e.clientX);
+          const offset = charOffsetFromMouse(e);
           setSelection(offset, offset);
           textarea.focus();
           renderFrame();
@@ -278,7 +260,7 @@
 
         canvas.addEventListener("mousemove", (e) => {
           if (!isDraggingSelection) return;
-          const offset = charOffsetFromClientX(e.clientX);
+          const offset = charOffsetFromMouse(e);
           if (offset !== cursorOffset) {
             didDragSelection = true;
           }
@@ -289,7 +271,7 @@
         window.addEventListener("mouseup", (e) => {
           if (!isDraggingSelection) return;
           isDraggingSelection = false;
-          const offset = charOffsetFromClientX(e.clientX);
+          const offset = charOffsetFromMouse(e);
           setSelection(selectionAnchor, offset);
           renderFrame();
         });
@@ -300,7 +282,7 @@
             didDragSelection = false;
             return;
           }
-          const offset = charOffsetFromClientX(e.clientX);
+          const offset = charOffsetFromMouse(e);
           cursorOffset = offset;
           clearSelection();
           renderFrame();

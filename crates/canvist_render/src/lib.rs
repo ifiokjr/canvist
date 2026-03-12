@@ -54,5 +54,6 @@ pub use canvas::Canvas;
 pub use canvas::Rect;
 pub use canvas::Size;
 pub use font::FontCache;
+pub use font::FontdueMeasure;
 pub use renderer::Renderer;
 pub use viewport::Viewport;

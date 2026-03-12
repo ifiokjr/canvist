@@ -391,12 +391,14 @@ for (const browserName of BROWSERS) {
 					const checksumDelta = Math.abs(
 						afterTyping.checksum - afterRerender.checksum,
 					);
+					// Allow for caret blink jitter (the 530ms blink timer can
+					// toggle caret visibility between the two snapshots).
 					assert(
-						nonWhiteDelta <= 40,
+						nonWhiteDelta <= 80,
 						`expected stable non-white pixel count, delta=${nonWhiteDelta}`,
 					);
 					assert(
-						checksumDelta <= 2_000_000,
+						checksumDelta <= 5_000_000,
 						`expected stable canvas checksum, delta=${checksumDelta}`,
 					);
 				} finally {

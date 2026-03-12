@@ -90,21 +90,24 @@ impl Canvas for Canvas2dRenderer {
 
 	fn draw_text(&mut self, x: f32, y: f32, text: &str, style: &Style) {
 		let resolved = style.resolve();
-
-		let weight = if resolved.font_weight.as_u16() >= 700 {
-			"bold "
-		} else {
-			""
-		};
-		let italic = if resolved.italic { "italic " } else { "" };
-		let font = format!(
-			"{italic}{weight}{}px {}",
-			resolved.font_size, resolved.font_family
-		);
+		let font = Self::css_font(style);
 
 		self.ctx.set_font(&font);
 		self.ctx.set_fill_style_str(&resolved.color.to_css());
-		let _ = self.ctx.fill_text(text, f64::from(x), f64::from(y));
+
+		if resolved.letter_spacing.abs() > f32::EPSILON {
+			// Draw character-by-character with custom letter spacing.
+			let mut cx = f64::from(x);
+			for ch in text.chars() {
+				let mut buf = [0u8; 4];
+				let s = ch.encode_utf8(&mut buf);
+				let _ = self.ctx.fill_text(s, cx, f64::from(y));
+				let w = self.ctx.measure_text(s).map(|m| m.width()).unwrap_or(0.0);
+				cx += w + f64::from(resolved.letter_spacing);
+			}
+		} else {
+			let _ = self.ctx.fill_text(text, f64::from(x), f64::from(y));
+		}
 	}
 
 	fn clear(&mut self, color: Color) {
