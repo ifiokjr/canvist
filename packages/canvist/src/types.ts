@@ -190,6 +190,50 @@ export interface CanvistEditor {
 		caseSensitive?: boolean,
 	): number;
 
+	// ── Scroll ─────────────────────────────────────────────────────
+
+	/** Current vertical scroll offset in logical pixels. */
+	readonly scrollY: number;
+
+	/** Set the vertical scroll offset (clamped to valid range). */
+	setScrollY(y: number): void;
+
+	/** Scroll by a delta (positive = down, negative = up). */
+	scrollBy(deltaY: number): void;
+
+	/** Total content height in logical pixels (computed from layout). */
+	readonly contentHeight: number;
+
+	/** Y position and height of the caret line: `[y, height]`. */
+	readonly caretY: [number, number];
+
+	// ── Focus ───────────────────────────────────────────────────────
+
+	/** Whether the editor currently has focus. */
+	readonly focused: boolean;
+
+	/** Set the focus state (affects caret/selection rendering). */
+	setFocused(focused: boolean): void;
+
+	// ── Statistics ──────────────────────────────────────────────────
+
+	/** Number of words (whitespace-separated) in the document. */
+	readonly wordCount: number;
+
+	/** Number of visual lines (computed from layout). */
+	readonly lineCount: number;
+
+	/** 1-based visual line number the caret is on. */
+	readonly cursorLine: number;
+
+	/** 1-based column (character position) within the visual line. */
+	readonly cursorColumn: number;
+
+	// ── Size ────────────────────────────────────────────────────────
+
+	/** Set the logical (CSS) dimensions. */
+	setSize(width: number, height: number): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

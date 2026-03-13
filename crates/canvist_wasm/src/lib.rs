@@ -71,6 +71,7 @@ impl LayoutConstants {
 		let layout_config = LayoutConfig {
 			max_width: content_width,
 			default_style: default_style.clone(),
+			text_align: canvist_core::style::TextAlign::Left,
 		};
 
 		Self {
@@ -324,6 +325,10 @@ pub struct CanvistEditor {
 	width: f32,
 	/// Cached canvas height in logical pixels.
 	height: f32,
+	/// Vertical scroll offset in logical pixels.
+	scroll_y: f32,
+	/// Whether the editor currently has focus.
+	focused: bool,
 }
 
 #[wasm_bindgen]
@@ -358,6 +363,8 @@ impl CanvistEditor {
 			caret_visible: true,
 			width: canvas.width() as f32,
 			height: canvas.height() as f32,
+			scroll_y: 0.0,
+			focused: true,
 		})
 	}
 
@@ -370,6 +377,179 @@ impl CanvistEditor {
 	pub fn set_size(&mut self, width: f32, height: f32) {
 		self.width = width;
 		self.height = height;
+	}
+
+	// ── Scroll ───────────────────────────────────────────────────────
+
+	/// Get the current vertical scroll offset.
+	#[wasm_bindgen]
+	pub fn scroll_y(&self) -> f32 {
+		self.scroll_y
+	}
+
+	/// Set the vertical scroll offset (clamped to valid range).
+	#[wasm_bindgen]
+	pub fn set_scroll_y(&mut self, y: f32) {
+		let max = self.max_scroll_y();
+		self.scroll_y = y.clamp(0.0, max);
+	}
+
+	/// Scroll by a delta (positive = down, negative = up).
+	#[wasm_bindgen]
+	pub fn scroll_by(&mut self, delta_y: f32) {
+		self.set_scroll_y(self.scroll_y + delta_y);
+	}
+
+	/// Compute the total content height in logical pixels.
+	///
+	/// Uses the paragraph layout engine to determine the full document
+	/// height including padding and paragraph spacing.
+	#[wasm_bindgen]
+	pub fn content_height(&self) -> Result<f32, JsValue> {
+		let (_, ctx) = self.canvas_and_context()?;
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let lc = LayoutConstants::new(self.width);
+		let plain_text = self.runtime.document().plain_text();
+		let styled_runs = self.runtime.document().styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain_text,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		let last_y = paragraphs
+			.last()
+			.map(|p| p.y_offset + p.layout.total_height)
+			.unwrap_or(0.0);
+		Ok(last_y + lc.padding_y * 2.0)
+	}
+
+	/// Compute the Y position of the caret in content coordinates.
+	///
+	/// Returns `(y, height)` for the caret line. Useful for scroll-into-view.
+	#[wasm_bindgen]
+	pub fn caret_y(&self) -> Result<Vec<f32>, JsValue> {
+		let (_, ctx) = self.canvas_and_context()?;
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let lc = LayoutConstants::new(self.width);
+		let plain_text = self.runtime.document().plain_text();
+		let styled_runs = self.runtime.document().styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain_text,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		let caret_offset = self.runtime.selection().end().offset();
+		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, caret_offset);
+		if let Some(para) = paragraphs.get(para_idx) {
+			if let Some(line) = para.layout.lines.get(line_idx) {
+				let y = lc.padding_y + para.y_offset + line.y;
+				return Ok(vec![y, line.height]);
+			}
+		}
+		Ok(vec![lc.padding_y, 24.0])
+	}
+
+	// ── Focus ────────────────────────────────────────────────────────
+
+	/// Set whether the editor has focus.
+	///
+	/// When unfocused, the caret is drawn as a gray line and selection
+	/// uses a lighter highlight color.
+	#[wasm_bindgen]
+	pub fn set_focused(&mut self, focused: bool) {
+		self.focused = focused;
+	}
+
+	/// Get the current focus state.
+	#[wasm_bindgen]
+	pub fn focused(&self) -> bool {
+		self.focused
+	}
+
+	// ── Statistics ───────────────────────────────────────────────────
+
+	/// Count the number of words (whitespace-separated tokens).
+	#[wasm_bindgen]
+	pub fn word_count(&self) -> usize {
+		self.runtime.document().word_count()
+	}
+
+	/// Count the number of visual lines using the paragraph layout engine.
+	#[wasm_bindgen]
+	pub fn line_count(&self) -> Result<usize, JsValue> {
+		let (_, ctx) = self.canvas_and_context()?;
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let lc = LayoutConstants::new(self.width);
+		let plain_text = self.runtime.document().plain_text();
+		let styled_runs = self.runtime.document().styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain_text,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		Ok(paragraphs.iter().map(|p| p.layout.lines.len()).sum())
+	}
+
+	/// Return the 1-based visual line number the caret is on.
+	#[wasm_bindgen]
+	pub fn cursor_line(&self) -> Result<usize, JsValue> {
+		let (_, ctx) = self.canvas_and_context()?;
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let lc = LayoutConstants::new(self.width);
+		let plain_text = self.runtime.document().plain_text();
+		let styled_runs = self.runtime.document().styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain_text,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		let caret = self.runtime.selection().end().offset();
+		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, caret);
+		// Count all lines in previous paragraphs + line_idx in this one.
+		let mut total = 0;
+		for (i, para) in paragraphs.iter().enumerate() {
+			if i < para_idx {
+				total += para.layout.lines.len();
+			} else {
+				total += line_idx + 1;
+				break;
+			}
+		}
+		Ok(total)
+	}
+
+	/// Return the 1-based column (character position within the visual line).
+	#[wasm_bindgen]
+	pub fn cursor_column(&self) -> Result<usize, JsValue> {
+		let (_, ctx) = self.canvas_and_context()?;
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let lc = LayoutConstants::new(self.width);
+		let plain_text = self.runtime.document().plain_text();
+		let styled_runs = self.runtime.document().styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain_text,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		let caret = self.runtime.selection().end().offset();
+		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, caret);
+		if let Some(para) = paragraphs.get(para_idx) {
+			if let Some(line) = para.layout.lines.get(line_idx) {
+				let local_caret = caret.saturating_sub(para.global_char_start);
+				return Ok(local_caret - line.start_offset + 1);
+			}
+		}
+		Ok(1)
 	}
 
 	/// Insert text at the current cursor position (start of document).
@@ -1156,6 +1336,14 @@ impl CanvistEditor {
 
 // Private helper methods — not exported to JavaScript.
 impl CanvistEditor {
+	/// Maximum valid scroll offset.
+	fn max_scroll_y(&self) -> f32 {
+		// We can't call canvas_and_context here (infallible context),
+		// so use a rough estimate: content_height is set externally.
+		// A tighter bound is computed in JS after content_height().
+		f32::MAX
+	}
+
 	/// Obtain the `<canvas>` element and its 2D rendering context.
 	fn canvas_and_context(
 		&self,
@@ -1227,9 +1415,9 @@ impl CanvistEditor {
 		let viewport = Viewport::new(width, height);
 		let (doc_x, doc_y) = viewport.screen_to_document(screen_x as f32, screen_y as f32);
 
-		// Coordinates relative to the content area origin.
+		// Coordinates relative to the content area origin, accounting for scroll.
 		let content_x = doc_x - lc.padding_x;
-		let content_y = doc_y - lc.padding_y;
+		let content_y = doc_y - lc.padding_y + self.scroll_y;
 
 		let doc = self.runtime.document();
 		let styled_runs = doc.styled_runs();
@@ -1376,11 +1564,25 @@ impl CanvistEditor {
 			x
 		};
 
+		// Scroll offset applied to all Y coordinates.
+		let sy = self.scroll_y;
+
+		// Focus-aware colors.
+		let selection_color = if self.focused {
+			Color::new(66, 133, 244, 80)
+		} else {
+			Color::new(180, 180, 180, 60)
+		};
+		let caret_color = if self.focused {
+			Color::BLACK
+		} else {
+			Color::new(160, 160, 160, 128)
+		};
+
 		// ── Selection highlights ─────────────────────────────────────────
 		if !selection.is_collapsed() {
 			let sel_start = selection.start().offset();
 			let sel_end = selection.end().offset();
-			let selection_color = Color::new(66, 133, 244, 80);
 
 			for para in &paragraphs {
 				let para_global_end = para.global_char_start + para.char_count;
@@ -1402,16 +1604,21 @@ impl CanvistEditor {
 					let local_sel_end = line_sel_end - para.global_char_start;
 
 					let x_start = lc.padding_x
-						+ x_offset_in_para_line(
-							&renderer,
-							para,
-							line.start_offset,
-							local_sel_start,
-						);
+						+ line.x_offset + x_offset_in_para_line(
+						&renderer,
+						para,
+						line.start_offset,
+						local_sel_start,
+					);
 					let x_end = lc.padding_x
-						+ x_offset_in_para_line(&renderer, para, line.start_offset, local_sel_end);
+						+ line.x_offset + x_offset_in_para_line(
+						&renderer,
+						para,
+						line.start_offset,
+						local_sel_end,
+					);
 
-					let y = lc.padding_y + para.y_offset + line.y;
+					let y = lc.padding_y + para.y_offset + line.y - sy;
 					renderer.fill_rect(
 						Rect::new(x_start, y, x_end - x_start, line.height),
 						selection_color,
@@ -1425,8 +1632,8 @@ impl CanvistEditor {
 					&& para_global_end < doc.char_count()
 				{
 					if let Some(last_line) = para.layout.lines.last() {
-						let x = lc.padding_x + last_line.width;
-						let y = lc.padding_y + para.y_offset + last_line.y;
+						let x = lc.padding_x + last_line.x_offset + last_line.width;
+						let y = lc.padding_y + para.y_offset + last_line.y - sy;
 						renderer.fill_rect(Rect::new(x, y, 4.0, last_line.height), selection_color);
 					}
 				}
@@ -1447,15 +1654,22 @@ impl CanvistEditor {
 					continue;
 				}
 
-				let line_y = lc.padding_y + para.y_offset + line.y;
+				let line_y = lc.padding_y + para.y_offset + line.y - sy;
+
+				// Skip lines that are entirely outside the viewport.
+				if line_y + line.height < 0.0 || line_y > height {
+					continue;
+				}
+
+				let line_x = lc.padding_x + line.x_offset;
 
 				if para.local_runs.is_empty() {
 					let line_text: String = para_chars[line_start..line_end.min(para_chars.len())]
 						.iter()
 						.collect();
-					renderer.draw_text(lc.padding_x, line_y, &line_text, &lc.default_style);
+					renderer.draw_text(line_x, line_y, &line_text, &lc.default_style);
 				} else {
-					let mut x = lc.padding_x;
+					let mut x = line_x;
 
 					for (run_text, run_style, run_offset, _run_len) in &para.local_runs {
 						let run_start = *run_offset;
@@ -1515,7 +1729,6 @@ impl CanvistEditor {
 		// 530 ms timer to produce the classic blinking effect.
 		if self.caret_visible {
 			let caret_offset = selection.end().offset();
-			let caret_color = Color::BLACK;
 
 			let (caret_para_idx, caret_line_idx) =
 				find_para_and_line_for_offset(&paragraphs, caret_offset);
@@ -1524,13 +1737,14 @@ impl CanvistEditor {
 				if let Some(caret_line) = para.layout.lines.get(caret_line_idx) {
 					let local_caret = caret_offset.saturating_sub(para.global_char_start);
 					let caret_x = lc.padding_x
+						+ caret_line.x_offset
 						+ x_offset_in_para_line(
 							&renderer,
 							para,
 							caret_line.start_offset,
 							local_caret,
 						);
-					let caret_y = lc.padding_y + para.y_offset + caret_line.y;
+					let caret_y = lc.padding_y + para.y_offset + caret_line.y - sy;
 					let caret_height = caret_line.height;
 
 					renderer.draw_line(
@@ -1542,6 +1756,30 @@ impl CanvistEditor {
 					);
 				}
 			}
+		}
+
+		// ── Scroll indicator ─────────────────────────────────────────────
+		// Draw a thin scrollbar on the right edge when content overflows.
+		let content_h = paragraphs
+			.last()
+			.map(|p| p.y_offset + p.layout.total_height + lc.padding_y * 2.0)
+			.unwrap_or(height);
+		if content_h > height {
+			let track_x = width - 6.0;
+			let track_h = height;
+			let ratio = height / content_h;
+			let thumb_h = (track_h * ratio).max(20.0);
+			let thumb_y = (sy / (content_h - height)) * (track_h - thumb_h);
+			// Track.
+			renderer.fill_rect(
+				Rect::new(track_x, 0.0, 6.0, track_h),
+				Color::new(240, 240, 240, 128),
+			);
+			// Thumb.
+			renderer.fill_rect(
+				Rect::new(track_x, thumb_y, 6.0, thumb_h),
+				Color::new(180, 180, 180, 180),
+			);
 		}
 
 		Ok(())
