@@ -3587,4 +3587,209 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Copy / cut line (no selection) ──────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] current_line_text returns full line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\nbbb\nccc");
+						ed.set_selection(5, 5); // on "bbb"
+						return ed.current_line_text();
+					});
+					assertEquals(result, "bbb\n");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] cut_line removes and returns current line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\nbbb\nccc");
+						ed.set_selection(5, 5); // on "bbb"
+						const cut = ed.cut_line();
+						return { cut, remaining: ed.plain_text() };
+					});
+					assertEquals(result.cut, "bbb\n");
+					assertEquals(result.remaining, "aaa\nccc");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Overwrite mode ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] overwrite mode replaces characters`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdef");
+						ed.set_overwrite_mode(true);
+						ed.set_selection(2, 2); // after "ab"
+						ed.insert_text_overwrite("XY");
+						const text = ed.plain_text();
+						const mode = ed.overwrite_mode();
+						return { text, mode };
+					});
+					assertEquals(result.text, "abXYef");
+					assertEquals(result.mode, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Document start / end ────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] go_to_document_start and go_to_document_end`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello\nworld");
+						ed.go_to_document_start();
+						const atStart = ed.selection_end();
+						ed.go_to_document_end();
+						const atEnd = ed.selection_end();
+						return { atStart, atEnd };
+					});
+					assertEquals(result.atStart, 0);
+					assertEquals(result.atEnd, 11); // "hello\nworld" = 11 chars
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Select between brackets ─────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] select_between_brackets selects inner content`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("foo(bar baz)end");
+						ed.set_selection(5, 5); // inside parens
+						const found = ed.select_between_brackets();
+						const selected = ed.get_selected_text();
+						return { found, selected };
+					});
+					assertEquals(result.found, true);
+					assertEquals(result.selected, "bar baz");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Center line in viewport ─────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] center_line_in_viewport adjusts scroll`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						// Create a tall document.
+						const lines = Array.from(
+							{ length: 100 },
+							(_, i) => `Line ${i + 1}`,
+						);
+						ed.insert_text(lines.join("\n"));
+						ed.set_selection(500, 500); // somewhere in middle
+						const scrollBefore = ed.scroll_y();
+						ed.center_line_in_viewport();
+						const scrollAfter = ed.scroll_y();
+						// Scroll should have changed.
+						return {
+							scrollBefore,
+							scrollAfter,
+							changed: scrollBefore !== scrollAfter,
+						};
+					});
+					assertEquals(result.changed, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

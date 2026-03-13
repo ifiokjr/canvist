@@ -551,6 +551,49 @@ export interface CanvistEditor {
 	/** Insert new line above current and move cursor there (Ctrl+Shift+Enter). */
 	openLineAbove(): void;
 
+	// ── Copy / cut line (no selection) ──────────────────────────────
+
+	/** Get the full text of the current line (including trailing \n). */
+	readonly currentLineText: string;
+
+	/** Cut the current line — removes it and returns its text. */
+	cutLine(): string;
+
+	// ── Overwrite mode ──────────────────────────────────────────────
+
+	/** Whether the editor is in overwrite (replace) mode. */
+	readonly overwriteMode: boolean;
+
+	/** Toggle insert/overwrite mode. */
+	toggleOverwriteMode(): void;
+
+	/** Set overwrite mode explicitly. */
+	setOverwriteMode(enabled: boolean): void;
+
+	// ── Center line ─────────────────────────────────────────────────
+
+	/** Scroll so the cursor's line is vertically centered. */
+	centerLineInViewport(): void;
+
+	// ── Document start / end ────────────────────────────────────────
+
+	/** Move cursor to document start (Ctrl+Home). */
+	goToDocumentStart(): void;
+
+	/** Move cursor to document end (Ctrl+End). */
+	goToDocumentEnd(): void;
+
+	/** Select from cursor to document start (Ctrl+Shift+Home). */
+	selectToDocumentStart(): void;
+
+	/** Select from cursor to document end (Ctrl+Shift+End). */
+	selectToDocumentEnd(): void;
+
+	// ── Select between brackets ─────────────────────────────────────
+
+	/** Select text between nearest enclosing bracket pair. Returns true if found. */
+	selectBetweenBrackets(): boolean;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

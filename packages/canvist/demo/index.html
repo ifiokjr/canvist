@@ -227,6 +227,8 @@
       <span id="status-words">0 words</span>
       <span id="status-chars">0 chars</span>
       <span id="status-lines">1 line</span>
+      <span id="status-mode" style="color:#999;">INS</span>
+      <span id="status-bookmarks" style="color:#999;"></span>
     </div>
     <pre id="text-output" style="margin-top:1rem;padding:1rem;background:#f0f0f0;border-radius:4px;font-family:monospace;white-space:pre-wrap;max-width:800px;word-break:break-all;"></pre>
 
@@ -487,6 +489,11 @@
             document.getElementById("status-words").textContent = `${words} word${words !== 1 ? "s" : ""}`;
             document.getElementById("status-chars").textContent = `${chars} char${chars !== 1 ? "s" : ""}`;
             document.getElementById("status-lines").textContent = `${lines} line${lines !== 1 ? "s" : ""}`;
+            // Mode indicator.
+            document.getElementById("status-mode").textContent = editor.overwrite_mode() ? "OVR" : "INS";
+            // Bookmark count.
+            const bmCount = editor.bookmark_count();
+            document.getElementById("status-bookmarks").textContent = bmCount > 0 ? `🔖 ${bmCount}` : "";
           } catch {}
         }
 

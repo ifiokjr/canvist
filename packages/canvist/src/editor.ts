@@ -300,6 +300,9 @@ export async function createEditor(
 			) {
 				inner.insert_with_auto_close(data);
 				cursorOffset = inner.selection_end();
+			} else if (inner.overwrite_mode()) {
+				inner.insert_text_overwrite(data);
+				cursorOffset = inner.selection_end();
 			} else {
 				inner.insert_text_at(cursorOffset, data);
 				cursorOffset += data.length;
@@ -327,6 +330,12 @@ export async function createEditor(
 		const selected = inner.get_selected_text();
 		if (selected && e.clipboardData) {
 			e.clipboardData.setData("text/plain", selected);
+		} else if (e.clipboardData) {
+			// No selection → copy current line (VS Code behavior).
+			const lineText = inner.current_line_text();
+			if (lineText) {
+				e.clipboardData.setData("text/plain", lineText);
+			}
 		}
 	});
 
@@ -338,6 +347,15 @@ export async function createEditor(
 			syncTime();
 			inner.clipboard_cut();
 			cursorOffset = inner.selection_start();
+			renderFrame();
+		} else if (e.clipboardData) {
+			// No selection → cut current line (VS Code behavior).
+			syncTime();
+			const lineText = inner.cut_line();
+			if (lineText) {
+				e.clipboardData.setData("text/plain", lineText);
+			}
+			cursorOffset = inner.selection_end();
 			renderFrame();
 		}
 	});
@@ -610,6 +628,49 @@ export async function createEditor(
 				}
 			}
 			startOrExtendSelection(pos);
+			renderFrame();
+			return;
+		}
+
+		// Insert key — toggle overwrite mode.
+		if (e.key === "Insert" && !mod && !e.shiftKey) {
+			e.preventDefault();
+			inner.toggle_overwrite_mode();
+			return;
+		}
+
+		// Ctrl+Home — go to document start.
+		if (mod && !e.shiftKey && e.key === "Home") {
+			e.preventDefault();
+			inner.go_to_document_start();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Ctrl+Shift+Home — select to document start.
+		if (mod && e.shiftKey && e.key === "Home") {
+			e.preventDefault();
+			inner.select_to_document_start();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Ctrl+End — go to document end.
+		if (mod && !e.shiftKey && e.key === "End") {
+			e.preventDefault();
+			inner.go_to_document_end();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Ctrl+Shift+End — select to document end.
+		if (mod && e.shiftKey && e.key === "End") {
+			e.preventDefault();
+			inner.select_to_document_end();
+			cursorOffset = inner.selection_end();
 			renderFrame();
 			return;
 		}
@@ -1456,6 +1517,62 @@ export async function createEditor(
 				ref.open_line_above();
 				cursorOffset = ref.selection_end();
 				renderFrame();
+			},
+			// ── Copy / cut line (no selection) ──────────
+			get currentLineText() {
+				return ref.current_line_text();
+			},
+			cutLine() {
+				syncTime();
+				const text = ref.cut_line();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return text;
+			},
+			// ── Overwrite mode ──────────────────────────
+			get overwriteMode() {
+				return ref.overwrite_mode();
+			},
+			toggleOverwriteMode() {
+				ref.toggle_overwrite_mode();
+			},
+			setOverwriteMode(enabled: boolean) {
+				ref.set_overwrite_mode(enabled);
+			},
+			// ── Center line ─────────────────────────────
+			centerLineInViewport() {
+				ref.center_line_in_viewport();
+				renderFrame();
+			},
+			// ── Document start / end ────────────────────
+			goToDocumentStart() {
+				ref.go_to_document_start();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			goToDocumentEnd() {
+				ref.go_to_document_end();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			selectToDocumentStart() {
+				ref.select_to_document_start();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			selectToDocumentEnd() {
+				ref.select_to_document_end();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Select between brackets ─────────────────
+			selectBetweenBrackets() {
+				const found = ref.select_between_brackets();
+				if (found) {
+					cursorOffset = ref.selection_end();
+					renderFrame();
+				}
+				return found;
 			},
 			// ── Auto-indent ─────────────────────────────
 			autoIndentNewline() {

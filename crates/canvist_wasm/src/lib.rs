@@ -371,6 +371,8 @@ pub struct CanvistEditor {
 	show_indent_guides: bool,
 	/// Set of bookmarked line numbers (0-based paragraph indices).
 	bookmarks: std::collections::BTreeSet<usize>,
+	/// Whether the editor is in overwrite (replace) mode instead of insert.
+	overwrite_mode: bool,
 }
 
 /// Colour theme for the editor canvas.
@@ -487,6 +489,7 @@ impl CanvistEditor {
 			highlight_matching_brackets: true,
 			show_indent_guides: false,
 			bookmarks: std::collections::BTreeSet::new(),
+			overwrite_mode: false,
 		})
 	}
 
@@ -2358,6 +2361,200 @@ impl CanvistEditor {
 		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
 			selection: Selection::collapsed(Position::new(line_start)),
 		});
+	}
+
+	// ── Copy / cut line (no selection) ───────────────────────────────
+
+	/// Get the full text of the line the cursor is on (including the
+	/// trailing `\n` if present). Useful for "copy line" when nothing is
+	/// selected.
+	#[wasm_bindgen]
+	pub fn current_line_text(&self) -> String {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset();
+
+		let mut start = offset.min(chars.len());
+		while start > 0 && chars[start - 1] != '\n' {
+			start -= 1;
+		}
+		let mut end = offset.min(chars.len());
+		while end < chars.len() && chars[end] != '\n' {
+			end += 1;
+		}
+		// Include trailing newline for paste-as-line behavior.
+		if end < chars.len() {
+			end += 1;
+		}
+		chars[start..end].iter().collect()
+	}
+
+	/// Cut the current line (remove it and return its text).
+	/// This is the "cut line when nothing is selected" behavior.
+	#[wasm_bindgen]
+	pub fn cut_line(&mut self) -> String {
+		if !self.is_writable() {
+			return String::new();
+		}
+		let text = self.current_line_text();
+		self.delete_line();
+		text
+	}
+
+	// ── Overwrite mode ───────────────────────────────────────────────
+
+	/// Toggle between insert and overwrite mode (Insert key).
+	#[wasm_bindgen]
+	pub fn toggle_overwrite_mode(&mut self) {
+		self.overwrite_mode = !self.overwrite_mode;
+	}
+
+	/// Whether the editor is in overwrite mode.
+	#[wasm_bindgen]
+	pub fn overwrite_mode(&self) -> bool {
+		self.overwrite_mode
+	}
+
+	/// Set overwrite mode explicitly.
+	#[wasm_bindgen]
+	pub fn set_overwrite_mode(&mut self, enabled: bool) {
+		self.overwrite_mode = enabled;
+	}
+
+	/// Insert text respecting overwrite mode. In overwrite mode,
+	/// characters after the cursor are replaced one-for-one rather
+	/// than pushing text forward.
+	#[wasm_bindgen]
+	pub fn insert_text_overwrite(&mut self, text: &str) {
+		if !self.is_writable() {
+			return;
+		}
+		let offset = self.runtime.selection().end().offset();
+		let insert_len = text.chars().count();
+
+		if self.overwrite_mode {
+			let plain = self.runtime.document().plain_text();
+			let chars: Vec<char> = plain.chars().collect();
+			// Count how many chars we can overwrite (stop at newline / end).
+			let mut replace_count = 0usize;
+			for i in 0..insert_len {
+				let pos = offset + i;
+				if pos >= chars.len() || chars[pos] == '\n' {
+					break;
+				}
+				replace_count += 1;
+			}
+			// Select the range to replace, delete, then insert at offset.
+			if replace_count > 0 {
+				let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+					selection: Selection::range(
+						Position::new(offset),
+						Position::new(offset + replace_count),
+					),
+				});
+				let _ = self
+					.runtime
+					.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+			}
+		}
+
+		// After delete (if any), cursor should be at `offset`.
+		self.runtime.apply_operation(Operation::insert(
+			Position::new(offset),
+			text.to_string(),
+		));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(offset + insert_len)),
+		});
+	}
+
+	// ── Center line in viewport ──────────────────────────────────────
+
+	/// Scroll so the cursor's line is vertically centered in the viewport.
+	#[wasm_bindgen]
+	pub fn center_line_in_viewport(&mut self) {
+		let content_h = self.content_height().unwrap_or(0.0);
+		let viewport_h = self.height;
+		if content_h <= viewport_h {
+			self.scroll_y = 0.0;
+			return;
+		}
+		// Estimate cursor Y from line number.
+		let line_num = self.current_line_number();
+		let line_h = 24.0 * self.zoom; // approximate line height
+		let cursor_y = (line_num as f32 - 1.0) * line_h;
+		let target = (cursor_y - viewport_h / 2.0 + line_h / 2.0).max(0.0);
+		let max_scroll = (content_h - viewport_h).max(0.0);
+		self.scroll_y = target.min(max_scroll);
+	}
+
+	// ── Go to document start / end ───────────────────────────────────
+
+	/// Move cursor to the very beginning of the document (Ctrl+Home).
+	#[wasm_bindgen]
+	pub fn go_to_document_start(&mut self) {
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(0)),
+		});
+		self.scroll_y = 0.0;
+	}
+
+	/// Move cursor to the very end of the document (Ctrl+End).
+	#[wasm_bindgen]
+	pub fn go_to_document_end(&mut self) {
+		let len = self.runtime.document().plain_text().chars().count();
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(len)),
+		});
+		// Scroll to bottom.
+		let content_h = self.content_height().unwrap_or(0.0);
+		let viewport_h = self.height;
+		self.scroll_y = (content_h - viewport_h).max(0.0);
+	}
+
+	/// Select from cursor to document start (Ctrl+Shift+Home).
+	#[wasm_bindgen]
+	pub fn select_to_document_start(&mut self) {
+		let end = self.runtime.selection().end().offset();
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(0), Position::new(end)),
+		});
+		self.scroll_y = 0.0;
+	}
+
+	/// Select from cursor to document end (Ctrl+Shift+End).
+	#[wasm_bindgen]
+	pub fn select_to_document_end(&mut self) {
+		let start = self.runtime.selection().start().offset();
+		let len = self.runtime.document().plain_text().chars().count();
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(len)),
+		});
+		let content_h = self.content_height().unwrap_or(0.0);
+		let viewport_h = self.height;
+		self.scroll_y = (content_h - viewport_h).max(0.0);
+	}
+
+	// ── Select between brackets ──────────────────────────────────────
+
+	/// Select all text between the nearest enclosing bracket pair.
+	///
+	/// Returns `true` if brackets were found and selection was made.
+	#[wasm_bindgen]
+	pub fn select_between_brackets(&mut self) -> bool {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset().min(chars.len());
+
+		if let Some((inner_start, inner_end)) =
+			Self::find_surrounding_brackets(&chars, offset, offset)
+		{
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::range(Position::new(inner_start), Position::new(inner_end)),
+			});
+			return true;
+		}
+		false
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any
