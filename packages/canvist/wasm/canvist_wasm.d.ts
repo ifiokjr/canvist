@@ -115,6 +115,29 @@ export class CanvistEditor {
      */
     insert_text_at(offset: number, text: string): void;
     /**
+     * Check if the current selection is all bold.
+     */
+    is_bold(): boolean;
+    /**
+     * Check if the current selection is all italic.
+     */
+    is_italic(): boolean;
+    /**
+     * Check if the current selection is all underline.
+     */
+    is_underline(): boolean;
+    /**
+     * Return the end offset of the visual line containing `offset`.
+     */
+    line_end_for_offset(offset: number): number;
+    /**
+     * Return the start offset of the visual line containing `offset`.
+     *
+     * This performs a full paragraph layout to determine where lines wrap,
+     * then returns the character offset where that visual line begins.
+     */
+    line_start_for_offset(offset: number): number;
+    /**
      * Move cursor one character left.
      */
     move_cursor_left(extend: boolean): void;
@@ -126,6 +149,17 @@ export class CanvistEditor {
      * Move cursor to an absolute position; extend toggles range selection.
      */
     move_cursor_to(position: number, extend: boolean): void;
+    /**
+     * Return the character offset on the line directly above `offset`.
+     *
+     * Preserves the horizontal (x) pixel position of the caret when moving
+     * between lines.
+     */
+    offset_above(offset: number): number;
+    /**
+     * Return the character offset on the line directly below `offset`.
+     */
+    offset_below(offset: number): number;
     /**
      * Return the full plain-text content of the document.
      */
@@ -229,6 +263,23 @@ export class CanvistEditor {
      */
     to_json(): string;
     /**
+     * Toggle bold on the current selection.
+     *
+     * If all characters in the selection are already bold, removes bold.
+     * Otherwise, applies bold. Preserves the current selection.
+     */
+    toggle_bold(): void;
+    /**
+     * Toggle italic on the current selection. Preserves the current
+     * selection.
+     */
+    toggle_italic(): void;
+    /**
+     * Toggle underline on the current selection. Preserves the current
+     * selection.
+     */
+    toggle_underline(): void;
+    /**
      * Undo the most recent transaction.
      *
      * Applies inverse operations to restore the document to its previous state.
@@ -265,9 +316,16 @@ export interface InitOutput {
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_text_at: (a: number, b: number, c: number, d: number) => void;
+    readonly canvisteditor_is_bold: (a: number) => number;
+    readonly canvisteditor_is_italic: (a: number) => number;
+    readonly canvisteditor_is_underline: (a: number) => number;
+    readonly canvisteditor_line_end_for_offset: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_move_cursor_left: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_right: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_to: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_offset_above: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_offset_below: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_plain_text: (a: number) => [number, number];
     readonly canvisteditor_process_events: (a: number) => void;
     readonly canvisteditor_queue_key_down: (a: number, b: number, c: number) => void;
@@ -285,6 +343,9 @@ export interface InitOutput {
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
+    readonly canvisteditor_toggle_bold: (a: number) => void;
+    readonly canvisteditor_toggle_italic: (a: number) => void;
+    readonly canvisteditor_toggle_underline: (a: number) => void;
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;

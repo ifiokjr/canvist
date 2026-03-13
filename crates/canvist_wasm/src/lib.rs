@@ -30,6 +30,7 @@ use canvist_core::Selection;
 use canvist_core::Style;
 use canvist_core::Transaction;
 use canvist_core::layout::LayoutConfig;
+use canvist_core::layout::LayoutLine;
 use canvist_core::layout::TextFragment;
 use canvist_core::layout::TextMeasure;
 use canvist_core::layout::hit_test_point;
@@ -38,6 +39,7 @@ use canvist_core::operation::Operation;
 use canvist_render::Canvas;
 use canvist_render::Rect;
 use canvist_render::Viewport;
+use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 
 use crate::canvas_renderer::Canvas2dRenderer;
@@ -243,6 +245,68 @@ fn find_para_and_line_for_offset(
 	(last_para, last_line)
 }
 
+/// Build [`TextFragment`] slices from local runs for layout helpers.
+fn build_fragments<'a>(
+	text: &'a str,
+	local_runs: &'a [(String, Style, usize, usize)],
+	default_style: &'a Style,
+) -> Vec<TextFragment<'a>> {
+	if local_runs.is_empty() {
+		return vec![TextFragment {
+			text,
+			style: default_style,
+		}];
+	}
+	// Build fragments that align with the run structure.
+	// We need owned merged styles, so leak them into a Vec we keep alive.
+	// Since this is transient per-call, the small allocation is fine.
+	local_runs
+		.iter()
+		.map(|(run_text, _run_style, _offset, _len)| {
+			TextFragment {
+				text: run_text.as_str(),
+				style: default_style, // simplified: use default for position math
+			}
+		})
+		.collect()
+}
+
+/// Find the style for a character offset within a list of fragments.
+fn find_style_at<'a>(fragments: &[TextFragment<'a>], offset: usize) -> Option<&'a Style> {
+	let mut pos = 0;
+	for frag in fragments {
+		let len = frag.text.chars().count();
+		if offset < pos + len {
+			return Some(frag.style);
+		}
+		pos += len;
+	}
+	fragments.last().map(|f| f.style)
+}
+
+/// Proxy for `canvist_core::layout::hit_x_on_line` (which is private).
+/// Finds the character offset closest to `target_x` on a single line.
+fn hit_x_on_line_ext(
+	line: &LayoutLine,
+	target_x: f32,
+	fragments: &[TextFragment<'_>],
+	measurer: &dyn TextMeasure,
+) -> usize {
+	let full_text: String = fragments.iter().map(|f| f.text).collect();
+	let chars: Vec<char> = full_text.chars().collect();
+	let default_style = Style::new();
+	let mut x = 0.0f32;
+	for i in line.start_offset..line.end_offset.min(chars.len()) {
+		let style = find_style_at(fragments, i).unwrap_or(&default_style);
+		let w = measurer.measure_char(chars[i], style);
+		if x + w * 0.5 > target_x {
+			return i;
+		}
+		x += w;
+	}
+	line.end_offset
+}
+
 /// The main editor handle exposed to JavaScript.
 ///
 /// Wraps a [`Document`] and a Canvas2D rendering backend. Create one per
@@ -254,6 +318,10 @@ pub struct CanvistEditor {
 	event_source: dom::WebEventSource,
 	/// Whether the caret is currently visible (used for blink toggling from JS).
 	caret_visible: bool,
+	/// Cached canvas width in logical pixels.
+	width: f32,
+	/// Cached canvas height in logical pixels.
+	height: f32,
 }
 
 #[wasm_bindgen]
@@ -270,9 +338,12 @@ impl CanvistEditor {
 			.document()
 			.ok_or_else(|| JsValue::from_str("no document"))?;
 
-		let _canvas = document
+		let canvas_el = document
 			.get_element_by_id(canvas_id)
 			.ok_or_else(|| JsValue::from_str(&format!("canvas '{canvas_id}' not found")))?;
+		let canvas: web_sys::HtmlCanvasElement = canvas_el
+			.dyn_into()
+			.map_err(|_| JsValue::from_str("element is not a canvas"))?;
 
 		Ok(Self {
 			runtime: EditorRuntime::new(
@@ -283,6 +354,8 @@ impl CanvistEditor {
 			canvas_id: canvas_id.to_string(),
 			event_source: dom::WebEventSource::new(),
 			caret_visible: true,
+			width: canvas.width() as f32,
+			height: canvas.height() as f32,
 		})
 	}
 
@@ -437,6 +510,112 @@ impl CanvistEditor {
 		self.move_cursor_to(caret.saturating_add(1).min(max), extend);
 	}
 
+	/// Toggle bold on the current selection.
+	///
+	/// If all characters in the selection are already bold, removes bold.
+	/// Otherwise, applies bold. Preserves the current selection.
+	#[wasm_bindgen]
+	pub fn toggle_bold(&mut self) {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return;
+		}
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		let all_bold = self.runtime.document().is_bold_in_range(start, end);
+		let style = if all_bold {
+			Style::new().font_weight(canvist_core::FontWeight::Normal)
+		} else {
+			Style::new().bold()
+		};
+		self.runtime.apply_operation(Operation::format(
+			Selection::range(Position::new(start), Position::new(end)),
+			style,
+		));
+		// Restore selection (apply_operation resets it).
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::SelectionSet { selection: sel });
+	}
+
+	/// Toggle italic on the current selection. Preserves the current
+	/// selection.
+	#[wasm_bindgen]
+	pub fn toggle_italic(&mut self) {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return;
+		}
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		let all_italic = self.runtime.document().is_italic_in_range(start, end);
+		// italic is an Option<bool> internally — set to false to remove.
+		let style = if all_italic {
+			Style::new() // default (no italic flag set) — clears italic on merge
+		} else {
+			Style::new().italic()
+		};
+		self.runtime.apply_operation(Operation::format(
+			Selection::range(Position::new(start), Position::new(end)),
+			style,
+		));
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::SelectionSet { selection: sel });
+	}
+
+	/// Toggle underline on the current selection. Preserves the current
+	/// selection.
+	#[wasm_bindgen]
+	pub fn toggle_underline(&mut self) {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return;
+		}
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		let all_underline = self.runtime.document().is_underline_in_range(start, end);
+		let style = if all_underline {
+			Style::new() // clears underline
+		} else {
+			Style::new().underline()
+		};
+		self.runtime.apply_operation(Operation::format(
+			Selection::range(Position::new(start), Position::new(end)),
+			style,
+		));
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::SelectionSet { selection: sel });
+	}
+
+	/// Check if the current selection is all bold.
+	#[wasm_bindgen]
+	pub fn is_bold(&self) -> bool {
+		let sel = self.runtime.selection();
+		self.runtime
+			.document()
+			.is_bold_in_range(sel.start().offset(), sel.end().offset())
+	}
+
+	/// Check if the current selection is all italic.
+	#[wasm_bindgen]
+	pub fn is_italic(&self) -> bool {
+		let sel = self.runtime.selection();
+		self.runtime
+			.document()
+			.is_italic_in_range(sel.start().offset(), sel.end().offset())
+	}
+
+	/// Check if the current selection is all underline.
+	#[wasm_bindgen]
+	pub fn is_underline(&self) -> bool {
+		let sel = self.runtime.selection();
+		self.runtime
+			.document()
+			.is_underline_in_range(sel.start().offset(), sel.end().offset())
+	}
+
 	/// Apply style to the given character range.
 	#[wasm_bindgen]
 	pub fn apply_style_range(
@@ -578,6 +757,187 @@ impl CanvistEditor {
 	#[wasm_bindgen]
 	pub fn word_boundary_right(&self, offset: usize) -> usize {
 		self.runtime.document().word_boundary_right(offset)
+	}
+
+	/// Return the start offset of the visual line containing `offset`.
+	///
+	/// This performs a full paragraph layout to determine where lines wrap,
+	/// then returns the character offset where that visual line begins.
+	#[wasm_bindgen]
+	pub fn line_start_for_offset(&self, offset: usize) -> Result<usize, JsValue> {
+		let (_, ctx) = self.canvas_and_context()?;
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let doc = self.runtime.document();
+		let lc = LayoutConstants::new(self.width);
+		let plain_text = doc.plain_text();
+		let styled_runs = doc.styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain_text,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		let (para_idx, _) = find_para_and_line_for_offset(&paragraphs, offset);
+		if let Some(para) = paragraphs.get(para_idx) {
+			let local_offset = offset.saturating_sub(para.global_char_start);
+			let line_start =
+				canvist_core::layout::line_start_for_offset(&para.layout, local_offset);
+			Ok(para.global_char_start + line_start)
+		} else {
+			Ok(0)
+		}
+	}
+
+	/// Return the end offset of the visual line containing `offset`.
+	#[wasm_bindgen]
+	pub fn line_end_for_offset(&self, offset: usize) -> Result<usize, JsValue> {
+		let (_, ctx) = self.canvas_and_context()?;
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let doc = self.runtime.document();
+		let lc = LayoutConstants::new(self.width);
+		let plain_text = doc.plain_text();
+		let styled_runs = doc.styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain_text,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		let (para_idx, _) = find_para_and_line_for_offset(&paragraphs, offset);
+		if let Some(para) = paragraphs.get(para_idx) {
+			let local_offset = offset.saturating_sub(para.global_char_start);
+			let line_end = canvist_core::layout::line_end_for_offset(&para.layout, local_offset);
+			Ok(para.global_char_start + line_end)
+		} else {
+			Ok(0)
+		}
+	}
+
+	/// Return the character offset on the line directly above `offset`.
+	///
+	/// Preserves the horizontal (x) pixel position of the caret when moving
+	/// between lines.
+	#[wasm_bindgen]
+	pub fn offset_above(&self, offset: usize) -> Result<usize, JsValue> {
+		let (_, ctx) = self.canvas_and_context()?;
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let doc = self.runtime.document();
+		let lc = LayoutConstants::new(self.width);
+		let plain_text = doc.plain_text();
+		let styled_runs = doc.styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain_text,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, offset);
+
+		if let Some(para) = paragraphs.get(para_idx) {
+			let local_offset = offset.saturating_sub(para.global_char_start);
+			if line_idx > 0 {
+				// Move up within the same paragraph.
+				let fragments = build_fragments(&para.text, &para.local_runs, &lc.default_style);
+				let new_local = canvist_core::layout::offset_above(
+					&para.layout,
+					local_offset,
+					&fragments,
+					&renderer,
+				);
+				return Ok(para.global_char_start + new_local);
+			}
+			// Move to the previous paragraph.
+			if para_idx > 0 {
+				if let Some(prev_para) = paragraphs.get(para_idx - 1) {
+					let cur_fragments =
+						build_fragments(&para.text, &para.local_runs, &lc.default_style);
+					let cur_line = &para.layout.lines[0];
+					let target_x = canvist_core::layout::x_offset_in_line(
+						cur_line.start_offset,
+						local_offset,
+						&cur_fragments,
+						&renderer,
+					);
+					// Find the character on the last line of the previous paragraph.
+					if let Some(last_line) = prev_para.layout.lines.last() {
+						let prev_fragments = build_fragments(
+							&prev_para.text,
+							&prev_para.local_runs,
+							&lc.default_style,
+						);
+						let hit =
+							hit_x_on_line_ext(last_line, target_x, &prev_fragments, &renderer);
+						return Ok(prev_para.global_char_start + hit);
+					}
+				}
+			}
+		}
+		Ok(0)
+	}
+
+	/// Return the character offset on the line directly below `offset`.
+	#[wasm_bindgen]
+	pub fn offset_below(&self, offset: usize) -> Result<usize, JsValue> {
+		let (_, ctx) = self.canvas_and_context()?;
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let doc = self.runtime.document();
+		let lc = LayoutConstants::new(self.width);
+		let plain_text = doc.plain_text();
+		let styled_runs = doc.styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain_text,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		let total_chars = doc.char_count();
+		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, offset);
+
+		if let Some(para) = paragraphs.get(para_idx) {
+			let local_offset = offset.saturating_sub(para.global_char_start);
+			let last_line_idx = para.layout.lines.len().saturating_sub(1);
+			if line_idx < last_line_idx {
+				// Move down within the same paragraph.
+				let fragments = build_fragments(&para.text, &para.local_runs, &lc.default_style);
+				let new_local = canvist_core::layout::offset_below(
+					&para.layout,
+					local_offset,
+					&fragments,
+					&renderer,
+				);
+				return Ok(para.global_char_start + new_local);
+			}
+			// Move to the next paragraph.
+			if para_idx + 1 < paragraphs.len() {
+				if let Some(next_para) = paragraphs.get(para_idx + 1) {
+					let cur_fragments =
+						build_fragments(&para.text, &para.local_runs, &lc.default_style);
+					let cur_line = para.layout.lines.last().unwrap();
+					let target_x = canvist_core::layout::x_offset_in_line(
+						cur_line.start_offset,
+						local_offset,
+						&cur_fragments,
+						&renderer,
+					);
+					// Find the character on the first line of the next paragraph.
+					if let Some(first_line) = next_para.layout.lines.first() {
+						let next_fragments = build_fragments(
+							&next_para.text,
+							&next_para.local_runs,
+							&lc.default_style,
+						);
+						let hit =
+							hit_x_on_line_ext(first_line, target_x, &next_fragments, &renderer);
+						return Ok(next_para.global_char_start + hit);
+					}
+				}
+			}
+		}
+		Ok(total_chars)
 	}
 
 	/// Force-break the current undo coalescing chain.

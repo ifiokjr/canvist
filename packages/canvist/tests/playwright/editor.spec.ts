@@ -1076,4 +1076,235 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	Deno.test({
+		name: `[${browserName}] ArrowUp and ArrowDown navigate between lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					// Type two lines.
+					await typeInEditor(page, "first line");
+					await page.keyboard.press("Enter");
+					await page.waitForTimeout(50);
+					await typeInEditor(page, "second line");
+					// Cursor is at end of "second line" (offset ~22).
+					await page.waitForTimeout(100);
+
+					// ArrowUp should move to the first line.
+					await page.keyboard.press("ArrowUp");
+					await page.waitForTimeout(100);
+					const sel1 = await page.evaluate(() =>
+						(window as any).__canvistEditor?.selection_end()
+					);
+					// Should be on the first line (offset < 11).
+					assert(sel1 <= 10, `expected first line, got offset ${sel1}`);
+
+					// ArrowDown should move back to the second line.
+					await page.keyboard.press("ArrowDown");
+					await page.waitForTimeout(100);
+					const sel2 = await page.evaluate(() =>
+						(window as any).__canvistEditor?.selection_end()
+					);
+					assert(sel2 > 10, `expected second line, got offset ${sel2}`);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] Home goes to line start, End goes to line end`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello world");
+					// Cursor at end (offset 11).
+					await page.keyboard.press("Home");
+					await page.waitForTimeout(100);
+					const afterHome = await page.evaluate(() =>
+						(window as any).__canvistEditor?.selection_end()
+					);
+					assertEquals(afterHome, 0);
+
+					await page.keyboard.press("End");
+					await page.waitForTimeout(100);
+					const afterEnd = await page.evaluate(() =>
+						(window as any).__canvistEditor?.selection_end()
+					);
+					assertEquals(afterEnd, 11);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] Tab key inserts a tab character`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello");
+					await page.keyboard.press("Tab");
+					await page.waitForTimeout(100);
+					await typeInEditor(page, "world");
+
+					const text = await getEditorText(page);
+					assertEquals(text, "hello\tworld");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] toggle_bold applies and removes bold via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello");
+					// Select all and apply bold.
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_selection(0, 5);
+						ed.toggle_bold();
+						const wasBold = ed.is_bold();
+						// Toggle again to remove bold.
+						ed.toggle_bold();
+						const isStillBold = ed.is_bold();
+						return { wasBold, isStillBold };
+					});
+					assertEquals(result.wasBold, true);
+					assertEquals(result.isStillBold, false);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name:
+			`[${browserName}] line_start_for_offset and line_end_for_offset via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "first line");
+					await page.keyboard.press("Enter");
+					await page.waitForTimeout(50);
+					await typeInEditor(page, "second line");
+					await page.waitForTimeout(100);
+
+					// line_start for offset 14 (inside "second line") should be 11.
+					// line_end for offset 3 (inside "first line") should be >= 10.
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						return {
+							lineStart14: ed.line_start_for_offset(14),
+							lineEnd3: ed.line_end_for_offset(3),
+						};
+					});
+					assertEquals(result.lineStart14, 11);
+					assert(
+						result.lineEnd3 >= 10 && result.lineEnd3 <= 11,
+						`expected 10-11, got ${result.lineEnd3}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] Shift+ArrowDown extends selection across lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "line one");
+					await page.keyboard.press("Enter");
+					await page.waitForTimeout(50);
+					await typeInEditor(page, "line two");
+					// Move to beginning of document.
+					const modifier = Deno.build.os === "darwin" ? "Meta" : "Control";
+					await page.keyboard.press(`${modifier}+a`);
+					await page.waitForTimeout(50);
+					await page.keyboard.press("ArrowLeft");
+					await page.waitForTimeout(50);
+
+					// Shift+ArrowDown to extend selection.
+					await page.keyboard.press("Shift+ArrowDown");
+					await page.waitForTimeout(100);
+
+					const selected = await page.evaluate(() =>
+						(window as any).__canvistEditor?.get_selected_text()
+					);
+					assert(selected.length > 0, "expected non-empty selection");
+					// Should span across the newline.
+					assert(
+						selected.includes("\n") || selected.length >= 8,
+						`expected cross-line selection, got "${selected}"`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
