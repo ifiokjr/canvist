@@ -146,6 +146,22 @@ export class CanvistEditor {
      */
     cursor_column(): number;
     /**
+     * Navigate backward in cursor history (Ctrl+Alt+←).
+     *
+     * Returns `true` if the cursor moved.
+     */
+    cursor_history_back(): boolean;
+    /**
+     * Navigate forward in cursor history (Ctrl+Alt+→).
+     *
+     * Returns `true` if the cursor moved.
+     */
+    cursor_history_forward(): boolean;
+    /**
+     * Number of positions in cursor history.
+     */
+    cursor_history_length(): number;
+    /**
      * Return the 1-based visual line number the caret is on.
      */
     cursor_line(): number;
@@ -191,6 +207,14 @@ export class CanvistEditor {
      * start1, end1, …].
      */
     find_all(needle: string, case_sensitive: boolean): Uint32Array;
+    /**
+     * Find all whole-word occurrences of `needle`.
+     *
+     * Returns offsets as `[start0, end0, start1, end1, ...]`.
+     * A "whole word" match requires the char before and after the match
+     * to be non-alphanumeric (or at document boundary).
+     */
+    find_all_whole_word(needle: string): Uint32Array;
     /**
      * Find the offset of the bracket matching the one at `offset`.
      *
@@ -281,6 +305,14 @@ export class CanvistEditor {
      * at the cursor position.
      */
     indent_selection(): void;
+    /**
+     * Insert a snippet template. `$0` marks where the cursor should
+     * be placed after insertion. Other text is inserted literally.
+     *
+     * Example: `insert_snippet("if ($0) {\n}")` inserts the template
+     * and places the cursor between the parentheses.
+     */
+    insert_snippet(template: string): void;
     /**
      * Insert one "tab" at the cursor — either spaces or a `\t`.
      */
@@ -378,12 +410,27 @@ export class CanvistEditor {
      */
     move_to_matching_bracket(): void;
     /**
+     * Move cursor to the start of the next paragraph (Ctrl+↓).
+     */
+    move_to_next_paragraph(): void;
+    /**
+     * Move cursor to the start of the previous paragraph (Ctrl+↑).
+     *
+     * A paragraph boundary is an empty line or the document start.
+     */
+    move_to_prev_paragraph(): void;
+    /**
      * Jump to the next bookmark after the current line.
      *
      * Wraps around to the first bookmark if past the last one.
      * Returns `true` if a bookmark was found.
      */
     next_bookmark(): boolean;
+    /**
+     * Return all occurrence offsets of the selected text as a flat array
+     * `[start0, end0, start1, end1, ...]`.
+     */
+    occurrence_offsets(): Uint32Array;
     /**
      * Return the character offset on the line directly above `offset`.
      *
@@ -440,6 +487,14 @@ export class CanvistEditor {
      * Process all pending canonical events via the editor runtime.
      */
     process_events(): void;
+    /**
+     * Record the current cursor position in the history stack.
+     *
+     * Call this before navigation jumps (go-to-line, bookmark jump, etc.)
+     * so the user can navigate back. Deduplicates consecutive identical
+     * positions and caps the stack at 100 entries.
+     */
+    push_cursor_history(): void;
     /**
      * Queue a key down event and process resulting operations.
      */
@@ -502,6 +557,11 @@ export class CanvistEditor {
      */
     scroll_by(delta_y: number): void;
     /**
+     * Ensure the current selection (or cursor) is visible in the
+     * viewport. Scrolls the minimum amount needed.
+     */
+    scroll_to_selection(): void;
+    /**
      * Get the current vertical scroll offset.
      */
     scroll_y(): number;
@@ -509,6 +569,13 @@ export class CanvistEditor {
      * Select the entire document.
      */
     select_all(): void;
+    /**
+     * Find all occurrences of the currently selected text.
+     *
+     * Returns the count of matches found (0 if nothing is selected or no
+     * matches). The offsets can be retrieved with `find_all`.
+     */
+    select_all_occurrences(): number;
     /**
      * Select all text between the nearest enclosing bracket pair.
      *
@@ -931,6 +998,9 @@ export interface InitOutput {
     readonly canvisteditor_current_line_number: (a: number) => number;
     readonly canvisteditor_current_line_text: (a: number) => [number, number];
     readonly canvisteditor_cursor_column: (a: number) => [number, number, number];
+    readonly canvisteditor_cursor_history_back: (a: number) => number;
+    readonly canvisteditor_cursor_history_forward: (a: number) => number;
+    readonly canvisteditor_cursor_history_length: (a: number) => number;
     readonly canvisteditor_cursor_line: (a: number) => [number, number, number];
     readonly canvisteditor_cut_line: (a: number) => [number, number];
     readonly canvisteditor_delete_line: (a: number) => void;
@@ -940,6 +1010,7 @@ export interface InitOutput {
     readonly canvisteditor_duplicate_line: (a: number) => void;
     readonly canvisteditor_expand_selection: (a: number) => void;
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_find_all_whole_word: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_find_matching_bracket: (a: number, b: number) => number;
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -953,6 +1024,7 @@ export interface InitOutput {
     readonly canvisteditor_highlight_matching_brackets: (a: number) => number;
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
     readonly canvisteditor_indent_selection: (a: number) => void;
+    readonly canvisteditor_insert_snippet: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_tab: (a: number) => void;
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_text_at: (a: number, b: number, c: number, d: number) => void;
@@ -973,7 +1045,10 @@ export interface InitOutput {
     readonly canvisteditor_move_line_up: (a: number) => void;
     readonly canvisteditor_move_text: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_move_to_matching_bracket: (a: number) => void;
+    readonly canvisteditor_move_to_next_paragraph: (a: number) => void;
+    readonly canvisteditor_move_to_prev_paragraph: (a: number) => void;
     readonly canvisteditor_next_bookmark: (a: number) => number;
+    readonly canvisteditor_occurrence_offsets: (a: number) => [number, number];
     readonly canvisteditor_offset_above: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_offset_below: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_open_line_above: (a: number) => void;
@@ -985,6 +1060,7 @@ export interface InitOutput {
     readonly canvisteditor_plain_text: (a: number) => [number, number];
     readonly canvisteditor_prev_bookmark: (a: number) => number;
     readonly canvisteditor_process_events: (a: number) => void;
+    readonly canvisteditor_push_cursor_history: (a: number) => void;
     readonly canvisteditor_queue_key_down: (a: number, b: number, c: number) => void;
     readonly canvisteditor_queue_key_down_with_modifiers: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly canvisteditor_read_only: (a: number) => number;
@@ -996,8 +1072,10 @@ export interface InitOutput {
     readonly canvisteditor_replace_range: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_replay_operations_json: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_scroll_by: (a: number, b: number) => void;
+    readonly canvisteditor_scroll_to_selection: (a: number) => void;
     readonly canvisteditor_scroll_y: (a: number) => number;
     readonly canvisteditor_select_all: (a: number) => void;
+    readonly canvisteditor_select_all_occurrences: (a: number) => number;
     readonly canvisteditor_select_between_brackets: (a: number) => number;
     readonly canvisteditor_select_line: (a: number) => void;
     readonly canvisteditor_select_to_document_end: (a: number) => void;

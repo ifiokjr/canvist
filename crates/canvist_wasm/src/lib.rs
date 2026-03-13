@@ -373,6 +373,10 @@ pub struct CanvistEditor {
 	bookmarks: std::collections::BTreeSet<usize>,
 	/// Whether the editor is in overwrite (replace) mode instead of insert.
 	overwrite_mode: bool,
+	/// Stack of cursor positions for back navigation.
+	cursor_history: Vec<usize>,
+	/// Index into cursor_history for forward navigation (-1 means at tip).
+	cursor_history_index: i32,
 }
 
 /// Colour theme for the editor canvas.
@@ -490,6 +494,8 @@ impl CanvistEditor {
 			show_indent_guides: false,
 			bookmarks: std::collections::BTreeSet::new(),
 			overwrite_mode: false,
+			cursor_history: Vec::new(),
+			cursor_history_index: -1,
 		})
 	}
 
@@ -2553,6 +2559,291 @@ impl CanvistEditor {
 			return true;
 		}
 		false
+	}
+
+	// ── Cursor position history ──────────────────────────────────────
+
+	/// Record the current cursor position in the history stack.
+	///
+	/// Call this before navigation jumps (go-to-line, bookmark jump, etc.)
+	/// so the user can navigate back. Deduplicates consecutive identical
+	/// positions and caps the stack at 100 entries.
+	#[wasm_bindgen]
+	pub fn push_cursor_history(&mut self) {
+		let offset = self.runtime.selection().end().offset();
+		// Deduplicate.
+		if self.cursor_history.last() == Some(&offset) {
+			return;
+		}
+		// If we navigated back and then push, trim the forward entries.
+		if self.cursor_history_index >= 0 {
+			let idx = self.cursor_history_index as usize;
+			self.cursor_history.truncate(idx + 1);
+		}
+		self.cursor_history.push(offset);
+		// Cap at 100.
+		if self.cursor_history.len() > 100 {
+			self.cursor_history.remove(0);
+		}
+		self.cursor_history_index = -1; // at tip
+	}
+
+	/// Navigate backward in cursor history (Ctrl+Alt+←).
+	///
+	/// Returns `true` if the cursor moved.
+	#[wasm_bindgen]
+	pub fn cursor_history_back(&mut self) -> bool {
+		if self.cursor_history.is_empty() {
+			return false;
+		}
+		let current = if self.cursor_history_index < 0 {
+			// First "back": skip the most recent (current) entry and
+			// go to the one before it.
+			self.cursor_history.len() as i32 - 2
+		} else {
+			self.cursor_history_index - 1
+		};
+		if current < 0 {
+			return false;
+		}
+		self.cursor_history_index = current;
+		let target = self.cursor_history[current as usize];
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(target)),
+		});
+		true
+	}
+
+	/// Navigate forward in cursor history (Ctrl+Alt+→).
+	///
+	/// Returns `true` if the cursor moved.
+	#[wasm_bindgen]
+	pub fn cursor_history_forward(&mut self) -> bool {
+		if self.cursor_history_index < 0 {
+			return false; // Already at tip.
+		}
+		let next = self.cursor_history_index + 1;
+		if next as usize >= self.cursor_history.len() {
+			self.cursor_history_index = -1; // back to tip
+			return false;
+		}
+		self.cursor_history_index = next;
+		let target = self.cursor_history[next as usize];
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(target)),
+		});
+		true
+	}
+
+	/// Number of positions in cursor history.
+	#[wasm_bindgen]
+	pub fn cursor_history_length(&self) -> usize {
+		self.cursor_history.len()
+	}
+
+	// ── Select all occurrences ───────────────────────────────────────
+
+	/// Find all occurrences of the currently selected text.
+	///
+	/// Returns the count of matches found (0 if nothing is selected or no
+	/// matches). The offsets can be retrieved with `find_all`.
+	#[wasm_bindgen]
+	pub fn select_all_occurrences(&self) -> usize {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		let chars: Vec<char> = plain.chars().collect();
+		let needle: String = chars[start.min(chars.len())..end.min(chars.len())]
+			.iter()
+			.collect();
+		if needle.is_empty() {
+			return 0;
+		}
+		plain.matches(&needle).count()
+	}
+
+	/// Return all occurrence offsets of the selected text as a flat array
+	/// `[start0, end0, start1, end1, ...]`.
+	#[wasm_bindgen]
+	pub fn occurrence_offsets(&self) -> Vec<usize> {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return Vec::new();
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let start = sel.start().offset().min(chars.len());
+		let end = sel.end().offset().min(chars.len());
+		let needle: String = chars[start..end].iter().collect();
+		if needle.is_empty() {
+			return Vec::new();
+		}
+		let needle_len = needle.chars().count();
+		let mut results = Vec::new();
+		let mut search_from = 0;
+		while let Some(byte_pos) = plain[search_from..].find(&needle) {
+			let abs_byte = search_from + byte_pos;
+			let char_pos = plain[..abs_byte].chars().count();
+			results.push(char_pos);
+			results.push(char_pos + needle_len);
+			search_from = abs_byte + needle.len();
+		}
+		results
+	}
+
+	// ── Whole word find ──────────────────────────────────────────────
+
+	/// Find all whole-word occurrences of `needle`.
+	///
+	/// Returns offsets as `[start0, end0, start1, end1, ...]`.
+	/// A "whole word" match requires the char before and after the match
+	/// to be non-alphanumeric (or at document boundary).
+	#[wasm_bindgen]
+	pub fn find_all_whole_word(&self, needle: &str) -> Vec<usize> {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let needle_chars: Vec<char> = needle.chars().collect();
+		let needle_len = needle_chars.len();
+		if needle_len == 0 || chars.len() < needle_len {
+			return Vec::new();
+		}
+		let mut results = Vec::new();
+		let mut i = 0;
+		while i + needle_len <= chars.len() {
+			if chars[i..i + needle_len] == needle_chars[..] {
+				// Check word boundary before.
+				let before_ok = i == 0 || !chars[i - 1].is_alphanumeric();
+				// Check word boundary after.
+				let after_ok =
+					i + needle_len >= chars.len() || !chars[i + needle_len].is_alphanumeric();
+				if before_ok && after_ok {
+					results.push(i);
+					results.push(i + needle_len);
+					i += needle_len;
+					continue;
+				}
+			}
+			i += 1;
+		}
+		results
+	}
+
+	// ── Paragraph navigation ─────────────────────────────────────────
+
+	/// Move cursor to the start of the previous paragraph (Ctrl+↑).
+	///
+	/// A paragraph boundary is an empty line or the document start.
+	#[wasm_bindgen]
+	pub fn move_to_prev_paragraph(&mut self) {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let mut pos = self.runtime.selection().end().offset().min(chars.len());
+
+		// Skip current line to start.
+		while pos > 0 && chars[pos - 1] != '\n' {
+			pos -= 1;
+		}
+		// Skip blank lines.
+		while pos > 0 && chars[pos - 1] == '\n' {
+			pos -= 1;
+		}
+		// Move to start of previous non-blank line.
+		while pos > 0 && chars[pos - 1] != '\n' {
+			pos -= 1;
+		}
+
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(pos)),
+		});
+	}
+
+	/// Move cursor to the start of the next paragraph (Ctrl+↓).
+	#[wasm_bindgen]
+	pub fn move_to_next_paragraph(&mut self) {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let mut pos = self.runtime.selection().end().offset().min(chars.len());
+
+		// Skip to end of current line.
+		while pos < chars.len() && chars[pos] != '\n' {
+			pos += 1;
+		}
+		// Skip blank lines.
+		while pos < chars.len() && chars[pos] == '\n' {
+			pos += 1;
+		}
+
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(pos)),
+		});
+	}
+
+	// ── Snippet insertion ────────────────────────────────────────────
+
+	/// Insert a snippet template. `$0` marks where the cursor should
+	/// be placed after insertion. Other text is inserted literally.
+	///
+	/// Example: `insert_snippet("if ($0) {\n}")` inserts the template
+	/// and places the cursor between the parentheses.
+	#[wasm_bindgen]
+	pub fn insert_snippet(&mut self, template: &str) {
+		if !self.is_writable() {
+			return;
+		}
+		let offset = self.runtime.selection().end().offset();
+
+		// Delete selection if any.
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			self.delete_range(sel.start().offset(), sel.end().offset());
+		}
+		let insert_at = self.runtime.selection().end().offset();
+
+		// Find $0 cursor marker position.
+		let cursor_marker = template.find("$0");
+		let clean = template.replace("$0", "");
+		let clean_len = clean.chars().count();
+
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(insert_at), clean));
+
+		let cursor_pos = if let Some(byte_pos) = cursor_marker {
+			let char_pos = template[..byte_pos].chars().count();
+			insert_at + char_pos
+		} else {
+			insert_at + clean_len
+		};
+
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(cursor_pos)),
+		});
+	}
+
+	// ── Scroll to selection ──────────────────────────────────────────
+
+	/// Ensure the current selection (or cursor) is visible in the
+	/// viewport. Scrolls the minimum amount needed.
+	#[wasm_bindgen]
+	pub fn scroll_to_selection(&mut self) {
+		let line_num = self.current_line_number();
+		let line_h = 24.0 * self.zoom; // approximate
+		let cursor_y = (line_num as f32 - 1.0) * line_h;
+		let viewport_h = self.height;
+		let padding = line_h * 2.0; // keep 2 lines visible above/below
+
+		if cursor_y < self.scroll_y + padding {
+			// Cursor above viewport.
+			self.scroll_y = (cursor_y - padding).max(0.0);
+		} else if cursor_y + line_h > self.scroll_y + viewport_h - padding {
+			// Cursor below viewport.
+			let content_h = self.content_height().unwrap_or(0.0);
+			let target = cursor_y + line_h + padding - viewport_h;
+			self.scroll_y = target.min((content_h - viewport_h).max(0.0));
+		}
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any

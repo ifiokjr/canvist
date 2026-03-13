@@ -303,6 +303,34 @@ export class CanvistEditor {
         return ret[0] >>> 0;
     }
     /**
+     * Navigate backward in cursor history (Ctrl+Alt+←).
+     *
+     * Returns `true` if the cursor moved.
+     * @returns {boolean}
+     */
+    cursor_history_back() {
+        const ret = wasm.canvisteditor_cursor_history_back(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Navigate forward in cursor history (Ctrl+Alt+→).
+     *
+     * Returns `true` if the cursor moved.
+     * @returns {boolean}
+     */
+    cursor_history_forward() {
+        const ret = wasm.canvisteditor_cursor_history_forward(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Number of positions in cursor history.
+     * @returns {number}
+     */
+    cursor_history_length() {
+        const ret = wasm.canvisteditor_cursor_history_length(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Return the 1-based visual line number the caret is on.
      * @returns {number}
      */
@@ -387,6 +415,23 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_find_all(this.__wbg_ptr, ptr0, len0, case_sensitive);
+        var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
+     * Find all whole-word occurrences of `needle`.
+     *
+     * Returns offsets as `[start0, end0, start1, end1, ...]`.
+     * A "whole word" match requires the char before and after the match
+     * to be non-alphanumeric (or at document boundary).
+     * @param {string} needle
+     * @returns {Uint32Array}
+     */
+    find_all_whole_word(needle) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_find_all_whole_word(this.__wbg_ptr, ptr0, len0);
         var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
@@ -554,6 +599,19 @@ export class CanvistEditor {
      */
     indent_selection() {
         wasm.canvisteditor_indent_selection(this.__wbg_ptr);
+    }
+    /**
+     * Insert a snippet template. `$0` marks where the cursor should
+     * be placed after insertion. Other text is inserted literally.
+     *
+     * Example: `insert_snippet("if ($0) {\n}")` inserts the template
+     * and places the cursor between the parentheses.
+     * @param {string} template
+     */
+    insert_snippet(template) {
+        const ptr0 = passStringToWasm0(template, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_insert_snippet(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Insert one "tab" at the cursor — either spaces or a `\t`.
@@ -739,6 +797,20 @@ export class CanvistEditor {
         wasm.canvisteditor_move_to_matching_bracket(this.__wbg_ptr);
     }
     /**
+     * Move cursor to the start of the next paragraph (Ctrl+↓).
+     */
+    move_to_next_paragraph() {
+        wasm.canvisteditor_move_to_next_paragraph(this.__wbg_ptr);
+    }
+    /**
+     * Move cursor to the start of the previous paragraph (Ctrl+↑).
+     *
+     * A paragraph boundary is an empty line or the document start.
+     */
+    move_to_prev_paragraph() {
+        wasm.canvisteditor_move_to_prev_paragraph(this.__wbg_ptr);
+    }
+    /**
      * Jump to the next bookmark after the current line.
      *
      * Wraps around to the first bookmark if past the last one.
@@ -748,6 +820,17 @@ export class CanvistEditor {
     next_bookmark() {
         const ret = wasm.canvisteditor_next_bookmark(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Return all occurrence offsets of the selected text as a flat array
+     * `[start0, end0, start1, end1, ...]`.
+     * @returns {Uint32Array}
+     */
+    occurrence_offsets() {
+        const ret = wasm.canvisteditor_occurrence_offsets(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Return the character offset on the line directly above `offset`.
@@ -857,6 +940,16 @@ export class CanvistEditor {
      */
     process_events() {
         wasm.canvisteditor_process_events(this.__wbg_ptr);
+    }
+    /**
+     * Record the current cursor position in the history stack.
+     *
+     * Call this before navigation jumps (go-to-line, bookmark jump, etc.)
+     * so the user can navigate back. Deduplicates consecutive identical
+     * positions and caps the stack at 100 entries.
+     */
+    push_cursor_history() {
+        wasm.canvisteditor_push_cursor_history(this.__wbg_ptr);
     }
     /**
      * Queue a key down event and process resulting operations.
@@ -988,6 +1081,13 @@ export class CanvistEditor {
         wasm.canvisteditor_scroll_by(this.__wbg_ptr, delta_y);
     }
     /**
+     * Ensure the current selection (or cursor) is visible in the
+     * viewport. Scrolls the minimum amount needed.
+     */
+    scroll_to_selection() {
+        wasm.canvisteditor_scroll_to_selection(this.__wbg_ptr);
+    }
+    /**
      * Get the current vertical scroll offset.
      * @returns {number}
      */
@@ -1000,6 +1100,17 @@ export class CanvistEditor {
      */
     select_all() {
         wasm.canvisteditor_select_all(this.__wbg_ptr);
+    }
+    /**
+     * Find all occurrences of the currently selected text.
+     *
+     * Returns the count of matches found (0 if nothing is selected or no
+     * matches). The offsets can be retrieved with `find_all`.
+     * @returns {number}
+     */
+    select_all_occurrences() {
+        const ret = wasm.canvisteditor_select_all_occurrences(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Select all text between the nearest enclosing bracket pair.
