@@ -431,6 +431,66 @@ export interface CanvistEditor {
 	/** Wrap selected text with open/close strings (e.g. brackets). */
 	wrapSelection(open: string, close: string): void;
 
+	// ── Transpose characters ────────────────────────────────────────
+
+	/** Swap the two characters around the cursor (Ctrl+T). */
+	transposeChars(): void;
+
+	// ── Toggle line comment ─────────────────────────────────────────
+
+	/** Get the line comment prefix. */
+	readonly commentPrefix: string;
+
+	/** Set the line comment prefix (default `"// "`). */
+	setCommentPrefix(prefix: string): void;
+
+	/** Toggle line-comment on current/selected lines. */
+	toggleLineComment(): void;
+
+	// ── Soft tabs ───────────────────────────────────────────────────
+
+	/** Current tab size (1–8). */
+	readonly tabSize: number;
+
+	/** Set tab size in spaces. */
+	setTabSize(size: number): void;
+
+	/** Whether soft tabs (spaces) are used. */
+	readonly softTabs: boolean;
+
+	/** Enable or disable soft tabs. */
+	setSoftTabs(enabled: boolean): void;
+
+	/** Insert a tab (spaces or `\t` depending on soft tabs). */
+	insertTab(): void;
+
+	// ── Auto-surround ───────────────────────────────────────────────
+
+	/** Whether auto-surround is enabled. */
+	readonly autoSurround: boolean;
+
+	/** Enable or disable auto-surround on selection. */
+	setAutoSurround(enabled: boolean): void;
+
+	// ── Expand / contract selection ─────────────────────────────────
+
+	/** Expand selection: word → quoted → bracketed → line → all. */
+	expandSelection(): void;
+
+	/** Contract selection: all → line → bracket → word → collapsed. */
+	contractSelection(): void;
+
+	// ── Matching bracket highlight ──────────────────────────────────
+
+	/** Whether matching bracket highlighting is enabled. */
+	readonly highlightMatchingBrackets: boolean;
+
+	/** Toggle matching bracket highlighting. */
+	setHighlightMatchingBrackets(enabled: boolean): void;
+
+	/** Find the offset of the bracket matching the one at `offset`. Returns -1 if none. */
+	findMatchingBracket(offset: number): number;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

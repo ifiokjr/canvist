@@ -279,9 +279,21 @@ export async function createEditor(
 		const data = ie.data;
 		if (data) {
 			syncTime();
+			// Auto-surround: if text is selected and auto-surround is on,
+			// wrap the selection instead of replacing it.
+			const autoCloseChars = "([{\"'`";
+			if (
+				data.length === 1 && autoCloseChars.includes(data) &&
+				inner.auto_surround() &&
+				inner.selection_start() !== inner.selection_end()
+			) {
+				inner.try_auto_surround(data);
+				cursorOffset = inner.selection_end();
+				renderFrame();
+				return;
+			}
 			// Bracket auto-close: if the input is an opening bracket and
 			// auto-close is enabled, insert the pair.
-			const autoCloseChars = "([{\"'`";
 			if (
 				data.length === 1 && autoCloseChars.includes(data) &&
 				inner.auto_close_brackets()
@@ -560,8 +572,7 @@ export async function createEditor(
 				if (sel.start !== sel.end) {
 					inner.indent_selection();
 				} else {
-					inner.insert_text_at(cursorOffset, "\t");
-					cursorOffset += 1;
+					inner.insert_tab();
 				}
 			}
 			cursorOffset = inner.selection_end();
@@ -599,6 +610,44 @@ export async function createEditor(
 				}
 			}
 			startOrExtendSelection(pos);
+			renderFrame();
+			return;
+		}
+
+		// Transpose characters — Ctrl+T.
+		if (mod && e.key === "t") {
+			e.preventDefault();
+			syncTime();
+			inner.transpose_chars();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Toggle line comment — Ctrl+/.
+		if (mod && e.key === "/") {
+			e.preventDefault();
+			syncTime();
+			inner.toggle_line_comment();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Expand selection — Ctrl+Shift+E.
+		if (mod && e.shiftKey && e.key === "E") {
+			e.preventDefault();
+			inner.expand_selection();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Contract selection — Ctrl+Shift+R (not reload, intercepted).
+		if (mod && e.shiftKey && e.key === "W") {
+			e.preventDefault();
+			inner.contract_selection();
+			cursorOffset = inner.selection_end();
 			renderFrame();
 			return;
 		}
@@ -1226,6 +1275,74 @@ export async function createEditor(
 				ref.wrap_selection(open, close);
 				cursorOffset = ref.selection_end();
 				renderFrame();
+			},
+			// ── Transpose characters ────────────────────
+			transposeChars() {
+				syncTime();
+				ref.transpose_chars();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Toggle line comment ─────────────────────
+			get commentPrefix() {
+				return ref.comment_prefix();
+			},
+			setCommentPrefix(prefix: string) {
+				ref.set_comment_prefix(prefix);
+			},
+			toggleLineComment() {
+				syncTime();
+				ref.toggle_line_comment();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Soft tabs ───────────────────────────────
+			get tabSize() {
+				return ref.tab_size();
+			},
+			setTabSize(size: number) {
+				ref.set_tab_size(size);
+			},
+			get softTabs() {
+				return ref.soft_tabs();
+			},
+			setSoftTabs(enabled: boolean) {
+				ref.set_soft_tabs(enabled);
+			},
+			insertTab() {
+				syncTime();
+				ref.insert_tab();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Auto-surround ───────────────────────────
+			get autoSurround() {
+				return ref.auto_surround();
+			},
+			setAutoSurround(enabled: boolean) {
+				ref.set_auto_surround(enabled);
+			},
+			// ── Expand / contract selection ──────────────
+			expandSelection() {
+				ref.expand_selection();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			contractSelection() {
+				ref.contract_selection();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Matching bracket highlight ───────────────
+			get highlightMatchingBrackets() {
+				return ref.highlight_matching_brackets();
+			},
+			setHighlightMatchingBrackets(enabled: boolean) {
+				ref.set_highlight_matching_brackets(enabled);
+				renderFrame();
+			},
+			findMatchingBracket(offset: number) {
+				return ref.find_matching_bracket(offset);
 			},
 			// ── Auto-indent ─────────────────────────────
 			autoIndentNewline() {

@@ -3151,4 +3151,212 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Transpose characters ────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] transpose_chars swaps chars around cursor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcd");
+						ed.set_selection(2, 2); // between b and c
+						ed.transpose_chars();
+						return ed.plain_text();
+					});
+					assertEquals(result, "acbd");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Toggle line comment ─────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] toggle_line_comment adds and removes // prefix`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello\nworld");
+						ed.select_all();
+						ed.toggle_line_comment(); // add
+						const commented = ed.plain_text();
+						ed.select_all();
+						ed.toggle_line_comment(); // remove
+						const uncommented = ed.plain_text();
+						return { commented, uncommented };
+					});
+					assertEquals(result.commented, "// hello\n// world");
+					assertEquals(result.uncommented, "hello\nworld");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Soft tabs ───────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] soft_tabs inserts spaces instead of tab`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_soft_tabs(true);
+						ed.set_tab_size(2);
+						ed.insert_tab();
+						const text = ed.plain_text();
+						const tabSz = ed.tab_size();
+						return { text, tabSz };
+					});
+					assertEquals(result.text, "  "); // 2 spaces
+					assertEquals(result.tabSz, 2);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Auto-surround ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] auto_surround wraps selection with brackets`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_auto_surround(true);
+						ed.insert_text("hello");
+						ed.select_all();
+						const wrapped = ed.try_auto_surround("(");
+						return { text: ed.plain_text(), wrapped };
+					});
+					assertEquals(result.text, "(hello)");
+					assertEquals(result.wrapped, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Expand selection ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] expand_selection goes word then line then all`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello world\ngoodbye");
+						ed.set_selection(2, 2); // inside "hello"
+						ed.expand_selection();
+						const s1 = ed.get_selected_text(); // word
+						ed.expand_selection();
+						const s2 = ed.get_selected_text(); // line
+						ed.expand_selection();
+						const s3 = ed.get_selected_text(); // all
+						return { s1, s2, s3 };
+					});
+					assertEquals(result.s1, "hello");
+					assertEquals(result.s2, "hello world");
+					assertEquals(result.s3, "hello world\ngoodbye");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Matching bracket ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] find_matching_bracket finds paired brackets`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("(hello [world])");
+						const m0 = ed.find_matching_bracket(0); // ( → )
+						const m14 = ed.find_matching_bracket(14); // ) → (
+						const m7 = ed.find_matching_bracket(7); // [ → ]
+						const m3 = ed.find_matching_bracket(3); // l → -1
+						return { m0, m14, m7, m3 };
+					});
+					assertEquals(result.m0, 14); // ( at 0 matches ) at 14
+					assertEquals(result.m14, 0); // ) at 14 matches ( at 0
+					assertEquals(result.m7, 13); // [ at 7 matches ] at 13
+					assertEquals(result.m3, -1); // no bracket at 3
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
