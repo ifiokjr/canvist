@@ -351,6 +351,8 @@ pub struct CanvistEditor {
 	highlight_current_line: bool,
 	/// Zoom level multiplier (1.0 = 100%).
 	zoom: f32,
+	/// Whether text wraps at the canvas edge (true) or extends infinitely (false).
+	word_wrap: bool,
 }
 
 /// Colour theme for the editor canvas.
@@ -457,6 +459,7 @@ impl CanvistEditor {
 			theme: EditorTheme::light(),
 			highlight_current_line: true,
 			zoom: 1.0,
+			word_wrap: true,
 		})
 	}
 
@@ -661,6 +664,23 @@ impl CanvistEditor {
 		self.highlight_current_line
 	}
 
+	// ── Word wrap ────────────────────────────────────────────────────
+
+	/// Enable or disable word wrapping at the canvas edge.
+	///
+	/// When disabled, lines extend horizontally and horizontal scrolling
+	/// may be needed.
+	#[wasm_bindgen]
+	pub fn set_word_wrap(&mut self, enabled: bool) {
+		self.word_wrap = enabled;
+	}
+
+	/// Whether word wrapping is enabled.
+	#[wasm_bindgen]
+	pub fn word_wrap(&self) -> bool {
+		self.word_wrap
+	}
+
 	// ── Statistics ───────────────────────────────────────────────────
 
 	/// Count the number of words (whitespace-separated tokens).
@@ -759,9 +779,14 @@ impl CanvistEditor {
 		self.width - self.gutter_width()
 	}
 
-	/// Build layout constants with current gutter, zoom, and theme settings.
+	/// Build layout constants with current gutter, zoom, theme, and wrap settings.
 	fn layout_constants(&self) -> LayoutConstants {
-		LayoutConstants::with_zoom_and_color(self.content_width(), self.zoom, self.theme.text)
+		let width = if self.word_wrap {
+			self.content_width()
+		} else {
+			100_000.0 // effectively infinite
+		};
+		LayoutConstants::with_zoom_and_color(width, self.zoom, self.theme.text)
 	}
 
 	/// Insert text at the current cursor position (start of document).
@@ -1353,6 +1378,205 @@ impl CanvistEditor {
 		chars[s..e].iter().collect()
 	}
 
+	/// Insert a newline at the cursor and auto-indent with the same leading
+	/// whitespace as the current line.
+	///
+	/// Also continues list markers:
+	/// - Bullet lines (`• `, `- `, `* `) → new bullet line
+	/// - Numbered lines (`1. `, `2. `, …) → incremented number
+	/// - Empty list line (just the marker) → removes the marker instead
+	///
+	/// Returns the number of characters inserted (1 for `\n` plus indent).
+	#[wasm_bindgen]
+	pub fn auto_indent_newline(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let offset = self.runtime.selection().end().offset();
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+
+		// Find current line text.
+		let mut line_start = offset.min(chars.len());
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		let line_text: String = chars[line_start..offset.min(chars.len())].iter().collect();
+
+		// Extract leading whitespace.
+		let indent: String = line_text
+			.chars()
+			.take_while(|c| *c == ' ' || *c == '\t')
+			.collect();
+		let trimmed = line_text.trim_start();
+
+		// Detect list markers.
+		let continuation = if trimmed == "• " || trimmed == "- " || trimmed == "* " {
+			// Empty list item — remove the marker instead of continuing.
+			return self.remove_line_prefix(line_start, &line_text);
+		} else if trimmed.starts_with("• ")
+			|| trimmed.starts_with("- ")
+			|| trimmed.starts_with("* ")
+		{
+			// Get the first character (might be multi-byte like •).
+			let marker: String = trimmed.chars().next().into_iter().collect();
+			format!("{indent}{marker} ")
+		} else if let Some(num_end) = trimmed.find(". ") {
+			let num_str = &trimmed[..num_end];
+			if let Ok(n) = num_str.parse::<u32>() {
+				if trimmed.len() == num_end + 2 {
+					// Empty numbered item — remove it.
+					return self.remove_line_prefix(line_start, &line_text);
+				}
+				format!("{indent}{}. ", n + 1)
+			} else {
+				indent.clone()
+			}
+		} else {
+			indent.clone()
+		};
+
+		let text = format!("\n{continuation}");
+		let len = text.chars().count();
+
+		// Delete selection if not collapsed.
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			self.delete_range(sel.start().offset(), sel.end().offset());
+		}
+
+		let insert_at = self.runtime.selection().end().offset();
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(insert_at), text));
+
+		let new_pos = insert_at + len;
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(new_pos)),
+		});
+
+		len
+	}
+
+	/// Helper: remove a line prefix (used when pressing Enter on an empty list item).
+	/// Deletes the line content and returns 0.
+	fn remove_line_prefix(&mut self, line_start: usize, line_text: &str) -> usize {
+		let line_len = line_text.chars().count();
+		if line_len > 0 {
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::range(
+					Position::new(line_start),
+					Position::new(line_start + line_len),
+				),
+			});
+			let _ = self
+				.runtime
+				.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		}
+		0
+	}
+
+	/// Toggle a bullet list prefix (`• `) on the current line.
+	///
+	/// If the line already starts with `• `, the prefix is removed.
+	/// Otherwise it is inserted at the line start (after leading whitespace).
+	#[wasm_bindgen]
+	pub fn toggle_bullet_list(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.toggle_line_prefix("• ");
+	}
+
+	/// Toggle a numbered list prefix (`1. `) on the current line.
+	///
+	/// If the line already starts with a number prefix, it is removed.
+	/// Otherwise `1. ` is inserted.
+	#[wasm_bindgen]
+	pub fn toggle_numbered_list(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let offset = self.runtime.selection().end().offset();
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+
+		let mut line_start = offset.min(chars.len());
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		let line_text: String = chars[line_start..]
+			.iter()
+			.take_while(|c| **c != '\n')
+			.collect();
+		let trimmed = line_text.trim_start();
+		let indent_len = line_text.len() - trimmed.len();
+		let insert_pos = line_start + indent_len;
+
+		// Check if already numbered.
+		if let Some(dot_pos) = trimmed.find(". ") {
+			let num_str = &trimmed[..dot_pos];
+			if num_str.parse::<u32>().is_ok() {
+				// Remove the number prefix.
+				let prefix_len = dot_pos + 2; // "N. "
+				let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+					selection: Selection::range(
+						Position::new(insert_pos),
+						Position::new(insert_pos + prefix_len),
+					),
+				});
+				let _ = self
+					.runtime
+					.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+				return;
+			}
+		}
+
+		// Insert "1. " at the line start.
+		self.runtime.apply_operation(Operation::insert(
+			Position::new(insert_pos),
+			"1. ".to_string(),
+		));
+	}
+
+	/// Helper: toggle a simple prefix (like "• ") on the current line.
+	fn toggle_line_prefix(&mut self, prefix: &str) {
+		let offset = self.runtime.selection().end().offset();
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+
+		let mut line_start = offset.min(chars.len());
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		let line_text: String = chars[line_start..]
+			.iter()
+			.take_while(|c| **c != '\n')
+			.collect();
+		let trimmed = line_text.trim_start();
+		let indent_len = line_text.len() - trimmed.len();
+		let insert_pos = line_start + indent_len;
+
+		if trimmed.starts_with(prefix) {
+			// Remove prefix.
+			let prefix_len = prefix.chars().count();
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::range(
+					Position::new(insert_pos),
+					Position::new(insert_pos + prefix_len),
+				),
+			});
+			let _ = self
+				.runtime
+				.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		} else {
+			// Insert prefix.
+			self.runtime.apply_operation(Operation::insert(
+				Position::new(insert_pos),
+				prefix.to_string(),
+			));
+		}
+	}
+
 	/// Indent the current selection: insert a tab character at the start
 	/// of each selected line. If the selection is collapsed, insert a tab
 	/// at the cursor position.
@@ -1879,7 +2103,12 @@ impl CanvistEditor {
 		let gutter_w = self.gutter_width();
 
 		let renderer = Canvas2dRenderer::new(ctx, width, height);
-		let lc = LayoutConstants::new(width - gutter_w);
+		let ht_w = if self.word_wrap {
+			width - gutter_w
+		} else {
+			100_000.0
+		};
+		let lc = LayoutConstants::with_zoom_and_color(ht_w, self.zoom, self.theme.text);
 
 		// Convert screen coords to document coords via viewport.
 		let viewport = Viewport::new(width, height);
@@ -1980,7 +2209,12 @@ impl CanvistEditor {
 		// Gutter width for line numbers (0 when disabled).
 		let gutter_width: f32 = if self.show_line_numbers { 48.0 } else { 0.0 };
 
-		let lc = LayoutConstants::with_zoom_and_color(width - gutter_width, self.zoom, theme.text);
+		let content_w = if self.word_wrap {
+			width - gutter_width
+		} else {
+			100_000.0
+		};
+		let lc = LayoutConstants::with_zoom_and_color(content_w, self.zoom, theme.text);
 		let doc = self.runtime.document();
 		let selection = self.runtime.selection();
 		let styled_runs = doc.styled_runs();

@@ -438,6 +438,32 @@ impl Document {
 		text.split('\n').count()
 	}
 
+	/// Return the leading whitespace (tabs/spaces) of the line containing
+	/// the given character `offset`.
+	///
+	/// This is used for auto-indent: when pressing Enter, the new line starts
+	/// with the same indentation as the current line.
+	#[must_use]
+	pub fn leading_whitespace_at(&self, offset: usize) -> String {
+		let text = self.plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		// Walk backwards to find the start of the current line.
+		let mut line_start = offset.min(chars.len());
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		// Collect leading whitespace.
+		let mut ws = String::new();
+		for &ch in &chars[line_start..] {
+			if ch == ' ' || ch == '\t' {
+				ws.push(ch);
+			} else {
+				break;
+			}
+		}
+		ws
+	}
+
 	/// Find all occurrences of `needle` in the document plain text.
 	///
 	/// Returns a list of `(start_offset, end_offset)` for each match.
@@ -1575,12 +1601,41 @@ mod tests {
 
 		let mut doc2 = Document::new();
 		doc2.from_html(&html);
-		// The plain text should match (possibly with trailing newline).
 		let text2 = doc2.plain_text();
 		assert!(
 			text2.trim() == "Hello bold world"
 				|| text2.contains("Hello") && text2.contains("bold") && text2.contains("world"),
 			"roundtrip text mismatch: {text2}"
 		);
+	}
+
+	// ── Leading whitespace / auto-indent ────────────────────────────
+
+	#[test]
+	fn leading_whitespace_no_indent() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello world");
+		assert_eq!(doc.leading_whitespace_at(5), "");
+	}
+
+	#[test]
+	fn leading_whitespace_with_tab() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "\thello world");
+		assert_eq!(doc.leading_whitespace_at(5), "\t");
+	}
+
+	#[test]
+	fn leading_whitespace_second_line() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "first\n    second");
+		assert_eq!(doc.leading_whitespace_at(10), "    ");
+	}
+
+	#[test]
+	fn leading_whitespace_at_start() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "  hello");
+		assert_eq!(doc.leading_whitespace_at(0), "  ");
 	}
 }

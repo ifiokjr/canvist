@@ -16,6 +16,18 @@ export class CanvistEditor {
      */
     apply_style_range(start: number, end: number, bold: boolean, italic: boolean, underline: boolean, font_size?: number | null, font_family?: string | null, color_rgba?: Uint8Array | null): void;
     /**
+     * Insert a newline at the cursor and auto-indent with the same leading
+     * whitespace as the current line.
+     *
+     * Also continues list markers:
+     * - Bullet lines (`• `, `- `, `* `) → new bullet line
+     * - Numbered lines (`1. `, `2. `, …) → incremented number
+     * - Empty list line (just the marker) → removes the marker instead
+     *
+     * Returns the number of characters inserted (1 for `\n` plus indent).
+     */
+    auto_indent_newline(): number;
+    /**
      * Force-break the current undo coalescing chain.
      *
      * Normally, rapid single-character inserts are merged into a single undo
@@ -409,6 +421,13 @@ export class CanvistEditor {
      */
     set_title(title: string): void;
     /**
+     * Enable or disable word wrapping at the canvas edge.
+     *
+     * When disabled, lines extend horizontally and horizontal scrolling
+     * may be needed.
+     */
+    set_word_wrap(enabled: boolean): void;
+    /**
      * Set the zoom level (1.0 = 100%, 1.5 = 150%, etc.). Clamped to [0.25, 4.0].
      */
     set_zoom(level: number): void;
@@ -445,10 +464,24 @@ export class CanvistEditor {
      */
     toggle_bold(): void;
     /**
+     * Toggle a bullet list prefix (`• `) on the current line.
+     *
+     * If the line already starts with `• `, the prefix is removed.
+     * Otherwise it is inserted at the line start (after leading whitespace).
+     */
+    toggle_bullet_list(): void;
+    /**
      * Toggle italic on the current selection. Preserves the current
      * selection.
      */
     toggle_italic(): void;
+    /**
+     * Toggle a numbered list prefix (`1. `) on the current line.
+     *
+     * If the line already starts with a number prefix, it is removed.
+     * Otherwise `1. ` is inserted.
+     */
+    toggle_numbered_list(): void;
     /**
      * Toggle strikethrough on the current selection.
      */
@@ -478,6 +511,10 @@ export class CanvistEditor {
      */
     word_count(): number;
     /**
+     * Whether word wrapping is enabled.
+     */
+    word_wrap(): boolean;
+    /**
      * Get the current zoom level.
      */
     zoom(): number;
@@ -501,6 +538,7 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_canvisteditor_free: (a: number, b: number) => void;
     readonly canvisteditor_apply_style_range: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly canvisteditor_auto_indent_newline: (a: number) => number;
     readonly canvisteditor_break_undo_coalescing: (a: number) => void;
     readonly canvisteditor_can_redo: (a: number) => number;
     readonly canvisteditor_can_undo: (a: number) => number;
@@ -571,6 +609,7 @@ export interface InitOutput {
     readonly canvisteditor_set_theme_dark: (a: number) => void;
     readonly canvisteditor_set_theme_light: (a: number) => void;
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_word_wrap: (a: number, b: number) => void;
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
     readonly canvisteditor_show_line_numbers: (a: number) => number;
     readonly canvisteditor_theme_name: (a: number) => [number, number];
@@ -578,13 +617,16 @@ export interface InitOutput {
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
     readonly canvisteditor_to_markdown: (a: number) => [number, number];
     readonly canvisteditor_toggle_bold: (a: number) => void;
+    readonly canvisteditor_toggle_bullet_list: (a: number) => void;
     readonly canvisteditor_toggle_italic: (a: number) => void;
+    readonly canvisteditor_toggle_numbered_list: (a: number) => void;
     readonly canvisteditor_toggle_strikethrough: (a: number) => void;
     readonly canvisteditor_toggle_underline: (a: number) => void;
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;
     readonly canvisteditor_word_count: (a: number) => number;
+    readonly canvisteditor_word_wrap: (a: number) => number;
     readonly canvisteditor_zoom: (a: number) => number;
     readonly canvisteditor_zoom_in: (a: number) => void;
     readonly canvisteditor_zoom_out: (a: number) => void;

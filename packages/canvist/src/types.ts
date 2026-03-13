@@ -311,6 +311,27 @@ export interface CanvistEditor {
 	/** Move text from [srcStart, srcEnd) to destOffset. */
 	moveText(srcStart: number, srcEnd: number, destOffset: number): void;
 
+	// ── Word wrap ───────────────────────────────────────────────────
+
+	/** Whether word wrapping is enabled. */
+	readonly wordWrap: boolean;
+
+	/** Enable or disable word wrapping. */
+	setWordWrap(enabled: boolean): void;
+
+	// ── Lists ───────────────────────────────────────────────────────
+
+	/** Toggle bullet list prefix (• ) on the current line. */
+	toggleBulletList(): void;
+
+	/** Toggle numbered list prefix (1. ) on the current line. */
+	toggleNumberedList(): void;
+
+	// ── Auto-indent ─────────────────────────────────────────────────
+
+	/** Insert newline with auto-indent and list continuation. Returns chars inserted. */
+	autoIndentNewline(): number;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }
