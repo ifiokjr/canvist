@@ -167,6 +167,14 @@ export class CanvistEditor {
      */
     replay_operations_json(operations_json: string): void;
     /**
+     * Select the entire document.
+     */
+    select_all(): void;
+    /**
+     * Select the word at the given character offset.
+     */
+    select_word_at(offset: number): void;
+    /**
      * Get selection end offset.
      */
     selection_end(): number;
@@ -227,6 +235,14 @@ export class CanvistEditor {
      * Returns `true` if an undo was performed, `false` if the undo stack was empty.
      */
     undo(): boolean;
+    /**
+     * Find the previous word boundary from a character offset.
+     */
+    word_boundary_left(offset: number): number;
+    /**
+     * Find the next word boundary from a character offset.
+     */
+    word_boundary_right(offset: number): number;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -259,6 +275,8 @@ export interface InitOutput {
     readonly canvisteditor_redo: (a: number) => number;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_replay_operations_json: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_select_all: (a: number) => void;
+    readonly canvisteditor_select_word_at: (a: number, b: number) => void;
     readonly canvisteditor_selection_end: (a: number) => number;
     readonly canvisteditor_selection_start: (a: number) => number;
     readonly canvisteditor_set_caret_visible: (a: number, b: number) => void;
@@ -268,6 +286,8 @@ export interface InitOutput {
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
     readonly canvisteditor_undo: (a: number) => number;
+    readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
+    readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;
     readonly canvisteditor_queue_text_input: (a: number, b: number, c: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;

@@ -338,6 +338,19 @@ export class CanvistEditor {
         }
     }
     /**
+     * Select the entire document.
+     */
+    select_all() {
+        wasm.canvisteditor_select_all(this.__wbg_ptr);
+    }
+    /**
+     * Select the word at the given character offset.
+     * @param {number} offset
+     */
+    select_word_at(offset) {
+        wasm.canvisteditor_select_word_at(this.__wbg_ptr, offset);
+    }
+    /**
      * Get selection end offset.
      * @returns {number}
      */
@@ -445,6 +458,24 @@ export class CanvistEditor {
     undo() {
         const ret = wasm.canvisteditor_undo(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Find the previous word boundary from a character offset.
+     * @param {number} offset
+     * @returns {number}
+     */
+    word_boundary_left(offset) {
+        const ret = wasm.canvisteditor_word_boundary_left(this.__wbg_ptr, offset);
+        return ret >>> 0;
+    }
+    /**
+     * Find the next word boundary from a character offset.
+     * @param {number} offset
+     * @returns {number}
+     */
+    word_boundary_right(offset) {
+        const ret = wasm.canvisteditor_word_boundary_right(this.__wbg_ptr, offset);
+        return ret >>> 0;
     }
 }
 if (Symbol.dispose) CanvistEditor.prototype[Symbol.dispose] = CanvistEditor.prototype.free;

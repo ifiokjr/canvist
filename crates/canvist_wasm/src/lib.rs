@@ -550,6 +550,36 @@ impl CanvistEditor {
 		});
 	}
 
+	/// Select the entire document.
+	#[wasm_bindgen]
+	pub fn select_all(&mut self) {
+		let len = self.runtime.document().char_count();
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(0), Position::new(len)),
+		});
+	}
+
+	/// Select the word at the given character offset.
+	#[wasm_bindgen]
+	pub fn select_word_at(&mut self, offset: usize) {
+		let (start, end) = self.runtime.document().word_at(offset);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(end)),
+		});
+	}
+
+	/// Find the previous word boundary from a character offset.
+	#[wasm_bindgen]
+	pub fn word_boundary_left(&self, offset: usize) -> usize {
+		self.runtime.document().word_boundary_left(offset)
+	}
+
+	/// Find the next word boundary from a character offset.
+	#[wasm_bindgen]
+	pub fn word_boundary_right(&self, offset: usize) -> usize {
+		self.runtime.document().word_boundary_right(offset)
+	}
+
 	/// Force-break the current undo coalescing chain.
 	///
 	/// Normally, rapid single-character inserts are merged into a single undo

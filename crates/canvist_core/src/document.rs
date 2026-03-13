@@ -462,6 +462,92 @@ impl Document {
 		self.rebuild_indexes();
 	}
 
+	/// Find the previous word boundary from a given character offset.
+	///
+	/// Uses a 3-class algorithm: whitespace, punctuation, and word characters.
+	#[must_use]
+	pub fn word_boundary_left(&self, offset: usize) -> usize {
+		let text = self.plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		if offset == 0 || chars.is_empty() {
+			return 0;
+		}
+		let mut pos = offset.min(chars.len());
+		while pos > 0 && chars[pos - 1].is_whitespace() {
+			pos -= 1;
+		}
+		if pos == 0 {
+			return 0;
+		}
+		let is_word = |ch: char| ch.is_alphanumeric() || ch == '_';
+		let target_is_word = is_word(chars[pos - 1]);
+		while pos > 0 {
+			let ch = chars[pos - 1];
+			if ch.is_whitespace() || is_word(ch) != target_is_word {
+				break;
+			}
+			pos -= 1;
+		}
+		pos
+	}
+
+	/// Find the next word boundary from a given character offset.
+	#[must_use]
+	pub fn word_boundary_right(&self, offset: usize) -> usize {
+		let text = self.plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		let len = chars.len();
+		if offset >= len || chars.is_empty() {
+			return len;
+		}
+		let mut pos = offset;
+		let is_word = |ch: char| ch.is_alphanumeric() || ch == '_';
+		let target_is_word = is_word(chars[pos]);
+		while pos < len {
+			let ch = chars[pos];
+			if ch.is_whitespace() || is_word(ch) != target_is_word {
+				break;
+			}
+			pos += 1;
+		}
+		while pos < len && chars[pos].is_whitespace() {
+			pos += 1;
+		}
+		pos
+	}
+
+	/// Find the start and end offsets of the word containing `offset`.
+	#[must_use]
+	pub fn word_at(&self, offset: usize) -> (usize, usize) {
+		let text = self.plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		let len = chars.len();
+		if chars.is_empty() || offset >= len {
+			return (len, len);
+		}
+		let is_word = |ch: char| ch.is_alphanumeric() || ch == '_';
+		let target_is_word = is_word(chars[offset]);
+		let target_is_ws = chars[offset].is_whitespace();
+		let class_match = |ch: char| {
+			if target_is_ws {
+				ch.is_whitespace()
+			} else if target_is_word {
+				is_word(ch)
+			} else {
+				!ch.is_whitespace() && !is_word(ch)
+			}
+		};
+		let mut start = offset;
+		while start > 0 && class_match(chars[start - 1]) {
+			start -= 1;
+		}
+		let mut end = offset;
+		while end < len && class_match(chars[end]) {
+			end += 1;
+		}
+		(start, end)
+	}
+
 	/// Remove a node directly from the document node map.
 	///
 	/// Root node removal is ignored.

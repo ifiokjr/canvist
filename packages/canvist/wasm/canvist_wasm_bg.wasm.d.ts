@@ -27,6 +27,8 @@ export const canvisteditor_queue_key_down_with_modifiers: (a: number, b: number,
 export const canvisteditor_redo: (a: number) => number;
 export const canvisteditor_render: (a: number) => [number, number];
 export const canvisteditor_replay_operations_json: (a: number, b: number, c: number) => [number, number];
+export const canvisteditor_select_all: (a: number) => void;
+export const canvisteditor_select_word_at: (a: number, b: number) => void;
 export const canvisteditor_selection_end: (a: number) => number;
 export const canvisteditor_selection_start: (a: number) => number;
 export const canvisteditor_set_caret_visible: (a: number, b: number) => void;
@@ -36,6 +38,8 @@ export const canvisteditor_set_selection: (a: number, b: number, c: number) => v
 export const canvisteditor_set_title: (a: number, b: number, c: number) => void;
 export const canvisteditor_to_json: (a: number) => [number, number, number, number];
 export const canvisteditor_undo: (a: number) => number;
+export const canvisteditor_word_boundary_left: (a: number, b: number) => number;
+export const canvisteditor_word_boundary_right: (a: number, b: number) => number;
 export const canvisteditor_queue_text_input: (a: number, b: number, c: number) => void;
 export const __externref_table_alloc: () => number;
 export const __wbindgen_externrefs: WebAssembly.Table;
