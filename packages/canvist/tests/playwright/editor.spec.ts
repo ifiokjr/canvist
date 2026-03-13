@@ -1932,4 +1932,104 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── HTML import / paste ─────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] from_html imports bold HTML`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.from_html("<strong>bold</strong> text");
+						return {
+							text: ed.plain_text(),
+							html: ed.to_html(),
+						};
+					});
+					assert(
+						result.text.includes("bold"),
+						`should contain 'bold', got: ${result.text}`,
+					);
+					assert(
+						result.html.includes("<strong>"),
+						`re-export should have <strong>, got: ${result.html}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] paste_html inserts formatted text at cursor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "before ");
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.paste_html("<em>pasted</em>");
+						return ed.plain_text();
+					});
+					assert(
+						result.includes("before ") && result.includes("pasted"),
+						`should contain both, got: ${result}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Double-click word selection ─────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] select_word_at selects word via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello world");
+					const selected = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.select_word_at(2); // middle of "hello"
+						return ed.get_selected_text();
+					});
+					assertEquals(selected, "hello");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

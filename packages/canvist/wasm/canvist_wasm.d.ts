@@ -112,6 +112,13 @@ export class CanvistEditor {
      */
     focused(): boolean;
     /**
+     * Import HTML content, replacing the current document.
+     *
+     * Parses basic inline elements (`<strong>`, `<em>`, `<u>`, `<s>`, `<br>`,
+     * `<p>`) and HTML entities.
+     */
+    from_html(html: string): void;
+    /**
      * Return the currently selected text (empty string if selection is collapsed).
      */
     get_selected_text(): string;
@@ -203,6 +210,13 @@ export class CanvistEditor {
      * Return the character offset on the line directly below `offset`.
      */
     offset_below(offset: number): number;
+    /**
+     * Paste HTML at the current cursor position.
+     *
+     * Parses the HTML to extract styled text, deletes any current selection,
+     * and inserts the parsed content with formatting preserved.
+     */
+    paste_html(html: string): void;
     /**
      * Return the full plain-text content of the document.
      */
@@ -430,6 +444,7 @@ export interface InitOutput {
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_focused: (a: number) => number;
+    readonly canvisteditor_from_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
@@ -445,6 +460,7 @@ export interface InitOutput {
     readonly canvisteditor_move_cursor_to: (a: number, b: number, c: number) => void;
     readonly canvisteditor_offset_above: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_offset_below: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_paste_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_plain_text: (a: number) => [number, number];
     readonly canvisteditor_process_events: (a: number) => void;
     readonly canvisteditor_queue_key_down: (a: number, b: number, c: number) => void;

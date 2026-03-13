@@ -21,6 +21,7 @@ export const canvisteditor_find_all: (a: number, b: number, c: number, d: number
 export const canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
 export const canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
 export const canvisteditor_focused: (a: number) => number;
+export const canvisteditor_from_html: (a: number, b: number, c: number) => void;
 export const canvisteditor_get_selected_text: (a: number) => [number, number];
 export const canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
 export const canvisteditor_insert_text: (a: number, b: number, c: number) => void;
@@ -36,6 +37,7 @@ export const canvisteditor_move_cursor_right: (a: number, b: number) => void;
 export const canvisteditor_move_cursor_to: (a: number, b: number, c: number) => void;
 export const canvisteditor_offset_above: (a: number, b: number) => [number, number, number];
 export const canvisteditor_offset_below: (a: number, b: number) => [number, number, number];
+export const canvisteditor_paste_html: (a: number, b: number, c: number) => void;
 export const canvisteditor_plain_text: (a: number) => [number, number];
 export const canvisteditor_process_events: (a: number) => void;
 export const canvisteditor_queue_key_down: (a: number, b: number, c: number) => void;

@@ -256,6 +256,18 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Import HTML content, replacing the current document.
+     *
+     * Parses basic inline elements (`<strong>`, `<em>`, `<u>`, `<s>`, `<br>`,
+     * `<p>`) and HTML entities.
+     * @param {string} html
+     */
+    from_html(html) {
+        const ptr0 = passStringToWasm0(html, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_from_html(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Return the currently selected text (empty string if selection is collapsed).
      * @returns {string}
      */
@@ -439,6 +451,18 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0] >>> 0;
+    }
+    /**
+     * Paste HTML at the current cursor position.
+     *
+     * Parses the HTML to extract styled text, deletes any current selection,
+     * and inserts the parsed content with formatting preserved.
+     * @param {string} html
+     */
+    paste_html(html) {
+        const ptr0 = passStringToWasm0(html, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_paste_html(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Return the full plain-text content of the document.

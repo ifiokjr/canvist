@@ -124,6 +124,12 @@ export interface CanvistEditor {
 	/** Export the document as Markdown. */
 	toMarkdown(): string;
 
+	/** Import HTML content, replacing the current document. */
+	fromHTML(html: string): void;
+
+	/** Paste HTML at the current cursor, preserving bold/italic/underline. */
+	pasteHTML(html: string): void;
+
 	/** Toggle bold on the current selection. */
 	toggleBold(): void;
 

@@ -631,6 +631,60 @@ impl CanvistEditor {
 		self.runtime.document().to_markdown()
 	}
 
+	/// Import HTML content, replacing the current document.
+	///
+	/// Parses basic inline elements (`<strong>`, `<em>`, `<u>`, `<s>`, `<br>`,
+	/// `<p>`) and HTML entities.
+	#[wasm_bindgen]
+	pub fn from_html(&mut self, html: &str) {
+		self.runtime.document_mut().from_html(html);
+	}
+
+	/// Paste HTML at the current cursor position.
+	///
+	/// Parses the HTML to extract styled text, deletes any current selection,
+	/// and inserts the parsed content with formatting preserved.
+	#[wasm_bindgen]
+	pub fn paste_html(&mut self, html: &str) {
+		use canvist_core::operation::Operation;
+
+		// Delete current selection if any.
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			self.delete_range(sel.start().offset(), sel.end().offset());
+		}
+
+		let insert_at = self.runtime.selection().end().offset();
+		let segments = canvist_core::document_parse_html(html);
+		let mut offset = insert_at;
+
+		for (text, bold, italic, underline, strike) in &segments {
+			self.runtime
+				.apply_operation(Operation::insert(Position::new(offset), text.clone()));
+			let len = text.chars().count();
+			if *bold || *italic || *underline || *strike {
+				let mut style = Style::new();
+				if *bold {
+					style = style.bold();
+				}
+				if *italic {
+					style = style.italic();
+				}
+				if *underline {
+					style = style.underline();
+				}
+				if *strike {
+					style = style.strikethrough();
+				}
+				self.runtime.apply_operation(Operation::format(
+					Selection::range(Position::new(offset), Position::new(offset + len)),
+					style,
+				));
+			}
+			offset += len;
+		}
+	}
+
 	/// Queue canonical text input and process it into operations.
 	#[wasm_bindgen]
 	pub fn queue_text_input(&mut self, text: &str) {
