@@ -150,6 +150,11 @@
           <input id="read-only-toggle" type="checkbox" style="margin-right:3px;" />
           <span>🔒</span>
         </label>
+        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
+        <button id="btn-theme" title="Toggle Dark/Light Mode" style="font-size:0.8em;padding:4px 8px;">🌙</button>
+        <button id="btn-zoom-in" title="Zoom In (Ctrl+=)" style="font-size:0.8em;padding:4px 8px;">+</button>
+        <span id="zoom-label" style="font-size:0.8em;min-width:40px;text-align:center;">100%</span>
+        <button id="btn-zoom-out" title="Zoom Out (Ctrl+-)" style="font-size:0.8em;padding:4px 8px;">−</button>
         <button id="btn-shortcuts" title="Keyboard Shortcuts (Ctrl+/)" style="font-size:0.8em;padding:4px 8px;">⌨</button>
       </div>
       <!-- Find/Replace bar (hidden by default) -->
@@ -229,6 +234,8 @@
       let selectionFocus = null;
       let isDraggingSelection = false;
       let didDragSelection = false;
+      let isDragDropping = false;
+      let dragDropSource = null; // {start, end}
 
       async function setup() {
         await init();
@@ -514,6 +521,40 @@
           editor.render();
         });
 
+        // --- Theme toggle ---
+        const themeBtn = document.getElementById("btn-theme");
+        themeBtn.addEventListener("click", () => {
+          const isDark = editor.theme_name() === "dark";
+          if (isDark) {
+            editor.set_theme_light();
+            themeBtn.textContent = "🌙";
+            document.body.style.background = "#f5f5f5";
+            document.querySelector("h1").style.color = "#333";
+          } else {
+            editor.set_theme_dark();
+            themeBtn.textContent = "☀️";
+            document.body.style.background = "#1a1a1a";
+            document.querySelector("h1").style.color = "#ccc";
+          }
+          editor.render();
+        });
+
+        // --- Zoom ---
+        const zoomLabel = document.getElementById("zoom-label");
+        function updateZoomLabel() {
+          zoomLabel.textContent = Math.round(editor.zoom() * 100) + "%";
+        }
+        document.getElementById("btn-zoom-in").addEventListener("click", () => {
+          editor.zoom_in();
+          updateZoomLabel();
+          editor.render();
+        });
+        document.getElementById("btn-zoom-out").addEventListener("click", () => {
+          editor.zoom_out();
+          updateZoomLabel();
+          editor.render();
+        });
+
         // --- Right-click context menu ---
         const ctxMenu = document.createElement("div");
         ctxMenu.id = "context-menu";
@@ -634,9 +675,18 @@
             selectionFocus = editor.selection_end();
             cursorOffset = selectionFocus;
           } else {
-            isDraggingSelection = true;
-            didDragSelection = false;
-            setSelection(offset, offset);
+            // Check if clicking inside an existing selection → start drag-drop.
+            const ss = editor.selection_start();
+            const se = editor.selection_end();
+            if (ss !== se && offset >= ss && offset <= se) {
+              isDragDropping = true;
+              dragDropSource = { start: ss, end: se };
+              canvas.style.cursor = "grabbing";
+            } else {
+              isDraggingSelection = true;
+              didDragSelection = false;
+              setSelection(offset, offset);
+            }
           }
 
           renderFrame();
@@ -644,6 +694,11 @@
         });
 
         canvas.addEventListener("mousemove", (e) => {
+          if (isDragDropping) {
+            // Visual feedback: cursor indicates drop target.
+            canvas.style.cursor = "grabbing";
+            return;
+          }
           if (!isDraggingSelection) return;
           const offset = charOffsetFromMouse(e);
           if (offset !== cursorOffset) {
@@ -654,6 +709,17 @@
         });
 
         window.addEventListener("mouseup", (e) => {
+          if (isDragDropping) {
+            isDragDropping = false;
+            canvas.style.cursor = editor.read_only() ? "default" : "text";
+            const dest = charOffsetFromMouse(e);
+            if (dragDropSource && dest !== null) {
+              editor.move_text(dragDropSource.start, dragDropSource.end, dest);
+              renderFrame();
+            }
+            dragDropSource = null;
+            return;
+          }
           if (!isDraggingSelection) return;
           isDraggingSelection = false;
           const offset = charOffsetFromMouse(e);
@@ -874,6 +940,29 @@
           if (mod && e.key === "/") {
             e.preventDefault();
             toggleShortcuts();
+            return;
+          }
+
+          // --- Zoom (Ctrl+= / Ctrl+- / Ctrl+0) ---
+          if (mod && (e.key === "=" || e.key === "+")) {
+            e.preventDefault();
+            editor.zoom_in();
+            updateZoomLabel();
+            editor.render();
+            return;
+          }
+          if (mod && e.key === "-") {
+            e.preventDefault();
+            editor.zoom_out();
+            updateZoomLabel();
+            editor.render();
+            return;
+          }
+          if (mod && e.key === "0") {
+            e.preventDefault();
+            editor.zoom_reset();
+            updateZoomLabel();
+            editor.render();
             return;
           }
 

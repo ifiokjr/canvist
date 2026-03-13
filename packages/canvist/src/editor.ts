@@ -445,6 +445,26 @@ export async function createEditor(
 			return;
 		}
 
+		// Zoom — Ctrl+= / Ctrl+- / Ctrl+0.
+		if (mod && (e.key === "=" || e.key === "+")) {
+			e.preventDefault();
+			inner.zoom_in();
+			renderFrame();
+			return;
+		}
+		if (mod && e.key === "-") {
+			e.preventDefault();
+			inner.zoom_out();
+			renderFrame();
+			return;
+		}
+		if (mod && e.key === "0") {
+			e.preventDefault();
+			inner.zoom_reset();
+			renderFrame();
+			return;
+		}
+
 		// Tab / Shift+Tab for indent/outdent.
 		if (e.key === "Tab") {
 			e.preventDefault();
@@ -943,6 +963,53 @@ export async function createEditor(
 			outdentSelection() {
 				syncTime();
 				ref.outdent_selection();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Theme ───────────────────────────────────
+			setThemeDark() {
+				ref.set_theme_dark();
+				renderFrame();
+			},
+			setThemeLight() {
+				ref.set_theme_light();
+				renderFrame();
+			},
+			get themeName() {
+				return ref.theme_name();
+			},
+			// ── Zoom ────────────────────────────────────
+			get zoom() {
+				return ref.zoom();
+			},
+			setZoom(level: number) {
+				ref.set_zoom(level);
+				renderFrame();
+			},
+			zoomIn() {
+				ref.zoom_in();
+				renderFrame();
+			},
+			zoomOut() {
+				ref.zoom_out();
+				renderFrame();
+			},
+			zoomReset() {
+				ref.zoom_reset();
+				renderFrame();
+			},
+			// ── Current line highlight ──────────────────
+			get highlightCurrentLine() {
+				return ref.highlight_current_line();
+			},
+			setHighlightCurrentLine(enabled: boolean) {
+				ref.set_highlight_current_line(enabled);
+				renderFrame();
+			},
+			// ── Drag and drop ───────────────────────────
+			moveText(srcStart: number, srcEnd: number, destOffset: number) {
+				syncTime();
+				ref.move_text(srcStart, srcEnd, destOffset);
 				cursorOffset = ref.selection_end();
 				renderFrame();
 			},
