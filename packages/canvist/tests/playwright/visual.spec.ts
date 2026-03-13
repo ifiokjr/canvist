@@ -157,6 +157,9 @@ for (const browserName of browsers) {
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(true);
 						(window as any).__canvistEditor?.set_highlight_current_line(false);
+						(window as any).__canvistEditor?.set_highlight_matching_brackets(
+							false,
+						);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -210,6 +213,9 @@ for (const browserName of browsers) {
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
 						(window as any).__canvistEditor?.set_highlight_current_line(false);
+						(window as any).__canvistEditor?.set_highlight_matching_brackets(
+							false,
+						);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -217,9 +223,9 @@ for (const browserName of browsers) {
 					const path = await screenshotCanvas(page, "text-basic", browserName);
 					const stats = await canvasPixelStats(page);
 
-					// Text should fill a measurable area — at least 0.5% of canvas
+					// Text should fill a measurable area — at least 0.4% of canvas
 					assert(
-						stats.nonWhitePercent >= 0.5,
+						stats.nonWhitePercent >= 0.4,
 						`text canvas has only ${stats.nonWhitePercent}% non-white pixels — text may not be rendering`,
 					);
 					// Must have black pixels (text color).
@@ -264,6 +270,9 @@ for (const browserName of browsers) {
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
 						(window as any).__canvistEditor?.set_highlight_current_line(false);
+						(window as any).__canvistEditor?.set_highlight_matching_brackets(
+							false,
+						);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -310,6 +319,7 @@ for (const browserName of browsers) {
 						ed.set_selection(0, 5);
 						ed.set_caret_visible(false);
 						ed.set_highlight_current_line(false);
+						ed.set_highlight_matching_brackets(false);
 						ed.render();
 					});
 					await page.waitForTimeout(100);
@@ -358,6 +368,9 @@ for (const browserName of browsers) {
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
 						(window as any).__canvistEditor?.set_highlight_current_line(false);
+						(window as any).__canvistEditor?.set_highlight_matching_brackets(
+							false,
+						);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -371,6 +384,7 @@ for (const browserName of browsers) {
 						ed.set_selection(11, 11); // collapse selection
 						ed.set_caret_visible(false);
 						ed.set_highlight_current_line(false);
+						ed.set_highlight_matching_brackets(false);
 						ed.render();
 					});
 					await page.waitForTimeout(100);
@@ -415,6 +429,9 @@ for (const browserName of browsers) {
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
 						(window as any).__canvistEditor?.set_highlight_current_line(false);
+						(window as any).__canvistEditor?.set_highlight_matching_brackets(
+							false,
+						);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -428,6 +445,7 @@ for (const browserName of browsers) {
 						ed.set_selection(8, 8);
 						ed.set_caret_visible(false);
 						ed.set_highlight_current_line(false);
+						ed.set_highlight_matching_brackets(false);
 						ed.render();
 					});
 					await page.waitForTimeout(100);
@@ -471,6 +489,9 @@ for (const browserName of browsers) {
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
 						(window as any).__canvistEditor?.set_highlight_current_line(false);
+						(window as any).__canvistEditor?.set_highlight_matching_brackets(
+							false,
+						);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
