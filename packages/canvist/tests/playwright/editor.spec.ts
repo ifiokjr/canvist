@@ -934,4 +934,146 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// --- New feature tests ---
+
+	Deno.test({
+		name: `[${browserName}] select all via Ctrl+A`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "Hello World");
+					const modifier = Deno.build.os === "darwin" ? "Meta" : "Control";
+					await page.keyboard.press(`${modifier}+a`);
+					await page.waitForTimeout(100);
+					const selected = await page.evaluate(() =>
+						(window as any).__canvistEditor?.get_selected_text()
+					);
+					assertEquals(selected, "Hello World");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] word navigation via Ctrl+Right then Ctrl+Left`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "one two three");
+					// Move cursor to start.
+					const modifier = Deno.build.os === "darwin" ? "Meta" : "Control";
+					await page.keyboard.press(`${modifier}+a`);
+					await page.waitForTimeout(50);
+					await page.keyboard.press("ArrowLeft");
+					await page.waitForTimeout(50);
+
+					// Ctrl+Right should jump to end of "one " -> position 4
+					await page.keyboard.press(`${modifier}+ArrowRight`);
+					await page.waitForTimeout(50);
+					const pos1 = await page.evaluate(() =>
+						(window as any).__canvistEditor?.selection_end()
+					);
+					// Should be at or past position 3 (end of "one" or start of "two")
+					assert(pos1 >= 3 && pos1 <= 4, `expected 3-4, got ${pos1}`);
+
+					// Ctrl+Right again jumps past "two "
+					await page.keyboard.press(`${modifier}+ArrowRight`);
+					await page.waitForTimeout(50);
+					const pos2 = await page.evaluate(() =>
+						(window as any).__canvistEditor?.selection_end()
+					);
+					assert(pos2 >= 7 && pos2 <= 8, `expected 7-8, got ${pos2}`);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] Ctrl+Backspace deletes previous word`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello world");
+					const modifier = Deno.build.os === "darwin" ? "Meta" : "Control";
+					await page.keyboard.press(`${modifier}+Backspace`);
+					await page.waitForTimeout(200);
+					const text = await page.evaluate(() =>
+						(window as any).__canvistEditor?.plain_text()
+					);
+					assertEquals(text, "hello ");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] select_word_at selects word via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello world");
+					// Use WASM API to select word at offset 2 (inside "hello").
+					const selected = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.select_word_at(2);
+						return ed.get_selected_text();
+					});
+					assertEquals(selected, "hello");
+
+					// Select word at offset 7 (inside "world").
+					const selected2 = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.select_word_at(7);
+						return ed.get_selected_text();
+					});
+					assertEquals(selected2, "world");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
