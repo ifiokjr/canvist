@@ -316,6 +316,15 @@ export async function createEditor(
 			return;
 		}
 
+		// Strikethrough — Ctrl+Shift+S.
+		if (mod && e.shiftKey && e.key === "S") {
+			e.preventDefault();
+			syncTime();
+			inner.toggle_strikethrough();
+			renderFrame();
+			return;
+		}
+
 		// Undo / Redo.
 		if (e.key === "z" && mod && !e.shiftKey) {
 			e.preventDefault();
@@ -355,6 +364,40 @@ export async function createEditor(
 			syncTime();
 			inner.insert_text_at(cursorOffset, "\t");
 			cursorOffset += 1;
+			renderFrame();
+			return;
+		}
+
+		// Page Up / Page Down.
+		if (e.key === "PageUp") {
+			e.preventDefault();
+			let pos = cursorOffset;
+			for (let i = 0; i < 20; i++) {
+				try {
+					const above = inner.offset_above(pos);
+					if (above === pos) break;
+					pos = above;
+				} catch {
+					break;
+				}
+			}
+			startOrExtendSelection(pos);
+			renderFrame();
+			return;
+		}
+		if (e.key === "PageDown") {
+			e.preventDefault();
+			let pos = cursorOffset;
+			for (let i = 0; i < 20; i++) {
+				try {
+					const below = inner.offset_below(pos);
+					if (below === pos) break;
+					pos = below;
+				} catch {
+					break;
+				}
+			}
+			startOrExtendSelection(pos);
 			renderFrame();
 			return;
 		}
@@ -632,6 +675,12 @@ export async function createEditor(
 			toJSON() {
 				return ref.to_json();
 			},
+			toHTML() {
+				return ref.to_html();
+			},
+			toMarkdown() {
+				return ref.to_markdown();
+			},
 			toggleBold() {
 				syncTime();
 				ref.toggle_bold();
@@ -712,6 +761,51 @@ export async function createEditor(
 				cursorOffset = ref.selection_end();
 				renderFrame();
 				return count;
+			},
+			// ── Scroll ──────────────────────────────────
+			get scrollY() {
+				return ref.scroll_y();
+			},
+			setScrollY(y: number) {
+				ref.set_scroll_y(y);
+				renderFrame();
+			},
+			scrollBy(deltaY: number) {
+				ref.scroll_by(deltaY);
+				renderFrame();
+			},
+			get contentHeight() {
+				return ref.content_height();
+			},
+			get caretY(): [number, number] {
+				const r = ref.caret_y();
+				return [r[0], r[1]];
+			},
+			// ── Focus ───────────────────────────────────
+			get focused() {
+				return ref.focused();
+			},
+			setFocused(focused: boolean) {
+				ref.set_focused(focused);
+				renderFrame();
+			},
+			// ── Statistics ──────────────────────────────
+			get wordCount() {
+				return ref.word_count();
+			},
+			get lineCount() {
+				return ref.line_count();
+			},
+			get cursorLine() {
+				return ref.cursor_line();
+			},
+			get cursorColumn() {
+				return ref.cursor_column();
+			},
+			// ── Size ────────────────────────────────────
+			setSize(width: number, height: number) {
+				ref.set_size(width, height);
+				renderFrame();
 			},
 		};
 	}

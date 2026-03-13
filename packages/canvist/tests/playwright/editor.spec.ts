@@ -1758,4 +1758,178 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Export ──────────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] to_html exports document as HTML`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello world");
+					const html = await page.evaluate(() => {
+						return (window as any).__canvistEditor.to_html();
+					});
+					assert(
+						html.includes("hello world"),
+						`HTML should contain text, got: ${html}`,
+					);
+					assert(
+						html.includes("<p>"),
+						`HTML should have <p> tags, got: ${html}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] to_markdown exports document as Markdown`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello");
+					// Make it bold
+					const md = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_selection(0, 5);
+						ed.toggle_bold();
+						return ed.to_markdown();
+					});
+					assert(
+						md.includes("**hello**"),
+						`Markdown should contain **hello**, got: ${md}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] to_html escapes HTML entities`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "<b>xss</b>");
+					const html = await page.evaluate(() => {
+						return (window as any).__canvistEditor.to_html();
+					});
+					assert(
+						!html.includes("<b>xss</b>"),
+						`should escape HTML, got: ${html}`,
+					);
+					assert(
+						html.includes("&lt;b&gt;"),
+						`should have escaped entities, got: ${html}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Keyboard shortcuts modal ────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] Ctrl+/ opens and closes shortcuts modal`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					// Open with Ctrl+/
+					const modifier = Deno.build.os === "darwin" ? "Meta" : "Control";
+					await page.keyboard.press(`${modifier}+/`);
+					await page.waitForTimeout(200);
+
+					const modalVisible = await page.evaluate(() => {
+						const modal = document.getElementById("shortcuts-modal");
+						return modal?.style.display !== "none";
+					});
+					assertEquals(modalVisible, true);
+
+					// Close by clicking close button
+					await page.click("#shortcuts-close");
+					await page.waitForTimeout(100);
+
+					const modalHidden = await page.evaluate(() => {
+						const modal = document.getElementById("shortcuts-modal");
+						return modal?.style.display === "none";
+					});
+					assertEquals(modalHidden, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Color picker ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] color picker element exists in toolbar`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const exists = await page.evaluate(() => {
+						const picker = document.getElementById("color-picker") as
+							| HTMLInputElement
+							| null;
+						return picker !== null && picker.type === "color";
+					});
+					assertEquals(exists, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

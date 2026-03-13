@@ -614,6 +614,23 @@ impl CanvistEditor {
 			.map_err(|e| JsValue::from_str(&e.to_string()))
 	}
 
+	/// Export the document as HTML.
+	///
+	/// Each paragraph becomes a `<p>` element. Styled text gets inline
+	/// elements (`<strong>`, `<em>`, `<u>`, `<s>`, `<span>`).
+	#[wasm_bindgen]
+	pub fn to_html(&self) -> String {
+		self.runtime.document().to_html()
+	}
+
+	/// Export the document as Markdown.
+	///
+	/// Bold → `**text**`, italic → `*text*`, strikethrough → `~~text~~`.
+	#[wasm_bindgen]
+	pub fn to_markdown(&self) -> String {
+		self.runtime.document().to_markdown()
+	}
+
 	/// Queue canonical text input and process it into operations.
 	#[wasm_bindgen]
 	pub fn queue_text_input(&mut self, text: &str) {
