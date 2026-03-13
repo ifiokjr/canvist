@@ -225,6 +225,57 @@ export class CanvistEditor {
         wasm.canvisteditor_insert_text_at(this.__wbg_ptr, offset, ptr0, len0);
     }
     /**
+     * Check if the current selection is all bold.
+     * @returns {boolean}
+     */
+    is_bold() {
+        const ret = wasm.canvisteditor_is_bold(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Check if the current selection is all italic.
+     * @returns {boolean}
+     */
+    is_italic() {
+        const ret = wasm.canvisteditor_is_italic(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Check if the current selection is all underline.
+     * @returns {boolean}
+     */
+    is_underline() {
+        const ret = wasm.canvisteditor_is_underline(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Return the end offset of the visual line containing `offset`.
+     * @param {number} offset
+     * @returns {number}
+     */
+    line_end_for_offset(offset) {
+        const ret = wasm.canvisteditor_line_end_for_offset(this.__wbg_ptr, offset);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] >>> 0;
+    }
+    /**
+     * Return the start offset of the visual line containing `offset`.
+     *
+     * This performs a full paragraph layout to determine where lines wrap,
+     * then returns the character offset where that visual line begins.
+     * @param {number} offset
+     * @returns {number}
+     */
+    line_start_for_offset(offset) {
+        const ret = wasm.canvisteditor_line_start_for_offset(this.__wbg_ptr, offset);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] >>> 0;
+    }
+    /**
      * Move cursor one character left.
      * @param {boolean} extend
      */
@@ -245,6 +296,33 @@ export class CanvistEditor {
      */
     move_cursor_to(position, extend) {
         wasm.canvisteditor_move_cursor_to(this.__wbg_ptr, position, extend);
+    }
+    /**
+     * Return the character offset on the line directly above `offset`.
+     *
+     * Preserves the horizontal (x) pixel position of the caret when moving
+     * between lines.
+     * @param {number} offset
+     * @returns {number}
+     */
+    offset_above(offset) {
+        const ret = wasm.canvisteditor_offset_above(this.__wbg_ptr, offset);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] >>> 0;
+    }
+    /**
+     * Return the character offset on the line directly below `offset`.
+     * @param {number} offset
+     * @returns {number}
+     */
+    offset_below(offset) {
+        const ret = wasm.canvisteditor_offset_below(this.__wbg_ptr, offset);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] >>> 0;
     }
     /**
      * Return the full plain-text content of the document.
@@ -447,6 +525,29 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
         }
+    }
+    /**
+     * Toggle bold on the current selection.
+     *
+     * If all characters in the selection are already bold, removes bold.
+     * Otherwise, applies bold. Preserves the current selection.
+     */
+    toggle_bold() {
+        wasm.canvisteditor_toggle_bold(this.__wbg_ptr);
+    }
+    /**
+     * Toggle italic on the current selection. Preserves the current
+     * selection.
+     */
+    toggle_italic() {
+        wasm.canvisteditor_toggle_italic(this.__wbg_ptr);
+    }
+    /**
+     * Toggle underline on the current selection. Preserves the current
+     * selection.
+     */
+    toggle_underline() {
+        wasm.canvisteditor_toggle_underline(this.__wbg_ptr);
     }
     /**
      * Undo the most recent transaction.

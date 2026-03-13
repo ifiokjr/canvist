@@ -444,6 +444,83 @@ impl Document {
 			.collect()
 	}
 
+	/// Return the resolved style at a given character offset.
+	///
+	/// Finds which text run the offset falls in and returns its style. Returns
+	/// the default style if no run covers the offset.
+	#[must_use]
+	pub fn style_at_offset(&self, offset: usize) -> Style {
+		for entry in &self.run_index {
+			if offset >= entry.start_char
+				&& offset < entry.start_char + entry.len_chars
+				&& let Some(node) = self.nodes.get(&entry.run_id)
+				&& let NodeKind::TextRun { ref style, .. } = node.kind
+			{
+				return style.clone();
+			}
+		}
+		Style::new()
+	}
+
+	/// Check whether **all** characters in the given range have bold applied.
+	#[must_use]
+	pub fn is_bold_in_range(&self, start: usize, end: usize) -> bool {
+		if start >= end {
+			return false;
+		}
+		let runs = self.styled_runs();
+		for (_, style, run_start, run_len) in &runs {
+			let run_end = run_start + run_len;
+			if run_end <= start || *run_start >= end {
+				continue;
+			}
+			let resolved = style.resolve();
+			if resolved.font_weight.as_u16() < 700 {
+				return false;
+			}
+		}
+		true
+	}
+
+	/// Check whether **all** characters in the given range have italic applied.
+	#[must_use]
+	pub fn is_italic_in_range(&self, start: usize, end: usize) -> bool {
+		if start >= end {
+			return false;
+		}
+		let runs = self.styled_runs();
+		for (_, style, run_start, run_len) in &runs {
+			let run_end = run_start + run_len;
+			if run_end <= start || *run_start >= end {
+				continue;
+			}
+			if !style.resolve().italic {
+				return false;
+			}
+		}
+		true
+	}
+
+	/// Check whether **all** characters in the given range have underline
+	/// applied.
+	#[must_use]
+	pub fn is_underline_in_range(&self, start: usize, end: usize) -> bool {
+		if start >= end {
+			return false;
+		}
+		let runs = self.styled_runs();
+		for (_, style, run_start, run_len) in &runs {
+			let run_end = run_start + run_len;
+			if run_end <= start || *run_start >= end {
+				continue;
+			}
+			if !style.resolve().underline {
+				return false;
+			}
+		}
+		true
+	}
+
 	/// Compute a deterministic hash of semantic document state.
 	#[must_use]
 	pub fn state_hash(&self) -> String {
@@ -768,5 +845,75 @@ mod tests {
 		doc.insert_text(Position::zero(), "café");
 
 		assert_eq!(doc.char_count(), 4);
+	}
+
+	#[test]
+	fn word_boundary_left_basic() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello world");
+		// From end of "world" (offset 11).
+		assert_eq!(doc.word_boundary_left(11), 6);
+		// From start of "world" (offset 6).
+		assert_eq!(doc.word_boundary_left(6), 0);
+		// From middle of "hello" (offset 3).
+		assert_eq!(doc.word_boundary_left(3), 0);
+		// At start.
+		assert_eq!(doc.word_boundary_left(0), 0);
+	}
+
+	#[test]
+	fn word_boundary_right_basic() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello world");
+		// From start (offset 0).
+		assert_eq!(doc.word_boundary_right(0), 6);
+		// From offset 6 (start of "world").
+		assert_eq!(doc.word_boundary_right(6), 11);
+		// At end.
+		assert_eq!(doc.word_boundary_right(11), 11);
+	}
+
+	#[test]
+	fn word_at_selects_correct_word() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello world");
+		assert_eq!(doc.word_at(2), (0, 5)); // "hello"
+		assert_eq!(doc.word_at(7), (6, 11)); // "world"
+		assert_eq!(doc.word_at(5), (5, 6)); // whitespace
+	}
+
+	#[test]
+	fn word_boundary_with_punctuation() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "foo.bar baz");
+		// "foo" and "." are different classes.
+		assert_eq!(doc.word_boundary_left(4), 3); // from "b" in "bar" back to "."
+		assert_eq!(doc.word_boundary_right(0), 3); // "foo" then whitespace
+	}
+
+	#[test]
+	fn is_bold_in_range_returns_false_for_unstyled() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+		assert!(!doc.is_bold_in_range(0, 5));
+	}
+
+	#[test]
+	fn is_bold_in_range_returns_true_for_bold() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+		let sel = Selection::range(Position::new(0), Position::new(5));
+		doc.apply_style(sel, &Style::new().bold());
+		assert!(doc.is_bold_in_range(0, 5));
+	}
+
+	#[test]
+	fn style_at_offset_returns_correct_style() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+		let sel = Selection::range(Position::new(0), Position::new(5));
+		doc.apply_style(sel, &Style::new().bold());
+		let s = doc.style_at_offset(2);
+		assert_eq!(s.font_weight, Some(crate::style::FontWeight::Bold));
 	}
 }

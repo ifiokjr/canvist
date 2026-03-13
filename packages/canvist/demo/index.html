@@ -320,28 +320,32 @@
         });
 
         // --- Formatting toolbar ---
+        function updateToolbarState() {
+          if (!editor) return;
+          document.getElementById("btn-bold").style.background =
+            editor.is_bold() ? "#c8e0ff" : "";
+          document.getElementById("btn-italic").style.background =
+            editor.is_italic() ? "#c8e0ff" : "";
+          document.getElementById("btn-underline").style.background =
+            editor.is_underline() ? "#c8e0ff" : "";
+        }
+
         document.getElementById("btn-bold").addEventListener("click", () => {
-          const sel = normalizedSelection();
-          if (sel) {
-            editor.apply_style_range(sel.start, sel.end, true, false, false, null, null, null);
-            renderFrame();
-          }
+          editor.toggle_bold();
+          updateToolbarState();
+          renderFrame();
           textarea.focus();
         });
         document.getElementById("btn-italic").addEventListener("click", () => {
-          const sel = normalizedSelection();
-          if (sel) {
-            editor.apply_style_range(sel.start, sel.end, false, true, false, null, null, null);
-            renderFrame();
-          }
+          editor.toggle_italic();
+          updateToolbarState();
+          renderFrame();
           textarea.focus();
         });
         document.getElementById("btn-underline").addEventListener("click", () => {
-          const sel = normalizedSelection();
-          if (sel) {
-            editor.apply_style_range(sel.start, sel.end, false, false, true, null, null, null);
-            renderFrame();
-          }
+          editor.toggle_underline();
+          updateToolbarState();
+          renderFrame();
           textarea.focus();
         });
 
@@ -419,22 +423,22 @@
           // --- Formatting shortcuts ---
           if (mod && e.key === "b") {
             e.preventDefault();
-            const sel = normalizedSelection();
-            if (sel) editor.apply_style_range(sel.start, sel.end, true, false, false, null, null, null);
+            editor.toggle_bold();
+            updateToolbarState();
             renderFrame();
             return;
           }
           if (mod && e.key === "i") {
             e.preventDefault();
-            const sel = normalizedSelection();
-            if (sel) editor.apply_style_range(sel.start, sel.end, false, true, false, null, null, null);
+            editor.toggle_italic();
+            updateToolbarState();
             renderFrame();
             return;
           }
           if (mod && e.key === "u") {
             e.preventDefault();
-            const sel = normalizedSelection();
-            if (sel) editor.apply_style_range(sel.start, sel.end, false, false, true, null, null, null);
+            editor.toggle_underline();
+            updateToolbarState();
             renderFrame();
             return;
           }
@@ -544,16 +548,104 @@
             return;
           }
 
-          // --- Home/End ---
-          if (e.key === "Home") {
+          // --- Tab ---
+          if (e.key === "Tab") {
             e.preventDefault();
-            startOrExtendSelection(mod ? 0 : 0);
+            insertTextAtSelection("\t");
+            textarea.value = "";
             renderFrame();
             return;
           }
+
+          // --- Home ---
+          if (e.key === "Home") {
+            e.preventDefault();
+            if (mod) {
+              startOrExtendSelection(0);
+            } else {
+              try {
+                const lineStart = editor.line_start_for_offset(cursorOffset);
+                startOrExtendSelection(lineStart);
+              } catch {
+                startOrExtendSelection(0);
+              }
+            }
+            renderFrame();
+            return;
+          }
+
+          // --- End ---
           if (e.key === "End") {
             e.preventDefault();
-            startOrExtendSelection(mod ? textLength : textLength);
+            if (mod) {
+              startOrExtendSelection(textLength);
+            } else {
+              try {
+                const lineEnd = editor.line_end_for_offset(cursorOffset);
+                startOrExtendSelection(lineEnd);
+              } catch {
+                startOrExtendSelection(textLength);
+              }
+            }
+            renderFrame();
+            return;
+          }
+
+          // --- Arrow Up ---
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            try {
+              const above = editor.offset_above(cursorOffset);
+              startOrExtendSelection(above);
+            } catch {
+              startOrExtendSelection(0);
+            }
+            renderFrame();
+            return;
+          }
+
+          // --- Arrow Down ---
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            try {
+              const below = editor.offset_below(cursorOffset);
+              startOrExtendSelection(below);
+            } catch {
+              startOrExtendSelection(textLength);
+            }
+            renderFrame();
+            return;
+          }
+
+          // --- Page Up ---
+          if (e.key === "PageUp") {
+            e.preventDefault();
+            // Move up ~20 lines by iterating offset_above.
+            let pos = cursorOffset;
+            for (let i = 0; i < 20; i++) {
+              try {
+                const above = editor.offset_above(pos);
+                if (above === pos) break;
+                pos = above;
+              } catch { break; }
+            }
+            startOrExtendSelection(pos);
+            renderFrame();
+            return;
+          }
+
+          // --- Page Down ---
+          if (e.key === "PageDown") {
+            e.preventDefault();
+            let pos = cursorOffset;
+            for (let i = 0; i < 20; i++) {
+              try {
+                const below = editor.offset_below(pos);
+                if (below === pos) break;
+                pos = below;
+              } catch { break; }
+            }
+            startOrExtendSelection(pos);
             renderFrame();
             return;
           }

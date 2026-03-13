@@ -266,6 +266,134 @@ pub fn hit_test_point(
 	line_end
 }
 
+/// Find which line a character offset falls on.
+///
+/// Returns the line index. If the offset equals a line boundary, it belongs
+/// to the line starting there (not the one ending).
+#[must_use]
+pub fn line_index_for_offset(layout: &ParagraphLayout, offset: usize) -> usize {
+	for (i, line) in layout.lines.iter().enumerate() {
+		if offset < line.end_offset || i == layout.lines.len() - 1 {
+			return i;
+		}
+	}
+	0
+}
+
+/// Return the start (inclusive) character offset of the line containing
+/// `offset`.
+#[must_use]
+pub fn line_start_for_offset(layout: &ParagraphLayout, offset: usize) -> usize {
+	let idx = line_index_for_offset(layout, offset);
+	layout.lines.get(idx).map_or(0, |l| l.start_offset)
+}
+
+/// Return the end (exclusive) character offset of the line containing
+/// `offset`.
+#[must_use]
+pub fn line_end_for_offset(layout: &ParagraphLayout, offset: usize) -> usize {
+	let idx = line_index_for_offset(layout, offset);
+	layout.lines.get(idx).map_or(0, |l| l.end_offset)
+}
+
+/// Compute the x-pixel position of `offset` within a laid-out line.
+///
+/// `line_start` is the line's `start_offset`, and `offset` must be within
+/// the same line.
+#[must_use]
+pub fn x_offset_in_line(
+	line_start: usize,
+	offset: usize,
+	fragments: &[TextFragment<'_>],
+	measurer: &dyn TextMeasure,
+) -> f32 {
+	if offset <= line_start {
+		return 0.0;
+	}
+	let full_text: String = fragments.iter().map(|f| f.text).collect();
+	let chars: Vec<char> = full_text.chars().collect();
+	let end = offset.min(chars.len());
+	let start = line_start.min(end);
+	let mut x = 0.0f32;
+	for (i, &ch) in chars.iter().enumerate().take(end).skip(start) {
+		let style = fragment_style_at(fragments, i);
+		x += measurer.measure_char(ch, style);
+	}
+	x
+}
+
+/// Find the character offset on the line directly above `offset`.
+///
+/// Uses the x-pixel position of the current caret to pick the closest
+/// character on the previous line.
+#[must_use]
+pub fn offset_above(
+	layout: &ParagraphLayout,
+	offset: usize,
+	fragments: &[TextFragment<'_>],
+	measurer: &dyn TextMeasure,
+) -> usize {
+	let idx = line_index_for_offset(layout, offset);
+	if idx == 0 {
+		return layout.lines.first().map_or(0, |l| l.start_offset);
+	}
+	let cur_line = &layout.lines[idx];
+	let target_x = x_offset_in_line(cur_line.start_offset, offset, fragments, measurer);
+	let prev_line = &layout.lines[idx - 1];
+	// Clamp: if hit_x lands at the line boundary (end_offset), pull back by
+	// one so the offset unambiguously belongs to this line and not the next.
+	let result = hit_x_on_line(prev_line, target_x, fragments, measurer);
+	if result >= prev_line.end_offset && prev_line.end_offset > prev_line.start_offset {
+		prev_line.end_offset - 1
+	} else {
+		result
+	}
+}
+
+/// Find the character offset on the line directly below `offset`.
+#[must_use]
+pub fn offset_below(
+	layout: &ParagraphLayout,
+	offset: usize,
+	fragments: &[TextFragment<'_>],
+	measurer: &dyn TextMeasure,
+) -> usize {
+	let idx = line_index_for_offset(layout, offset);
+	if idx >= layout.lines.len().saturating_sub(1) {
+		return layout.lines.last().map_or(0, |l| l.end_offset);
+	}
+	let cur_line = &layout.lines[idx];
+	let target_x = x_offset_in_line(cur_line.start_offset, offset, fragments, measurer);
+	let next_line = &layout.lines[idx + 1];
+	hit_x_on_line(next_line, target_x, fragments, measurer)
+}
+
+/// Find the character offset closest to a given x position on a single line.
+fn hit_x_on_line(
+	line: &LayoutLine,
+	target_x: f32,
+	fragments: &[TextFragment<'_>],
+	measurer: &dyn TextMeasure,
+) -> usize {
+	let full_text: String = fragments.iter().map(|f| f.text).collect();
+	let chars: Vec<char> = full_text.chars().collect();
+	let mut x = 0.0f32;
+	for (i, &ch) in chars
+		.iter()
+		.enumerate()
+		.take(line.end_offset.min(chars.len()))
+		.skip(line.start_offset)
+	{
+		let style = fragment_style_at(fragments, i);
+		let w = measurer.measure_char(ch, style);
+		if x + w * 0.5 > target_x {
+			return i;
+		}
+		x += w;
+	}
+	line.end_offset
+}
+
 /// Find the style for a character at a given offset within the fragments.
 fn fragment_style_at<'a>(fragments: &[TextFragment<'a>], offset: usize) -> &'a Style {
 	let mut pos = 0;
@@ -348,5 +476,135 @@ mod tests {
 		for window in layout.lines.windows(2) {
 			assert!(window[1].y > window[0].y);
 		}
+	}
+
+	#[test]
+	fn line_start_end_for_offset_single_line() {
+		let style = Style::new().font_size(16.0);
+		let fragments = [TextFragment {
+			text: "Hello",
+			style: &style,
+		}];
+		let config = LayoutConfig::new(800.0);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+
+		assert_eq!(line_start_for_offset(&layout, 3), 0);
+		assert_eq!(line_end_for_offset(&layout, 3), 5);
+	}
+
+	#[test]
+	fn line_start_end_for_offset_multi_line() {
+		let style = Style::new().font_size(16.0);
+		// At 16px × 0.6 = 9.6px per char, and 100px width → ~10 chars/line.
+		let text = "aaaaaaaaaa bbbbbbbbb";
+		let fragments = [TextFragment {
+			text,
+			style: &style,
+		}];
+		let config = LayoutConfig::new(100.0);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+
+		assert!(
+			layout.lines.len() >= 2,
+			"expected at least 2 lines, got {}",
+			layout.lines.len()
+		);
+
+		// Offset in first line.
+		let first_line_end = layout.lines[0].end_offset;
+		assert_eq!(line_start_for_offset(&layout, 3), 0);
+		assert_eq!(line_end_for_offset(&layout, 3), first_line_end);
+
+		// Offset in second line.
+		let second_line_start = layout.lines[1].start_offset;
+		let second_line_end = layout.lines[1].end_offset;
+		assert_eq!(
+			line_start_for_offset(&layout, second_line_start + 1),
+			second_line_start
+		);
+		assert_eq!(
+			line_end_for_offset(&layout, second_line_start + 1),
+			second_line_end
+		);
+	}
+
+	#[test]
+	fn offset_above_on_first_line_returns_line_start() {
+		let style = Style::new().font_size(16.0);
+		let text = "short";
+		let fragments = [TextFragment {
+			text,
+			style: &style,
+		}];
+		let config = LayoutConfig::new(800.0);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+
+		let result = offset_above(&layout, 3, &fragments, &HeuristicTextMeasure);
+		assert_eq!(result, 0); // Already on first line, goes to start.
+	}
+
+	#[test]
+	fn offset_below_on_last_line_returns_line_end() {
+		let style = Style::new().font_size(16.0);
+		let text = "short";
+		let fragments = [TextFragment {
+			text,
+			style: &style,
+		}];
+		let config = LayoutConfig::new(800.0);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+
+		let result = offset_below(&layout, 3, &fragments, &HeuristicTextMeasure);
+		assert_eq!(result, 5); // Already on last line, goes to end.
+	}
+
+	#[test]
+	fn offset_above_below_stays_on_correct_line() {
+		let style = Style::new().font_size(16.0);
+		let text = "aaaaaaaaaa bbbbbbbbb ccccccccc";
+		let fragments = [TextFragment {
+			text,
+			style: &style,
+		}];
+		let config = LayoutConfig::new(100.0);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+
+		if layout.lines.len() >= 2 {
+			// Find the last line.
+			let last_idx = layout.lines.len() - 1;
+			let last_line = &layout.lines[last_idx];
+			let mid = last_line.start_offset + 2;
+			// Go up — should land on the previous line.
+			let up = offset_above(&layout, mid, &fragments, &HeuristicTextMeasure);
+			let up_line_idx = line_index_for_offset(&layout, up);
+			assert!(
+				up_line_idx < last_idx,
+				"offset_above should move to a previous line: up={up} is on line {up_line_idx}, \
+				 last line is {last_idx}"
+			);
+			// Go down from there — should move forward to a later line.
+			let down = offset_below(&layout, up, &fragments, &HeuristicTextMeasure);
+			let down_line_idx = line_index_for_offset(&layout, down);
+			assert!(
+				down_line_idx > up_line_idx,
+				"offset_below should advance to a later line: down={down} on line \
+				 {down_line_idx}, was on line {up_line_idx}"
+			);
+		}
+	}
+
+	#[test]
+	fn x_offset_in_line_basic() {
+		let style = Style::new().font_size(16.0);
+		let fragments = [TextFragment {
+			text: "Hello",
+			style: &style,
+		}];
+		// Each char width = 16 * 0.6 = 9.6
+		let x0 = x_offset_in_line(0, 0, &fragments, &HeuristicTextMeasure);
+		assert!((x0 - 0.0).abs() < 0.01);
+
+		let x3 = x_offset_in_line(0, 3, &fragments, &HeuristicTextMeasure);
+		assert!((x3 - 28.8).abs() < 0.1, "expected ~28.8, got {x3}");
 	}
 }
