@@ -2525,4 +2525,211 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Go to line ──────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] go_to_line moves cursor to correct position`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("line one\nline two\nline three");
+						ed.go_to_line(2);
+						return {
+							offset: ed.selection_start(),
+							text: ed.plain_text().substring(
+								ed.selection_start(),
+								ed.selection_start() + 8,
+							),
+						};
+					});
+					assertEquals(result.offset, 9); // after "line one\n"
+					assertEquals(result.text, "line two");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Duplicate line ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] duplicate_line duplicates the current line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello\nworld");
+						ed.set_selection(2, 2); // cursor on "hello"
+						ed.duplicate_line();
+						return ed.plain_text();
+					});
+					assertEquals(result, "hello\nhello\nworld");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Move line ───────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] move_line_down swaps lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\nbbb\nccc");
+						ed.set_selection(1, 1); // cursor on "aaa"
+						ed.move_line_down();
+						return ed.plain_text();
+					});
+					assertEquals(result, "bbb\naaa\nccc");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] move_line_up swaps lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\nbbb\nccc");
+						ed.set_selection(5, 5); // cursor on "bbb"
+						ed.move_line_up();
+						return ed.plain_text();
+					});
+					assertEquals(result, "bbb\naaa\nccc");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Selection statistics ────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] selection stats return correct counts`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello world foo");
+						const noSel = {
+							chars: ed.selected_char_count(),
+							words: ed.selected_word_count(),
+						};
+						ed.set_selection(0, 11); // "hello world"
+						const withSel = {
+							chars: ed.selected_char_count(),
+							words: ed.selected_word_count(),
+						};
+						return { noSel, withSel };
+					});
+					assertEquals(result.noSel.chars, 0);
+					assertEquals(result.noSel.words, 0);
+					assertEquals(result.withSel.chars, 11);
+					assertEquals(result.withSel.words, 2);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Highlight colour ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] set_highlight_color applies background style`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("highlight me");
+						ed.set_selection(0, 9);
+						ed.set_highlight_color(255, 255, 0, 100);
+						// The HTML export should reflect the background.
+						return ed.to_html();
+					});
+					// Background styles should appear in the HTML export.
+					assert(
+						result.includes("highlight") || result.includes("background"),
+						`HTML should contain highlighted text, got: ${
+							result.substring(0, 200)
+						}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

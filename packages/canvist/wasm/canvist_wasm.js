@@ -218,6 +218,12 @@ export class CanvistEditor {
         wasm.canvisteditor_delete_range(this.__wbg_ptr, start, end);
     }
     /**
+     * Duplicate the current line (or selected lines) below.
+     */
+    duplicate_line() {
+        wasm.canvisteditor_duplicate_line(this.__wbg_ptr);
+    }
+    /**
      * Find all occurrences of `needle`. Returns a flat array: [start0, end0,
      * start1, end1, …].
      * @param {string} needle
@@ -298,6 +304,16 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Move the cursor to the start of the given 1-based paragraph line.
+     *
+     * If `line_number` exceeds the paragraph count, the cursor moves to
+     * the end of the document.
+     * @param {number} line_number
+     */
+    go_to_line(line_number) {
+        wasm.canvisteditor_go_to_line(this.__wbg_ptr, line_number);
     }
     /**
      * Whether the current-line highlight is enabled.
@@ -458,6 +474,18 @@ export class CanvistEditor {
         wasm.canvisteditor_move_cursor_to(this.__wbg_ptr, position, extend);
     }
     /**
+     * Move the current line down by swapping it with the line below.
+     */
+    move_line_down() {
+        wasm.canvisteditor_move_line_down(this.__wbg_ptr);
+    }
+    /**
+     * Move the current line up by swapping it with the line above.
+     */
+    move_line_up() {
+        wasm.canvisteditor_move_line_up(this.__wbg_ptr);
+    }
+    /**
      * Move text from `[src_start, src_end)` to `dest` offset.
      *
      * Used by drag-and-drop: extract the selected text, delete the source
@@ -589,6 +617,12 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Remove the background (highlight) colour from the current selection.
+     */
+    remove_highlight_color() {
+        wasm.canvisteditor_remove_highlight_color(this.__wbg_ptr);
+    }
+    /**
      * Request a re-render of the document to the canvas.
      *
      * Performs multi-paragraph, multi-line text rendering with styled runs,
@@ -672,6 +706,22 @@ export class CanvistEditor {
         wasm.canvisteditor_select_word_at(this.__wbg_ptr, offset);
     }
     /**
+     * Number of characters currently selected (0 if collapsed).
+     * @returns {number}
+     */
+    selected_char_count() {
+        const ret = wasm.canvisteditor_selected_char_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Number of words in the current selection (0 if collapsed).
+     * @returns {number}
+     */
+    selected_word_count() {
+        const ret = wasm.canvisteditor_selected_word_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Get selection end offset.
      * @returns {number}
      */
@@ -743,6 +793,18 @@ export class CanvistEditor {
      */
     set_font_size(size) {
         wasm.canvisteditor_set_font_size(this.__wbg_ptr, size);
+    }
+    /**
+     * Set a background (highlight) colour on the current selection.
+     *
+     * The colour is stored via the style's `background` field.
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @param {number} a
+     */
+    set_highlight_color(r, g, b, a) {
+        wasm.canvisteditor_set_highlight_color(this.__wbg_ptr, r, g, b, a);
     }
     /**
      * Enable or disable the current-line highlight band.

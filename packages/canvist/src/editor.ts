@@ -445,6 +445,36 @@ export async function createEditor(
 			return;
 		}
 
+		// Duplicate line — Ctrl+Shift+D.
+		if (mod && e.shiftKey && e.key === "D") {
+			e.preventDefault();
+			syncTime();
+			inner.duplicate_line();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Move line up — Alt+ArrowUp.
+		if (e.altKey && e.key === "ArrowUp" && !mod) {
+			e.preventDefault();
+			syncTime();
+			inner.move_line_up();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Move line down — Alt+ArrowDown.
+		if (e.altKey && e.key === "ArrowDown" && !mod) {
+			e.preventDefault();
+			syncTime();
+			inner.move_line_down();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
 		// Zoom — Ctrl+= / Ctrl+- / Ctrl+0.
 		if (mod && (e.key === "=" || e.key === "+")) {
 			e.preventDefault();
@@ -1041,6 +1071,49 @@ export async function createEditor(
 				cursorOffset = ref.selection_end();
 				renderFrame();
 				return n;
+			},
+			// ── Selection statistics ────────────────────
+			get selectedCharCount() {
+				return ref.selected_char_count();
+			},
+			get selectedWordCount() {
+				return ref.selected_word_count();
+			},
+			// ── Go to line ──────────────────────────────
+			goToLine(lineNumber: number) {
+				ref.go_to_line(lineNumber);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Line operations ─────────────────────────
+			duplicateLine() {
+				syncTime();
+				ref.duplicate_line();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			moveLineUp() {
+				syncTime();
+				ref.move_line_up();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			moveLineDown() {
+				syncTime();
+				ref.move_line_down();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Highlight colour ────────────────────────
+			setHighlightColor(r: number, g: number, b: number, a: number) {
+				syncTime();
+				ref.set_highlight_color(r, g, b, a);
+				renderFrame();
+			},
+			removeHighlightColor() {
+				syncTime();
+				ref.remove_highlight_color();
+				renderFrame();
 			},
 		};
 	}

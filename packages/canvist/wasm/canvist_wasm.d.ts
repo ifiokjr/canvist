@@ -106,6 +106,10 @@ export class CanvistEditor {
      */
     delete_range(start: number, end: number): void;
     /**
+     * Duplicate the current line (or selected lines) below.
+     */
+    duplicate_line(): void;
+    /**
      * Find all occurrences of `needle`. Returns a flat array: [start0, end0,
      * start1, end1, …].
      */
@@ -134,6 +138,13 @@ export class CanvistEditor {
      * Return the currently selected text (empty string if selection is collapsed).
      */
     get_selected_text(): string;
+    /**
+     * Move the cursor to the start of the given 1-based paragraph line.
+     *
+     * If `line_number` exceeds the paragraph count, the cursor moves to
+     * the end of the document.
+     */
+    go_to_line(line_number: number): void;
     /**
      * Whether the current-line highlight is enabled.
      */
@@ -222,6 +233,14 @@ export class CanvistEditor {
      */
     move_cursor_to(position: number, extend: boolean): void;
     /**
+     * Move the current line down by swapping it with the line below.
+     */
+    move_line_down(): void;
+    /**
+     * Move the current line up by swapping it with the line above.
+     */
+    move_line_up(): void;
+    /**
      * Move text from `[src_start, src_end)` to `dest` offset.
      *
      * Used by drag-and-drop: extract the selected text, delete the source
@@ -283,6 +302,10 @@ export class CanvistEditor {
      */
     redo(): boolean;
     /**
+     * Remove the background (highlight) colour from the current selection.
+     */
+    remove_highlight_color(): void;
+    /**
      * Request a re-render of the document to the canvas.
      *
      * Performs multi-paragraph, multi-line text rendering with styled runs,
@@ -322,6 +345,14 @@ export class CanvistEditor {
      * Select the word at the given character offset.
      */
     select_word_at(offset: number): void;
+    /**
+     * Number of characters currently selected (0 if collapsed).
+     */
+    selected_char_count(): number;
+    /**
+     * Number of words in the current selection (0 if collapsed).
+     */
+    selected_word_count(): number;
     /**
      * Get selection end offset.
      */
@@ -369,6 +400,12 @@ export class CanvistEditor {
      * Set font size on the current selection.
      */
     set_font_size(size: number): void;
+    /**
+     * Set a background (highlight) colour on the current selection.
+     *
+     * The colour is stored via the style's `background` field.
+     */
+    set_highlight_color(r: number, g: number, b: number, a: number): void;
     /**
      * Enable or disable the current-line highlight band.
      */
@@ -553,12 +590,14 @@ export interface InitOutput {
     readonly canvisteditor_cursor_column: (a: number) => [number, number, number];
     readonly canvisteditor_cursor_line: (a: number) => [number, number, number];
     readonly canvisteditor_delete_range: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_duplicate_line: (a: number) => void;
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_focused: (a: number) => number;
     readonly canvisteditor_from_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
+    readonly canvisteditor_go_to_line: (a: number, b: number) => void;
     readonly canvisteditor_highlight_current_line: (a: number) => number;
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
     readonly canvisteditor_indent_selection: (a: number) => void;
@@ -573,6 +612,8 @@ export interface InitOutput {
     readonly canvisteditor_move_cursor_left: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_right: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_to: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_move_line_down: (a: number) => void;
+    readonly canvisteditor_move_line_up: (a: number) => void;
     readonly canvisteditor_move_text: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_offset_above: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_offset_below: (a: number, b: number) => [number, number, number];
@@ -584,6 +625,7 @@ export interface InitOutput {
     readonly canvisteditor_queue_key_down_with_modifiers: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly canvisteditor_read_only: (a: number) => number;
     readonly canvisteditor_redo: (a: number) => number;
+    readonly canvisteditor_remove_highlight_color: (a: number) => void;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly canvisteditor_replace_range: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -592,6 +634,8 @@ export interface InitOutput {
     readonly canvisteditor_scroll_y: (a: number) => number;
     readonly canvisteditor_select_all: (a: number) => void;
     readonly canvisteditor_select_word_at: (a: number, b: number) => void;
+    readonly canvisteditor_selected_char_count: (a: number) => number;
+    readonly canvisteditor_selected_word_count: (a: number) => number;
     readonly canvisteditor_selection_end: (a: number) => number;
     readonly canvisteditor_selection_start: (a: number) => number;
     readonly canvisteditor_set_caret_visible: (a: number, b: number) => void;
@@ -599,6 +643,7 @@ export interface InitOutput {
     readonly canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_set_focused: (a: number, b: number) => void;
     readonly canvisteditor_set_font_size: (a: number, b: number) => void;
+    readonly canvisteditor_set_highlight_color: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_set_highlight_current_line: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_read_only: (a: number, b: number) => void;

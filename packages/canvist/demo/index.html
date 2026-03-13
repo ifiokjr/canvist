@@ -151,6 +151,11 @@
           <span>🔒</span>
         </label>
         <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
+        <label title="Highlight Color" style="display:inline-flex;align-items:center;cursor:pointer;">
+          <span style="font-size:0.85em;margin-right:2px;background:#ff0;">🖍</span>
+          <input id="highlight-picker" type="color" value="#ffff00" style="width:24px;height:24px;border:none;padding:0;cursor:pointer;" />
+        </label>
+        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
         <button id="btn-bullet" title="Toggle Bullet List" style="font-size:0.9em;padding:4px 8px;">•</button>
         <button id="btn-numbered" title="Toggle Numbered List" style="font-size:0.8em;padding:4px 8px;">1.</button>
         <label title="Word Wrap" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
@@ -193,6 +198,7 @@
 
     <div id="status-bar" style="width:800px;max-width:calc(100vw - 4rem);display:flex;gap:1.5rem;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;border-top:none;border-radius:0 0 8px 8px;font-size:0.82rem;color:#666;font-family:'Inter',system-ui,sans-serif;">
       <span id="status-position">Ln 1, Col 1</span>
+      <span id="status-selection" style="color:#999;"></span>
       <span id="status-words">0 words</span>
       <span id="status-chars">0 chars</span>
       <span id="status-lines">1 line</span>
@@ -444,6 +450,15 @@
             const chars = editor.char_count();
             const lines = editor.line_count();
             document.getElementById("status-position").textContent = `Ln ${ln}, Col ${col}`;
+            // Selection stats.
+            const selChars = editor.selected_char_count();
+            const selEl = document.getElementById("status-selection");
+            if (selChars > 0) {
+              const selWords = editor.selected_word_count();
+              selEl.textContent = `(${selChars} selected, ${selWords} word${selWords !== 1 ? "s" : ""})`;
+            } else {
+              selEl.textContent = "";
+            }
             document.getElementById("status-words").textContent = `${words} word${words !== 1 ? "s" : ""}`;
             document.getElementById("status-chars").textContent = `${chars} char${chars !== 1 ? "s" : ""}`;
             document.getElementById("status-lines").textContent = `${lines} line${lines !== 1 ? "s" : ""}`;
@@ -526,6 +541,17 @@
           editor.set_read_only(e.target.checked);
           canvas.style.cursor = e.target.checked ? "default" : "text";
           editor.render();
+        });
+
+        // --- Highlight color ---
+        document.getElementById("highlight-picker").addEventListener("input", (e) => {
+          const hex = e.target.value;
+          const r = parseInt(hex.substr(1, 2), 16);
+          const g = parseInt(hex.substr(3, 2), 16);
+          const b = parseInt(hex.substr(5, 2), 16);
+          editor.set_highlight_color(r, g, b, 100); // semi-transparent
+          editor.render();
+          textarea.focus();
         });
 
         // --- List toggles ---
@@ -965,6 +991,43 @@
           if (mod && e.key === "/") {
             e.preventDefault();
             toggleShortcuts();
+            return;
+          }
+
+          // --- Go to line (Ctrl+G) ---
+          if (mod && e.key === "g") {
+            e.preventDefault();
+            const input = prompt("Go to line:");
+            if (input) {
+              const n = parseInt(input, 10);
+              if (!isNaN(n) && n > 0) {
+                editor.go_to_line(n);
+                editor.render();
+                updateStatusBar();
+              }
+            }
+            return;
+          }
+
+          // --- Duplicate line (Ctrl+Shift+D) ---
+          if (mod && e.shiftKey && e.key === "D") {
+            e.preventDefault();
+            editor.duplicate_line();
+            editor.render();
+            return;
+          }
+
+          // --- Move line up/down (Alt+Arrow) ---
+          if (e.altKey && !mod && e.key === "ArrowUp") {
+            e.preventDefault();
+            editor.move_line_up();
+            editor.render();
+            return;
+          }
+          if (e.altKey && !mod && e.key === "ArrowDown") {
+            e.preventDefault();
+            editor.move_line_down();
+            editor.render();
             return;
           }
 
