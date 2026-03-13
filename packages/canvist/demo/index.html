@@ -162,6 +162,14 @@
           <input id="word-wrap-toggle" type="checkbox" checked style="margin-right:3px;" />
           <span>↩</span>
         </label>
+        <label title="Show Whitespace" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+          <input id="whitespace-toggle" type="checkbox" style="margin-right:3px;" />
+          <span>¶</span>
+        </label>
+        <label title="Auto-Close Brackets" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+          <input id="auto-close-toggle" type="checkbox" style="margin-right:3px;" />
+          <span>()</span>
+        </label>
         <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
         <button id="btn-theme" title="Toggle Dark/Light Mode" style="font-size:0.8em;padding:4px 8px;">🌙</button>
         <button id="btn-zoom-in" title="Zoom In (Ctrl+=)" style="font-size:0.8em;padding:4px 8px;">+</button>
@@ -564,6 +572,17 @@
           editor.toggle_numbered_list();
           editor.render();
           textarea.focus();
+        });
+
+        // --- Show whitespace toggle ---
+        document.getElementById("whitespace-toggle").addEventListener("change", (e) => {
+          editor.set_show_whitespace(e.target.checked);
+          editor.render();
+        });
+
+        // --- Auto-close brackets toggle ---
+        document.getElementById("auto-close-toggle").addEventListener("change", (e) => {
+          editor.set_auto_close_brackets(e.target.checked);
         });
 
         // --- Word wrap toggle ---
@@ -991,6 +1010,36 @@
           if (mod && e.key === "/") {
             e.preventDefault();
             toggleShortcuts();
+            return;
+          }
+
+          // --- Delete line (Ctrl+Shift+K) ---
+          if (mod && e.shiftKey && e.key === "K") {
+            e.preventDefault();
+            editor.delete_line();
+            editor.render();
+            return;
+          }
+
+          // --- Join lines (Ctrl+J) ---
+          if (mod && e.key === "j") {
+            e.preventDefault();
+            editor.join_lines();
+            editor.render();
+            return;
+          }
+
+          // --- Transform case (Ctrl+Shift+U/L) ---
+          if (mod && e.shiftKey && e.key === "U") {
+            e.preventDefault();
+            editor.transform_uppercase();
+            editor.render();
+            return;
+          }
+          if (mod && e.shiftKey && e.key === "L") {
+            e.preventDefault();
+            editor.transform_lowercase();
+            editor.render();
             return;
           }
 

@@ -279,8 +279,19 @@ export async function createEditor(
 		const data = ie.data;
 		if (data) {
 			syncTime();
-			inner.insert_text_at(cursorOffset, data);
-			cursorOffset += data.length;
+			// Bracket auto-close: if the input is an opening bracket and
+			// auto-close is enabled, insert the pair.
+			const autoCloseChars = "([{\"'`";
+			if (
+				data.length === 1 && autoCloseChars.includes(data) &&
+				inner.auto_close_brackets()
+			) {
+				inner.insert_with_auto_close(data);
+				cursorOffset = inner.selection_end();
+			} else {
+				inner.insert_text_at(cursorOffset, data);
+				cursorOffset += data.length;
+			}
 			renderFrame();
 		}
 	});
@@ -440,6 +451,46 @@ export async function createEditor(
 			e.preventDefault();
 			syncTime();
 			const inserted = inner.auto_indent_newline();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Delete line — Ctrl+Shift+K.
+		if (mod && e.shiftKey && e.key === "K") {
+			e.preventDefault();
+			syncTime();
+			inner.delete_line();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Join lines — Ctrl+J.
+		if (mod && e.key === "j") {
+			e.preventDefault();
+			syncTime();
+			inner.join_lines();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Transform uppercase — Ctrl+Shift+U.
+		if (mod && e.shiftKey && e.key === "U") {
+			e.preventDefault();
+			syncTime();
+			inner.transform_uppercase();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Transform lowercase — Ctrl+Shift+L.
+		if (mod && e.shiftKey && e.key === "L") {
+			e.preventDefault();
+			syncTime();
+			inner.transform_lowercase();
 			cursorOffset = inner.selection_end();
 			renderFrame();
 			return;
@@ -1063,6 +1114,66 @@ export async function createEditor(
 				ref.toggle_numbered_list();
 				cursorOffset = ref.selection_end();
 				renderFrame();
+			},
+			// ── Delete / join line ───────────────────────
+			deleteLine() {
+				syncTime();
+				ref.delete_line();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			joinLines() {
+				syncTime();
+				ref.join_lines();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Transform case ──────────────────────────
+			transformUppercase() {
+				syncTime();
+				ref.transform_uppercase();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			transformLowercase() {
+				syncTime();
+				ref.transform_lowercase();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			transformTitleCase() {
+				syncTime();
+				ref.transform_title_case();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Sort lines ──────────────────────────────
+			sortLinesAsc() {
+				syncTime();
+				ref.sort_lines_asc();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			sortLinesDesc() {
+				syncTime();
+				ref.sort_lines_desc();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Show whitespace ─────────────────────────
+			get showWhitespace() {
+				return ref.show_whitespace();
+			},
+			setShowWhitespace(show: boolean) {
+				ref.set_show_whitespace(show);
+				renderFrame();
+			},
+			// ── Bracket auto-close ──────────────────────
+			get autoCloseBrackets() {
+				return ref.auto_close_brackets();
+			},
+			setAutoCloseBrackets(enabled: boolean) {
+				ref.set_auto_close_brackets(enabled);
 			},
 			// ── Auto-indent ─────────────────────────────
 			autoIndentNewline() {
