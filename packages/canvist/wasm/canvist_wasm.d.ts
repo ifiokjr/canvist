@@ -117,6 +117,17 @@ export class CanvistEditor {
      */
     delete_range(start: number, end: number): void;
     /**
+     * Delete the word to the left of the cursor (Ctrl+Backspace).
+     *
+     * Walks backwards from the cursor past whitespace, then past word
+     * characters, and deletes the range.
+     */
+    delete_word_left(): void;
+    /**
+     * Delete the word to the right of the cursor (Ctrl+Delete).
+     */
+    delete_word_right(): void;
+    /**
      * Duplicate the current line (or selected lines) below.
      */
     duplicate_line(): void;
@@ -326,6 +337,12 @@ export class CanvistEditor {
      */
     redo(): boolean;
     /**
+     * Remove consecutive duplicate lines from the document.
+     *
+     * Returns the number of lines removed.
+     */
+    remove_duplicate_lines(): number;
+    /**
      * Remove the background (highlight) colour from the current selection.
      */
     remove_highlight_color(): void;
@@ -365,6 +382,12 @@ export class CanvistEditor {
      * Select the entire document.
      */
     select_all(): void;
+    /**
+     * Select the entire current line (Ctrl+L).
+     *
+     * Repeated calls extend the selection by one line each time.
+     */
+    select_line(): void;
     /**
      * Select the word at the given character offset.
      */
@@ -514,6 +537,13 @@ export class CanvistEditor {
      */
     show_whitespace(): boolean;
     /**
+     * If the cursor is between a matching bracket pair (e.g. `(|)`),
+     * delete both characters. Otherwise, behave like normal backspace.
+     *
+     * Returns `true` if a pair was deleted, `false` for normal backspace.
+     */
+    smart_backspace(): boolean;
+    /**
      * Sort selected lines in ascending alphabetical order.
      */
     sort_lines_asc(): void;
@@ -590,6 +620,12 @@ export class CanvistEditor {
      */
     transform_uppercase(): void;
     /**
+     * Remove trailing whitespace (spaces and tabs) from every line.
+     *
+     * Returns the number of characters removed.
+     */
+    trim_trailing_whitespace(): number;
+    /**
      * Undo the most recent transaction.
      *
      * Applies inverse operations to restore the document to its previous state.
@@ -612,6 +648,13 @@ export class CanvistEditor {
      * Whether word wrapping is enabled.
      */
     word_wrap(): boolean;
+    /**
+     * Wrap the selected text with a pair of strings (e.g. brackets).
+     *
+     * Example: `wrap_selection("(", ")")` turns `hello` into `(hello)`.
+     * Cursor is placed after the closing string.
+     */
+    wrap_selection(open: string, close: string): void;
     /**
      * Get the current zoom level.
      */
@@ -653,6 +696,8 @@ export interface InitOutput {
     readonly canvisteditor_cursor_line: (a: number) => [number, number, number];
     readonly canvisteditor_delete_line: (a: number) => void;
     readonly canvisteditor_delete_range: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_delete_word_left: (a: number) => void;
+    readonly canvisteditor_delete_word_right: (a: number) => void;
     readonly canvisteditor_duplicate_line: (a: number) => void;
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -690,6 +735,7 @@ export interface InitOutput {
     readonly canvisteditor_queue_key_down_with_modifiers: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly canvisteditor_read_only: (a: number) => number;
     readonly canvisteditor_redo: (a: number) => number;
+    readonly canvisteditor_remove_duplicate_lines: (a: number) => number;
     readonly canvisteditor_remove_highlight_color: (a: number) => void;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
@@ -698,6 +744,7 @@ export interface InitOutput {
     readonly canvisteditor_scroll_by: (a: number, b: number) => void;
     readonly canvisteditor_scroll_y: (a: number) => number;
     readonly canvisteditor_select_all: (a: number) => void;
+    readonly canvisteditor_select_line: (a: number) => void;
     readonly canvisteditor_select_word_at: (a: number, b: number) => void;
     readonly canvisteditor_selected_char_count: (a: number) => number;
     readonly canvisteditor_selected_word_count: (a: number) => number;
@@ -725,6 +772,7 @@ export interface InitOutput {
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
     readonly canvisteditor_show_line_numbers: (a: number) => number;
     readonly canvisteditor_show_whitespace: (a: number) => number;
+    readonly canvisteditor_smart_backspace: (a: number) => number;
     readonly canvisteditor_sort_lines_asc: (a: number) => void;
     readonly canvisteditor_sort_lines_desc: (a: number) => void;
     readonly canvisteditor_theme_name: (a: number) => [number, number];
@@ -740,11 +788,13 @@ export interface InitOutput {
     readonly canvisteditor_transform_lowercase: (a: number) => void;
     readonly canvisteditor_transform_title_case: (a: number) => void;
     readonly canvisteditor_transform_uppercase: (a: number) => void;
+    readonly canvisteditor_trim_trailing_whitespace: (a: number) => number;
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;
     readonly canvisteditor_word_count: (a: number) => number;
     readonly canvisteditor_word_wrap: (a: number) => number;
+    readonly canvisteditor_wrap_selection: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_zoom: (a: number) => number;
     readonly canvisteditor_zoom_in: (a: number) => void;
     readonly canvisteditor_zoom_out: (a: number) => void;

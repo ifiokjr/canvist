@@ -407,6 +407,30 @@ export interface CanvistEditor {
 	/** Toggle bracket auto-closing. */
 	setAutoCloseBrackets(enabled: boolean): void;
 
+	// ── Delete word ─────────────────────────────────────────────────
+
+	/** Delete the word to the left of the cursor (Ctrl+Backspace). */
+	deleteWordLeft(): void;
+
+	/** Delete the word to the right of the cursor (Ctrl+Delete). */
+	deleteWordRight(): void;
+
+	// ── Select line ─────────────────────────────────────────────────
+
+	/** Select the entire current line (Ctrl+L). */
+	selectLine(): void;
+
+	// ── Utility commands ────────────────────────────────────────────
+
+	/** Remove trailing whitespace from every line. Returns chars removed. */
+	trimTrailingWhitespace(): number;
+
+	/** Remove consecutive duplicate lines. Returns lines removed. */
+	removeDuplicateLines(): number;
+
+	/** Wrap selected text with open/close strings (e.g. brackets). */
+	wrapSelection(open: string, close: string): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

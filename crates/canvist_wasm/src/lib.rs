@@ -1282,6 +1282,226 @@ impl CanvistEditor {
 		2
 	}
 
+	// ── Delete word ──────────────────────────────────────────────────
+
+	/// Delete the word to the left of the cursor (Ctrl+Backspace).
+	///
+	/// Walks backwards from the cursor past whitespace, then past word
+	/// characters, and deletes the range.
+	#[wasm_bindgen]
+	pub fn delete_word_left(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			self.delete_range(sel.start().offset(), sel.end().offset());
+			return;
+		}
+		let offset = sel.end().offset();
+		if offset == 0 {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let mut pos = offset;
+		// Skip trailing whitespace.
+		while pos > 0 && chars[pos - 1].is_whitespace() {
+			pos -= 1;
+		}
+		// Skip word characters.
+		while pos > 0 && !chars[pos - 1].is_whitespace() {
+			pos -= 1;
+		}
+		if pos < offset {
+			self.delete_range(pos, offset);
+		}
+	}
+
+	/// Delete the word to the right of the cursor (Ctrl+Delete).
+	#[wasm_bindgen]
+	pub fn delete_word_right(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			self.delete_range(sel.start().offset(), sel.end().offset());
+			return;
+		}
+		let offset = sel.end().offset();
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		if offset >= chars.len() {
+			return;
+		}
+		let mut pos = offset;
+		// Skip word characters.
+		while pos < chars.len() && !chars[pos].is_whitespace() {
+			pos += 1;
+		}
+		// Skip trailing whitespace.
+		while pos < chars.len() && chars[pos].is_whitespace() {
+			pos += 1;
+		}
+		if pos > offset {
+			self.delete_range(offset, pos);
+		}
+	}
+
+	// ── Select line ──────────────────────────────────────────────────
+
+	/// Select the entire current line (Ctrl+L).
+	///
+	/// Repeated calls extend the selection by one line each time.
+	#[wasm_bindgen]
+	pub fn select_line(&mut self) {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset();
+
+		let mut line_start = offset.min(chars.len());
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		let mut line_end = offset.min(chars.len());
+		while line_end < chars.len() && chars[line_end] != '\n' {
+			line_end += 1;
+		}
+		// Include the trailing newline so repeated Ctrl+L extends.
+		if line_end < chars.len() {
+			line_end += 1;
+		}
+
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(line_start), Position::new(line_end)),
+		});
+	}
+
+	// ── Trim trailing whitespace ─────────────────────────────────────
+
+	/// Remove trailing whitespace (spaces and tabs) from every line.
+	///
+	/// Returns the number of characters removed.
+	#[wasm_bindgen]
+	pub fn trim_trailing_whitespace(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut new_text = String::new();
+		let mut removed = 0usize;
+		for (i, line) in plain.split('\n').enumerate() {
+			if i > 0 {
+				new_text.push('\n');
+			}
+			let trimmed = line.trim_end();
+			removed += line.len() - trimmed.len();
+			new_text.push_str(trimmed);
+		}
+		if removed > 0 {
+			self.runtime.document_mut().set_plain_text(&new_text);
+		}
+		removed
+	}
+
+	// ── Remove duplicate lines ───────────────────────────────────────
+
+	/// Remove consecutive duplicate lines from the document.
+	///
+	/// Returns the number of lines removed.
+	#[wasm_bindgen]
+	pub fn remove_duplicate_lines(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		let original_count = lines.len();
+		let mut deduped: Vec<&str> = Vec::with_capacity(original_count);
+		for line in &lines {
+			if deduped.last() != Some(line) {
+				deduped.push(line);
+			}
+		}
+		let removed = original_count - deduped.len();
+		if removed > 0 {
+			let new_text = deduped.join("\n");
+			self.runtime.document_mut().set_plain_text(&new_text);
+		}
+		removed
+	}
+
+	// ── Wrap selection ───────────────────────────────────────────────
+
+	/// Wrap the selected text with a pair of strings (e.g. brackets).
+	///
+	/// Example: `wrap_selection("(", ")")` turns `hello` into `(hello)`.
+	/// Cursor is placed after the closing string.
+	#[wasm_bindgen]
+	pub fn wrap_selection(&mut self, open: &str, close: &str) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return;
+		}
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		let open_len = open.chars().count();
+		let close_len = close.chars().count();
+
+		// Insert close first (so start offset stays valid), then open.
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(end), close.to_string()));
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(start), open.to_string()));
+
+		// Select the wrapped content (open + original + close).
+		let new_end = end + open_len + close_len;
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(new_end)),
+		});
+	}
+
+	// ── Smart backspace ──────────────────────────────────────────────
+
+	/// If the cursor is between a matching bracket pair (e.g. `(|)`),
+	/// delete both characters. Otherwise, behave like normal backspace.
+	///
+	/// Returns `true` if a pair was deleted, `false` for normal backspace.
+	#[wasm_bindgen]
+	pub fn smart_backspace(&mut self) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			return false;
+		}
+		let offset = sel.end().offset();
+		if offset == 0 {
+			return false;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		if offset >= chars.len() {
+			return false;
+		}
+		let before = chars[offset - 1];
+		let after = chars[offset];
+		let is_pair = matches!(
+			(before, after),
+			('(', ')') | ('[', ']') | ('{', '}') | ('"', '"') | ('\'', '\'') | ('`', '`')
+		);
+		if is_pair {
+			self.delete_range(offset - 1, offset + 1);
+			return true;
+		}
+		false
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
