@@ -118,6 +118,78 @@ export interface CanvistEditor {
 	/** Export the document as a JSON string. */
 	toJSON(): string;
 
+	/** Toggle bold on the current selection. */
+	toggleBold(): void;
+
+	/** Toggle italic on the current selection. */
+	toggleItalic(): void;
+
+	/** Toggle underline on the current selection. */
+	toggleUnderline(): void;
+
+	/** Toggle strikethrough on the current selection. */
+	toggleStrikethrough(): void;
+
+	/** Whether the current selection is all bold. */
+	readonly isBold: boolean;
+
+	/** Whether the current selection is all italic. */
+	readonly isItalic: boolean;
+
+	/** Whether the current selection is all underline. */
+	readonly isUnderline: boolean;
+
+	/** Set font size on the current selection. */
+	setFontSize(size: number): void;
+
+	/** Set text color (RGBA) on the current selection. */
+	setColor(r: number, g: number, b: number, a: number): void;
+
+	/** Select the entire document. */
+	selectAll(): void;
+
+	/** Select the word at the given offset. */
+	selectWordAt(offset: number): void;
+
+	/** Get the selected text (empty if selection is collapsed). */
+	readonly selectedText: string;
+
+	/**
+	 * Find all occurrences of `needle`. Returns array of `{start, end}`.
+	 */
+	findAll(needle: string, caseSensitive?: boolean): Array<{
+		start: number;
+		end: number;
+	}>;
+
+	/**
+	 * Find the next occurrence at or after `fromOffset`.
+	 */
+	findNext(
+		needle: string,
+		fromOffset: number,
+		caseSensitive?: boolean,
+	): { start: number; end: number } | null;
+
+	/**
+	 * Find the previous occurrence before `fromOffset`.
+	 */
+	findPrev(
+		needle: string,
+		fromOffset: number,
+		caseSensitive?: boolean,
+	): { start: number; end: number } | null;
+
+	/** Replace text in `[start, end)` with `replacement`. */
+	replaceRange(start: number, end: number, replacement: string): void;
+
+	/** Replace all occurrences of `needle` with `replacement`. Returns count. */
+	replaceAll(
+		needle: string,
+		replacement: string,
+		caseSensitive?: boolean,
+	): number;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

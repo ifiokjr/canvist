@@ -416,6 +416,93 @@ impl Document {
 		self.plain_text().chars().count()
 	}
 
+	/// Find all occurrences of `needle` in the document plain text.
+	///
+	/// Returns a list of `(start_offset, end_offset)` for each match.
+	/// When `case_sensitive` is false, matching is done on lowercased text.
+	#[must_use]
+	pub fn find_all(&self, needle: &str, case_sensitive: bool) -> Vec<(usize, usize)> {
+		if needle.is_empty() {
+			return Vec::new();
+		}
+		let text = self.plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		let haystack: String = if case_sensitive {
+			text.clone()
+		} else {
+			text.to_lowercase()
+		};
+		let search: String = if case_sensitive {
+			needle.to_string()
+		} else {
+			needle.to_lowercase()
+		};
+		let needle_len = search.chars().count();
+		let mut results = Vec::new();
+		// Walk by character offset, not byte offset, for Unicode correctness.
+		let hay_chars: Vec<char> = haystack.chars().collect();
+		let search_chars: Vec<char> = search.chars().collect();
+		if needle_len > hay_chars.len() {
+			return results;
+		}
+		let _ = &chars; // suppress unused
+		for start in 0..=hay_chars.len() - needle_len {
+			if hay_chars[start..start + needle_len] == search_chars[..] {
+				results.push((start, start + needle_len));
+			}
+		}
+		results
+	}
+
+	/// Find the next occurrence of `needle` at or after `from_offset`.
+	///
+	/// Wraps around to the beginning if no match is found after `from_offset`.
+	/// Returns `None` if there are no matches at all.
+	#[must_use]
+	pub fn find_next(
+		&self,
+		needle: &str,
+		from_offset: usize,
+		case_sensitive: bool,
+	) -> Option<(usize, usize)> {
+		let matches = self.find_all(needle, case_sensitive);
+		if matches.is_empty() {
+			return None;
+		}
+		// Find first match at or after from_offset.
+		for &(s, e) in &matches {
+			if s >= from_offset {
+				return Some((s, e));
+			}
+		}
+		// Wrap around.
+		Some(matches[0])
+	}
+
+	/// Find the previous occurrence of `needle` before `from_offset`.
+	///
+	/// Wraps around to the end if no match is found before `from_offset`.
+	#[must_use]
+	pub fn find_prev(
+		&self,
+		needle: &str,
+		from_offset: usize,
+		case_sensitive: bool,
+	) -> Option<(usize, usize)> {
+		let matches = self.find_all(needle, case_sensitive);
+		if matches.is_empty() {
+			return None;
+		}
+		// Find last match before from_offset.
+		for &(s, e) in matches.iter().rev() {
+			if s < from_offset {
+				return Some((s, e));
+			}
+		}
+		// Wrap around.
+		matches.last().copied()
+	}
+
 	/// Return styled text runs in document order.
 	///
 	/// Each entry is `(text, style, global_char_offset, char_count)` for every
@@ -915,5 +1002,57 @@ mod tests {
 		doc.apply_style(sel, &Style::new().bold());
 		let s = doc.style_at_offset(2);
 		assert_eq!(s.font_weight, Some(crate::style::FontWeight::Bold));
+	}
+
+	#[test]
+	fn find_all_case_sensitive() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello hello HELLO");
+		let results = doc.find_all("hello", true);
+		assert_eq!(results, vec![(6, 11)]);
+	}
+
+	#[test]
+	fn find_all_case_insensitive() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello hello HELLO");
+		let results = doc.find_all("hello", false);
+		assert_eq!(results, vec![(0, 5), (6, 11), (12, 17)]);
+	}
+
+	#[test]
+	fn find_all_empty_needle_returns_empty() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+		assert!(doc.find_all("", true).is_empty());
+	}
+
+	#[test]
+	fn find_next_wraps_around() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "abc abc abc");
+		// From offset 5 → finds "abc" at 8.
+		assert_eq!(doc.find_next("abc", 5, true), Some((8, 11)));
+		// From offset 9 → wraps around to (0, 3).
+		assert_eq!(doc.find_next("abc", 9, true), Some((0, 3)));
+	}
+
+	#[test]
+	fn find_prev_wraps_around() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "abc abc abc");
+		// From offset 5 → finds "abc" at 4.
+		assert_eq!(doc.find_prev("abc", 5, true), Some((4, 7)));
+		// From offset 0 → wraps around to last match.
+		assert_eq!(doc.find_prev("abc", 0, true), Some((8, 11)));
+	}
+
+	#[test]
+	fn find_no_matches() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+		assert!(doc.find_all("xyz", true).is_empty());
+		assert_eq!(doc.find_next("xyz", 0, true), None);
+		assert_eq!(doc.find_prev("xyz", 0, true), None);
 	}
 }

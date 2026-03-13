@@ -4,6 +4,22 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>canvist editor demo</title>
+    <!-- Load Inter for consistent cross-platform font rendering.
+         Uses media="print" + onload trick to avoid render-blocking. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
     <style>
       * {
         margin: 0;
@@ -12,7 +28,7 @@
       }
 
       body {
-        font-family: system-ui, sans-serif;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
         background: #f5f5f5;
         display: flex;
         flex-direction: column;
@@ -38,6 +54,10 @@
       #editor-canvas {
         display: block;
         cursor: text;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        font-smooth: always;
       }
 
       #contenteditable-editor {
@@ -104,6 +124,30 @@
         <button id="btn-bold" title="Bold (Ctrl+B)" style="font-weight:bold;width:32px;">B</button>
         <button id="btn-italic" title="Italic (Ctrl+I)" style="font-style:italic;width:32px;">I</button>
         <button id="btn-underline" title="Underline (Ctrl+U)" style="text-decoration:underline;width:32px;">U</button>
+        <button id="btn-strikethrough" title="Strikethrough (Ctrl+Shift+S)" style="text-decoration:line-through;width:32px;">S</button>
+        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
+        <select id="font-size-select" title="Font Size" style="padding:4px;">
+          <option value="12">12px</option>
+          <option value="14">14px</option>
+          <option value="16" selected>16px</option>
+          <option value="20">20px</option>
+          <option value="24">24px</option>
+          <option value="32">32px</option>
+          <option value="48">48px</option>
+        </select>
+      </div>
+      <!-- Find/Replace bar (hidden by default) -->
+      <div id="find-bar" style="display:none;margin-bottom:8px;padding:8px;background:#f0f0f0;border:1px solid #ddd;border-radius:4px;gap:4px;align-items:center;">
+        <input id="find-input" type="text" placeholder="Find…" style="padding:4px 8px;border:1px solid #ccc;border-radius:3px;width:200px;" />
+        <button id="find-prev-btn" title="Previous (Shift+Enter)">▲</button>
+        <button id="find-next-btn" title="Next (Enter)">▼</button>
+        <span id="find-count" style="font-size:0.85em;color:#666;min-width:60px;"></span>
+        <span style="border-left:1px solid #ccc;margin:0 4px;height:20px;"></span>
+        <input id="replace-input" type="text" placeholder="Replace…" style="padding:4px 8px;border:1px solid #ccc;border-radius:3px;width:200px;" />
+        <button id="replace-btn" title="Replace">Replace</button>
+        <button id="replace-all-btn" title="Replace All">All</button>
+        <label style="font-size:0.85em;margin-left:8px;"><input id="find-case" type="checkbox" /> Match case</label>
+        <button id="find-close-btn" title="Close (Escape)" style="margin-left:auto;">✕</button>
       </div>
       <div class="editor-container">
         <canvas id="editor-canvas" width="800" height="400"></canvas>
@@ -136,7 +180,35 @@
 
       async function setup() {
         await init();
+
+        // --- HiDPI / Retina canvas scaling ---
+        const canvas = document.getElementById("editor-canvas");
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = 800;
+        const cssHeight = 400;
+        canvas.style.width = cssWidth + "px";
+        canvas.style.height = cssHeight + "px";
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        const ctx2d = canvas.getContext("2d");
+        if (ctx2d && dpr !== 1) {
+          ctx2d.scale(dpr, dpr);
+        }
+
+        // --- Font pre-loading ---
+        // Wait for fonts to load (up to 2s) before first render for smooth text.
+        // In offline/headless environments this may time out — that's fine,
+        // the system-ui fallback still renders cleanly.
+        try {
+          await Promise.race([
+            document.fonts.ready,
+            new Promise((r) => setTimeout(r, 2000)),
+          ]);
+        } catch {}
+
         editor = CanvistEditor.create("editor-canvas");
+        // Tell WASM to use CSS (logical) dimensions for layout, not DPR-scaled pixels.
+        editor.set_size(cssWidth, cssHeight);
         editor.render();
 
         // --- Caret blink timer ---
@@ -150,7 +222,7 @@
         }, 530);
 
         // --- Hidden textarea for keyboard capture ---
-        const canvas = document.getElementById("editor-canvas");
+        // (canvas was declared above in the HiDPI section)
         const textarea = document.createElement("textarea");
         textarea.id = "canvist-input";
         textarea.setAttribute("autocomplete", "off");
@@ -348,6 +420,113 @@
           renderFrame();
           textarea.focus();
         });
+        document.getElementById("btn-strikethrough").addEventListener("click", () => {
+          editor.toggle_strikethrough();
+          renderFrame();
+          textarea.focus();
+        });
+        document.getElementById("font-size-select").addEventListener("change", (e) => {
+          const size = parseFloat(e.target.value);
+          if (size && hasSelection()) {
+            editor.set_font_size(size);
+            renderFrame();
+          }
+          textarea.focus();
+        });
+
+        // --- Find / Replace ---
+        const findBar = document.getElementById("find-bar");
+        const findInput = document.getElementById("find-input");
+        const replaceInput = document.getElementById("replace-input");
+        const findCountSpan = document.getElementById("find-count");
+        const findCaseCheckbox = document.getElementById("find-case");
+        let findOpen = false;
+
+        function openFind() {
+          findOpen = true;
+          findBar.style.display = "flex";
+          findInput.focus();
+          updateFindHighlight();
+        }
+        function closeFind() {
+          findOpen = false;
+          findBar.style.display = "none";
+          textarea.focus();
+          renderFrame();
+        }
+        function caseSensitive() {
+          return findCaseCheckbox.checked;
+        }
+        function updateFindHighlight() {
+          const needle = findInput.value;
+          if (!needle) {
+            findCountSpan.textContent = "";
+            return;
+          }
+          const matches = editor.find_all(needle, caseSensitive());
+          const count = matches.length / 2;
+          findCountSpan.textContent = count > 0 ? `${count} match${count > 1 ? "es" : ""}` : "No matches";
+        }
+        function findNext() {
+          const needle = findInput.value;
+          if (!needle) return;
+          const result = editor.find_next(needle, cursorOffset + 1, caseSensitive());
+          if (result.length === 2) {
+            setSelection(result[0], result[1]);
+            cursorOffset = result[1];
+            renderFrame();
+          }
+          updateFindHighlight();
+        }
+        function findPrev() {
+          const needle = findInput.value;
+          if (!needle) return;
+          const result = editor.find_prev(needle, cursorOffset, caseSensitive());
+          if (result.length === 2) {
+            setSelection(result[0], result[1]);
+            cursorOffset = result[1];
+            renderFrame();
+          }
+          updateFindHighlight();
+        }
+        function replaceOne() {
+          const sel = normalizedSelection();
+          if (!sel) return;
+          const replacement = replaceInput.value;
+          editor.replace_range(sel.start, sel.end, replacement);
+          cursorOffset = sel.start + replacement.length;
+          clearSelection();
+          renderFrame();
+          findNext();
+        }
+        function replaceAll() {
+          const needle = findInput.value;
+          const replacement = replaceInput.value;
+          if (!needle) return;
+          const count = editor.replace_all(needle, replacement, caseSensitive());
+          clearSelection();
+          renderFrame();
+          updateFindHighlight();
+          findCountSpan.textContent = `Replaced ${count}`;
+        }
+
+        document.getElementById("find-next-btn").addEventListener("click", findNext);
+        document.getElementById("find-prev-btn").addEventListener("click", findPrev);
+        document.getElementById("replace-btn").addEventListener("click", replaceOne);
+        document.getElementById("replace-all-btn").addEventListener("click", replaceAll);
+        document.getElementById("find-close-btn").addEventListener("click", closeFind);
+        findInput.addEventListener("input", updateFindHighlight);
+        findCaseCheckbox.addEventListener("change", updateFindHighlight);
+        findInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.shiftKey ? findPrev() : findNext();
+          }
+          if (e.key === "Escape") closeFind();
+        });
+        replaceInput.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") closeFind();
+        });
 
         textarea.addEventListener("beforeinput", (e) => {
           if (e.isComposing) return;
@@ -407,6 +586,21 @@
               cursorOffset = newOffset;
               clearSelection();
             }
+          }
+
+          // --- Find (Ctrl+F) ---
+          if (mod && e.key === "f") {
+            e.preventDefault();
+            openFind();
+            return;
+          }
+
+          // --- Strikethrough (Ctrl+Shift+S) ---
+          if (mod && e.shiftKey && e.key === "S") {
+            e.preventDefault();
+            editor.toggle_strikethrough();
+            renderFrame();
+            return;
           }
 
           // --- Select all ---

@@ -35,3 +35,4 @@ packages/canvist/wasm/package.json
 # ant colony
 .ant-colony/
 .ant-colony/
+**/tests/playwright/screenshots/
