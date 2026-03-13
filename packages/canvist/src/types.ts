@@ -332,6 +332,38 @@ export interface CanvistEditor {
 	/** Insert newline with auto-indent and list continuation. Returns chars inserted. */
 	autoIndentNewline(): number;
 
+	// ── Selection statistics ────────────────────────────────────────
+
+	/** Number of characters currently selected. */
+	readonly selectedCharCount: number;
+
+	/** Number of words currently selected. */
+	readonly selectedWordCount: number;
+
+	// ── Go to line ──────────────────────────────────────────────────
+
+	/** Move cursor to the start of the given 1-based line number. */
+	goToLine(lineNumber: number): void;
+
+	// ── Line operations ─────────────────────────────────────────────
+
+	/** Duplicate the current line below. */
+	duplicateLine(): void;
+
+	/** Move the current line up. */
+	moveLineUp(): void;
+
+	/** Move the current line down. */
+	moveLineDown(): void;
+
+	// ── Highlight colour ────────────────────────────────────────────
+
+	/** Set a background highlight colour on the current selection. */
+	setHighlightColor(r: number, g: number, b: number, a: number): void;
+
+	/** Remove the background highlight from the current selection. */
+	removeHighlightColor(): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

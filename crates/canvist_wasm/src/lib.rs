@@ -763,6 +763,223 @@ impl CanvistEditor {
 		Ok(1)
 	}
 
+	// ── Selection statistics ─────────────────────────────────────────
+
+	/// Number of characters currently selected (0 if collapsed).
+	#[wasm_bindgen]
+	pub fn selected_char_count(&self) -> usize {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return 0;
+		}
+		sel.end().offset().saturating_sub(sel.start().offset())
+	}
+
+	/// Number of words in the current selection (0 if collapsed).
+	#[wasm_bindgen]
+	pub fn selected_word_count(&self) -> usize {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return 0;
+		}
+		let text = self.runtime.document().plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		let s = sel.start().offset().min(chars.len());
+		let e = sel.end().offset().min(chars.len());
+		let selected: String = chars[s..e].iter().collect();
+		selected.split_whitespace().count()
+	}
+
+	// ── Go to line ───────────────────────────────────────────────────
+
+	/// Move the cursor to the start of the given 1-based paragraph line.
+	///
+	/// If `line_number` exceeds the paragraph count, the cursor moves to
+	/// the end of the document.
+	#[wasm_bindgen]
+	pub fn go_to_line(&mut self, line_number: usize) {
+		let plain = self.runtime.document().plain_text();
+		let mut offset = 0usize;
+		let target = line_number.max(1) - 1; // 0-based
+		for (i, line_text) in plain.split('\n').enumerate() {
+			if i == target {
+				let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+					selection: Selection::collapsed(Position::new(offset)),
+				});
+				return;
+			}
+			offset += line_text.chars().count() + 1; // +1 for '\n'
+		}
+		// Past end — go to document end.
+		let end = plain.chars().count();
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(end)),
+		});
+	}
+
+	// ── Line operations ──────────────────────────────────────────────
+
+	/// Duplicate the current line (or selected lines) below.
+	#[wasm_bindgen]
+	pub fn duplicate_line(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset();
+
+		// Find line boundaries.
+		let mut line_start = offset.min(chars.len());
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		let mut line_end = offset.min(chars.len());
+		while line_end < chars.len() && chars[line_end] != '\n' {
+			line_end += 1;
+		}
+
+		let line_text: String = chars[line_start..line_end].iter().collect();
+		// Insert \n + copy after the current line end.
+		let insert_text = format!("\n{line_text}");
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(line_end), insert_text));
+	}
+
+	/// Move the current line up by swapping it with the line above.
+	#[wasm_bindgen]
+	pub fn move_line_up(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset();
+
+		// Current line boundaries.
+		let mut cur_start = offset.min(chars.len());
+		while cur_start > 0 && chars[cur_start - 1] != '\n' {
+			cur_start -= 1;
+		}
+		if cur_start == 0 {
+			return; // Already first line.
+		}
+		let mut cur_end = offset.min(chars.len());
+		while cur_end < chars.len() && chars[cur_end] != '\n' {
+			cur_end += 1;
+		}
+
+		// Previous line boundaries.
+		let mut prev_start = cur_start - 1; // skip the \n
+		while prev_start > 0 && chars[prev_start - 1] != '\n' {
+			prev_start -= 1;
+		}
+
+		let prev_text: String = chars[prev_start..cur_start - 1].iter().collect();
+		let cur_text: String = chars[cur_start..cur_end].iter().collect();
+
+		// Delete both lines (prev_start..cur_end) and reinsert swapped.
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(prev_start), Position::new(cur_end)),
+		});
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		let swapped = format!("{cur_text}\n{prev_text}");
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(prev_start), swapped));
+
+		// Move cursor up.
+		let new_offset = prev_start + (offset - cur_start);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(
+				new_offset.min(self.runtime.document().plain_text().chars().count()),
+			)),
+		});
+	}
+
+	/// Move the current line down by swapping it with the line below.
+	#[wasm_bindgen]
+	pub fn move_line_down(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset();
+
+		// Current line boundaries.
+		let mut cur_start = offset.min(chars.len());
+		while cur_start > 0 && chars[cur_start - 1] != '\n' {
+			cur_start -= 1;
+		}
+		let mut cur_end = offset.min(chars.len());
+		while cur_end < chars.len() && chars[cur_end] != '\n' {
+			cur_end += 1;
+		}
+		if cur_end >= chars.len() {
+			return; // Already last line.
+		}
+
+		// Next line boundaries.
+		let next_start = cur_end + 1; // skip the \n
+		let mut next_end = next_start;
+		while next_end < chars.len() && chars[next_end] != '\n' {
+			next_end += 1;
+		}
+
+		let cur_text: String = chars[cur_start..cur_end].iter().collect();
+		let next_text: String = chars[next_start..next_end].iter().collect();
+
+		// Delete both lines and reinsert swapped.
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(cur_start), Position::new(next_end)),
+		});
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		let swapped = format!("{next_text}\n{cur_text}");
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(cur_start), swapped));
+
+		// Move cursor down.
+		let next_text_len = next_text.chars().count();
+		let new_offset = cur_start + next_text_len + 1 + (offset - cur_start);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(
+				new_offset.min(self.runtime.document().plain_text().chars().count()),
+			)),
+		});
+	}
+
+	// ── Background / highlight colour ────────────────────────────────
+
+	/// Set a background (highlight) colour on the current selection.
+	///
+	/// The colour is stored via the style's `background` field.
+	#[wasm_bindgen]
+	pub fn set_highlight_color(&mut self, r: u8, g: u8, b: u8, a: u8) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return;
+		}
+		let style = Style::new().background(r, g, b, a);
+		self.runtime.apply_operation(Operation::format(sel, style));
+		// Preserve selection.
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::SelectionSet { selection: sel });
+	}
+
+	/// Remove the background (highlight) colour from the current selection.
+	#[wasm_bindgen]
+	pub fn remove_highlight_color(&mut self) {
+		self.set_highlight_color(0, 0, 0, 0);
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
