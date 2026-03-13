@@ -75,6 +75,24 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Number of active bookmarks.
+     * @returns {number}
+     */
+    bookmark_count() {
+        const ret = wasm.canvisteditor_bookmark_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Return all bookmarked line numbers as a flat array (0-based).
+     * @returns {Uint32Array}
+     */
+    bookmarked_lines() {
+        const ret = wasm.canvisteditor_bookmarked_lines(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Force-break the current undo coalescing chain.
      *
      * Normally, rapid single-character inserts are merged into a single undo
@@ -144,6 +162,12 @@ export class CanvistEditor {
     char_count() {
         const ret = wasm.canvisteditor_char_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Remove all bookmarks.
+     */
+    clear_bookmarks() {
+        wasm.canvisteditor_clear_bookmarks(this.__wbg_ptr);
     }
     /**
      * Perform a clipboard cut: delete the current selection.
@@ -226,6 +250,22 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return CanvistEditor.__wrap(ret[0]);
+    }
+    /**
+     * Current column (1-based character offset from line start).
+     * @returns {number}
+     */
+    current_column() {
+        const ret = wasm.canvisteditor_current_column(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Current line number the cursor is on (1-based).
+     * @returns {number}
+     */
+    current_line_number() {
+        const ret = wasm.canvisteditor_current_line_number(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Return the 1-based column (character position within the visual line).
@@ -518,6 +558,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Check if the current line has a bookmark.
+     * @returns {boolean}
+     */
+    is_line_bookmarked() {
+        const ret = wasm.canvisteditor_is_line_bookmarked(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Check if the current selection is all underline.
      * @returns {boolean}
      */
@@ -618,6 +666,26 @@ export class CanvistEditor {
         wasm.canvisteditor_move_text(this.__wbg_ptr, src_start, src_end, dest);
     }
     /**
+     * Move cursor to the matching bracket (Ctrl+Shift+\).
+     *
+     * Checks the character at the cursor and the one before it.
+     * If a bracket is found, jumps the cursor to its match.
+     */
+    move_to_matching_bracket() {
+        wasm.canvisteditor_move_to_matching_bracket(this.__wbg_ptr);
+    }
+    /**
+     * Jump to the next bookmark after the current line.
+     *
+     * Wraps around to the first bookmark if past the last one.
+     * Returns `true` if a bookmark was found.
+     * @returns {boolean}
+     */
+    next_bookmark() {
+        const ret = wasm.canvisteditor_next_bookmark(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Return the character offset on the line directly above `offset`.
      *
      * Preserves the horizontal (x) pixel position of the caret when moving
@@ -645,11 +713,33 @@ export class CanvistEditor {
         return ret[0] >>> 0;
     }
     /**
+     * Insert a new line above the current line and move cursor there
+     * (Ctrl+Shift+Enter).
+     */
+    open_line_above() {
+        wasm.canvisteditor_open_line_above(this.__wbg_ptr);
+    }
+    /**
+     * Insert a new line below the current line and move cursor there
+     * (Ctrl+Enter).
+     */
+    open_line_below() {
+        wasm.canvisteditor_open_line_below(this.__wbg_ptr);
+    }
+    /**
      * Outdent the current selection: remove one leading tab or up to 4
      * spaces from the start of each selected line.
      */
     outdent_selection() {
         wasm.canvisteditor_outdent_selection(this.__wbg_ptr);
+    }
+    /**
+     * Total paragraph count (non-empty lines).
+     * @returns {number}
+     */
+    paragraph_count() {
+        const ret = wasm.canvisteditor_paragraph_count(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Paste HTML at the current cursor position.
@@ -678,6 +768,17 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Jump to the previous bookmark before the current line.
+     *
+     * Wraps around to the last bookmark if before the first one.
+     * Returns `true` if a bookmark was found.
+     * @returns {boolean}
+     */
+    prev_bookmark() {
+        const ret = wasm.canvisteditor_prev_bookmark(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Process all pending canonical events via the editor runtime.
@@ -1024,6 +1125,13 @@ export class CanvistEditor {
         wasm.canvisteditor_set_selection(this.__wbg_ptr, start, end);
     }
     /**
+     * Toggle indent guide rendering.
+     * @param {boolean} show
+     */
+    set_show_indent_guides(show) {
+        wasm.canvisteditor_set_show_indent_guides(this.__wbg_ptr, show);
+    }
+    /**
      * Enable or disable the line-number gutter.
      * @param {boolean} show
      */
@@ -1104,6 +1212,14 @@ export class CanvistEditor {
         wasm.canvisteditor_set_zoom(this.__wbg_ptr, level);
     }
     /**
+     * Whether indent guides are enabled.
+     * @returns {boolean}
+     */
+    show_indent_guides() {
+        const ret = wasm.canvisteditor_show_indent_guides(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Check whether line numbers are visible.
      * @returns {boolean}
      */
@@ -1151,11 +1267,32 @@ export class CanvistEditor {
         wasm.canvisteditor_sort_lines_desc(this.__wbg_ptr);
     }
     /**
+     * Convert leading spaces to tabs (using the current tab_size).
+     *
+     * Only converts groups of `tab_size` spaces at the start of lines.
+     * Returns the number of conversions made.
+     * @returns {number}
+     */
+    spaces_to_tabs() {
+        const ret = wasm.canvisteditor_spaces_to_tabs(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Get the current tab size.
      * @returns {number}
      */
     tab_size() {
         const ret = wasm.canvisteditor_tab_size(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Convert all tabs to spaces (using the current tab_size).
+     *
+     * Returns the number of tabs replaced.
+     * @returns {number}
+     */
+    tabs_to_spaces() {
+        const ret = wasm.canvisteditor_tabs_to_spaces(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
@@ -1241,6 +1378,16 @@ export class CanvistEditor {
      */
     toggle_bold() {
         wasm.canvisteditor_toggle_bold(this.__wbg_ptr);
+    }
+    /**
+     * Toggle a bookmark on the current line.
+     *
+     * Returns `true` if the bookmark was added, `false` if removed.
+     * @returns {boolean}
+     */
+    toggle_bookmark() {
+        const ret = wasm.canvisteditor_toggle_bookmark(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Toggle a bullet list prefix (`• `) on the current line.

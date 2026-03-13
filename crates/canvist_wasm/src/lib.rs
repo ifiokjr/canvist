@@ -367,6 +367,10 @@ pub struct CanvistEditor {
 	auto_surround: bool,
 	/// Whether to highlight matching brackets near the cursor.
 	highlight_matching_brackets: bool,
+	/// Whether to show indent guides (vertical lines at tab stops).
+	show_indent_guides: bool,
+	/// Set of bookmarked line numbers (0-based paragraph indices).
+	bookmarks: std::collections::BTreeSet<usize>,
 }
 
 /// Colour theme for the editor canvas.
@@ -481,6 +485,8 @@ impl CanvistEditor {
 			comment_prefix: "// ".to_string(),
 			auto_surround: false,
 			highlight_matching_brackets: true,
+			show_indent_guides: false,
+			bookmarks: std::collections::BTreeSet::new(),
 		})
 	}
 
@@ -2070,6 +2076,288 @@ impl CanvistEditor {
 			}
 		}
 		-1
+	}
+
+	// ── Move to matching bracket ─────────────────────────────────────
+
+	/// Move cursor to the matching bracket (Ctrl+Shift+\).
+	///
+	/// Checks the character at the cursor and the one before it.
+	/// If a bracket is found, jumps the cursor to its match.
+	#[wasm_bindgen]
+	pub fn move_to_matching_bracket(&mut self) {
+		let offset = self.runtime.selection().end().offset();
+		// Try offset first, then offset-1.
+		let offsets: Vec<usize> = if offset > 0 {
+			vec![offset, offset - 1]
+		} else {
+			vec![offset]
+		};
+		for &o in &offsets {
+			let m = self.find_matching_bracket(o);
+			if m >= 0 {
+				let target = m as usize;
+				let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+					selection: Selection::collapsed(Position::new(target)),
+				});
+				return;
+			}
+		}
+	}
+
+	// ── Document statistics (extras) ─────────────────────────────────
+
+	/// Total paragraph count (non-empty lines).
+	#[wasm_bindgen]
+	pub fn paragraph_count(&self) -> usize {
+		self.runtime
+			.document()
+			.plain_text()
+			.split('\n')
+			.filter(|l| !l.trim().is_empty())
+			.count()
+			.max(1)
+	}
+
+	/// Current line number the cursor is on (1-based).
+	#[wasm_bindgen]
+	pub fn current_line_number(&self) -> usize {
+		let offset = self.runtime.selection().end().offset();
+		let text = self.runtime.document().plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		let mut line = 1usize;
+		for i in 0..offset.min(chars.len()) {
+			if chars[i] == '\n' {
+				line += 1;
+			}
+		}
+		line
+	}
+
+	/// Current column (1-based character offset from line start).
+	#[wasm_bindgen]
+	pub fn current_column(&self) -> usize {
+		let offset = self.runtime.selection().end().offset();
+		let text = self.runtime.document().plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		let mut col = 1usize;
+		let mut i = offset.min(chars.len());
+		while i > 0 && chars[i - 1] != '\n' {
+			i -= 1;
+			col += 1;
+		}
+		col
+	}
+
+	// ── Indent guides ────────────────────────────────────────────────
+
+	/// Toggle indent guide rendering.
+	#[wasm_bindgen]
+	pub fn set_show_indent_guides(&mut self, show: bool) {
+		self.show_indent_guides = show;
+	}
+
+	/// Whether indent guides are enabled.
+	#[wasm_bindgen]
+	pub fn show_indent_guides(&self) -> bool {
+		self.show_indent_guides
+	}
+
+	// ── Bookmarks ────────────────────────────────────────────────────
+
+	/// Toggle a bookmark on the current line.
+	///
+	/// Returns `true` if the bookmark was added, `false` if removed.
+	#[wasm_bindgen]
+	pub fn toggle_bookmark(&mut self) -> bool {
+		let line = self.current_line_number() - 1; // 0-based
+		if self.bookmarks.contains(&line) {
+			self.bookmarks.remove(&line);
+			false
+		} else {
+			self.bookmarks.insert(line);
+			true
+		}
+	}
+
+	/// Jump to the next bookmark after the current line.
+	///
+	/// Wraps around to the first bookmark if past the last one.
+	/// Returns `true` if a bookmark was found.
+	#[wasm_bindgen]
+	pub fn next_bookmark(&mut self) -> bool {
+		if self.bookmarks.is_empty() {
+			return false;
+		}
+		let current = self.current_line_number() - 1;
+		// Find first bookmark after current line.
+		let target = self
+			.bookmarks
+			.range((current + 1)..)
+			.next()
+			.or_else(|| self.bookmarks.iter().next())
+			.copied();
+		if let Some(line) = target {
+			self.go_to_line(line + 1); // go_to_line is 1-based
+			return true;
+		}
+		false
+	}
+
+	/// Jump to the previous bookmark before the current line.
+	///
+	/// Wraps around to the last bookmark if before the first one.
+	/// Returns `true` if a bookmark was found.
+	#[wasm_bindgen]
+	pub fn prev_bookmark(&mut self) -> bool {
+		if self.bookmarks.is_empty() {
+			return false;
+		}
+		let current = self.current_line_number() - 1;
+		let target = if current > 0 {
+			self.bookmarks
+				.range(..current)
+				.next_back()
+				.or_else(|| self.bookmarks.iter().next_back())
+				.copied()
+		} else {
+			self.bookmarks.iter().next_back().copied()
+		};
+		if let Some(line) = target {
+			self.go_to_line(line + 1);
+			return true;
+		}
+		false
+	}
+
+	/// Remove all bookmarks.
+	#[wasm_bindgen]
+	pub fn clear_bookmarks(&mut self) {
+		self.bookmarks.clear();
+	}
+
+	/// Number of active bookmarks.
+	#[wasm_bindgen]
+	pub fn bookmark_count(&self) -> usize {
+		self.bookmarks.len()
+	}
+
+	/// Check if the current line has a bookmark.
+	#[wasm_bindgen]
+	pub fn is_line_bookmarked(&self) -> bool {
+		let line = self.current_line_number() - 1;
+		self.bookmarks.contains(&line)
+	}
+
+	/// Return all bookmarked line numbers as a flat array (0-based).
+	#[wasm_bindgen]
+	pub fn bookmarked_lines(&self) -> Vec<usize> {
+		self.bookmarks.iter().copied().collect()
+	}
+
+	// ── Convert indentation ──────────────────────────────────────────
+
+	/// Convert all tabs to spaces (using the current tab_size).
+	///
+	/// Returns the number of tabs replaced.
+	#[wasm_bindgen]
+	pub fn tabs_to_spaces(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let text = self.runtime.document().plain_text();
+		let spaces = " ".repeat(self.tab_size);
+		let count = text.matches('\t').count();
+		if count > 0 {
+			let new_text = text.replace('\t', &spaces);
+			self.runtime.document_mut().set_plain_text(&new_text);
+		}
+		count
+	}
+
+	/// Convert leading spaces to tabs (using the current tab_size).
+	///
+	/// Only converts groups of `tab_size` spaces at the start of lines.
+	/// Returns the number of conversions made.
+	#[wasm_bindgen]
+	pub fn spaces_to_tabs(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let text = self.runtime.document().plain_text();
+		let ts = self.tab_size;
+		let mut count = 0usize;
+		let mut new_lines: Vec<String> = Vec::new();
+		for line in text.split('\n') {
+			let leading: usize = line.chars().take_while(|c| *c == ' ').count();
+			let tab_count = leading / ts;
+			if tab_count > 0 {
+				count += tab_count;
+				let tabs = "\t".repeat(tab_count);
+				let remainder = &line[leading..];
+				let leftover_spaces = " ".repeat(leading % ts);
+				new_lines.push(format!("{tabs}{leftover_spaces}{remainder}"));
+			} else {
+				new_lines.push(line.to_string());
+			}
+		}
+		if count > 0 {
+			let new_text = new_lines.join("\n");
+			self.runtime.document_mut().set_plain_text(&new_text);
+		}
+		count
+	}
+
+	// ── Open line above / below ──────────────────────────────────────
+
+	/// Insert a new line below the current line and move cursor there
+	/// (Ctrl+Enter).
+	#[wasm_bindgen]
+	pub fn open_line_below(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let text = self.runtime.document().plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		let offset = self.runtime.selection().end().offset();
+
+		// Find end of current line.
+		let mut line_end = offset.min(chars.len());
+		while line_end < chars.len() && chars[line_end] != '\n' {
+			line_end += 1;
+		}
+
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(line_end), "\n".to_string()));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(line_end + 1)),
+		});
+	}
+
+	/// Insert a new line above the current line and move cursor there
+	/// (Ctrl+Shift+Enter).
+	#[wasm_bindgen]
+	pub fn open_line_above(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let text = self.runtime.document().plain_text();
+		let chars: Vec<char> = text.chars().collect();
+		let offset = self.runtime.selection().end().offset();
+
+		// Find start of current line.
+		let mut line_start = offset.min(chars.len());
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+
+		self.runtime.apply_operation(Operation::insert(
+			Position::new(line_start),
+			"\n".to_string(),
+		));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(line_start)),
+		});
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any
@@ -3796,6 +4084,57 @@ impl CanvistEditor {
 			}
 		}
 
+		// ── Indent guides ────────────────────────────────────────────────
+		if self.show_indent_guides {
+			let guide_color = Color::new(
+				theme.gutter_text.r,
+				theme.gutter_text.g,
+				theme.gutter_text.b,
+				60,
+			);
+			let guide_tab_px =
+				lc.default_style.font_size.unwrap_or(16.0) * self.tab_size as f32 * 0.6; // approximate char width × tab_size
+
+			for para in &paragraphs {
+				let para_chars: Vec<char> = para.text.chars().collect();
+				let leading_spaces = para_chars
+					.iter()
+					.take_while(|c| **c == ' ' || **c == '\t')
+					.count();
+				if leading_spaces == 0 {
+					continue;
+				}
+				// Count indent levels.
+				let mut indent_level = 0usize;
+				let mut i = 0;
+				while i < leading_spaces {
+					if para_chars[i] == '\t' {
+						indent_level += 1;
+						i += 1;
+					} else {
+						// Count spaces.
+						let mut spaces = 0;
+						while i < leading_spaces && para_chars[i] == ' ' {
+							spaces += 1;
+							i += 1;
+						}
+						indent_level += spaces / self.tab_size;
+					}
+				}
+
+				for line in &para.layout.lines {
+					let line_y = lc.padding_y + para.y_offset + line.y - sy;
+					if line_y + line.height < 0.0 || line_y > height {
+						continue;
+					}
+					for level in 1..=indent_level {
+						let gx = lc.padding_x + content_x_origin + guide_tab_px * level as f32;
+						renderer.fill_rect(Rect::new(gx, line_y, 1.0, line.height), guide_color);
+					}
+				}
+			}
+		}
+
 		// ── Whitespace indicators ────────────────────────────────────────
 		if self.show_whitespace {
 			let ws_color = Color::new(
@@ -3851,6 +4190,14 @@ impl CanvistEditor {
 				if let Some(line) = first_line {
 					let y = lc.padding_y + para.y_offset + line.y - sy;
 					if y + line.height >= 0.0 && y <= height {
+						// Bookmark indicator.
+						if self.bookmarks.contains(&((line_number - 1) as usize)) {
+							let bm_color = Color::new(66, 135, 245, 180); // blue
+							renderer.fill_rect(
+								Rect::new(2.0, y + 2.0, 4.0, line.height - 4.0),
+								bm_color,
+							);
+						}
 						let num_str = line_number.to_string();
 						// Right-align within gutter.
 						let num_w = renderer.measure_text(&num_str, &line_num_style);

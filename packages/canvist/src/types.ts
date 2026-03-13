@@ -491,6 +491,66 @@ export interface CanvistEditor {
 	/** Find the offset of the bracket matching the one at `offset`. Returns -1 if none. */
 	findMatchingBracket(offset: number): number;
 
+	// ── Move to matching bracket ────────────────────────────────────
+
+	/** Move cursor to the matching bracket (Ctrl+Shift+\). */
+	moveToMatchingBracket(): void;
+
+	// ── Document statistics (extras) ────────────────────────────────
+
+	/** Total paragraph count (non-empty lines). */
+	readonly paragraphCount: number;
+
+	/** Current cursor line number (1-based). */
+	readonly currentLineNumber: number;
+
+	/** Current cursor column (1-based). */
+	readonly currentColumn: number;
+
+	// ── Indent guides ───────────────────────────────────────────────
+
+	/** Whether indent guides are visible. */
+	readonly showIndentGuides: boolean;
+
+	/** Toggle indent guide rendering. */
+	setShowIndentGuides(show: boolean): void;
+
+	// ── Bookmarks ───────────────────────────────────────────────────
+
+	/** Toggle bookmark on current line. Returns true if added. */
+	toggleBookmark(): boolean;
+
+	/** Jump to the next bookmark. Returns true if found. */
+	nextBookmark(): boolean;
+
+	/** Jump to the previous bookmark. Returns true if found. */
+	prevBookmark(): boolean;
+
+	/** Remove all bookmarks. */
+	clearBookmarks(): void;
+
+	/** Number of active bookmarks. */
+	readonly bookmarkCount: number;
+
+	/** Whether current line has a bookmark. */
+	readonly isLineBookmarked: boolean;
+
+	// ── Convert indentation ─────────────────────────────────────────
+
+	/** Convert all tabs to spaces. Returns tabs replaced. */
+	tabsToSpaces(): number;
+
+	/** Convert leading spaces to tabs. Returns conversions made. */
+	spacesToTabs(): number;
+
+	// ── Open line above / below ─────────────────────────────────────
+
+	/** Insert new line below current and move cursor there (Ctrl+Enter). */
+	openLineBelow(): void;
+
+	/** Insert new line above current and move cursor there (Ctrl+Shift+Enter). */
+	openLineAbove(): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

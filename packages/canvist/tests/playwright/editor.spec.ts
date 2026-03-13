@@ -3359,4 +3359,232 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Move to matching bracket ────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] move_to_matching_bracket jumps cursor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("(hello)");
+						ed.set_selection(0, 0); // at opening (
+						ed.move_to_matching_bracket();
+						return ed.selection_end();
+					});
+					assertEquals(result, 6); // jumps to ) at offset 6
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Document statistics ─────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] paragraph_count and current_line_number`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello\n\nworld\nfoo");
+						ed.set_selection(14, 14); // on "foo"
+						return {
+							paragraphs: ed.paragraph_count(),
+							lineNum: ed.current_line_number(),
+							col: ed.current_column(),
+						};
+					});
+					assertEquals(result.paragraphs, 3); // "hello", "world", "foo" (blank excluded)
+					assertEquals(result.lineNum, 4);
+					assertEquals(result.col, 2); // "f|oo" → col 2... actually 14 - 13 + 1 = 2
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Indent guides ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] indent guides can be toggled`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.show_indent_guides();
+						ed.set_show_indent_guides(true);
+						const after = ed.show_indent_guides();
+						return { before, after };
+					});
+					assertEquals(result.before, false);
+					assertEquals(result.after, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Bookmarks ───────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] bookmarks toggle, next, prev, clear`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("line1\nline2\nline3\nline4");
+						// Bookmark line 1 (offset 0).
+						ed.set_selection(0, 0);
+						const added1 = ed.toggle_bookmark();
+						// Bookmark line 3 (offset 12).
+						ed.set_selection(12, 12);
+						const added3 = ed.toggle_bookmark();
+						const count = ed.bookmark_count();
+						// Jump to next from line 1.
+						ed.set_selection(0, 0);
+						ed.next_bookmark();
+						const afterNext = ed.current_line_number();
+						// Jump to prev from line 3.
+						ed.prev_bookmark();
+						const afterPrev = ed.current_line_number();
+						// Clear all.
+						ed.clear_bookmarks();
+						const afterClear = ed.bookmark_count();
+						return { added1, added3, count, afterNext, afterPrev, afterClear };
+					});
+					assertEquals(result.added1, true);
+					assertEquals(result.added3, true);
+					assertEquals(result.count, 2);
+					assertEquals(result.afterNext, 3); // jumped to line 3
+					assertEquals(result.afterPrev, 1); // jumped back to line 1
+					assertEquals(result.afterClear, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Convert indentation ─────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] tabs_to_spaces and spaces_to_tabs`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_tab_size(4);
+						ed.insert_text("\thello\n\t\tworld");
+						const tabCount = ed.tabs_to_spaces();
+						const afterSpaces = ed.plain_text();
+						const spaceCount = ed.spaces_to_tabs();
+						const afterTabs = ed.plain_text();
+						return { tabCount, afterSpaces, spaceCount, afterTabs };
+					});
+					assertEquals(result.tabCount, 3);
+					assertEquals(result.afterSpaces, "    hello\n        world");
+					assertEquals(result.spaceCount, 3);
+					assertEquals(result.afterTabs, "\thello\n\t\tworld");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Open line above / below ─────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] open_line_below and open_line_above`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\nccc");
+						ed.set_selection(2, 2); // on "aaa"
+						ed.open_line_below();
+						const afterBelow = ed.plain_text();
+						const cursorBelow = ed.selection_end();
+						ed.insert_text("bbb");
+						ed.set_selection(0, 0); // back to line 1
+						ed.open_line_above();
+						const afterAbove = ed.plain_text();
+						const cursorAbove = ed.selection_end();
+						return { afterBelow, cursorBelow, afterAbove, cursorAbove };
+					});
+					assertEquals(result.afterBelow, "aaa\n\nccc");
+					assertEquals(result.cursorBelow, 4); // on empty new line
+					assertEquals(result.afterAbove, "\naaa\nbbb\nccc");
+					assertEquals(result.cursorAbove, 0); // at start of new line above
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
