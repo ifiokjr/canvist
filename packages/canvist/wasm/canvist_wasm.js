@@ -156,6 +156,12 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Scroll so the cursor's line is vertically centered in the viewport.
+     */
+    center_line_in_viewport() {
+        wasm.canvisteditor_center_line_in_viewport(this.__wbg_ptr);
+    }
+    /**
      * Return the character count.
      * @returns {number}
      */
@@ -268,6 +274,24 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Get the full text of the line the cursor is on (including the
+     * trailing `\n` if present). Useful for "copy line" when nothing is
+     * selected.
+     * @returns {string}
+     */
+    current_line_text() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_current_line_text(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Return the 1-based column (character position within the visual line).
      * @returns {number}
      */
@@ -288,6 +312,23 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0] >>> 0;
+    }
+    /**
+     * Cut the current line (remove it and return its text).
+     * This is the "cut line when nothing is selected" behavior.
+     * @returns {string}
+     */
+    cut_line() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_cut_line(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Delete the entire line the cursor is on (Ctrl+Shift+K).
@@ -430,6 +471,18 @@ export class CanvistEditor {
         }
     }
     /**
+     * Move cursor to the very end of the document (Ctrl+End).
+     */
+    go_to_document_end() {
+        wasm.canvisteditor_go_to_document_end(this.__wbg_ptr);
+    }
+    /**
+     * Move cursor to the very beginning of the document (Ctrl+Home).
+     */
+    go_to_document_start() {
+        wasm.canvisteditor_go_to_document_start(this.__wbg_ptr);
+    }
+    /**
      * Move the cursor to the start of the given 1-based paragraph line.
      *
      * If `line_number` exceeds the paragraph count, the cursor moves to
@@ -526,6 +579,17 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_insert_text_at(this.__wbg_ptr, offset, ptr0, len0);
+    }
+    /**
+     * Insert text respecting overwrite mode. In overwrite mode,
+     * characters after the cursor are replaced one-for-one rather
+     * than pushing text forward.
+     * @param {string} text
+     */
+    insert_text_overwrite(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_insert_text_overwrite(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Insert an opening bracket and its closing counterpart.
@@ -734,6 +798,14 @@ export class CanvistEditor {
         wasm.canvisteditor_outdent_selection(this.__wbg_ptr);
     }
     /**
+     * Whether the editor is in overwrite mode.
+     * @returns {boolean}
+     */
+    overwrite_mode() {
+        const ret = wasm.canvisteditor_overwrite_mode(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Total paragraph count (non-empty lines).
      * @returns {number}
      */
@@ -930,12 +1002,34 @@ export class CanvistEditor {
         wasm.canvisteditor_select_all(this.__wbg_ptr);
     }
     /**
+     * Select all text between the nearest enclosing bracket pair.
+     *
+     * Returns `true` if brackets were found and selection was made.
+     * @returns {boolean}
+     */
+    select_between_brackets() {
+        const ret = wasm.canvisteditor_select_between_brackets(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Select the entire current line (Ctrl+L).
      *
      * Repeated calls extend the selection by one line each time.
      */
     select_line() {
         wasm.canvisteditor_select_line(this.__wbg_ptr);
+    }
+    /**
+     * Select from cursor to document end (Ctrl+Shift+End).
+     */
+    select_to_document_end() {
+        wasm.canvisteditor_select_to_document_end(this.__wbg_ptr);
+    }
+    /**
+     * Select from cursor to document start (Ctrl+Shift+Home).
+     */
+    select_to_document_start() {
+        wasm.canvisteditor_select_to_document_start(this.__wbg_ptr);
     }
     /**
      * Select the word at the given character offset.
@@ -1100,6 +1194,13 @@ export class CanvistEditor {
      */
     set_now_ms(ms) {
         wasm.canvisteditor_set_now_ms(this.__wbg_ptr, ms);
+    }
+    /**
+     * Set overwrite mode explicitly.
+     * @param {boolean} enabled
+     */
+    set_overwrite_mode(enabled) {
+        wasm.canvisteditor_set_overwrite_mode(this.__wbg_ptr, enabled);
     }
     /**
      * Set the editor to read-only mode. Editing operations are blocked;
@@ -1423,6 +1524,12 @@ export class CanvistEditor {
      */
     toggle_numbered_list() {
         wasm.canvisteditor_toggle_numbered_list(this.__wbg_ptr);
+    }
+    /**
+     * Toggle between insert and overwrite mode (Insert key).
+     */
+    toggle_overwrite_mode() {
+        wasm.canvisteditor_toggle_overwrite_mode(this.__wbg_ptr);
     }
     /**
      * Toggle strikethrough on the current selection.

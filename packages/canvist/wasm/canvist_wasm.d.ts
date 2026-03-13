@@ -76,6 +76,10 @@ export class CanvistEditor {
      */
     caret_y(): Float32Array;
     /**
+     * Scroll so the cursor's line is vertically centered in the viewport.
+     */
+    center_line_in_viewport(): void;
+    /**
      * Return the character count.
      */
     char_count(): number;
@@ -132,6 +136,12 @@ export class CanvistEditor {
      */
     current_line_number(): number;
     /**
+     * Get the full text of the line the cursor is on (including the
+     * trailing `\n` if present). Useful for "copy line" when nothing is
+     * selected.
+     */
+    current_line_text(): string;
+    /**
      * Return the 1-based column (character position within the visual line).
      */
     cursor_column(): number;
@@ -139,6 +149,11 @@ export class CanvistEditor {
      * Return the 1-based visual line number the caret is on.
      */
     cursor_line(): number;
+    /**
+     * Cut the current line (remove it and return its text).
+     * This is the "cut line when nothing is selected" behavior.
+     */
+    cut_line(): string;
     /**
      * Delete the entire line the cursor is on (Ctrl+Shift+K).
      *
@@ -208,6 +223,14 @@ export class CanvistEditor {
      */
     get_selected_text(): string;
     /**
+     * Move cursor to the very end of the document (Ctrl+End).
+     */
+    go_to_document_end(): void;
+    /**
+     * Move cursor to the very beginning of the document (Ctrl+Home).
+     */
+    go_to_document_start(): void;
+    /**
      * Move the cursor to the start of the given 1-based paragraph line.
      *
      * If `line_number` exceeds the paragraph count, the cursor moves to
@@ -270,6 +293,12 @@ export class CanvistEditor {
      * Insert text at a specific character offset.
      */
     insert_text_at(offset: number, text: string): void;
+    /**
+     * Insert text respecting overwrite mode. In overwrite mode,
+     * characters after the cursor are replaced one-for-one rather
+     * than pushing text forward.
+     */
+    insert_text_overwrite(text: string): void;
     /**
      * Insert an opening bracket and its closing counterpart.
      *
@@ -382,6 +411,10 @@ export class CanvistEditor {
      */
     outdent_selection(): void;
     /**
+     * Whether the editor is in overwrite mode.
+     */
+    overwrite_mode(): boolean;
+    /**
      * Total paragraph count (non-empty lines).
      */
     paragraph_count(): number;
@@ -477,11 +510,25 @@ export class CanvistEditor {
      */
     select_all(): void;
     /**
+     * Select all text between the nearest enclosing bracket pair.
+     *
+     * Returns `true` if brackets were found and selection was made.
+     */
+    select_between_brackets(): boolean;
+    /**
      * Select the entire current line (Ctrl+L).
      *
      * Repeated calls extend the selection by one line each time.
      */
     select_line(): void;
+    /**
+     * Select from cursor to document end (Ctrl+Shift+End).
+     */
+    select_to_document_end(): void;
+    /**
+     * Select from cursor to document start (Ctrl+Shift+Home).
+     */
+    select_to_document_start(): void;
     /**
      * Select the word at the given character offset.
      */
@@ -583,6 +630,10 @@ export class CanvistEditor {
      * actual typing speed.
      */
     set_now_ms(ms: number): void;
+    /**
+     * Set overwrite mode explicitly.
+     */
+    set_overwrite_mode(enabled: boolean): void;
     /**
      * Set the editor to read-only mode. Editing operations are blocked;
      * selection, copy, and navigation still work.
@@ -759,6 +810,10 @@ export class CanvistEditor {
      */
     toggle_numbered_list(): void;
     /**
+     * Toggle between insert and overwrite mode (Insert key).
+     */
+    toggle_overwrite_mode(): void;
+    /**
      * Toggle strikethrough on the current selection.
      */
     toggle_strikethrough(): void;
@@ -862,6 +917,7 @@ export interface InitOutput {
     readonly canvisteditor_can_undo: (a: number) => number;
     readonly canvisteditor_canvas_id: (a: number) => [number, number];
     readonly canvisteditor_caret_y: (a: number) => [number, number, number, number];
+    readonly canvisteditor_center_line_in_viewport: (a: number) => void;
     readonly canvisteditor_char_count: (a: number) => number;
     readonly canvisteditor_clear_bookmarks: (a: number) => void;
     readonly canvisteditor_clipboard_cut: (a: number) => void;
@@ -873,8 +929,10 @@ export interface InitOutput {
     readonly canvisteditor_create: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_current_column: (a: number) => number;
     readonly canvisteditor_current_line_number: (a: number) => number;
+    readonly canvisteditor_current_line_text: (a: number) => [number, number];
     readonly canvisteditor_cursor_column: (a: number) => [number, number, number];
     readonly canvisteditor_cursor_line: (a: number) => [number, number, number];
+    readonly canvisteditor_cut_line: (a: number) => [number, number];
     readonly canvisteditor_delete_line: (a: number) => void;
     readonly canvisteditor_delete_range: (a: number, b: number, c: number) => void;
     readonly canvisteditor_delete_word_left: (a: number) => void;
@@ -888,6 +946,8 @@ export interface InitOutput {
     readonly canvisteditor_focused: (a: number) => number;
     readonly canvisteditor_from_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
+    readonly canvisteditor_go_to_document_end: (a: number) => void;
+    readonly canvisteditor_go_to_document_start: (a: number) => void;
     readonly canvisteditor_go_to_line: (a: number, b: number) => void;
     readonly canvisteditor_highlight_current_line: (a: number) => number;
     readonly canvisteditor_highlight_matching_brackets: (a: number) => number;
@@ -896,6 +956,7 @@ export interface InitOutput {
     readonly canvisteditor_insert_tab: (a: number) => void;
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_text_at: (a: number, b: number, c: number, d: number) => void;
+    readonly canvisteditor_insert_text_overwrite: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_with_auto_close: (a: number, b: number, c: number) => number;
     readonly canvisteditor_is_bold: (a: number) => number;
     readonly canvisteditor_is_italic: (a: number) => number;
@@ -918,6 +979,7 @@ export interface InitOutput {
     readonly canvisteditor_open_line_above: (a: number) => void;
     readonly canvisteditor_open_line_below: (a: number) => void;
     readonly canvisteditor_outdent_selection: (a: number) => void;
+    readonly canvisteditor_overwrite_mode: (a: number) => number;
     readonly canvisteditor_paragraph_count: (a: number) => number;
     readonly canvisteditor_paste_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_plain_text: (a: number) => [number, number];
@@ -936,7 +998,10 @@ export interface InitOutput {
     readonly canvisteditor_scroll_by: (a: number, b: number) => void;
     readonly canvisteditor_scroll_y: (a: number) => number;
     readonly canvisteditor_select_all: (a: number) => void;
+    readonly canvisteditor_select_between_brackets: (a: number) => number;
     readonly canvisteditor_select_line: (a: number) => void;
+    readonly canvisteditor_select_to_document_end: (a: number) => void;
+    readonly canvisteditor_select_to_document_start: (a: number) => void;
     readonly canvisteditor_select_word_at: (a: number, b: number) => void;
     readonly canvisteditor_selected_char_count: (a: number) => number;
     readonly canvisteditor_selected_word_count: (a: number) => number;
@@ -954,6 +1019,7 @@ export interface InitOutput {
     readonly canvisteditor_set_highlight_current_line: (a: number, b: number) => void;
     readonly canvisteditor_set_highlight_matching_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
+    readonly canvisteditor_set_overwrite_mode: (a: number, b: number) => void;
     readonly canvisteditor_set_read_only: (a: number, b: number) => void;
     readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
@@ -988,6 +1054,7 @@ export interface InitOutput {
     readonly canvisteditor_toggle_italic: (a: number) => void;
     readonly canvisteditor_toggle_line_comment: (a: number) => void;
     readonly canvisteditor_toggle_numbered_list: (a: number) => void;
+    readonly canvisteditor_toggle_overwrite_mode: (a: number) => void;
     readonly canvisteditor_toggle_strikethrough: (a: number) => void;
     readonly canvisteditor_toggle_underline: (a: number) => void;
     readonly canvisteditor_transform_lowercase: (a: number) => void;
