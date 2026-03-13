@@ -603,6 +603,15 @@ export async function createEditor(
 			return;
 		}
 
+		// Select line — Ctrl+L.
+		if (mod && e.key === "l") {
+			e.preventDefault();
+			inner.select_line();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
 		// Backspace.
 		if (e.key === "Backspace") {
 			e.preventDefault();
@@ -618,6 +627,9 @@ export async function createEditor(
 					inner.delete_range(wb, cursorOffset);
 					cursorOffset = wb;
 				}
+			} else if (inner.auto_close_brackets() && inner.smart_backspace()) {
+				// Smart backspace deleted a bracket pair.
+				cursorOffset = inner.selection_end();
 			} else if (cursorOffset > 0) {
 				inner.delete_range(cursorOffset - 1, cursorOffset);
 				cursorOffset -= 1;
@@ -1174,6 +1186,46 @@ export async function createEditor(
 			},
 			setAutoCloseBrackets(enabled: boolean) {
 				ref.set_auto_close_brackets(enabled);
+			},
+			// ── Delete word ─────────────────────────────
+			deleteWordLeft() {
+				syncTime();
+				ref.delete_word_left();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			deleteWordRight() {
+				syncTime();
+				ref.delete_word_right();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Select line ─────────────────────────────
+			selectLine() {
+				ref.select_line();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Utility commands ────────────────────────
+			trimTrailingWhitespace() {
+				syncTime();
+				const n = ref.trim_trailing_whitespace();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			removeDuplicateLines() {
+				syncTime();
+				const n = ref.remove_duplicate_lines();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			wrapSelection(open: string, close: string) {
+				syncTime();
+				ref.wrap_selection(open, close);
+				cursorOffset = ref.selection_end();
+				renderFrame();
 			},
 			// ── Auto-indent ─────────────────────────────
 			autoIndentNewline() {

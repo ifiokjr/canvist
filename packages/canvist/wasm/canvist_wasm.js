@@ -235,6 +235,21 @@ export class CanvistEditor {
         wasm.canvisteditor_delete_range(this.__wbg_ptr, start, end);
     }
     /**
+     * Delete the word to the left of the cursor (Ctrl+Backspace).
+     *
+     * Walks backwards from the cursor past whitespace, then past word
+     * characters, and deletes the range.
+     */
+    delete_word_left() {
+        wasm.canvisteditor_delete_word_left(this.__wbg_ptr);
+    }
+    /**
+     * Delete the word to the right of the cursor (Ctrl+Delete).
+     */
+    delete_word_right() {
+        wasm.canvisteditor_delete_word_right(this.__wbg_ptr);
+    }
+    /**
      * Duplicate the current line (or selected lines) below.
      */
     duplicate_line() {
@@ -656,6 +671,16 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Remove consecutive duplicate lines from the document.
+     *
+     * Returns the number of lines removed.
+     * @returns {number}
+     */
+    remove_duplicate_lines() {
+        const ret = wasm.canvisteditor_remove_duplicate_lines(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Remove the background (highlight) colour from the current selection.
      */
     remove_highlight_color() {
@@ -736,6 +761,14 @@ export class CanvistEditor {
      */
     select_all() {
         wasm.canvisteditor_select_all(this.__wbg_ptr);
+    }
+    /**
+     * Select the entire current line (Ctrl+L).
+     *
+     * Repeated calls extend the selection by one line each time.
+     */
+    select_line() {
+        wasm.canvisteditor_select_line(this.__wbg_ptr);
     }
     /**
      * Select the word at the given character offset.
@@ -981,6 +1014,17 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * If the cursor is between a matching bracket pair (e.g. `(|)`),
+     * delete both characters. Otherwise, behave like normal backspace.
+     *
+     * Returns `true` if a pair was deleted, `false` for normal backspace.
+     * @returns {boolean}
+     */
+    smart_backspace() {
+        const ret = wasm.canvisteditor_smart_backspace(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Sort selected lines in ascending alphabetical order.
      */
     sort_lines_asc() {
@@ -1133,6 +1177,16 @@ export class CanvistEditor {
         wasm.canvisteditor_transform_uppercase(this.__wbg_ptr);
     }
     /**
+     * Remove trailing whitespace (spaces and tabs) from every line.
+     *
+     * Returns the number of characters removed.
+     * @returns {number}
+     */
+    trim_trailing_whitespace() {
+        const ret = wasm.canvisteditor_trim_trailing_whitespace(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Undo the most recent transaction.
      *
      * Applies inverse operations to restore the document to its previous state.
@@ -1176,6 +1230,21 @@ export class CanvistEditor {
     word_wrap() {
         const ret = wasm.canvisteditor_word_wrap(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Wrap the selected text with a pair of strings (e.g. brackets).
+     *
+     * Example: `wrap_selection("(", ")")` turns `hello` into `(hello)`.
+     * Cursor is placed after the closing string.
+     * @param {string} open
+     * @param {string} close
+     */
+    wrap_selection(open, close) {
+        const ptr0 = passStringToWasm0(open, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(close, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_wrap_selection(this.__wbg_ptr, ptr0, len0, ptr1, len1);
     }
     /**
      * Get the current zoom level.

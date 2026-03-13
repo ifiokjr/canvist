@@ -2931,4 +2931,224 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Delete word left ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] delete_word_left removes word before cursor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello world");
+						ed.set_selection(11, 11); // end of "world"
+						ed.delete_word_left();
+						return ed.plain_text();
+					});
+					assertEquals(result, "hello ");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Delete word right ───────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] delete_word_right removes word after cursor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello world");
+						ed.set_selection(0, 0); // start
+						ed.delete_word_right();
+						return ed.plain_text();
+					});
+					assertEquals(result, "world");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Select line ─────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] select_line selects the current line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\nbbb\nccc");
+						ed.set_selection(5, 5); // on "bbb"
+						ed.select_line();
+						return ed.get_selected_text();
+					});
+					assertEquals(result, "bbb\n");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Trim trailing whitespace ────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] trim_trailing_whitespace removes trailing spaces`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello   \nworld  ");
+						const removed = ed.trim_trailing_whitespace();
+						return { text: ed.plain_text(), removed };
+					});
+					assertEquals(result.text, "hello\nworld");
+					assertEquals(result.removed, 5);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Remove duplicate lines ──────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] remove_duplicate_lines deduplicates adjacent lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\naaa\nbbb\nbbb\nbbb\nccc");
+						const removed = ed.remove_duplicate_lines();
+						return { text: ed.plain_text(), removed };
+					});
+					assertEquals(result.text, "aaa\nbbb\nccc");
+					assertEquals(result.removed, 3);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Wrap selection ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] wrap_selection wraps text in brackets`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello world");
+						ed.set_selection(0, 5); // "hello"
+						ed.wrap_selection("[", "]");
+						return ed.plain_text();
+					});
+					assertEquals(result, "[hello] world");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Smart backspace ─────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] smart_backspace deletes matching bracket pair`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_auto_close_brackets(true);
+						ed.insert_with_auto_close("("); // creates "()"
+						const before = ed.plain_text();
+						ed.smart_backspace(); // should delete both
+						const after = ed.plain_text();
+						return { before, after };
+					});
+					assertEquals(result.before, "()");
+					assertEquals(result.after, "");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
