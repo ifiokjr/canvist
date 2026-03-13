@@ -357,6 +357,16 @@ pub struct CanvistEditor {
 	show_whitespace: bool,
 	/// Whether typing an opening bracket inserts the closing counterpart.
 	auto_close_brackets: bool,
+	/// Tab size in spaces (default 4).
+	tab_size: usize,
+	/// Whether Tab inserts spaces instead of a `\t` character.
+	soft_tabs: bool,
+	/// Line comment prefix (default `// `).
+	comment_prefix: String,
+	/// Whether to auto-surround selected text when typing brackets.
+	auto_surround: bool,
+	/// Whether to highlight matching brackets near the cursor.
+	highlight_matching_brackets: bool,
 }
 
 /// Colour theme for the editor canvas.
@@ -466,6 +476,11 @@ impl CanvistEditor {
 			word_wrap: true,
 			show_whitespace: false,
 			auto_close_brackets: false,
+			tab_size: 4,
+			soft_tabs: false,
+			comment_prefix: "// ".to_string(),
+			auto_surround: false,
+			highlight_matching_brackets: true,
 		})
 	}
 
@@ -1502,6 +1517,561 @@ impl CanvistEditor {
 		false
 	}
 
+	// ── Transpose characters ─────────────────────────────────────────
+
+	/// Swap the two characters around the cursor (Ctrl+T).
+	///
+	/// If the cursor is at the end of a line, swaps the two preceding
+	/// characters instead.
+	#[wasm_bindgen]
+	pub fn transpose_chars(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			return;
+		}
+		let offset = sel.end().offset();
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+
+		if chars.is_empty() {
+			return;
+		}
+
+		// Determine which two positions to swap.
+		let (a, b) = if offset == 0 {
+			return;
+		} else if offset >= chars.len() || chars[offset] == '\n' {
+			// At end or end-of-line: swap the two chars before cursor.
+			if offset < 2 {
+				return;
+			}
+			(offset - 2, offset - 1)
+		} else {
+			(offset - 1, offset)
+		};
+
+		let char_a = chars[a];
+		let char_b = chars[b];
+		if char_a == '\n' || char_b == '\n' {
+			return;
+		}
+
+		// Delete range [a..b+1], insert swapped.
+		self.delete_range(a, b + 1);
+		let swapped = format!("{char_b}{char_a}");
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(a), swapped));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(b + 1)),
+		});
+	}
+
+	// ── Toggle line comment ──────────────────────────────────────────
+
+	/// Set the line comment prefix (default `"// "`).
+	#[wasm_bindgen]
+	pub fn set_comment_prefix(&mut self, prefix: &str) {
+		self.comment_prefix = prefix.to_string();
+	}
+
+	/// Get the current line comment prefix.
+	#[wasm_bindgen]
+	pub fn comment_prefix(&self) -> String {
+		self.comment_prefix.clone()
+	}
+
+	/// Toggle a line-comment prefix on the current line or all selected
+	/// lines.
+	///
+	/// If all affected lines start with the prefix, it is removed from
+	/// each. Otherwise the prefix is added to every line.
+	#[wasm_bindgen]
+	pub fn toggle_line_comment(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let sel = self.runtime.selection();
+		let sel_start = sel.start().offset().min(chars.len());
+		let sel_end = sel.end().offset().min(chars.len());
+
+		// Expand to full line boundaries.
+		let mut start = sel_start;
+		while start > 0 && chars[start - 1] != '\n' {
+			start -= 1;
+		}
+		let mut end = sel_end;
+		while end < chars.len() && chars[end] != '\n' {
+			end += 1;
+		}
+
+		let block: String = chars[start..end].iter().collect();
+		let lines: Vec<&str> = block.split('\n').collect();
+		let prefix = &self.comment_prefix;
+
+		// Check if ALL non-empty lines already have the prefix.
+		let all_commented = lines
+			.iter()
+			.all(|l| l.is_empty() || l.starts_with(prefix.as_str()));
+
+		let new_lines: Vec<String> = if all_commented {
+			lines
+				.iter()
+				.map(|l| {
+					if l.starts_with(prefix.as_str()) {
+						l[prefix.len()..].to_string()
+					} else {
+						l.to_string()
+					}
+				})
+				.collect()
+		} else {
+			lines.iter().map(|l| format!("{prefix}{l}")).collect()
+		};
+
+		let new_block = new_lines.join("\n");
+		let new_len = new_block.chars().count();
+
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(end)),
+		});
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(start), new_block));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(start + new_len)),
+		});
+	}
+
+	// ── Soft tabs ────────────────────────────────────────────────────
+
+	/// Set the tab display/insert size (1–8). Default: 4.
+	#[wasm_bindgen]
+	pub fn set_tab_size(&mut self, size: usize) {
+		self.tab_size = size.clamp(1, 8);
+	}
+
+	/// Get the current tab size.
+	#[wasm_bindgen]
+	pub fn tab_size(&self) -> usize {
+		self.tab_size
+	}
+
+	/// Enable or disable soft tabs (spaces instead of `\t`).
+	#[wasm_bindgen]
+	pub fn set_soft_tabs(&mut self, enabled: bool) {
+		self.soft_tabs = enabled;
+	}
+
+	/// Whether soft tabs are enabled.
+	#[wasm_bindgen]
+	pub fn soft_tabs(&self) -> bool {
+		self.soft_tabs
+	}
+
+	/// Insert one "tab" at the cursor — either spaces or a `\t`.
+	#[wasm_bindgen]
+	pub fn insert_tab(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let tab_str = if self.soft_tabs {
+			" ".repeat(self.tab_size)
+		} else {
+			"\t".to_string()
+		};
+		let len = tab_str.chars().count();
+		let offset = self.runtime.selection().end().offset();
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(offset), tab_str));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(offset + len)),
+		});
+	}
+
+	// ── Auto-surround ────────────────────────────────────────────────
+
+	/// Enable or disable auto-surround on selection.
+	///
+	/// When enabled and text is selected, typing an opening bracket
+	/// wraps the selection instead of replacing it.
+	#[wasm_bindgen]
+	pub fn set_auto_surround(&mut self, enabled: bool) {
+		self.auto_surround = enabled;
+	}
+
+	/// Whether auto-surround is enabled.
+	#[wasm_bindgen]
+	pub fn auto_surround(&self) -> bool {
+		self.auto_surround
+	}
+
+	/// If auto-surround is on and the selection is non-empty, wrap the
+	/// selection with the opening/closing pair. Returns `true` if wrapping
+	/// happened.
+	#[wasm_bindgen]
+	pub fn try_auto_surround(&mut self, ch: &str) -> bool {
+		if !self.is_writable() || !self.auto_surround {
+			return false;
+		}
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return false;
+		}
+		let open_char = ch.chars().next().unwrap_or(' ');
+		let close = match open_char {
+			'(' => ")",
+			'[' => "]",
+			'{' => "}",
+			'"' => "\"",
+			'\'' => "'",
+			'`' => "`",
+			_ => return false,
+		};
+		self.wrap_selection(ch, close);
+		true
+	}
+
+	// ── Expand / contract selection ──────────────────────────────────
+
+	/// Expand selection intelligently: word → quoted → bracketed → line → all.
+	///
+	/// Each call expands to the next logical boundary.
+	#[wasm_bindgen]
+	pub fn expand_selection(&mut self) {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let sel = self.runtime.selection();
+		let sel_start = sel.start().offset().min(chars.len());
+		let sel_end = sel.end().offset().min(chars.len());
+		let len = chars.len();
+
+		// 1. If collapsed → select word.
+		if sel_start == sel_end {
+			let (ws, we) = self.word_bounds(sel_start, &chars);
+			if ws < we {
+				let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+					selection: Selection::range(Position::new(ws), Position::new(we)),
+				});
+				return;
+			}
+		}
+
+		// 2. Try to expand to matching quotes.
+		if let Some((qs, qe)) =
+			Self::find_surrounding(&chars, sel_start, sel_end, &['"', '\'', '`'])
+		{
+			if qs < sel_start || qe > sel_end {
+				let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+					selection: Selection::range(Position::new(qs), Position::new(qe)),
+				});
+				return;
+			}
+		}
+
+		// 3. Try to expand to matching brackets.
+		if let Some((bs, be)) = Self::find_surrounding_brackets(&chars, sel_start, sel_end) {
+			if bs < sel_start || be > sel_end {
+				let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+					selection: Selection::range(Position::new(bs), Position::new(be)),
+				});
+				return;
+			}
+		}
+
+		// 4. Expand to full line.
+		let mut line_start = sel_start;
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		let mut line_end = sel_end;
+		while line_end < len && chars[line_end] != '\n' {
+			line_end += 1;
+		}
+		if line_start < sel_start || line_end > sel_end {
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::range(Position::new(line_start), Position::new(line_end)),
+			});
+			return;
+		}
+
+		// 5. Select all.
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(0), Position::new(len)),
+		});
+	}
+
+	/// Contract selection intelligently (reverse of expand).
+	///
+	/// Shrinks: all → line → bracket → quote → word → collapsed.
+	#[wasm_bindgen]
+	pub fn contract_selection(&mut self) {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let sel = self.runtime.selection();
+		let sel_start = sel.start().offset().min(chars.len());
+		let sel_end = sel.end().offset().min(chars.len());
+
+		if sel_start == sel_end {
+			return; // Already collapsed.
+		}
+
+		// Try shrinking to line.
+		let mut line_start = sel_start;
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		let mut line_end = sel_end;
+		while line_end < chars.len() && chars[line_end] != '\n' {
+			line_end += 1;
+		}
+		if sel_start < line_start || sel_end > line_end {
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::range(Position::new(line_start), Position::new(line_end)),
+			});
+			return;
+		}
+
+		// Try shrinking to brackets.
+		if let Some((bs, be)) = Self::find_inner_brackets(&chars, sel_start, sel_end) {
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::range(Position::new(bs), Position::new(be)),
+			});
+			return;
+		}
+
+		// Try shrinking to word.
+		let mid = (sel_start + sel_end) / 2;
+		let (ws, we) = self.word_bounds(mid, &chars);
+		if ws >= sel_start && we <= sel_end && (ws > sel_start || we < sel_end) {
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::range(Position::new(ws), Position::new(we)),
+			});
+			return;
+		}
+
+		// Collapse to cursor position.
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(sel_end)),
+		});
+	}
+
+	/// Word boundaries around a position.
+	fn word_bounds(&self, pos: usize, chars: &[char]) -> (usize, usize) {
+		if pos >= chars.len() {
+			return (pos, pos);
+		}
+		let mut start = pos;
+		while start > 0 && chars[start - 1].is_alphanumeric() {
+			start -= 1;
+		}
+		let mut end = pos;
+		while end < chars.len() && chars[end].is_alphanumeric() {
+			end += 1;
+		}
+		(start, end)
+	}
+
+	/// Find the innermost surrounding quote pair that fully contains [sel_start..sel_end].
+	fn find_surrounding(
+		chars: &[char],
+		sel_start: usize,
+		sel_end: usize,
+		delimiters: &[char],
+	) -> Option<(usize, usize)> {
+		let mut best: Option<(usize, usize)> = None;
+		for &delim in delimiters {
+			// Search backward for opening.
+			let mut open = sel_start;
+			loop {
+				if open == 0 {
+					break;
+				}
+				open -= 1;
+				if chars[open] == delim {
+					// Search forward for closing.
+					let mut close = sel_end;
+					while close < chars.len() {
+						if chars[close] == delim {
+							let inner_start = open + 1;
+							let inner_end = close;
+							if inner_start <= sel_start && inner_end >= sel_end {
+								let span = inner_end - inner_start;
+								if best.is_none() || span < best.unwrap().1 - best.unwrap().0 {
+									best = Some((inner_start, inner_end));
+								}
+							}
+							break;
+						}
+						close += 1;
+					}
+					break;
+				}
+			}
+		}
+		best
+	}
+
+	/// Find the innermost surrounding bracket pair that contains [sel_start..sel_end].
+	fn find_surrounding_brackets(
+		chars: &[char],
+		sel_start: usize,
+		sel_end: usize,
+	) -> Option<(usize, usize)> {
+		let pairs = [('(', ')'), ('[', ']'), ('{', '}')];
+		let mut best: Option<(usize, usize)> = None;
+		for (open_ch, close_ch) in &pairs {
+			// Search backward for unmatched open.
+			let mut depth = 0i32;
+			let mut open = sel_start;
+			let mut found_open = None;
+			loop {
+				if open == 0 {
+					break;
+				}
+				open -= 1;
+				if chars[open] == *close_ch {
+					depth += 1;
+				} else if chars[open] == *open_ch {
+					if depth == 0 {
+						found_open = Some(open);
+						break;
+					}
+					depth -= 1;
+				}
+			}
+			if let Some(o) = found_open {
+				// Search forward for matching close.
+				let mut depth2 = 0i32;
+				let mut close = sel_end;
+				while close < chars.len() {
+					if chars[close] == *open_ch {
+						depth2 += 1;
+					} else if chars[close] == *close_ch {
+						if depth2 == 0 {
+							let inner_start = o + 1;
+							let inner_end = close;
+							let span = inner_end - inner_start;
+							if best.is_none() || span < best.unwrap().1 - best.unwrap().0 {
+								best = Some((inner_start, inner_end));
+							}
+							break;
+						}
+						depth2 -= 1;
+					}
+					close += 1;
+				}
+			}
+		}
+		best
+	}
+
+	/// Find innermost brackets strictly inside [sel_start..sel_end].
+	fn find_inner_brackets(
+		chars: &[char],
+		sel_start: usize,
+		sel_end: usize,
+	) -> Option<(usize, usize)> {
+		let pairs = [('(', ')'), ('[', ']'), ('{', '}')];
+		let mut best: Option<(usize, usize)> = None;
+		for (open_ch, close_ch) in &pairs {
+			for i in sel_start..sel_end {
+				if chars[i] == *open_ch {
+					let mut depth = 0i32;
+					for j in (i + 1)..sel_end {
+						if chars[j] == *open_ch {
+							depth += 1;
+						} else if chars[j] == *close_ch {
+							if depth == 0 {
+								let inner_start = i + 1;
+								let inner_end = j;
+								if inner_start > sel_start || inner_end < sel_end {
+									let span = inner_end - inner_start;
+									if best.is_none() || span < best.unwrap().1 - best.unwrap().0 {
+										best = Some((inner_start, inner_end));
+									}
+								}
+								break;
+							}
+							depth -= 1;
+						}
+					}
+				}
+			}
+		}
+		best
+	}
+
+	// ── Matching bracket highlight ───────────────────────────────────
+
+	/// Toggle matching bracket highlight.
+	#[wasm_bindgen]
+	pub fn set_highlight_matching_brackets(&mut self, enabled: bool) {
+		self.highlight_matching_brackets = enabled;
+	}
+
+	/// Whether matching bracket highlighting is enabled.
+	#[wasm_bindgen]
+	pub fn highlight_matching_brackets(&self) -> bool {
+		self.highlight_matching_brackets
+	}
+
+	/// Find the offset of the bracket matching the one at `offset`.
+	///
+	/// Returns `None` (via -1 in WASM) if the char at `offset` is not a
+	/// bracket or no match is found.
+	#[wasm_bindgen]
+	pub fn find_matching_bracket(&self, offset: usize) -> i32 {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		if offset >= chars.len() {
+			return -1;
+		}
+		let ch = chars[offset];
+		let (forward, target) = match ch {
+			'(' => (true, ')'),
+			'[' => (true, ']'),
+			'{' => (true, '}'),
+			')' => (false, '('),
+			']' => (false, '['),
+			'}' => (false, '{'),
+			_ => return -1,
+		};
+		let mut depth = 0i32;
+		if forward {
+			for i in (offset + 1)..chars.len() {
+				if chars[i] == ch {
+					depth += 1;
+				} else if chars[i] == target {
+					if depth == 0 {
+						return i as i32;
+					}
+					depth -= 1;
+				}
+			}
+		} else {
+			let mut i = offset;
+			while i > 0 {
+				i -= 1;
+				if chars[i] == ch {
+					depth += 1;
+				} else if chars[i] == target {
+					if depth == 0 {
+						return i as i32;
+					}
+					depth -= 1;
+				}
+			}
+		}
+		-1
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -1511,6 +2081,42 @@ impl CanvistEditor {
 	/// Width of the line-number gutter (0 when hidden).
 	fn gutter_width(&self) -> f32 {
 		if self.show_line_numbers { 48.0 } else { 0.0 }
+	}
+
+	/// Get the pixel rect of a single character for bracket highlighting.
+	fn char_rect(
+		offset: usize,
+		paragraphs: &[ParagraphLayoutInfo],
+		lc: &LayoutConstants,
+		content_x_origin: f32,
+		scroll_y: f32,
+		renderer: &Canvas2dRenderer,
+	) -> Option<Rect> {
+		let mut global_offset = 0usize;
+		for para in paragraphs {
+			let para_len = para.text.chars().count();
+			if offset < global_offset || offset >= global_offset + para_len {
+				global_offset += para_len + 1; // +1 for \n
+				continue;
+			}
+			let local = offset - global_offset;
+			for line in &para.layout.lines {
+				if local >= line.start_offset && local < line.end_offset {
+					let para_chars: Vec<char> = para.text.chars().collect();
+					let mut x = lc.padding_x + content_x_origin + line.x_offset;
+					for i in line.start_offset..local {
+						let ch_s = para_chars[i].to_string();
+						x += renderer.measure_text(&ch_s, &lc.default_style);
+					}
+					let ch_s = para_chars[local].to_string();
+					let w = renderer.measure_text(&ch_s, &lc.default_style);
+					let y = lc.padding_y + para.y_offset + line.y - scroll_y;
+					return Some(Rect::new(x, y, w, line.height));
+				}
+			}
+			return None;
+		}
+		None
 	}
 
 	/// Content-area width (canvas width minus gutter).
@@ -3253,6 +3859,33 @@ impl CanvistEditor {
 					}
 				}
 				line_number += 1;
+			}
+		}
+
+		// ── Matching bracket highlight ────────────────────────────────────
+		if self.highlight_matching_brackets && self.focused {
+			let cursor_off = self.runtime.selection().end().offset();
+			// Check char at cursor and char before cursor.
+			let offsets_to_check: Vec<usize> = if cursor_off > 0 {
+				vec![cursor_off, cursor_off - 1]
+			} else {
+				vec![cursor_off]
+			};
+			for &check_off in &offsets_to_check {
+				let match_off = self.find_matching_bracket(check_off);
+				if match_off >= 0 {
+					let bracket_color =
+						Color::new(theme.selection.r, theme.selection.g, theme.selection.b, 160);
+					// Highlight both brackets.
+					for &bo in &[check_off, match_off as usize] {
+						if let Some(rect) =
+							Self::char_rect(bo, &paragraphs, &lc, content_x_origin, sy, &renderer)
+						{
+							renderer.fill_rect(rect, bracket_color);
+						}
+					}
+					break;
+				}
 			}
 		}
 

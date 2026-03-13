@@ -32,6 +32,10 @@ export class CanvistEditor {
      */
     auto_indent_newline(): number;
     /**
+     * Whether auto-surround is enabled.
+     */
+    auto_surround(): boolean;
+    /**
      * Force-break the current undo coalescing chain.
      *
      * Normally, rapid single-character inserts are merged into a single undo
@@ -83,12 +87,22 @@ export class CanvistEditor {
      */
     coalesce_timeout(): number;
     /**
+     * Get the current line comment prefix.
+     */
+    comment_prefix(): string;
+    /**
      * Compute the total content height in logical pixels.
      *
      * Uses the paragraph layout engine to determine the full document
      * height including padding and paragraph spacing.
      */
     content_height(): number;
+    /**
+     * Contract selection intelligently (reverse of expand).
+     *
+     * Shrinks: all → line → bracket → quote → word → collapsed.
+     */
+    contract_selection(): void;
     /**
      * Create a new editor attached to the canvas element with the given ID.
      *
@@ -132,10 +146,23 @@ export class CanvistEditor {
      */
     duplicate_line(): void;
     /**
+     * Expand selection intelligently: word → quoted → bracketed → line → all.
+     *
+     * Each call expands to the next logical boundary.
+     */
+    expand_selection(): void;
+    /**
      * Find all occurrences of `needle`. Returns a flat array: [start0, end0,
      * start1, end1, …].
      */
     find_all(needle: string, case_sensitive: boolean): Uint32Array;
+    /**
+     * Find the offset of the bracket matching the one at `offset`.
+     *
+     * Returns `None` (via -1 in WASM) if the char at `offset` is not a
+     * bracket or no match is found.
+     */
+    find_matching_bracket(offset: number): number;
     /**
      * Find the next occurrence of `needle` at or after `from_offset`.
      * Returns `[start, end]` or an empty array if not found.
@@ -172,6 +199,10 @@ export class CanvistEditor {
      */
     highlight_current_line(): boolean;
     /**
+     * Whether matching bracket highlighting is enabled.
+     */
+    highlight_matching_brackets(): boolean;
+    /**
      * Hit-test a screen-space point to determine the character offset at that
      * position.
      *
@@ -207,6 +238,10 @@ export class CanvistEditor {
      * at the cursor position.
      */
     indent_selection(): void;
+    /**
+     * Insert one "tab" at the cursor — either spaces or a `\t`.
+     */
+    insert_tab(): void;
     /**
      * Insert text at the current cursor position (start of document).
      */
@@ -416,6 +451,13 @@ export class CanvistEditor {
      */
     set_auto_close_brackets(enabled: boolean): void;
     /**
+     * Enable or disable auto-surround on selection.
+     *
+     * When enabled and text is selected, typing an opening bracket
+     * wraps the selection instead of replacing it.
+     */
+    set_auto_surround(enabled: boolean): void;
+    /**
      * Set whether the caret (text cursor) is visible.
      *
      * Called by the JS blink controller on a 530 ms interval to toggle the
@@ -444,6 +486,10 @@ export class CanvistEditor {
      */
     set_color(r: number, g: number, b: number, a: number): void;
     /**
+     * Set the line comment prefix (default `"// "`).
+     */
+    set_comment_prefix(prefix: string): void;
+    /**
      * Set whether the editor has focus.
      *
      * When unfocused, the caret is drawn as a gray line and selection
@@ -464,6 +510,10 @@ export class CanvistEditor {
      * Enable or disable the current-line highlight band.
      */
     set_highlight_current_line(enabled: boolean): void;
+    /**
+     * Toggle matching bracket highlight.
+     */
+    set_highlight_matching_brackets(enabled: boolean): void;
     /**
      * Set the current wall-clock time (milliseconds since epoch) for the
      * undo coalescing timer.
@@ -506,6 +556,14 @@ export class CanvistEditor {
      */
     set_size(width: number, height: number): void;
     /**
+     * Enable or disable soft tabs (spaces instead of `\t`).
+     */
+    set_soft_tabs(enabled: boolean): void;
+    /**
+     * Set the tab display/insert size (1–8). Default: 4.
+     */
+    set_tab_size(size: number): void;
+    /**
      * Switch to the dark colour theme.
      */
     set_theme_dark(): void;
@@ -544,6 +602,10 @@ export class CanvistEditor {
      */
     smart_backspace(): boolean;
     /**
+     * Whether soft tabs are enabled.
+     */
+    soft_tabs(): boolean;
+    /**
      * Sort selected lines in ascending alphabetical order.
      */
     sort_lines_asc(): void;
@@ -551,6 +613,10 @@ export class CanvistEditor {
      * Sort selected lines in descending alphabetical order.
      */
     sort_lines_desc(): void;
+    /**
+     * Get the current tab size.
+     */
+    tab_size(): number;
     /**
      * Return `"dark"` or `"light"` depending on the active theme.
      */
@@ -592,6 +658,14 @@ export class CanvistEditor {
      */
     toggle_italic(): void;
     /**
+     * Toggle a line-comment prefix on the current line or all selected
+     * lines.
+     *
+     * If all affected lines start with the prefix, it is removed from
+     * each. Otherwise the prefix is added to every line.
+     */
+    toggle_line_comment(): void;
+    /**
      * Toggle a numbered list prefix (`1. `) on the current line.
      *
      * If the line already starts with a number prefix, it is removed.
@@ -620,11 +694,24 @@ export class CanvistEditor {
      */
     transform_uppercase(): void;
     /**
+     * Swap the two characters around the cursor (Ctrl+T).
+     *
+     * If the cursor is at the end of a line, swaps the two preceding
+     * characters instead.
+     */
+    transpose_chars(): void;
+    /**
      * Remove trailing whitespace (spaces and tabs) from every line.
      *
      * Returns the number of characters removed.
      */
     trim_trailing_whitespace(): number;
+    /**
+     * If auto-surround is on and the selection is non-empty, wrap the
+     * selection with the opening/closing pair. Returns `true` if wrapping
+     * happened.
+     */
+    try_auto_surround(ch: string): boolean;
     /**
      * Undo the most recent transaction.
      *
@@ -681,6 +768,7 @@ export interface InitOutput {
     readonly canvisteditor_apply_style_range: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly canvisteditor_auto_close_brackets: (a: number) => number;
     readonly canvisteditor_auto_indent_newline: (a: number) => number;
+    readonly canvisteditor_auto_surround: (a: number) => number;
     readonly canvisteditor_break_undo_coalescing: (a: number) => void;
     readonly canvisteditor_can_redo: (a: number) => number;
     readonly canvisteditor_can_undo: (a: number) => number;
@@ -690,7 +778,9 @@ export interface InitOutput {
     readonly canvisteditor_clipboard_cut: (a: number) => void;
     readonly canvisteditor_clipboard_paste: (a: number, b: number, c: number) => void;
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
+    readonly canvisteditor_comment_prefix: (a: number) => [number, number];
     readonly canvisteditor_content_height: (a: number) => [number, number, number];
+    readonly canvisteditor_contract_selection: (a: number) => void;
     readonly canvisteditor_create: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_cursor_column: (a: number) => [number, number, number];
     readonly canvisteditor_cursor_line: (a: number) => [number, number, number];
@@ -699,7 +789,9 @@ export interface InitOutput {
     readonly canvisteditor_delete_word_left: (a: number) => void;
     readonly canvisteditor_delete_word_right: (a: number) => void;
     readonly canvisteditor_duplicate_line: (a: number) => void;
+    readonly canvisteditor_expand_selection: (a: number) => void;
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_find_matching_bracket: (a: number, b: number) => number;
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_focused: (a: number) => number;
@@ -707,8 +799,10 @@ export interface InitOutput {
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
     readonly canvisteditor_go_to_line: (a: number, b: number) => void;
     readonly canvisteditor_highlight_current_line: (a: number) => number;
+    readonly canvisteditor_highlight_matching_brackets: (a: number) => number;
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
     readonly canvisteditor_indent_selection: (a: number) => void;
+    readonly canvisteditor_insert_tab: (a: number) => void;
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_text_at: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_insert_with_auto_close: (a: number, b: number, c: number) => number;
@@ -751,13 +845,16 @@ export interface InitOutput {
     readonly canvisteditor_selection_end: (a: number) => number;
     readonly canvisteditor_selection_start: (a: number) => number;
     readonly canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
+    readonly canvisteditor_set_auto_surround: (a: number, b: number) => void;
     readonly canvisteditor_set_caret_visible: (a: number, b: number) => void;
     readonly canvisteditor_set_coalesce_timeout: (a: number, b: number) => void;
     readonly canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly canvisteditor_set_comment_prefix: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_focused: (a: number, b: number) => void;
     readonly canvisteditor_set_font_size: (a: number, b: number) => void;
     readonly canvisteditor_set_highlight_color: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_set_highlight_current_line: (a: number, b: number) => void;
+    readonly canvisteditor_set_highlight_matching_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_read_only: (a: number, b: number) => void;
     readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;
@@ -765,6 +862,8 @@ export interface InitOutput {
     readonly canvisteditor_set_show_line_numbers: (a: number, b: number) => void;
     readonly canvisteditor_set_show_whitespace: (a: number, b: number) => void;
     readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_soft_tabs: (a: number, b: number) => void;
+    readonly canvisteditor_set_tab_size: (a: number, b: number) => void;
     readonly canvisteditor_set_theme_dark: (a: number) => void;
     readonly canvisteditor_set_theme_light: (a: number) => void;
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
@@ -773,8 +872,10 @@ export interface InitOutput {
     readonly canvisteditor_show_line_numbers: (a: number) => number;
     readonly canvisteditor_show_whitespace: (a: number) => number;
     readonly canvisteditor_smart_backspace: (a: number) => number;
+    readonly canvisteditor_soft_tabs: (a: number) => number;
     readonly canvisteditor_sort_lines_asc: (a: number) => void;
     readonly canvisteditor_sort_lines_desc: (a: number) => void;
+    readonly canvisteditor_tab_size: (a: number) => number;
     readonly canvisteditor_theme_name: (a: number) => [number, number];
     readonly canvisteditor_to_html: (a: number) => [number, number];
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
@@ -782,13 +883,16 @@ export interface InitOutput {
     readonly canvisteditor_toggle_bold: (a: number) => void;
     readonly canvisteditor_toggle_bullet_list: (a: number) => void;
     readonly canvisteditor_toggle_italic: (a: number) => void;
+    readonly canvisteditor_toggle_line_comment: (a: number) => void;
     readonly canvisteditor_toggle_numbered_list: (a: number) => void;
     readonly canvisteditor_toggle_strikethrough: (a: number) => void;
     readonly canvisteditor_toggle_underline: (a: number) => void;
     readonly canvisteditor_transform_lowercase: (a: number) => void;
     readonly canvisteditor_transform_title_case: (a: number) => void;
     readonly canvisteditor_transform_uppercase: (a: number) => void;
+    readonly canvisteditor_transpose_chars: (a: number) => void;
     readonly canvisteditor_trim_trailing_whitespace: (a: number) => number;
+    readonly canvisteditor_try_auto_surround: (a: number, b: number, c: number) => number;
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;

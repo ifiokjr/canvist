@@ -170,6 +170,18 @@
           <input id="auto-close-toggle" type="checkbox" style="margin-right:3px;" />
           <span>()</span>
         </label>
+        <label title="Soft Tabs (spaces)" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+          <input id="soft-tabs-toggle" type="checkbox" style="margin-right:3px;" />
+          <span>⇥</span>
+        </label>
+        <label title="Auto-Surround" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+          <input id="auto-surround-toggle" type="checkbox" style="margin-right:3px;" />
+          <span>⟨⟩</span>
+        </label>
+        <label title="Bracket Highlight" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+          <input id="bracket-highlight-toggle" type="checkbox" checked style="margin-right:3px;" />
+          <span>{ }</span>
+        </label>
         <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
         <button id="btn-theme" title="Toggle Dark/Light Mode" style="font-size:0.8em;padding:4px 8px;">🌙</button>
         <button id="btn-zoom-in" title="Zoom In (Ctrl+=)" style="font-size:0.8em;padding:4px 8px;">+</button>
@@ -583,6 +595,22 @@
         // --- Auto-close brackets toggle ---
         document.getElementById("auto-close-toggle").addEventListener("change", (e) => {
           editor.set_auto_close_brackets(e.target.checked);
+        });
+
+        // --- Soft tabs toggle ---
+        document.getElementById("soft-tabs-toggle").addEventListener("change", (e) => {
+          editor.set_soft_tabs(e.target.checked);
+        });
+
+        // --- Auto-surround toggle ---
+        document.getElementById("auto-surround-toggle").addEventListener("change", (e) => {
+          editor.set_auto_surround(e.target.checked);
+        });
+
+        // --- Bracket highlight toggle ---
+        document.getElementById("bracket-highlight-toggle").addEventListener("change", (e) => {
+          editor.set_highlight_matching_brackets(e.target.checked);
+          editor.render();
         });
 
         // --- Word wrap toggle ---
@@ -1010,6 +1038,22 @@
           if (mod && e.key === "/") {
             e.preventDefault();
             toggleShortcuts();
+            return;
+          }
+
+          // --- Transpose characters (Ctrl+T) ---
+          if (mod && e.key === "t") {
+            e.preventDefault();
+            editor.transpose_chars();
+            editor.render();
+            return;
+          }
+
+          // --- Toggle line comment (Ctrl+/) ---
+          if (mod && e.key === "/") {
+            e.preventDefault();
+            editor.toggle_line_comment();
+            editor.render();
             return;
           }
 

@@ -67,6 +67,14 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Whether auto-surround is enabled.
+     * @returns {boolean}
+     */
+    auto_surround() {
+        const ret = wasm.canvisteditor_auto_surround(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Force-break the current undo coalescing chain.
      *
      * Normally, rapid single-character inserts are merged into a single undo
@@ -164,6 +172,22 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Get the current line comment prefix.
+     * @returns {string}
+     */
+    comment_prefix() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_comment_prefix(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Compute the total content height in logical pixels.
      *
      * Uses the paragraph layout engine to determine the full document
@@ -176,6 +200,14 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0];
+    }
+    /**
+     * Contract selection intelligently (reverse of expand).
+     *
+     * Shrinks: all → line → bracket → quote → word → collapsed.
+     */
+    contract_selection() {
+        wasm.canvisteditor_contract_selection(this.__wbg_ptr);
     }
     /**
      * Create a new editor attached to the canvas element with the given ID.
@@ -256,6 +288,14 @@ export class CanvistEditor {
         wasm.canvisteditor_duplicate_line(this.__wbg_ptr);
     }
     /**
+     * Expand selection intelligently: word → quoted → bracketed → line → all.
+     *
+     * Each call expands to the next logical boundary.
+     */
+    expand_selection() {
+        wasm.canvisteditor_expand_selection(this.__wbg_ptr);
+    }
+    /**
      * Find all occurrences of `needle`. Returns a flat array: [start0, end0,
      * start1, end1, …].
      * @param {string} needle
@@ -269,6 +309,18 @@ export class CanvistEditor {
         var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
+    }
+    /**
+     * Find the offset of the bracket matching the one at `offset`.
+     *
+     * Returns `None` (via -1 in WASM) if the char at `offset` is not a
+     * bracket or no match is found.
+     * @param {number} offset
+     * @returns {number}
+     */
+    find_matching_bracket(offset) {
+        const ret = wasm.canvisteditor_find_matching_bracket(this.__wbg_ptr, offset);
+        return ret;
     }
     /**
      * Find the next occurrence of `needle` at or after `from_offset`.
@@ -356,6 +408,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether matching bracket highlighting is enabled.
+     * @returns {boolean}
+     */
+    highlight_matching_brackets() {
+        const ret = wasm.canvisteditor_highlight_matching_brackets(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Hit-test a screen-space point to determine the character offset at that
      * position.
      *
@@ -401,6 +461,12 @@ export class CanvistEditor {
      */
     indent_selection() {
         wasm.canvisteditor_indent_selection(this.__wbg_ptr);
+    }
+    /**
+     * Insert one "tab" at the cursor — either spaces or a `\t`.
+     */
+    insert_tab() {
+        wasm.canvisteditor_insert_tab(this.__wbg_ptr);
     }
     /**
      * Insert text at the current cursor position (start of document).
@@ -820,6 +886,16 @@ export class CanvistEditor {
         wasm.canvisteditor_set_auto_close_brackets(this.__wbg_ptr, enabled);
     }
     /**
+     * Enable or disable auto-surround on selection.
+     *
+     * When enabled and text is selected, typing an opening bracket
+     * wraps the selection instead of replacing it.
+     * @param {boolean} enabled
+     */
+    set_auto_surround(enabled) {
+        wasm.canvisteditor_set_auto_surround(this.__wbg_ptr, enabled);
+    }
+    /**
      * Set whether the caret (text cursor) is visible.
      *
      * Called by the JS blink controller on a 530 ms interval to toggle the
@@ -860,6 +936,15 @@ export class CanvistEditor {
         wasm.canvisteditor_set_color(this.__wbg_ptr, r, g, b, a);
     }
     /**
+     * Set the line comment prefix (default `"// "`).
+     * @param {string} prefix
+     */
+    set_comment_prefix(prefix) {
+        const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_comment_prefix(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Set whether the editor has focus.
      *
      * When unfocused, the caret is drawn as a gray line and selection
@@ -894,6 +979,13 @@ export class CanvistEditor {
      */
     set_highlight_current_line(enabled) {
         wasm.canvisteditor_set_highlight_current_line(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Toggle matching bracket highlight.
+     * @param {boolean} enabled
+     */
+    set_highlight_matching_brackets(enabled) {
+        wasm.canvisteditor_set_highlight_matching_brackets(this.__wbg_ptr, enabled);
     }
     /**
      * Set the current wall-clock time (milliseconds since epoch) for the
@@ -958,6 +1050,20 @@ export class CanvistEditor {
      */
     set_size(width, height) {
         wasm.canvisteditor_set_size(this.__wbg_ptr, width, height);
+    }
+    /**
+     * Enable or disable soft tabs (spaces instead of `\t`).
+     * @param {boolean} enabled
+     */
+    set_soft_tabs(enabled) {
+        wasm.canvisteditor_set_soft_tabs(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Set the tab display/insert size (1–8). Default: 4.
+     * @param {number} size
+     */
+    set_tab_size(size) {
+        wasm.canvisteditor_set_tab_size(this.__wbg_ptr, size);
     }
     /**
      * Switch to the dark colour theme.
@@ -1025,6 +1131,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether soft tabs are enabled.
+     * @returns {boolean}
+     */
+    soft_tabs() {
+        const ret = wasm.canvisteditor_soft_tabs(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Sort selected lines in ascending alphabetical order.
      */
     sort_lines_asc() {
@@ -1035,6 +1149,14 @@ export class CanvistEditor {
      */
     sort_lines_desc() {
         wasm.canvisteditor_sort_lines_desc(this.__wbg_ptr);
+    }
+    /**
+     * Get the current tab size.
+     * @returns {number}
+     */
+    tab_size() {
+        const ret = wasm.canvisteditor_tab_size(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Return `"dark"` or `"light"` depending on the active theme.
@@ -1137,6 +1259,16 @@ export class CanvistEditor {
         wasm.canvisteditor_toggle_italic(this.__wbg_ptr);
     }
     /**
+     * Toggle a line-comment prefix on the current line or all selected
+     * lines.
+     *
+     * If all affected lines start with the prefix, it is removed from
+     * each. Otherwise the prefix is added to every line.
+     */
+    toggle_line_comment() {
+        wasm.canvisteditor_toggle_line_comment(this.__wbg_ptr);
+    }
+    /**
      * Toggle a numbered list prefix (`1. `) on the current line.
      *
      * If the line already starts with a number prefix, it is removed.
@@ -1177,6 +1309,15 @@ export class CanvistEditor {
         wasm.canvisteditor_transform_uppercase(this.__wbg_ptr);
     }
     /**
+     * Swap the two characters around the cursor (Ctrl+T).
+     *
+     * If the cursor is at the end of a line, swaps the two preceding
+     * characters instead.
+     */
+    transpose_chars() {
+        wasm.canvisteditor_transpose_chars(this.__wbg_ptr);
+    }
+    /**
      * Remove trailing whitespace (spaces and tabs) from every line.
      *
      * Returns the number of characters removed.
@@ -1185,6 +1326,19 @@ export class CanvistEditor {
     trim_trailing_whitespace() {
         const ret = wasm.canvisteditor_trim_trailing_whitespace(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * If auto-surround is on and the selection is non-empty, wrap the
+     * selection with the opening/closing pair. Returns `true` if wrapping
+     * happened.
+     * @param {string} ch
+     * @returns {boolean}
+     */
+    try_auto_surround(ch) {
+        const ptr0 = passStringToWasm0(ch, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_try_auto_surround(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
     }
     /**
      * Undo the most recent transaction.
