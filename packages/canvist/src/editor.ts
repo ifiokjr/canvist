@@ -632,6 +632,42 @@ export async function createEditor(
 			return;
 		}
 
+		// Cursor history back — Ctrl+Alt+Left.
+		if (mod && e.altKey && e.key === "ArrowLeft") {
+			e.preventDefault();
+			inner.cursor_history_back();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Cursor history forward — Ctrl+Alt+Right.
+		if (mod && e.altKey && e.key === "ArrowRight") {
+			e.preventDefault();
+			inner.cursor_history_forward();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Paragraph navigation — Ctrl+Up / Ctrl+Down.
+		if (mod && !e.shiftKey && e.key === "ArrowUp") {
+			e.preventDefault();
+			inner.push_cursor_history();
+			inner.move_to_prev_paragraph();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+		if (mod && !e.shiftKey && e.key === "ArrowDown") {
+			e.preventDefault();
+			inner.push_cursor_history();
+			inner.move_to_next_paragraph();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
 		// Insert key — toggle overwrite mode.
 		if (e.key === "Insert" && !mod && !e.shiftKey) {
 			e.preventDefault();
@@ -1573,6 +1609,63 @@ export async function createEditor(
 					renderFrame();
 				}
 				return found;
+			},
+			// ── Cursor position history ─────────────────
+			pushCursorHistory() {
+				ref.push_cursor_history();
+			},
+			cursorHistoryBack() {
+				const moved = ref.cursor_history_back();
+				if (moved) {
+					cursorOffset = ref.selection_end();
+					renderFrame();
+				}
+				return moved;
+			},
+			cursorHistoryForward() {
+				const moved = ref.cursor_history_forward();
+				if (moved) {
+					cursorOffset = ref.selection_end();
+					renderFrame();
+				}
+				return moved;
+			},
+			get cursorHistoryLength() {
+				return ref.cursor_history_length();
+			},
+			// ── Select all occurrences ──────────────────
+			selectAllOccurrences() {
+				return ref.select_all_occurrences();
+			},
+			occurrenceOffsets() {
+				return Array.from(ref.occurrence_offsets());
+			},
+			// ── Whole word find ─────────────────────────
+			findAllWholeWord(needle: string) {
+				return Array.from(ref.find_all_whole_word(needle));
+			},
+			// ── Paragraph navigation ────────────────────
+			moveToPrevParagraph() {
+				ref.move_to_prev_paragraph();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			moveToNextParagraph() {
+				ref.move_to_next_paragraph();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Snippet insertion ───────────────────────
+			insertSnippet(template: string) {
+				syncTime();
+				ref.insert_snippet(template);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Scroll to selection ─────────────────────
+			scrollToSelection() {
+				ref.scroll_to_selection();
+				renderFrame();
 			},
 			// ── Auto-indent ─────────────────────────────
 			autoIndentNewline() {

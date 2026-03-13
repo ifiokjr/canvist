@@ -594,6 +594,51 @@ export interface CanvistEditor {
 	/** Select text between nearest enclosing bracket pair. Returns true if found. */
 	selectBetweenBrackets(): boolean;
 
+	// ── Cursor position history ────────────────────────────────────
+
+	/** Record current cursor position in history stack. */
+	pushCursorHistory(): void;
+
+	/** Navigate backward in cursor history. Returns true if moved. */
+	cursorHistoryBack(): boolean;
+
+	/** Navigate forward in cursor history. Returns true if moved. */
+	cursorHistoryForward(): boolean;
+
+	/** Number of positions in cursor history. */
+	readonly cursorHistoryLength: number;
+
+	// ── Select all occurrences ──────────────────────────────────────
+
+	/** Count of all occurrences of the current selection. */
+	selectAllOccurrences(): number;
+
+	/** Return all occurrence offsets as [start0, end0, start1, end1, ...]. */
+	occurrenceOffsets(): number[];
+
+	// ── Whole word find ─────────────────────────────────────────────
+
+	/** Find all whole-word occurrences. Returns [start0, end0, ...]. */
+	findAllWholeWord(needle: string): number[];
+
+	// ── Paragraph navigation ────────────────────────────────────────
+
+	/** Move cursor to the start of the previous paragraph (Ctrl+↑). */
+	moveToPrevParagraph(): void;
+
+	/** Move cursor to the start of the next paragraph (Ctrl+↓). */
+	moveToNextParagraph(): void;
+
+	// ── Snippet insertion ───────────────────────────────────────────
+
+	/** Insert a snippet template. `$0` marks cursor position. */
+	insertSnippet(template: string): void;
+
+	// ── Scroll to selection ─────────────────────────────────────────
+
+	/** Ensure the selection is visible in the viewport. */
+	scrollToSelection(): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

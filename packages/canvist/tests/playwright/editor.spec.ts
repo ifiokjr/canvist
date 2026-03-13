@@ -3792,4 +3792,219 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Cursor position history ─────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] cursor history back and forward`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\nbbb\nccc");
+						ed.set_selection(0, 0);
+						ed.push_cursor_history(); // pos 0
+						ed.set_selection(5, 5);
+						ed.push_cursor_history(); // pos 5
+						ed.set_selection(10, 10);
+						ed.push_cursor_history(); // pos 10
+						const len = ed.cursor_history_length();
+						ed.cursor_history_back();
+						const back1 = ed.selection_end();
+						ed.cursor_history_back();
+						const back2 = ed.selection_end();
+						ed.cursor_history_forward();
+						const fwd1 = ed.selection_end();
+						return { len, back1, back2, fwd1 };
+					});
+					assertEquals(result.len, 3);
+					assertEquals(result.back1, 5);
+					assertEquals(result.back2, 0);
+					assertEquals(result.fwd1, 5);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Select all occurrences ──────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] select_all_occurrences counts matches`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("foo bar foo baz foo");
+						ed.set_selection(0, 3); // select "foo"
+						const count = ed.select_all_occurrences();
+						const offsets = Array.from(ed.occurrence_offsets());
+						return { count, offsets };
+					});
+					assertEquals(result.count, 3);
+					assertEquals(result.offsets, [0, 3, 8, 11, 16, 19]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Whole word find ─────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] find_all_whole_word matches word boundaries`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("foo foobar foo barfoo");
+						const offsets = Array.from(ed.find_all_whole_word("foo"));
+						return offsets;
+					});
+					// Only offsets 0-3 and 11-14 are whole-word "foo"
+					assertEquals(result, [0, 3, 11, 14]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Paragraph navigation ────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] paragraph navigation moves between blocks`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\n\nbbb\n\nccc");
+						ed.set_selection(0, 0); // start
+						ed.move_to_next_paragraph();
+						const next1 = ed.selection_end();
+						ed.move_to_next_paragraph();
+						const next2 = ed.selection_end();
+						ed.move_to_prev_paragraph();
+						const prev1 = ed.selection_end();
+						return { next1, next2, prev1 };
+					});
+					assertEquals(result.next1, 5); // start of "bbb"
+					assertEquals(result.next2, 10); // start of "ccc"
+					assertEquals(result.prev1, 5); // back to "bbb"
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Snippet insertion ───────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] insert_snippet places cursor at $0`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_snippet("if ($0) {\n}");
+						const text = ed.plain_text();
+						const cursor = ed.selection_end();
+						return { text, cursor };
+					});
+					assertEquals(result.text, "if () {\n}");
+					assertEquals(result.cursor, 4); // between parens
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Scroll to selection ─────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] scroll_to_selection adjusts viewport`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const lines = Array.from(
+							{ length: 100 },
+							(_, i) => `Line ${i + 1}`,
+						);
+						ed.insert_text(lines.join("\n"));
+						ed.set_scroll_y(0);
+						ed.set_selection(600, 600); // deep in doc
+						ed.scroll_to_selection();
+						return ed.scroll_y() > 0;
+					});
+					assertEquals(result, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
