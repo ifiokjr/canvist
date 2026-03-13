@@ -57,6 +57,10 @@ pub use document::Document;
 pub use document::Node;
 pub use document::NodeId;
 pub use document::NodeKind;
+/// Parse simple HTML into text segments with formatting flags.
+///
+/// Re-exported for WASM paste-with-formatting support.
+pub use document::parse_simple_html as document_parse_html;
 pub use event::CompositionPhase;
 pub use event::EditorEvent;
 pub use event::EditorKey;

@@ -120,34 +120,61 @@ export async function createEditor(
 	let dragAnchorOffset = 0;
 
 	/**
-	 * Convert a MouseEvent's client coordinates to canvas-space coordinates,
-	 * accounting for CSS scaling (i.e. canvas.width vs getBoundingClientRect).
+	 * Convert a MouseEvent's client coordinates to canvas logical coordinates.
+	 * WASM hit_test uses CSS (logical) dimensions, not DPR-scaled pixels.
 	 */
 	function canvasCoordsFromEvent(e: MouseEvent): { x: number; y: number } {
 		const rect = canvas.getBoundingClientRect();
-		const scaleX = canvas.width / rect.width;
-		const scaleY = canvas.height / rect.height;
 		return {
-			x: (e.clientX - rect.left) * scaleX,
-			y: (e.clientY - rect.top) * scaleY,
+			x: e.clientX - rect.left,
+			y: e.clientY - rect.top,
 		};
 	}
 
+	// --- Multi-click tracking (double/triple-click) ---
+	let clickCount = 0;
+	let lastClickTime = 0;
+
 	canvas.addEventListener("mousedown", (e: MouseEvent) => {
 		const { x, y } = canvasCoordsFromEvent(e);
+		const now = Date.now();
+		clickCount = now - lastClickTime < 400 ? clickCount + 1 : 1;
+		lastClickTime = now;
 
 		try {
 			const offset = inner.hit_test(x, y);
-			cursorOffset = offset;
-			dragAnchorOffset = offset;
-			isDragging = true;
-			inner.set_selection(offset, offset);
+			textarea.focus();
+
+			if (clickCount === 3) {
+				// Triple-click: select entire line/paragraph.
+				const text = inner.plain_text();
+				let start = offset;
+				while (start > 0 && text[start - 1] !== "\n") start--;
+				let end = offset;
+				while (end < text.length && text[end] !== "\n") end++;
+				cursorOffset = end;
+				dragAnchorOffset = start;
+				inner.set_selection(start, end);
+				clickCount = 0;
+			} else if (clickCount === 2) {
+				// Double-click: select word.
+				inner.select_word_at(offset);
+				cursorOffset = inner.selection_end();
+				dragAnchorOffset = inner.selection_start();
+			} else {
+				// Single click: position cursor, start drag.
+				cursorOffset = offset;
+				dragAnchorOffset = offset;
+				isDragging = true;
+				inner.set_selection(offset, offset);
+			}
+
 			renderFrame();
 		} catch {
-			// hit_test may fail if canvas is detached; fall back to focusing.
+			// hit_test may fail if canvas is detached.
 		}
 
-		textarea.focus();
+		e.preventDefault();
 	});
 
 	/**
@@ -180,11 +207,62 @@ export async function createEditor(
 	document.addEventListener("mousemove", onMouseMove);
 	document.addEventListener("mouseup", onMouseUp);
 
+	// --- Mouse wheel scroll ---
+	canvas.addEventListener(
+		"wheel",
+		(e: WheelEvent) => {
+			e.preventDefault();
+			inner.scroll_by(e.deltaY);
+			try {
+				inner.render();
+			} catch {
+				// Canvas may be detached.
+			}
+		},
+		{ passive: false },
+	);
+
+	// --- Focus / blur handling ---
+	textarea.addEventListener("focus", () => {
+		inner.set_focused(true);
+		try {
+			inner.render();
+		} catch {}
+	});
+	textarea.addEventListener("blur", () => {
+		inner.set_focused(false);
+		try {
+			inner.render();
+		} catch {}
+	});
+
+	// --- Scroll-to-caret helper ---
+	function scrollToCaret() {
+		try {
+			const caretInfo = inner.caret_y(); // [y, height]
+			const caretTop = caretInfo[0];
+			const caretBottom = caretTop + caretInfo[1];
+			const viewTop = inner.scroll_y();
+			const viewBottom = viewTop + canvas.getBoundingClientRect().height;
+			const margin = 24;
+			if (caretTop < viewTop + margin) {
+				inner.set_scroll_y(Math.max(0, caretTop - margin));
+			} else if (caretBottom > viewBottom - margin) {
+				inner.set_scroll_y(
+					caretBottom - canvas.getBoundingClientRect().height + margin,
+				);
+			}
+		} catch {
+			// scroll APIs may not be available in tests.
+		}
+	}
+
 	// --- Rendering helper ---
 	function renderFrame() {
 		// Reset the caret blink so it's fully visible right after an action.
 		resetCaretBlink();
 		try {
+			scrollToCaret();
 			inner.render();
 			syncA11yState();
 		} catch {
@@ -243,6 +321,15 @@ export async function createEditor(
 
 	textarea.addEventListener("paste", (e: ClipboardEvent) => {
 		e.preventDefault();
+		// Prefer HTML paste for rich formatting preservation.
+		const html = e.clipboardData?.getData("text/html");
+		if (html) {
+			syncTime();
+			inner.paste_html(html);
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
 		const text = e.clipboardData?.getData("text/plain");
 		if (text) {
 			syncTime();
@@ -680,6 +767,17 @@ export async function createEditor(
 			},
 			toMarkdown() {
 				return ref.to_markdown();
+			},
+			fromHTML(html: string) {
+				ref.from_html(html);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			pasteHTML(html: string) {
+				syncTime();
+				ref.paste_html(html);
+				cursorOffset = ref.selection_end();
+				renderFrame();
 			},
 			toggleBold() {
 				syncTime();

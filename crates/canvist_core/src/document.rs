@@ -765,6 +765,39 @@ impl Document {
 		serde_json::from_str(json)
 	}
 
+	/// Import HTML content, replacing the current document.
+	///
+	/// Supports basic inline elements: `<strong>`/`<b>`, `<em>`/`<i>`,
+	/// `<u>`, `<s>`/`<del>`, `<br>`, `<p>`, `<div>`. HTML entities
+	/// `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&nbsp;` are decoded.
+	pub fn from_html(&mut self, html: &str) {
+		let segments = parse_simple_html(html);
+		self.set_plain_text("");
+		let mut offset = 0usize;
+		for (text, bold, italic, underline, strike) in &segments {
+			self.insert_text(Position::new(offset), text);
+			let len = text.chars().count();
+			if *bold || *italic || *underline || *strike {
+				let mut style = Style::new();
+				if *bold {
+					style = style.bold();
+				}
+				if *italic {
+					style = style.italic();
+				}
+				if *underline {
+					style = style.underline();
+				}
+				if *strike {
+					style = style.strikethrough();
+				}
+				let sel = Selection::range(Position::new(offset), Position::new(offset + len));
+				self.apply_style(sel, &style);
+			}
+			offset += len;
+		}
+	}
+
 	/// Export the document as HTML.
 	///
 	/// Each paragraph becomes a `<p>` element. Text runs with styles are
@@ -994,6 +1027,84 @@ impl Default for Document {
 	fn default() -> Self {
 		Self::new()
 	}
+}
+
+/// Strip HTML tags and extract plain text with basic formatting detection.
+///
+/// Returns a list of `(text, bold, italic, underline, strikethrough)` tuples.
+/// This is a simple state-machine parser — not a full HTML engine.
+pub fn parse_simple_html(html: &str) -> Vec<(String, bool, bool, bool, bool)> {
+	let mut result = Vec::new();
+	let mut bold = false;
+	let mut italic = false;
+	let mut underline = false;
+	let mut strike = false;
+	let mut buf = String::new();
+	let mut chars = html.chars().peekable();
+
+	while let Some(ch) = chars.next() {
+		if ch == '<' {
+			// Flush current buffer.
+			if !buf.is_empty() {
+				result.push((std::mem::take(&mut buf), bold, italic, underline, strike));
+			}
+			// Read tag name.
+			let mut tag = String::new();
+			for tc in chars.by_ref() {
+				if tc == '>' {
+					break;
+				}
+				tag.push(tc);
+			}
+			let tag_lower = tag.to_lowercase();
+			let tag_name = tag_lower.split_whitespace().next().unwrap_or("");
+			match tag_name {
+				"strong" | "b" => bold = true,
+				"/strong" | "/b" => bold = false,
+				"em" | "i" => italic = true,
+				"/em" | "/i" => italic = false,
+				"u" => underline = true,
+				"/u" => underline = false,
+				"s" | "del" | "strike" => strike = true,
+				"/s" | "/del" | "/strike" => strike = false,
+				"br" | "br/" | "br /" | "/p" | "/div" | "/li" => buf.push('\n'),
+				_ => {}
+			}
+		} else if ch == '&' {
+			// Decode HTML entities.
+			let mut entity = String::new();
+			for ec in chars.by_ref() {
+				if ec == ';' {
+					break;
+				}
+				entity.push(ec);
+				if entity.len() > 10 {
+					break;
+				}
+			}
+			match entity.as_str() {
+				"amp" => buf.push('&'),
+				"lt" => buf.push('<'),
+				"gt" => buf.push('>'),
+				"quot" => buf.push('"'),
+				"apos" => buf.push('\''),
+				"nbsp" => buf.push(' '),
+				_ => {
+					buf.push('&');
+					buf.push_str(&entity);
+					buf.push(';');
+				}
+			}
+		} else {
+			buf.push(ch);
+		}
+	}
+
+	if !buf.is_empty() {
+		result.push((buf, bold, italic, underline, strike));
+	}
+
+	result
 }
 
 /// Escape HTML special characters.
@@ -1382,5 +1493,94 @@ mod tests {
 		doc.insert_text(Position::zero(), "first\nsecond");
 		let md = doc.to_markdown();
 		assert!(md.contains("first\n\nsecond"), "got: {md}");
+	}
+
+	// ── HTML import ─────────────────────────────────────────────────
+
+	#[test]
+	fn from_html_plain_text() {
+		let mut doc = Document::new();
+		doc.from_html("<p>Hello, world!</p>");
+		assert_eq!(doc.plain_text(), "Hello, world!\n");
+	}
+
+	#[test]
+	fn from_html_bold() {
+		let mut doc = Document::new();
+		doc.from_html("<strong>bold</strong> plain");
+		let text = doc.plain_text();
+		assert!(text.starts_with("bold"), "got: '{text}'");
+		assert!(doc.is_bold_in_range(0, 4), "bold range should be bold");
+		// The " plain" segment starts at offset 4.
+		let runs = doc.styled_runs();
+		// Verify bold only applies to first 4 chars.
+		for (run_text, style, offset, _len) in &runs {
+			if *offset >= 4 {
+				assert!(
+					style.font_weight != Some(crate::style::FontWeight::Bold),
+					"run at offset {offset} ('{run_text}') should not be bold"
+				);
+			}
+		}
+	}
+
+	#[test]
+	fn from_html_mixed_styles() {
+		let mut doc = Document::new();
+		doc.from_html("<p><b>bold</b> <em>italic</em> <u>underline</u></p>");
+		let text = doc.plain_text();
+		assert!(text.contains("bold"), "got: {text}");
+		assert!(text.contains("italic"), "got: {text}");
+	}
+
+	#[test]
+	fn from_html_entities() {
+		let mut doc = Document::new();
+		doc.from_html("<p>&lt;script&gt; &amp; &quot;test&quot;</p>");
+		let text = doc.plain_text();
+		assert!(
+			text.contains("<script>"),
+			"entities should be decoded: {text}"
+		);
+		assert!(text.contains("&"), "got: {text}");
+		assert!(text.contains("\"test\""), "got: {text}");
+	}
+
+	#[test]
+	fn from_html_multi_paragraph() {
+		let mut doc = Document::new();
+		doc.from_html("<p>first</p><p>second</p>");
+		let text = doc.plain_text();
+		assert!(
+			text.contains("first\nsecond"),
+			"paragraphs should be separated by newline: {text}"
+		);
+	}
+
+	#[test]
+	fn from_html_br_creates_newline() {
+		let mut doc = Document::new();
+		doc.from_html("line one<br>line two");
+		let text = doc.plain_text();
+		assert!(text.contains("line one\nline two"), "got: {text}");
+	}
+
+	#[test]
+	fn parse_simple_html_roundtrip() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello bold world");
+		let sel = Selection::range(Position::new(6), Position::new(10));
+		doc.apply_style(sel, &Style::new().bold());
+		let html = doc.to_html();
+
+		let mut doc2 = Document::new();
+		doc2.from_html(&html);
+		// The plain text should match (possibly with trailing newline).
+		let text2 = doc2.plain_text();
+		assert!(
+			text2.trim() == "Hello bold world"
+				|| text2.contains("Hello") && text2.contains("bold") && text2.contains("world"),
+			"roundtrip text mismatch: {text2}"
+		);
 	}
 }
