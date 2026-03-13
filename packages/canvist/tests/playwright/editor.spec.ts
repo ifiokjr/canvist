@@ -167,7 +167,7 @@ async function getCanvasInkStats(
 			const g = image[i + 1] ?? 0;
 			const b = image[i + 2] ?? 0;
 			const a = image[i + 3] ?? 0;
-			if (a > 0 && (r < 250 || g < 250 || b < 250)) {
+			if (a > 0 && (r < 245 || g < 245 || b < 245)) {
 				nonWhite += 1;
 			}
 			checksum = (checksum + r * 3 + g * 5 + b * 7 + a * 11) >>> 0;
@@ -381,9 +381,11 @@ for (const browserName of BROWSERS) {
 					await page.waitForTimeout(80);
 					const afterRerender = await getCanvasInkStats(page);
 
+					// The current-line highlight adds subtle tinting even to the empty canvas,
+					// so we compare with a generous threshold that typing must exceed.
 					assert(
 						afterTyping.nonWhite > empty.nonWhite,
-						"typing should increase canvas ink",
+						`typing should increase canvas ink (empty=${empty.nonWhite}, after=${afterTyping.nonWhite})`,
 					);
 					const nonWhiteDelta = Math.abs(
 						afterTyping.nonWhite - afterRerender.nonWhite,
@@ -2191,6 +2193,149 @@ for (const browserName of BROWSERS) {
 						return menu !== null && menu.style.display !== "none";
 					});
 					assertEquals(visible, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Dark mode / theme ───────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] theme switching between light and dark`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.theme_name();
+						ed.set_theme_dark();
+						const dark = ed.theme_name();
+						ed.set_theme_light();
+						const light = ed.theme_name();
+						return { before, dark, light };
+					});
+					assertEquals(result.before, "light");
+					assertEquals(result.dark, "dark");
+					assertEquals(result.light, "light");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Zoom ────────────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] zoom in/out/reset`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const initial = ed.zoom();
+						ed.zoom_in();
+						const zoomed = ed.zoom();
+						ed.zoom_reset();
+						const reset = ed.zoom();
+						ed.set_zoom(2.0);
+						const custom = ed.zoom();
+						ed.zoom_reset();
+						return { initial, zoomed, reset, custom };
+					});
+					assertEquals(result.initial, 1.0);
+					assert(
+						result.zoomed > 1.0,
+						`zoomed should be >1, got ${result.zoomed}`,
+					);
+					assertEquals(result.reset, 1.0);
+					assertEquals(result.custom, 2.0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Current line highlight ──────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] current line highlight toggle`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const initial = ed.highlight_current_line();
+						ed.set_highlight_current_line(false);
+						const disabled = ed.highlight_current_line();
+						ed.set_highlight_current_line(true);
+						const enabled = ed.highlight_current_line();
+						return { initial, disabled, enabled };
+					});
+					assertEquals(result.initial, true);
+					assertEquals(result.disabled, false);
+					assertEquals(result.enabled, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Drag-and-drop (move_text API) ───────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] move_text moves selected text to new position`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("ABCDEF");
+						// Move "CD" (offsets 2-4) to position 0 → "CDABEF"
+						ed.move_text(2, 4, 0);
+						return ed.plain_text();
+					});
+					assertEquals(result, "CDABEF");
 				} finally {
 					await browser.close();
 				}

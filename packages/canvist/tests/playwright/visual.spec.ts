@@ -156,6 +156,7 @@ for (const browserName of browsers) {
 					// Ensure caret is visible.
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(true);
+						(window as any).__canvistEditor?.set_highlight_current_line(false);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -208,6 +209,7 @@ for (const browserName of browsers) {
 
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
+						(window as any).__canvistEditor?.set_highlight_current_line(false);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -261,6 +263,7 @@ for (const browserName of browsers) {
 
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
+						(window as any).__canvistEditor?.set_highlight_current_line(false);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -306,6 +309,7 @@ for (const browserName of browsers) {
 						const ed = (window as any).__canvistEditor;
 						ed.set_selection(0, 5);
 						ed.set_caret_visible(false);
+						ed.set_highlight_current_line(false);
 						ed.render();
 					});
 					await page.waitForTimeout(100);
@@ -353,6 +357,7 @@ for (const browserName of browsers) {
 					// Get baseline pixel count.
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
+						(window as any).__canvistEditor?.set_highlight_current_line(false);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -365,6 +370,7 @@ for (const browserName of browsers) {
 						ed.toggle_bold();
 						ed.set_selection(11, 11); // collapse selection
 						ed.set_caret_visible(false);
+						ed.set_highlight_current_line(false);
 						ed.render();
 					});
 					await page.waitForTimeout(100);
@@ -408,6 +414,7 @@ for (const browserName of browsers) {
 					// Get baseline at default 16px.
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
+						(window as any).__canvistEditor?.set_highlight_current_line(false);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);
@@ -420,6 +427,7 @@ for (const browserName of browsers) {
 						ed.set_font_size(32);
 						ed.set_selection(8, 8);
 						ed.set_caret_visible(false);
+						ed.set_highlight_current_line(false);
 						ed.render();
 					});
 					await page.waitForTimeout(100);
@@ -462,6 +470,7 @@ for (const browserName of browsers) {
 
 					await page.evaluate(() => {
 						(window as any).__canvistEditor?.set_caret_visible(false);
+						(window as any).__canvistEditor?.set_highlight_current_line(false);
 						(window as any).__canvistEditor?.render();
 					});
 					await page.waitForTimeout(100);

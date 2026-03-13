@@ -62,11 +62,23 @@ struct LayoutConstants {
 impl LayoutConstants {
 	/// Create layout constants for a canvas of the given pixel dimensions.
 	fn new(canvas_width: f32) -> Self {
+		Self::with_zoom(canvas_width, 1.0)
+	}
+
+	/// Create layout constants with a specific zoom level and text colour.
+	fn with_zoom(canvas_width: f32, zoom: f32) -> Self {
+		Self::with_zoom_and_color(canvas_width, zoom, Color::BLACK)
+	}
+
+	/// Create layout constants with zoom and explicit text colour.
+	fn with_zoom_and_color(canvas_width: f32, zoom: f32, text_color: Color) -> Self {
 		let padding_x: f32 = 20.0;
 		let padding_y: f32 = 20.0;
 		let content_width = (canvas_width - padding_x * 2.0).max(100.0);
+		let base_size = 16.0 * zoom;
 		let default_style = Style::new()
-			.font_size(16.0)
+			.font_size(base_size)
+			.color(text_color.r, text_color.g, text_color.b, text_color.a)
 			.font_family("Inter, system-ui, -apple-system, sans-serif");
 		let layout_config = LayoutConfig {
 			max_width: content_width,
@@ -333,6 +345,77 @@ pub struct CanvistEditor {
 	read_only: bool,
 	/// When true, a line-number gutter is rendered to the left of the content.
 	show_line_numbers: bool,
+	/// Active colour theme.
+	theme: EditorTheme,
+	/// Whether the current line is highlighted.
+	highlight_current_line: bool,
+	/// Zoom level multiplier (1.0 = 100%).
+	zoom: f32,
+}
+
+/// Colour theme for the editor canvas.
+#[derive(Clone)]
+struct EditorTheme {
+	/// Canvas / document background.
+	background: Color,
+	/// Default text colour.
+	text: Color,
+	/// Caret colour when focused.
+	caret: Color,
+	/// Caret colour when blurred.
+	caret_blur: Color,
+	/// Selection highlight (focused).
+	selection: Color,
+	/// Selection highlight (blurred).
+	selection_blur: Color,
+	/// Current-line highlight band.
+	line_highlight: Color,
+	/// Line-number gutter background.
+	gutter_bg: Color,
+	/// Line-number gutter separator.
+	gutter_border: Color,
+	/// Line-number text colour.
+	gutter_text: Color,
+	/// Scrollbar track.
+	scrollbar_track: Color,
+	/// Scrollbar thumb.
+	scrollbar_thumb: Color,
+}
+
+impl EditorTheme {
+	fn light() -> Self {
+		Self {
+			background: Color::WHITE,
+			text: Color::BLACK,
+			caret: Color::BLACK,
+			caret_blur: Color::new(160, 160, 160, 128),
+			selection: Color::new(66, 133, 244, 80),
+			selection_blur: Color::new(180, 180, 180, 60),
+			line_highlight: Color::new(0, 0, 0, 10),
+			gutter_bg: Color::new(245, 245, 245, 255),
+			gutter_border: Color::new(220, 220, 220, 255),
+			gutter_text: Color::new(160, 160, 160, 255),
+			scrollbar_track: Color::new(240, 240, 240, 128),
+			scrollbar_thumb: Color::new(180, 180, 180, 180),
+		}
+	}
+
+	fn dark() -> Self {
+		Self {
+			background: Color::new(30, 30, 30, 255),
+			text: Color::new(212, 212, 212, 255),
+			caret: Color::WHITE,
+			caret_blur: Color::new(120, 120, 120, 128),
+			selection: Color::new(38, 79, 120, 160),
+			selection_blur: Color::new(80, 80, 80, 80),
+			line_highlight: Color::new(255, 255, 255, 12),
+			gutter_bg: Color::new(37, 37, 37, 255),
+			gutter_border: Color::new(55, 55, 55, 255),
+			gutter_text: Color::new(110, 110, 110, 255),
+			scrollbar_track: Color::new(50, 50, 50, 128),
+			scrollbar_thumb: Color::new(100, 100, 100, 180),
+		}
+	}
 }
 
 #[wasm_bindgen]
@@ -371,6 +454,9 @@ impl CanvistEditor {
 			focused: true,
 			read_only: false,
 			show_line_numbers: false,
+			theme: EditorTheme::light(),
+			highlight_current_line: true,
+			zoom: 1.0,
 		})
 	}
 
@@ -414,7 +500,7 @@ impl CanvistEditor {
 	pub fn content_height(&self) -> Result<f32, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.content_width());
+		let lc = self.layout_constants();
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -438,7 +524,7 @@ impl CanvistEditor {
 	pub fn caret_y(&self) -> Result<Vec<f32>, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.content_width());
+		let lc = self.layout_constants();
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -505,6 +591,76 @@ impl CanvistEditor {
 		self.show_line_numbers
 	}
 
+	// ── Theme ────────────────────────────────────────────────────────
+
+	/// Switch to the dark colour theme.
+	#[wasm_bindgen]
+	pub fn set_theme_dark(&mut self) {
+		self.theme = EditorTheme::dark();
+	}
+
+	/// Switch to the light colour theme.
+	#[wasm_bindgen]
+	pub fn set_theme_light(&mut self) {
+		self.theme = EditorTheme::light();
+	}
+
+	/// Return `"dark"` or `"light"` depending on the active theme.
+	#[wasm_bindgen]
+	pub fn theme_name(&self) -> String {
+		if self.theme.background.r < 100 {
+			"dark".to_string()
+		} else {
+			"light".to_string()
+		}
+	}
+
+	// ── Zoom ─────────────────────────────────────────────────────────
+
+	/// Set the zoom level (1.0 = 100%, 1.5 = 150%, etc.). Clamped to [0.25, 4.0].
+	#[wasm_bindgen]
+	pub fn set_zoom(&mut self, level: f32) {
+		self.zoom = level.clamp(0.25, 4.0);
+	}
+
+	/// Get the current zoom level.
+	#[wasm_bindgen]
+	pub fn zoom(&self) -> f32 {
+		self.zoom
+	}
+
+	/// Zoom in by one step (1.1× multiplier).
+	#[wasm_bindgen]
+	pub fn zoom_in(&mut self) {
+		self.zoom = (self.zoom * 1.1).min(4.0);
+	}
+
+	/// Zoom out by one step (÷ 1.1).
+	#[wasm_bindgen]
+	pub fn zoom_out(&mut self) {
+		self.zoom = (self.zoom / 1.1).max(0.25);
+	}
+
+	/// Reset zoom to 100%.
+	#[wasm_bindgen]
+	pub fn zoom_reset(&mut self) {
+		self.zoom = 1.0;
+	}
+
+	// ── Current line highlight ───────────────────────────────────────
+
+	/// Enable or disable the current-line highlight band.
+	#[wasm_bindgen]
+	pub fn set_highlight_current_line(&mut self, enabled: bool) {
+		self.highlight_current_line = enabled;
+	}
+
+	/// Whether the current-line highlight is enabled.
+	#[wasm_bindgen]
+	pub fn highlight_current_line(&self) -> bool {
+		self.highlight_current_line
+	}
+
 	// ── Statistics ───────────────────────────────────────────────────
 
 	/// Count the number of words (whitespace-separated tokens).
@@ -518,7 +674,7 @@ impl CanvistEditor {
 	pub fn line_count(&self) -> Result<usize, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.content_width());
+		let lc = self.layout_constants();
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -536,7 +692,7 @@ impl CanvistEditor {
 	pub fn cursor_line(&self) -> Result<usize, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.content_width());
+		let lc = self.layout_constants();
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -566,7 +722,7 @@ impl CanvistEditor {
 	pub fn cursor_column(&self) -> Result<usize, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.content_width());
+		let lc = self.layout_constants();
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -601,6 +757,11 @@ impl CanvistEditor {
 	/// Content-area width (canvas width minus gutter).
 	fn content_width(&self) -> f32 {
 		self.width - self.gutter_width()
+	}
+
+	/// Build layout constants with current gutter, zoom, and theme settings.
+	fn layout_constants(&self) -> LayoutConstants {
+		LayoutConstants::with_zoom_and_color(self.content_width(), self.zoom, self.theme.text)
 	}
 
 	/// Insert text at the current cursor position (start of document).
@@ -1288,6 +1449,51 @@ impl CanvistEditor {
 		}
 	}
 
+	/// Move text from `[src_start, src_end)` to `dest` offset.
+	///
+	/// Used by drag-and-drop: extract the selected text, delete the source
+	/// range, then insert at the destination (adjusting for the shift).
+	#[wasm_bindgen]
+	pub fn move_text(&mut self, src_start: usize, src_end: usize, dest: usize) {
+		if !self.is_writable() {
+			return;
+		}
+		if src_start >= src_end {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let s = src_start.min(chars.len());
+		let e = src_end.min(chars.len());
+		let text: String = chars[s..e].iter().collect();
+
+		// If dest is inside the source range, do nothing.
+		if dest >= s && dest <= e {
+			return;
+		}
+
+		// Delete source first, then insert. Adjust dest if it was after
+		// the deleted range.
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(s), Position::new(e)),
+		});
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+
+		let adjusted_dest = if dest > e { dest - (e - s) } else { dest };
+		self.runtime.apply_operation(Operation::insert(
+			Position::new(adjusted_dest),
+			text.clone(),
+		));
+
+		// Place cursor at end of moved text.
+		let new_end = adjusted_dest + text.chars().count();
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(new_end)),
+		});
+	}
+
 	/// Perform a clipboard cut: delete the current selection.
 	///
 	/// The caller is expected to have already read `get_selected_text()` and
@@ -1353,7 +1559,7 @@ impl CanvistEditor {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
 		let doc = self.runtime.document();
-		let lc = LayoutConstants::new(self.content_width());
+		let lc = self.layout_constants();
 		let plain_text = doc.plain_text();
 		let styled_runs = doc.styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -1380,7 +1586,7 @@ impl CanvistEditor {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
 		let doc = self.runtime.document();
-		let lc = LayoutConstants::new(self.content_width());
+		let lc = self.layout_constants();
 		let plain_text = doc.plain_text();
 		let styled_runs = doc.styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -1409,7 +1615,7 @@ impl CanvistEditor {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
 		let doc = self.runtime.document();
-		let lc = LayoutConstants::new(self.content_width());
+		let lc = self.layout_constants();
 		let plain_text = doc.plain_text();
 		let styled_runs = doc.styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -1469,7 +1675,7 @@ impl CanvistEditor {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
 		let doc = self.runtime.document();
-		let lc = LayoutConstants::new(self.content_width());
+		let lc = self.layout_constants();
 		let plain_text = doc.plain_text();
 		let styled_runs = doc.styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -1767,13 +1973,14 @@ impl CanvistEditor {
 
 		let mut renderer = Canvas2dRenderer::new(ctx, width, height);
 
-		// Clear canvas to white.
-		renderer.clear(Color::WHITE);
+		// Clear canvas to theme background.
+		let theme = &self.theme;
+		renderer.clear(theme.background);
 
 		// Gutter width for line numbers (0 when disabled).
 		let gutter_width: f32 = if self.show_line_numbers { 48.0 } else { 0.0 };
 
-		let lc = LayoutConstants::new(width - gutter_width);
+		let lc = LayoutConstants::with_zoom_and_color(width - gutter_width, self.zoom, theme.text);
 		let doc = self.runtime.document();
 		let selection = self.runtime.selection();
 		let styled_runs = doc.styled_runs();
@@ -1837,17 +2044,33 @@ impl CanvistEditor {
 		// Scroll offset applied to all Y coordinates.
 		let sy = self.scroll_y;
 
-		// Focus-aware colors.
+		// Focus-aware colors from theme.
 		let selection_color = if self.focused {
-			Color::new(66, 133, 244, 80)
+			theme.selection
 		} else {
-			Color::new(180, 180, 180, 60)
+			theme.selection_blur
 		};
 		let caret_color = if self.focused {
-			Color::BLACK
+			theme.caret
 		} else {
-			Color::new(160, 160, 160, 128)
+			theme.caret_blur
 		};
+
+		// ── Current line highlight ───────────────────────────────────────
+		if self.highlight_current_line && selection.is_collapsed() {
+			let caret_offset = selection.end().offset();
+			let (caret_para_idx, caret_line_idx) =
+				find_para_and_line_for_offset(&paragraphs, caret_offset);
+			if let Some(para) = paragraphs.get(caret_para_idx) {
+				if let Some(line) = para.layout.lines.get(caret_line_idx) {
+					let y = lc.padding_y + para.y_offset + line.y - sy;
+					renderer.fill_rect(
+						Rect::new(gutter_width, y, width - gutter_width, line.height),
+						theme.line_highlight,
+					);
+				}
+			}
+		}
 
 		// ── Selection highlights ─────────────────────────────────────────
 		if !selection.is_collapsed() {
@@ -1996,23 +2219,13 @@ impl CanvistEditor {
 
 		// ── Line number gutter ───────────────────────────────────────────
 		if self.show_line_numbers && gutter_width > 0.0 {
-			// Draw gutter background.
-			renderer.fill_rect(
-				Rect::new(0.0, 0.0, gutter_width, height),
-				Color::new(245, 245, 245, 255),
-			);
-			// Draw gutter border.
-			renderer.draw_line(
-				gutter_width,
-				0.0,
-				gutter_width,
-				height,
-				Color::new(220, 220, 220, 255),
-			);
+			renderer.fill_rect(Rect::new(0.0, 0.0, gutter_width, height), theme.gutter_bg);
+			renderer.draw_line(gutter_width, 0.0, gutter_width, height, theme.gutter_border);
 
+			let gt = &theme.gutter_text;
 			let line_num_style = Style::new()
-				.font_size(12.0)
-				.color(160, 160, 160, 255)
+				.font_size(12.0 * self.zoom)
+				.color(gt.r, gt.g, gt.b, gt.a)
 				.font_family("Inter, system-ui, monospace");
 
 			let mut line_number = 1u32;
@@ -2080,14 +2293,11 @@ impl CanvistEditor {
 			let thumb_h = (track_h * ratio).max(20.0);
 			let thumb_y = (sy / (content_h - height)) * (track_h - thumb_h);
 			// Track.
-			renderer.fill_rect(
-				Rect::new(track_x, 0.0, 6.0, track_h),
-				Color::new(240, 240, 240, 128),
-			);
+			renderer.fill_rect(Rect::new(track_x, 0.0, 6.0, track_h), theme.scrollbar_track);
 			// Thumb.
 			renderer.fill_rect(
 				Rect::new(track_x, thumb_y, 6.0, thumb_h),
-				Color::new(180, 180, 180, 180),
+				theme.scrollbar_thumb,
 			);
 		}
 

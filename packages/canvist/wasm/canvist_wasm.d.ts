@@ -123,6 +123,10 @@ export class CanvistEditor {
      */
     get_selected_text(): string;
     /**
+     * Whether the current-line highlight is enabled.
+     */
+    highlight_current_line(): boolean;
+    /**
      * Hit-test a screen-space point to determine the character offset at that
      * position.
      *
@@ -205,6 +209,13 @@ export class CanvistEditor {
      * Move cursor to an absolute position; extend toggles range selection.
      */
     move_cursor_to(position: number, extend: boolean): void;
+    /**
+     * Move text from `[src_start, src_end)` to `dest` offset.
+     *
+     * Used by drag-and-drop: extract the selected text, delete the source
+     * range, then insert at the destination (adjusting for the shift).
+     */
+    move_text(src_start: number, src_end: number, dest: number): void;
     /**
      * Return the character offset on the line directly above `offset`.
      *
@@ -347,6 +358,10 @@ export class CanvistEditor {
      */
     set_font_size(size: number): void;
     /**
+     * Enable or disable the current-line highlight band.
+     */
+    set_highlight_current_line(enabled: boolean): void;
+    /**
      * Set the current wall-clock time (milliseconds since epoch) for the
      * undo coalescing timer.
      *
@@ -382,13 +397,29 @@ export class CanvistEditor {
      */
     set_size(width: number, height: number): void;
     /**
+     * Switch to the dark colour theme.
+     */
+    set_theme_dark(): void;
+    /**
+     * Switch to the light colour theme.
+     */
+    set_theme_light(): void;
+    /**
      * Set the document title.
      */
     set_title(title: string): void;
     /**
+     * Set the zoom level (1.0 = 100%, 1.5 = 150%, etc.). Clamped to [0.25, 4.0].
+     */
+    set_zoom(level: number): void;
+    /**
      * Check whether line numbers are visible.
      */
     show_line_numbers(): boolean;
+    /**
+     * Return `"dark"` or `"light"` depending on the active theme.
+     */
+    theme_name(): string;
     /**
      * Export the document as HTML.
      *
@@ -446,6 +477,22 @@ export class CanvistEditor {
      * Count the number of words (whitespace-separated tokens).
      */
     word_count(): number;
+    /**
+     * Get the current zoom level.
+     */
+    zoom(): number;
+    /**
+     * Zoom in by one step (1.1× multiplier).
+     */
+    zoom_in(): void;
+    /**
+     * Zoom out by one step (÷ 1.1).
+     */
+    zoom_out(): void;
+    /**
+     * Reset zoom to 100%.
+     */
+    zoom_reset(): void;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -474,6 +521,7 @@ export interface InitOutput {
     readonly canvisteditor_focused: (a: number) => number;
     readonly canvisteditor_from_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
+    readonly canvisteditor_highlight_current_line: (a: number) => number;
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
     readonly canvisteditor_indent_selection: (a: number) => void;
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
@@ -487,6 +535,7 @@ export interface InitOutput {
     readonly canvisteditor_move_cursor_left: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_right: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_to: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_move_text: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_offset_above: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_offset_below: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_outdent_selection: (a: number) => void;
@@ -512,14 +561,19 @@ export interface InitOutput {
     readonly canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_set_focused: (a: number, b: number) => void;
     readonly canvisteditor_set_font_size: (a: number, b: number) => void;
+    readonly canvisteditor_set_highlight_current_line: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_read_only: (a: number, b: number) => void;
     readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_show_line_numbers: (a: number, b: number) => void;
     readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_theme_dark: (a: number) => void;
+    readonly canvisteditor_set_theme_light: (a: number) => void;
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_zoom: (a: number, b: number) => void;
     readonly canvisteditor_show_line_numbers: (a: number) => number;
+    readonly canvisteditor_theme_name: (a: number) => [number, number];
     readonly canvisteditor_to_html: (a: number) => [number, number];
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
     readonly canvisteditor_to_markdown: (a: number) => [number, number];
@@ -531,6 +585,10 @@ export interface InitOutput {
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;
     readonly canvisteditor_word_count: (a: number) => number;
+    readonly canvisteditor_zoom: (a: number) => number;
+    readonly canvisteditor_zoom_in: (a: number) => void;
+    readonly canvisteditor_zoom_out: (a: number) => void;
+    readonly canvisteditor_zoom_reset: (a: number) => void;
     readonly canvisteditor_queue_text_input: (a: number, b: number, c: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;

@@ -270,6 +270,47 @@ export interface CanvistEditor {
 	/** Outdent the current selection (remove leading tab/spaces). */
 	outdentSelection(): void;
 
+	// ── Theme ───────────────────────────────────────────────────────
+
+	/** Switch to dark theme. */
+	setThemeDark(): void;
+
+	/** Switch to light theme. */
+	setThemeLight(): void;
+
+	/** Current theme name: `"dark"` or `"light"`. */
+	readonly themeName: string;
+
+	// ── Zoom ────────────────────────────────────────────────────────
+
+	/** Current zoom level (1.0 = 100%). */
+	readonly zoom: number;
+
+	/** Set zoom level (clamped to [0.25, 4.0]). */
+	setZoom(level: number): void;
+
+	/** Zoom in by one step. */
+	zoomIn(): void;
+
+	/** Zoom out by one step. */
+	zoomOut(): void;
+
+	/** Reset zoom to 100%. */
+	zoomReset(): void;
+
+	// ── Current line highlight ──────────────────────────────────────
+
+	/** Whether the current-line highlight is enabled. */
+	readonly highlightCurrentLine: boolean;
+
+	/** Enable or disable current-line highlight. */
+	setHighlightCurrentLine(enabled: boolean): void;
+
+	// ── Drag and drop ───────────────────────────────────────────────
+
+	/** Move text from [srcStart, srcEnd) to destOffset. */
+	moveText(srcStart: number, srcEnd: number, destOffset: number): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

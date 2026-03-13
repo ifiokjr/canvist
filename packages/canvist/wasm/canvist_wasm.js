@@ -284,6 +284,14 @@ export class CanvistEditor {
         }
     }
     /**
+     * Whether the current-line highlight is enabled.
+     * @returns {boolean}
+     */
+    highlight_current_line() {
+        const ret = wasm.canvisteditor_highlight_current_line(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Hit-test a screen-space point to determine the character offset at that
      * position.
      *
@@ -432,6 +440,18 @@ export class CanvistEditor {
      */
     move_cursor_to(position, extend) {
         wasm.canvisteditor_move_cursor_to(this.__wbg_ptr, position, extend);
+    }
+    /**
+     * Move text from `[src_start, src_end)` to `dest` offset.
+     *
+     * Used by drag-and-drop: extract the selected text, delete the source
+     * range, then insert at the destination (adjusting for the shift).
+     * @param {number} src_start
+     * @param {number} src_end
+     * @param {number} dest
+     */
+    move_text(src_start, src_end, dest) {
+        wasm.canvisteditor_move_text(this.__wbg_ptr, src_start, src_end, dest);
     }
     /**
      * Return the character offset on the line directly above `offset`.
@@ -709,6 +729,13 @@ export class CanvistEditor {
         wasm.canvisteditor_set_font_size(this.__wbg_ptr, size);
     }
     /**
+     * Enable or disable the current-line highlight band.
+     * @param {boolean} enabled
+     */
+    set_highlight_current_line(enabled) {
+        wasm.canvisteditor_set_highlight_current_line(this.__wbg_ptr, enabled);
+    }
+    /**
      * Set the current wall-clock time (milliseconds since epoch) for the
      * undo coalescing timer.
      *
@@ -764,6 +791,18 @@ export class CanvistEditor {
         wasm.canvisteditor_set_size(this.__wbg_ptr, width, height);
     }
     /**
+     * Switch to the dark colour theme.
+     */
+    set_theme_dark() {
+        wasm.canvisteditor_set_theme_dark(this.__wbg_ptr);
+    }
+    /**
+     * Switch to the light colour theme.
+     */
+    set_theme_light() {
+        wasm.canvisteditor_set_theme_light(this.__wbg_ptr);
+    }
+    /**
      * Set the document title.
      * @param {string} title
      */
@@ -773,12 +812,35 @@ export class CanvistEditor {
         wasm.canvisteditor_set_title(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Set the zoom level (1.0 = 100%, 1.5 = 150%, etc.). Clamped to [0.25, 4.0].
+     * @param {number} level
+     */
+    set_zoom(level) {
+        wasm.canvisteditor_set_zoom(this.__wbg_ptr, level);
+    }
+    /**
      * Check whether line numbers are visible.
      * @returns {boolean}
      */
     show_line_numbers() {
         const ret = wasm.canvisteditor_show_line_numbers(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Return `"dark"` or `"light"` depending on the active theme.
+     * @returns {string}
+     */
+    theme_name() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_theme_name(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Export the document as HTML.
@@ -904,6 +966,32 @@ export class CanvistEditor {
     word_count() {
         const ret = wasm.canvisteditor_word_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Get the current zoom level.
+     * @returns {number}
+     */
+    zoom() {
+        const ret = wasm.canvisteditor_zoom(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Zoom in by one step (1.1× multiplier).
+     */
+    zoom_in() {
+        wasm.canvisteditor_zoom_in(this.__wbg_ptr);
+    }
+    /**
+     * Zoom out by one step (÷ 1.1).
+     */
+    zoom_out() {
+        wasm.canvisteditor_zoom_out(this.__wbg_ptr);
+    }
+    /**
+     * Reset zoom to 100%.
+     */
+    zoom_reset() {
+        wasm.canvisteditor_zoom_reset(this.__wbg_ptr);
     }
 }
 if (Symbol.dispose) CanvistEditor.prototype[Symbol.dispose] = CanvistEditor.prototype.free;
