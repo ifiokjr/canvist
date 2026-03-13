@@ -246,6 +246,30 @@ export interface CanvistEditor {
 	/** Set the logical (CSS) dimensions. */
 	setSize(width: number, height: number): void;
 
+	// ── Read-only ───────────────────────────────────────────────────
+
+	/** Whether the editor is in read-only mode. */
+	readonly readOnly: boolean;
+
+	/** Enable or disable read-only mode. */
+	setReadOnly(readOnly: boolean): void;
+
+	// ── Line numbers ────────────────────────────────────────────────
+
+	/** Whether line numbers are visible. */
+	readonly showLineNumbers: boolean;
+
+	/** Enable or disable the line-number gutter. */
+	setShowLineNumbers(show: boolean): void;
+
+	// ── Indentation ─────────────────────────────────────────────────
+
+	/** Indent the current selection (insert tab at start of each line). */
+	indentSelection(): void;
+
+	/** Outdent the current selection (remove leading tab/spaces). */
+	outdentSelection(): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

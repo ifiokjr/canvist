@@ -2032,4 +2032,173 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Read-only mode ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] read-only mode blocks text insertion`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("before");
+						ed.set_read_only(true);
+						ed.insert_text(" blocked");
+						const text = ed.plain_text();
+						ed.set_read_only(false);
+						return text;
+					});
+					assertEquals(result, "before");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line numbers ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line numbers can be toggled`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.show_line_numbers();
+						ed.set_show_line_numbers(true);
+						const after = ed.show_line_numbers();
+						ed.set_show_line_numbers(false);
+						return { before, after };
+					});
+					assertEquals(result.before, false);
+					assertEquals(result.after, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Indent / Outdent ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] indent_selection inserts tab at line start`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello\nworld");
+						ed.select_all();
+						ed.indent_selection();
+						return ed.plain_text();
+					});
+					assert(
+						result.includes("\thello"),
+						`should indent first line, got: ${result}`,
+					);
+					assert(
+						result.includes("\tworld"),
+						`should indent second line, got: ${result}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] outdent_selection removes leading tab`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("\thello\n\tworld");
+						ed.select_all();
+						ed.outdent_selection();
+						return ed.plain_text();
+					});
+					assert(result.includes("hello"), `should outdent, got: ${result}`);
+					assert(
+						!result.includes("\thello"),
+						`tab should be removed, got: ${result}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Context menu ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] right-click opens context menu`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const canvas = page.locator("#editor-canvas");
+					await canvas.click({ button: "right", position: { x: 100, y: 100 } });
+					await page.waitForTimeout(200);
+
+					const visible = await page.evaluate(() => {
+						const menu = document.getElementById("context-menu");
+						return menu !== null && menu.style.display !== "none";
+					});
+					assertEquals(visible, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

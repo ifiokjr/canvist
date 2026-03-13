@@ -153,6 +153,12 @@ export class CanvistEditor {
      */
     hit_test(screen_x: number, screen_y: number): number;
     /**
+     * Indent the current selection: insert a tab character at the start
+     * of each selected line. If the selection is collapsed, insert a tab
+     * at the cursor position.
+     */
+    indent_selection(): void;
+    /**
      * Insert text at the current cursor position (start of document).
      */
     insert_text(text: string): void;
@@ -211,6 +217,11 @@ export class CanvistEditor {
      */
     offset_below(offset: number): number;
     /**
+     * Outdent the current selection: remove one leading tab or up to 4
+     * spaces from the start of each selected line.
+     */
+    outdent_selection(): void;
+    /**
      * Paste HTML at the current cursor position.
      *
      * Parses the HTML to extract styled text, deletes any current selection,
@@ -237,6 +248,10 @@ export class CanvistEditor {
      * Queue canonical text input and process it into operations.
      */
     queue_text_input(text: string): void;
+    /**
+     * Check whether the editor is in read-only mode.
+     */
+    read_only(): boolean;
     /**
      * Redo the most recently undone transaction.
      *
@@ -342,6 +357,11 @@ export class CanvistEditor {
      */
     set_now_ms(ms: number): void;
     /**
+     * Set the editor to read-only mode. Editing operations are blocked;
+     * selection, copy, and navigation still work.
+     */
+    set_read_only(read_only: boolean): void;
+    /**
      * Set the vertical scroll offset (clamped to valid range).
      */
     set_scroll_y(y: number): void;
@@ -349,6 +369,10 @@ export class CanvistEditor {
      * Set selection range.
      */
     set_selection(start: number, end: number): void;
+    /**
+     * Enable or disable the line-number gutter.
+     */
+    set_show_line_numbers(show: boolean): void;
     /**
      * Set the logical (CSS) dimensions of the editor canvas.
      *
@@ -361,6 +385,10 @@ export class CanvistEditor {
      * Set the document title.
      */
     set_title(title: string): void;
+    /**
+     * Check whether line numbers are visible.
+     */
+    show_line_numbers(): boolean;
     /**
      * Export the document as HTML.
      *
@@ -447,6 +475,7 @@ export interface InitOutput {
     readonly canvisteditor_from_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
+    readonly canvisteditor_indent_selection: (a: number) => void;
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_text_at: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_is_bold: (a: number) => number;
@@ -460,11 +489,13 @@ export interface InitOutput {
     readonly canvisteditor_move_cursor_to: (a: number, b: number, c: number) => void;
     readonly canvisteditor_offset_above: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_offset_below: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_outdent_selection: (a: number) => void;
     readonly canvisteditor_paste_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_plain_text: (a: number) => [number, number];
     readonly canvisteditor_process_events: (a: number) => void;
     readonly canvisteditor_queue_key_down: (a: number, b: number, c: number) => void;
     readonly canvisteditor_queue_key_down_with_modifiers: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
+    readonly canvisteditor_read_only: (a: number) => number;
     readonly canvisteditor_redo: (a: number) => number;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
@@ -482,10 +513,13 @@ export interface InitOutput {
     readonly canvisteditor_set_focused: (a: number, b: number) => void;
     readonly canvisteditor_set_font_size: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
+    readonly canvisteditor_set_read_only: (a: number, b: number) => void;
     readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_show_line_numbers: (a: number, b: number) => void;
     readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_show_line_numbers: (a: number) => number;
     readonly canvisteditor_to_html: (a: number) => [number, number];
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
     readonly canvisteditor_to_markdown: (a: number) => [number, number];

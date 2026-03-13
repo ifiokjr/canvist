@@ -141,6 +141,15 @@
         <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
         <button id="btn-export-html" title="Copy as HTML" style="font-size:0.8em;padding:4px 8px;">HTML</button>
         <button id="btn-export-md" title="Copy as Markdown" style="font-size:0.8em;padding:4px 8px;">MD</button>
+        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
+        <label title="Show line numbers" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+          <input id="line-numbers-toggle" type="checkbox" style="margin-right:3px;" />
+          <span>#</span>
+        </label>
+        <label title="Read-only mode" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+          <input id="read-only-toggle" type="checkbox" style="margin-right:3px;" />
+          <span>🔒</span>
+        </label>
         <button id="btn-shortcuts" title="Keyboard Shortcuts (Ctrl+/)" style="font-size:0.8em;padding:4px 8px;">⌨</button>
       </div>
       <!-- Find/Replace bar (hidden by default) -->
@@ -490,6 +499,85 @@
         document.getElementById("shortcuts-close").addEventListener("click", toggleShortcuts);
         shortcutsModal.addEventListener("click", (e) => {
           if (e.target === shortcutsModal) toggleShortcuts();
+        });
+
+        // --- Line numbers toggle ---
+        document.getElementById("line-numbers-toggle").addEventListener("change", (e) => {
+          editor.set_show_line_numbers(e.target.checked);
+          editor.render();
+        });
+
+        // --- Read-only toggle ---
+        document.getElementById("read-only-toggle").addEventListener("change", (e) => {
+          editor.set_read_only(e.target.checked);
+          canvas.style.cursor = e.target.checked ? "default" : "text";
+          editor.render();
+        });
+
+        // --- Right-click context menu ---
+        const ctxMenu = document.createElement("div");
+        ctxMenu.id = "context-menu";
+        ctxMenu.style.cssText =
+          "display:none;position:fixed;z-index:9999;background:#fff;border:1px solid #ccc;" +
+          "border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);padding:4px 0;min-width:160px;" +
+          "font-size:13px;font-family:Inter,system-ui,sans-serif;";
+
+        function ctxItem(label, shortcut, action) {
+          const el = document.createElement("div");
+          el.style.cssText =
+            "padding:6px 16px;cursor:pointer;display:flex;justify-content:space-between;";
+          el.innerHTML =
+            `<span>${label}</span><span style="color:#999;font-size:0.85em;margin-left:24px;">${shortcut}</span>`;
+          el.addEventListener("mouseenter", () => (el.style.background = "#f0f0f0"));
+          el.addEventListener("mouseleave", () => (el.style.background = "transparent"));
+          el.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            hideCtxMenu();
+            action();
+          });
+          return el;
+        }
+
+        ctxMenu.append(
+          ctxItem("Undo", "Ctrl+Z", () => { editor.undo(); editor.render(); }),
+          ctxItem("Redo", "Ctrl+Y", () => { editor.redo(); editor.render(); }),
+          (() => { const d = document.createElement("div"); d.style.cssText = "border-top:1px solid #eee;margin:4px 0;"; return d; })(),
+          ctxItem("Cut", "Ctrl+X", () => {
+            const t = editor.get_selected_text();
+            if (t) navigator.clipboard.writeText(t).then(() => { editor.clipboard_cut(); editor.render(); });
+          }),
+          ctxItem("Copy", "Ctrl+C", () => {
+            const t = editor.get_selected_text();
+            if (t) navigator.clipboard.writeText(t);
+          }),
+          ctxItem("Paste", "Ctrl+V", async () => {
+            const t = await navigator.clipboard.readText();
+            if (t) { editor.clipboard_paste(t); editor.render(); }
+          }),
+          (() => { const d = document.createElement("div"); d.style.cssText = "border-top:1px solid #eee;margin:4px 0;"; return d; })(),
+          ctxItem("Select All", "Ctrl+A", () => { editor.select_all(); editor.render(); }),
+        );
+        document.body.appendChild(ctxMenu);
+
+        function hideCtxMenu() {
+          ctxMenu.style.display = "none";
+        }
+
+        canvas.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          ctxMenu.style.display = "block";
+          ctxMenu.style.left = e.clientX + "px";
+          ctxMenu.style.top = e.clientY + "px";
+          // Ensure it doesn't overflow the viewport.
+          const rect = ctxMenu.getBoundingClientRect();
+          if (rect.right > window.innerWidth)
+            ctxMenu.style.left = window.innerWidth - rect.width - 4 + "px";
+          if (rect.bottom > window.innerHeight)
+            ctxMenu.style.top = window.innerHeight - rect.height - 4 + "px";
+        });
+        document.addEventListener("click", hideCtxMenu);
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") hideCtxMenu();
         });
 
         // --- Responsive resize ---
