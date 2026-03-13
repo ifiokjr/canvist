@@ -765,6 +765,134 @@ impl Document {
 		serde_json::from_str(json)
 	}
 
+	/// Export the document as HTML.
+	///
+	/// Each paragraph becomes a `<p>` element. Text runs with styles are
+	/// wrapped in appropriate inline elements (`<strong>`, `<em>`, `<u>`,
+	/// `<s>`, `<span>`).
+	#[must_use]
+	pub fn to_html(&self) -> String {
+		let runs = self.styled_runs();
+		if runs.is_empty() {
+			return String::from("<p></p>");
+		}
+
+		let mut html = String::new();
+		let mut in_paragraph = false;
+
+		for (text, style, _offset, _len) in &runs {
+			let resolved = style.resolve();
+
+			// Split on newlines — each \n boundary starts a new paragraph.
+			let parts: Vec<&str> = text.split('\n').collect();
+			for (i, part) in parts.iter().enumerate() {
+				if i > 0 {
+					// Close previous paragraph, start new one.
+					if in_paragraph {
+						html.push_str("</p>");
+					}
+					html.push_str("<p>");
+					in_paragraph = true;
+				}
+				if !in_paragraph {
+					html.push_str("<p>");
+					in_paragraph = true;
+				}
+
+				if part.is_empty() && i > 0 {
+					continue;
+				}
+
+				// Build inline wrappers.
+				let escaped = html_escape(part);
+				let mut content = escaped;
+
+				if resolved.strikethrough {
+					content = format!("<s>{content}</s>");
+				}
+				if resolved.underline {
+					content = format!("<u>{content}</u>");
+				}
+				if resolved.italic {
+					content = format!("<em>{content}</em>");
+				}
+				if resolved.font_weight == crate::style::FontWeight::Bold {
+					content = format!("<strong>{content}</strong>");
+				}
+
+				// Font size and color via <span> if non-default.
+				let mut span_styles = Vec::new();
+				if (resolved.font_size - 16.0).abs() > 0.01 {
+					span_styles.push(format!("font-size:{}px", resolved.font_size));
+				}
+				if resolved.color != crate::style::Color::BLACK {
+					span_styles.push(format!("color:{}", resolved.color.to_css()));
+				}
+
+				if !span_styles.is_empty() {
+					content = format!("<span style=\"{}\">{content}</span>", span_styles.join(";"));
+				}
+
+				html.push_str(&content);
+			}
+		}
+
+		if in_paragraph {
+			html.push_str("</p>");
+		}
+
+		if html.is_empty() {
+			String::from("<p></p>")
+		} else {
+			html
+		}
+	}
+
+	/// Export the document as Markdown.
+	///
+	/// Bold text is wrapped in `**`, italic in `*`, strikethrough in `~~`.
+	/// Underline has no standard Markdown equivalent and is ignored.
+	#[must_use]
+	pub fn to_markdown(&self) -> String {
+		let runs = self.styled_runs();
+		if runs.is_empty() {
+			return String::new();
+		}
+
+		let mut md = String::new();
+
+		for (text, style, _offset, _len) in &runs {
+			let resolved = style.resolve();
+
+			let parts: Vec<&str> = text.split('\n').collect();
+			for (i, part) in parts.iter().enumerate() {
+				if i > 0 {
+					md.push_str("\n\n");
+				}
+
+				if part.is_empty() {
+					continue;
+				}
+
+				let mut content = (*part).to_string();
+
+				if resolved.strikethrough {
+					content = format!("~~{content}~~");
+				}
+				if resolved.italic {
+					content = format!("*{content}*");
+				}
+				if resolved.font_weight == crate::style::FontWeight::Bold {
+					content = format!("**{content}**");
+				}
+
+				md.push_str(&content);
+			}
+		}
+
+		md
+	}
+
 	// -- internal helpers ----------------------------------------------------
 
 	fn alloc_id(&mut self) -> NodeId {
@@ -866,6 +994,14 @@ impl Default for Document {
 	fn default() -> Self {
 		Self::new()
 	}
+}
+
+/// Escape HTML special characters.
+fn html_escape(s: &str) -> String {
+	s.replace('&', "&amp;")
+		.replace('<', "&lt;")
+		.replace('>', "&gt;")
+		.replace('"', "&quot;")
 }
 
 /// Convert a character offset to a byte offset within a string.
@@ -1130,5 +1266,121 @@ mod tests {
 		assert!(doc.find_all("xyz", true).is_empty());
 		assert_eq!(doc.find_next("xyz", 0, true), None);
 		assert_eq!(doc.find_prev("xyz", 0, true), None);
+	}
+
+	// ── HTML export ──────────────────────────────────────────────────
+
+	#[test]
+	fn to_html_empty_document() {
+		let doc = Document::new();
+		assert_eq!(doc.to_html(), "<p></p>");
+	}
+
+	#[test]
+	fn to_html_plain_text() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello, world!");
+		assert_eq!(doc.to_html(), "<p>Hello, world!</p>");
+	}
+
+	#[test]
+	fn to_html_bold_text() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "bold");
+		let sel = Selection::range(Position::new(0), Position::new(4));
+		doc.apply_style(sel, &Style::new().bold());
+		let html = doc.to_html();
+		assert!(html.contains("<strong>bold</strong>"), "got: {html}");
+	}
+
+	#[test]
+	fn to_html_italic_and_bold() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "text");
+		let sel = Selection::range(Position::new(0), Position::new(4));
+		doc.apply_style(sel, &Style::new().bold().italic());
+		let html = doc.to_html();
+		assert!(html.contains("<strong>"), "got: {html}");
+		assert!(html.contains("<em>"), "got: {html}");
+	}
+
+	#[test]
+	fn to_html_multi_paragraph() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "para one\npara two");
+		let html = doc.to_html();
+		assert!(
+			html.contains("</p><p>"),
+			"paragraphs should be separated: {html}"
+		);
+	}
+
+	#[test]
+	fn to_html_escapes_special_chars() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "<script>alert('xss')</script>");
+		let html = doc.to_html();
+		assert!(!html.contains("<script>"), "should escape: {html}");
+		assert!(html.contains("&lt;script&gt;"), "got: {html}");
+	}
+
+	#[test]
+	fn to_html_font_size() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "big");
+		let sel = Selection::range(Position::new(0), Position::new(3));
+		doc.apply_style(sel, &Style::new().font_size(32.0));
+		let html = doc.to_html();
+		assert!(html.contains("font-size:32px"), "got: {html}");
+	}
+
+	// ── Markdown export ──────────────────────────────────────────────
+
+	#[test]
+	fn to_markdown_empty_document() {
+		let doc = Document::new();
+		assert_eq!(doc.to_markdown(), "");
+	}
+
+	#[test]
+	fn to_markdown_plain_text() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello, world!");
+		assert_eq!(doc.to_markdown(), "Hello, world!");
+	}
+
+	#[test]
+	fn to_markdown_bold_text() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "bold");
+		let sel = Selection::range(Position::new(0), Position::new(4));
+		doc.apply_style(sel, &Style::new().bold());
+		assert_eq!(doc.to_markdown(), "**bold**");
+	}
+
+	#[test]
+	fn to_markdown_italic_text() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "italic");
+		let sel = Selection::range(Position::new(0), Position::new(6));
+		doc.apply_style(sel, &Style::new().italic());
+		assert_eq!(doc.to_markdown(), "*italic*");
+	}
+
+	#[test]
+	fn to_markdown_strikethrough() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "done");
+		let sel = Selection::range(Position::new(0), Position::new(4));
+		doc.apply_style(sel, &Style::new().strikethrough());
+		assert_eq!(doc.to_markdown(), "~~done~~");
+	}
+
+	#[test]
+	fn to_markdown_multi_paragraph() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "first\nsecond");
+		let md = doc.to_markdown();
+		assert!(md.contains("first\n\nsecond"), "got: {md}");
 	}
 }

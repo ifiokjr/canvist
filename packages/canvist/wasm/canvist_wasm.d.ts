@@ -348,9 +348,22 @@ export class CanvistEditor {
      */
     set_title(title: string): void;
     /**
+     * Export the document as HTML.
+     *
+     * Each paragraph becomes a `<p>` element. Styled text gets inline
+     * elements (`<strong>`, `<em>`, `<u>`, `<s>`, `<span>`).
+     */
+    to_html(): string;
+    /**
      * Export the document as a JSON string.
      */
     to_json(): string;
+    /**
+     * Export the document as Markdown.
+     *
+     * Bold → `**text**`, italic → `*text*`, strikethrough → `~~text~~`.
+     */
+    to_markdown(): string;
     /**
      * Toggle bold on the current selection.
      *
@@ -457,7 +470,9 @@ export interface InitOutput {
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_to_html: (a: number) => [number, number];
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
+    readonly canvisteditor_to_markdown: (a: number) => [number, number];
     readonly canvisteditor_toggle_bold: (a: number) => void;
     readonly canvisteditor_toggle_italic: (a: number) => void;
     readonly canvisteditor_toggle_strikethrough: (a: number) => void;

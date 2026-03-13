@@ -711,6 +711,25 @@ export class CanvistEditor {
         wasm.canvisteditor_set_title(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Export the document as HTML.
+     *
+     * Each paragraph becomes a `<p>` element. Styled text gets inline
+     * elements (`<strong>`, `<em>`, `<u>`, `<s>`, `<span>`).
+     * @returns {string}
+     */
+    to_html() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_to_html(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Export the document as a JSON string.
      * @returns {string}
      */
@@ -730,6 +749,24 @@ export class CanvistEditor {
             return getStringFromWasm0(ptr1, len1);
         } finally {
             wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
+     * Export the document as Markdown.
+     *
+     * Bold → `**text**`, italic → `*text*`, strikethrough → `~~text~~`.
+     * @returns {string}
+     */
+    to_markdown() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_to_markdown(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
     }
     /**

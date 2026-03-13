@@ -118,6 +118,12 @@ export interface CanvistEditor {
 	/** Export the document as a JSON string. */
 	toJSON(): string;
 
+	/** Export the document as HTML with inline styles and semantic elements. */
+	toHTML(): string;
+
+	/** Export the document as Markdown. */
+	toMarkdown(): string;
+
 	/** Toggle bold on the current selection. */
 	toggleBold(): void;
 
