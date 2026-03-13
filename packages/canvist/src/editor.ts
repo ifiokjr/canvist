@@ -435,12 +435,12 @@ export async function createEditor(
 			return;
 		}
 
-		// Enter.
+		// Enter — auto-indent + list continuation.
 		if (e.key === "Enter") {
 			e.preventDefault();
 			syncTime();
-			inner.insert_text_at(cursorOffset, "\n");
-			cursorOffset += 1;
+			const inserted = inner.auto_indent_newline();
+			cursorOffset = inner.selection_end();
 			renderFrame();
 			return;
 		}
@@ -1012,6 +1012,35 @@ export async function createEditor(
 				ref.move_text(srcStart, srcEnd, destOffset);
 				cursorOffset = ref.selection_end();
 				renderFrame();
+			},
+			// ── Word wrap ───────────────────────────────
+			get wordWrap() {
+				return ref.word_wrap();
+			},
+			setWordWrap(enabled: boolean) {
+				ref.set_word_wrap(enabled);
+				renderFrame();
+			},
+			// ── Lists ───────────────────────────────────
+			toggleBulletList() {
+				syncTime();
+				ref.toggle_bullet_list();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			toggleNumberedList() {
+				syncTime();
+				ref.toggle_numbered_list();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Auto-indent ─────────────────────────────
+			autoIndentNewline() {
+				syncTime();
+				const n = ref.auto_indent_newline();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
 			},
 		};
 	}

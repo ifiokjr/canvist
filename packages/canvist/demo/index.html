@@ -151,6 +151,13 @@
           <span>🔒</span>
         </label>
         <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
+        <button id="btn-bullet" title="Toggle Bullet List" style="font-size:0.9em;padding:4px 8px;">•</button>
+        <button id="btn-numbered" title="Toggle Numbered List" style="font-size:0.8em;padding:4px 8px;">1.</button>
+        <label title="Word Wrap" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+          <input id="word-wrap-toggle" type="checkbox" checked style="margin-right:3px;" />
+          <span>↩</span>
+        </label>
+        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
         <button id="btn-theme" title="Toggle Dark/Light Mode" style="font-size:0.8em;padding:4px 8px;">🌙</button>
         <button id="btn-zoom-in" title="Zoom In (Ctrl+=)" style="font-size:0.8em;padding:4px 8px;">+</button>
         <span id="zoom-label" style="font-size:0.8em;min-width:40px;text-align:center;">100%</span>
@@ -518,6 +525,24 @@
         document.getElementById("read-only-toggle").addEventListener("change", (e) => {
           editor.set_read_only(e.target.checked);
           canvas.style.cursor = e.target.checked ? "default" : "text";
+          editor.render();
+        });
+
+        // --- List toggles ---
+        document.getElementById("btn-bullet").addEventListener("click", () => {
+          editor.toggle_bullet_list();
+          editor.render();
+          textarea.focus();
+        });
+        document.getElementById("btn-numbered").addEventListener("click", () => {
+          editor.toggle_numbered_list();
+          editor.render();
+          textarea.focus();
+        });
+
+        // --- Word wrap toggle ---
+        document.getElementById("word-wrap-toggle").addEventListener("change", (e) => {
+          editor.set_word_wrap(e.target.checked);
           editor.render();
         });
 

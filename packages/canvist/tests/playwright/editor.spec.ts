@@ -2346,4 +2346,183 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Auto-indent ─────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] auto_indent_newline preserves leading whitespace`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("\thello");
+						// Place cursor at end.
+						ed.set_selection(6, 6);
+						ed.auto_indent_newline();
+						return ed.plain_text();
+					});
+					assert(
+						result.includes("\thello\n\t"),
+						`should auto-indent, got: ${JSON.stringify(result)}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Bullet list ─────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] toggle_bullet_list inserts and removes bullet`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("item one");
+						ed.toggle_bullet_list();
+						const withBullet = ed.plain_text();
+						ed.toggle_bullet_list();
+						const withoutBullet = ed.plain_text();
+						return { withBullet, withoutBullet };
+					});
+					assert(
+						result.withBullet.startsWith("• "),
+						`should start with bullet, got: ${result.withBullet}`,
+					);
+					assertEquals(result.withoutBullet, "item one");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Numbered list ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] toggle_numbered_list inserts and removes number`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("first item");
+						ed.toggle_numbered_list();
+						const withNum = ed.plain_text();
+						ed.toggle_numbered_list();
+						const withoutNum = ed.plain_text();
+						return { withNum, withoutNum };
+					});
+					assert(
+						result.withNum.startsWith("1. "),
+						`should start with 1., got: ${result.withNum}`,
+					);
+					assertEquals(result.withoutNum, "first item");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Word wrap toggle ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] word wrap can be toggled`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.word_wrap();
+						ed.set_word_wrap(false);
+						const disabled = ed.word_wrap();
+						ed.set_word_wrap(true);
+						const enabled = ed.word_wrap();
+						return { before, disabled, enabled };
+					});
+					assertEquals(result.before, true);
+					assertEquals(result.disabled, false);
+					assertEquals(result.enabled, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── List continuation on Enter ──────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] auto_indent continues bullet list`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("• item one");
+						const len = ed.plain_text().length;
+						ed.set_selection(len, len);
+						ed.auto_indent_newline();
+						return ed.plain_text();
+					});
+					assert(
+						result.includes("• item one\n• "),
+						`should continue bullet, got: ${JSON.stringify(result)}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

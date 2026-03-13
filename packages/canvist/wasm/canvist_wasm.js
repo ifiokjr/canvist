@@ -43,6 +43,22 @@ export class CanvistEditor {
         wasm.canvisteditor_apply_style_range(this.__wbg_ptr, start, end, bold, italic, underline, isLikeNone(font_size) ? 0x100000001 : Math.fround(font_size), ptr0, len0, ptr1, len1);
     }
     /**
+     * Insert a newline at the cursor and auto-indent with the same leading
+     * whitespace as the current line.
+     *
+     * Also continues list markers:
+     * - Bullet lines (`• `, `- `, `* `) → new bullet line
+     * - Numbered lines (`1. `, `2. `, …) → incremented number
+     * - Empty list line (just the marker) → removes the marker instead
+     *
+     * Returns the number of characters inserted (1 for `\n` plus indent).
+     * @returns {number}
+     */
+    auto_indent_newline() {
+        const ret = wasm.canvisteditor_auto_indent_newline(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Force-break the current undo coalescing chain.
      *
      * Normally, rapid single-character inserts are merged into a single undo
@@ -812,6 +828,16 @@ export class CanvistEditor {
         wasm.canvisteditor_set_title(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Enable or disable word wrapping at the canvas edge.
+     *
+     * When disabled, lines extend horizontally and horizontal scrolling
+     * may be needed.
+     * @param {boolean} enabled
+     */
+    set_word_wrap(enabled) {
+        wasm.canvisteditor_set_word_wrap(this.__wbg_ptr, enabled);
+    }
+    /**
      * Set the zoom level (1.0 = 100%, 1.5 = 150%, etc.). Clamped to [0.25, 4.0].
      * @param {number} level
      */
@@ -911,11 +937,29 @@ export class CanvistEditor {
         wasm.canvisteditor_toggle_bold(this.__wbg_ptr);
     }
     /**
+     * Toggle a bullet list prefix (`• `) on the current line.
+     *
+     * If the line already starts with `• `, the prefix is removed.
+     * Otherwise it is inserted at the line start (after leading whitespace).
+     */
+    toggle_bullet_list() {
+        wasm.canvisteditor_toggle_bullet_list(this.__wbg_ptr);
+    }
+    /**
      * Toggle italic on the current selection. Preserves the current
      * selection.
      */
     toggle_italic() {
         wasm.canvisteditor_toggle_italic(this.__wbg_ptr);
+    }
+    /**
+     * Toggle a numbered list prefix (`1. `) on the current line.
+     *
+     * If the line already starts with a number prefix, it is removed.
+     * Otherwise `1. ` is inserted.
+     */
+    toggle_numbered_list() {
+        wasm.canvisteditor_toggle_numbered_list(this.__wbg_ptr);
     }
     /**
      * Toggle strikethrough on the current selection.
@@ -966,6 +1010,14 @@ export class CanvistEditor {
     word_count() {
         const ret = wasm.canvisteditor_word_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Whether word wrapping is enabled.
+     * @returns {boolean}
+     */
+    word_wrap() {
+        const ret = wasm.canvisteditor_word_wrap(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Get the current zoom level.
