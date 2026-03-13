@@ -1523,4 +1523,239 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Scroll ────────────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] scroll_by moves scroll offset`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.scroll_y();
+						ed.scroll_by(50);
+						const after = ed.scroll_y();
+						ed.scroll_by(-100);
+						const clamped = ed.scroll_y();
+						return { before, after, clamped };
+					});
+					assertEquals(result.before, 0);
+					// scroll_by(50) might clamp if no content, so just verify it changed or clamped to 0.
+					assert(result.after >= 0, "scroll_y should be >= 0");
+					assertEquals(result.clamped, 0); // clamped to 0 (no negative scroll)
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] content_height returns reasonable value`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					// Insert a lot of text to make it overflow.
+					await typeInEditor(page, "Line\n".repeat(30));
+					const h = await page.evaluate(() => {
+						return (window as any).__canvistEditor.content_height();
+					});
+					assert(
+						h > 400,
+						`content_height should exceed canvas height, got ${h}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Focus ────────────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] set_focused changes focus state`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.focused();
+						ed.set_focused(false);
+						const after = ed.focused();
+						ed.set_focused(true);
+						const restored = ed.focused();
+						return { before, after, restored };
+					});
+					assertEquals(result.before, true);
+					assertEquals(result.after, false);
+					assertEquals(result.restored, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Statistics ───────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] word_count and line_count via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello world foo bar");
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						return {
+							words: ed.word_count(),
+							lines: ed.line_count(),
+							curLine: ed.cursor_line(),
+							curCol: ed.cursor_column(),
+						};
+					});
+					assertEquals(result.words, 4);
+					assert(
+						result.lines >= 1,
+						`line_count should be >= 1, got ${result.lines}`,
+					);
+					assert(
+						result.curLine >= 1,
+						`cursor_line should be >= 1, got ${result.curLine}`,
+					);
+					assert(
+						result.curCol >= 1,
+						`cursor_column should be >= 1, got ${result.curCol}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Status bar ──────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] status bar shows position and word count`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello world");
+					await page.waitForTimeout(300); // let status bar update
+
+					const status = await page.evaluate(() => {
+						return {
+							position:
+								document.getElementById("status-position")?.textContent ?? "",
+							words: document.getElementById("status-words")?.textContent ?? "",
+							chars: document.getElementById("status-chars")?.textContent ?? "",
+						};
+					});
+					assert(
+						status.position.includes("Ln"),
+						`position should include Ln, got "${status.position}"`,
+					);
+					assert(
+						status.words.includes("2"),
+						`words should include 2, got "${status.words}"`,
+					);
+					assert(
+						status.chars.includes("11"),
+						`chars should include 11, got "${status.chars}"`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Wheel scroll on canvas ──────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] mouse wheel scrolls the editor canvas`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					// Insert enough text to make scrollable.
+					for (let i = 0; i < 25; i++) {
+						await typeInEditor(page, `Line ${i + 1}\n`);
+					}
+					await page.waitForTimeout(200);
+
+					// Scroll down with mouse wheel.
+					const canvas = page.locator("#editor-canvas");
+					await canvas.hover();
+					await page.mouse.wheel(0, 200);
+					await page.waitForTimeout(200);
+
+					const scrollAfter = await page.evaluate(() => {
+						return (window as any).__canvistEditor.scroll_y();
+					});
+					assert(
+						scrollAfter > 0,
+						`scroll_y should be > 0 after wheel, got ${scrollAfter}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

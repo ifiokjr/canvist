@@ -416,6 +416,28 @@ impl Document {
 		self.plain_text().chars().count()
 	}
 
+	/// Count the number of words in the document.
+	///
+	/// Words are defined as contiguous sequences of non-whitespace characters.
+	/// An empty document returns 0.
+	#[must_use]
+	pub fn word_count(&self) -> usize {
+		self.plain_text().split_whitespace().count()
+	}
+
+	/// Count the number of paragraphs (newline-separated blocks).
+	///
+	/// A single line with no newlines counts as 1. An empty document counts
+	/// as 1 (the implicit empty paragraph).
+	#[must_use]
+	pub fn paragraph_count(&self) -> usize {
+		let text = self.plain_text();
+		if text.is_empty() {
+			return 1;
+		}
+		text.split('\n').count()
+	}
+
 	/// Find all occurrences of `needle` in the document plain text.
 	///
 	/// Returns a list of `(start_offset, end_offset)` for each match.
@@ -1002,6 +1024,60 @@ mod tests {
 		doc.apply_style(sel, &Style::new().bold());
 		let s = doc.style_at_offset(2);
 		assert_eq!(s.font_weight, Some(crate::style::FontWeight::Bold));
+	}
+
+	#[test]
+	fn word_count_empty() {
+		let doc = Document::new();
+		assert_eq!(doc.word_count(), 0);
+	}
+
+	#[test]
+	fn word_count_single_word() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello");
+		assert_eq!(doc.word_count(), 1);
+	}
+
+	#[test]
+	fn word_count_multiple_words() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello world foo bar");
+		assert_eq!(doc.word_count(), 4);
+	}
+
+	#[test]
+	fn word_count_with_newlines() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello\nworld\nfoo");
+		assert_eq!(doc.word_count(), 3);
+	}
+
+	#[test]
+	fn word_count_extra_whitespace() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "  hello   world  ");
+		assert_eq!(doc.word_count(), 2);
+	}
+
+	#[test]
+	fn paragraph_count_empty() {
+		let doc = Document::new();
+		assert_eq!(doc.paragraph_count(), 1);
+	}
+
+	#[test]
+	fn paragraph_count_single_line() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello world");
+		assert_eq!(doc.paragraph_count(), 1);
+	}
+
+	#[test]
+	fn paragraph_count_multiple_lines() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "line one\nline two\nline three");
+		assert_eq!(doc.paragraph_count(), 3);
 	}
 
 	#[test]

@@ -7,13 +7,13 @@
 			"kind": "recurring",
 			"enabled": true,
 			"createdAt": 1773392352452,
-			"nextRunAt": 1773394763653,
+			"nextRunAt": 1773402563653,
 			"intervalMs": 600000,
 			"expiresAt": 1773651552452,
 			"jitterMs": 11201,
-			"runCount": 3,
+			"runCount": 8,
 			"pending": false,
-			"lastRunAt": 1773394164559,
+			"lastRunAt": 1773402191810,
 			"lastStatus": "success"
 		}
 	]

@@ -93,12 +93,6 @@
         background: #eee;
       }
 
-      .info {
-        margin-top: 1rem;
-        color: #666;
-        font-size: 0.9rem;
-      }
-
       #text-output {
         margin-top: 1rem;
         padding: 1rem;
@@ -135,6 +129,10 @@
           <option value="32">32px</option>
           <option value="48">48px</option>
         </select>
+        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
+        <button id="btn-align-left" title="Align Left" style="width:32px;font-weight:bold;">⇤</button>
+        <button id="btn-align-center" title="Align Center" style="width:32px;font-weight:bold;">⇔</button>
+        <button id="btn-align-right" title="Align Right" style="width:32px;font-weight:bold;">⇥</button>
       </div>
       <!-- Find/Replace bar (hidden by default) -->
       <div id="find-bar" style="display:none;margin-bottom:8px;padding:8px;background:#f0f0f0;border:1px solid #ddd;border-radius:4px;gap:4px;align-items:center;">
@@ -163,10 +161,13 @@
       </div>
     </div>
 
-    <div class="info">
-      <span id="char-count">Characters: 0</span>
+    <div id="status-bar" style="width:800px;max-width:calc(100vw - 4rem);display:flex;gap:1.5rem;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;border-top:none;border-radius:0 0 8px 8px;font-size:0.82rem;color:#666;font-family:'Inter',system-ui,sans-serif;">
+      <span id="status-position">Ln 1, Col 1</span>
+      <span id="status-words">0 words</span>
+      <span id="status-chars">0 chars</span>
+      <span id="status-lines">1 line</span>
     </div>
-    <pre id="text-output"></pre>
+    <pre id="text-output" style="margin-top:1rem;padding:1rem;background:#f0f0f0;border-radius:4px;font-family:monospace;white-space:pre-wrap;max-width:800px;word-break:break-all;"></pre>
 
     <script type="module">
       import init, { CanvistEditor } from "../wasm/canvist_wasm.js";
@@ -184,8 +185,8 @@
         // --- HiDPI / Retina canvas scaling ---
         const canvas = document.getElementById("editor-canvas");
         const dpr = window.devicePixelRatio || 1;
-        const cssWidth = 800;
-        const cssHeight = 400;
+        let cssWidth = 800;
+        let cssHeight = 400;
         canvas.style.width = cssWidth + "px";
         canvas.style.height = cssHeight + "px";
         canvas.width = Math.round(cssWidth * dpr);
@@ -313,16 +314,114 @@
           canvas.setAttribute("aria-valuetext", text);
         }
 
+        let autoScroll = true; // set to false when scrolling by mouse wheel
+
         function renderFrame() {
           try {
             caretVisible = true;
             editor.set_caret_visible(true);
             editor.set_now_ms(Date.now());
+            if (autoScroll) scrollToCaret();
+            autoScroll = true;
             editor.render();
             syncA11yState();
+            updateStatusBar();
           } catch (e) {
             console.error("render error:", e);
           }
+        }
+
+        // --- Scroll-into-view ---
+        function scrollToCaret() {
+          try {
+            const caretInfo = editor.caret_y(); // [y, height]
+            const caretTop = caretInfo[0];
+            const caretBottom = caretTop + caretInfo[1];
+            const viewTop = editor.scroll_y();
+            const viewBottom = viewTop + cssHeight;
+            const margin = 24; // keep some breathing room
+            if (caretTop < viewTop + margin) {
+              editor.set_scroll_y(Math.max(0, caretTop - margin));
+            } else if (caretBottom > viewBottom - margin) {
+              editor.set_scroll_y(caretBottom - cssHeight + margin);
+            }
+          } catch {}
+        }
+
+        // --- Mouse wheel scrolling ---
+        canvas.addEventListener("wheel", (e) => {
+          e.preventDefault();
+          editor.scroll_by(e.deltaY);
+          autoScroll = false; // don't snap back to caret on wheel scroll
+          renderFrame();
+        }, { passive: false });
+
+        // --- Focus / blur ---
+        textarea.addEventListener("focus", () => {
+          editor.set_focused(true);
+          canvas.parentElement.style.borderColor = "#4285f4";
+          canvas.parentElement.style.boxShadow = "0 0 0 2px rgba(66,133,244,0.25), 0 2px 8px rgba(0,0,0,0.1)";
+          renderFrame();
+        });
+        textarea.addEventListener("blur", () => {
+          editor.set_focused(false);
+          canvas.parentElement.style.borderColor = "#ddd";
+          canvas.parentElement.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+          renderFrame();
+        });
+
+        // --- Status bar ---
+        function updateStatusBar() {
+          try {
+            const ln = editor.cursor_line();
+            const col = editor.cursor_column();
+            const words = editor.word_count();
+            const chars = editor.char_count();
+            const lines = editor.line_count();
+            document.getElementById("status-position").textContent = `Ln ${ln}, Col ${col}`;
+            document.getElementById("status-words").textContent = `${words} word${words !== 1 ? "s" : ""}`;
+            document.getElementById("status-chars").textContent = `${chars} char${chars !== 1 ? "s" : ""}`;
+            document.getElementById("status-lines").textContent = `${lines} line${lines !== 1 ? "s" : ""}`;
+          } catch {}
+        }
+
+        // --- Alignment toolbar ---
+        document.getElementById("btn-align-left").addEventListener("click", () => {
+          // TODO: wire up set_text_align when paragraph-level alignment is implemented
+          textarea.focus();
+        });
+        document.getElementById("btn-align-center").addEventListener("click", () => {
+          textarea.focus();
+        });
+        document.getElementById("btn-align-right").addEventListener("click", () => {
+          textarea.focus();
+        });
+
+        // --- Responsive resize ---
+        if (typeof ResizeObserver !== "undefined") {
+          const resizeObs = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+              const rect = entry.contentRect;
+              const w = Math.round(rect.width);
+              const h = Math.round(rect.height || cssHeight);
+              if (w > 0 && h > 0 && (w !== cssWidth || h !== cssHeight)) {
+                cssWidth = w;
+                cssHeight = h;
+                canvas.style.width = w + "px";
+                canvas.style.height = h + "px";
+                const newDpr = window.devicePixelRatio || 1;
+                canvas.width = Math.round(w * newDpr);
+                canvas.height = Math.round(h * newDpr);
+                const newCtx = canvas.getContext("2d");
+                if (newCtx && newDpr !== 1) {
+                  newCtx.scale(newDpr, newDpr);
+                }
+                editor.set_size(w, h);
+                renderFrame();
+              }
+            }
+          });
+          resizeObs.observe(canvas.parentElement);
         }
 
         let clickCount = 0;
@@ -894,16 +993,14 @@
           textarea.value = "";
         });
 
-        // Update display
+        // Update text preview
         setInterval(() => {
           if (editor) {
             const text = editor.plain_text();
-            document.getElementById("char-count").textContent =
-              `Characters: ${editor.char_count()}`;
             document.getElementById("text-output").textContent = text ||
               "(empty)";
           }
-        }, 100);
+        }, 200);
 
         clearSelection();
         renderFrame();
@@ -931,8 +1028,6 @@
         "contenteditable-editor",
       );
       ceEditor.addEventListener("input", () => {
-        document.getElementById("char-count").textContent =
-          `Characters: ${ceEditor.textContent.length}`;
         document.getElementById("text-output").textContent =
           ceEditor.textContent || "(empty)";
       });

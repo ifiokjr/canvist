@@ -42,6 +42,12 @@ export class CanvistEditor {
      */
     canvas_id(): string;
     /**
+     * Compute the Y position of the caret in content coordinates.
+     *
+     * Returns `(y, height)` for the caret line. Useful for scroll-into-view.
+     */
+    caret_y(): Float32Array;
+    /**
      * Return the character count.
      */
     char_count(): number;
@@ -61,6 +67,13 @@ export class CanvistEditor {
      */
     coalesce_timeout(): number;
     /**
+     * Compute the total content height in logical pixels.
+     *
+     * Uses the paragraph layout engine to determine the full document
+     * height including padding and paragraph spacing.
+     */
+    content_height(): number;
+    /**
      * Create a new editor attached to the canvas element with the given ID.
      *
      * # Errors
@@ -68,6 +81,14 @@ export class CanvistEditor {
      * Returns an error if the canvas element is not found.
      */
     static create(canvas_id: string): CanvistEditor;
+    /**
+     * Return the 1-based column (character position within the visual line).
+     */
+    cursor_column(): number;
+    /**
+     * Return the 1-based visual line number the caret is on.
+     */
+    cursor_line(): number;
     /**
      * Delete a range of characters from `start` to `end`.
      */
@@ -86,6 +107,10 @@ export class CanvistEditor {
      * Find the previous occurrence before `from_offset`.
      */
     find_prev(needle: string, from_offset: number, case_sensitive: boolean): Uint32Array;
+    /**
+     * Get the current focus state.
+     */
+    focused(): boolean;
     /**
      * Return the currently selected text (empty string if selection is collapsed).
      */
@@ -140,6 +165,10 @@ export class CanvistEditor {
      * Check if the current selection is all underline.
      */
     is_underline(): boolean;
+    /**
+     * Count the number of visual lines using the paragraph layout engine.
+     */
+    line_count(): number;
     /**
      * Return the end offset of the visual line containing `offset`.
      */
@@ -226,6 +255,14 @@ export class CanvistEditor {
      */
     replay_operations_json(operations_json: string): void;
     /**
+     * Scroll by a delta (positive = down, negative = up).
+     */
+    scroll_by(delta_y: number): void;
+    /**
+     * Get the current vertical scroll offset.
+     */
+    scroll_y(): number;
+    /**
      * Select the entire document.
      */
     select_all(): void;
@@ -270,6 +307,13 @@ export class CanvistEditor {
      */
     set_color(r: number, g: number, b: number, a: number): void;
     /**
+     * Set whether the editor has focus.
+     *
+     * When unfocused, the caret is drawn as a gray line and selection
+     * uses a lighter highlight color.
+     */
+    set_focused(focused: boolean): void;
+    /**
      * Set font size on the current selection.
      */
     set_font_size(size: number): void;
@@ -283,6 +327,10 @@ export class CanvistEditor {
      * actual typing speed.
      */
     set_now_ms(ms: number): void;
+    /**
+     * Set the vertical scroll offset (clamped to valid range).
+     */
+    set_scroll_y(y: number): void;
     /**
      * Set selection range.
      */
@@ -339,6 +387,10 @@ export class CanvistEditor {
      * Find the next word boundary from a character offset.
      */
     word_boundary_right(offset: number): number;
+    /**
+     * Count the number of words (whitespace-separated tokens).
+     */
+    word_count(): number;
 }
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
@@ -351,15 +403,20 @@ export interface InitOutput {
     readonly canvisteditor_can_redo: (a: number) => number;
     readonly canvisteditor_can_undo: (a: number) => number;
     readonly canvisteditor_canvas_id: (a: number) => [number, number];
+    readonly canvisteditor_caret_y: (a: number) => [number, number, number, number];
     readonly canvisteditor_char_count: (a: number) => number;
     readonly canvisteditor_clipboard_cut: (a: number) => void;
     readonly canvisteditor_clipboard_paste: (a: number, b: number, c: number) => void;
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
+    readonly canvisteditor_content_height: (a: number) => [number, number, number];
     readonly canvisteditor_create: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_cursor_column: (a: number) => [number, number, number];
+    readonly canvisteditor_cursor_line: (a: number) => [number, number, number];
     readonly canvisteditor_delete_range: (a: number, b: number, c: number) => void;
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly canvisteditor_focused: (a: number) => number;
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
@@ -367,6 +424,7 @@ export interface InitOutput {
     readonly canvisteditor_is_bold: (a: number) => number;
     readonly canvisteditor_is_italic: (a: number) => number;
     readonly canvisteditor_is_underline: (a: number) => number;
+    readonly canvisteditor_line_count: (a: number) => [number, number, number];
     readonly canvisteditor_line_end_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_move_cursor_left: (a: number, b: number) => void;
@@ -383,6 +441,8 @@ export interface InitOutput {
     readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly canvisteditor_replace_range: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_replay_operations_json: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_scroll_by: (a: number, b: number) => void;
+    readonly canvisteditor_scroll_y: (a: number) => number;
     readonly canvisteditor_select_all: (a: number) => void;
     readonly canvisteditor_select_word_at: (a: number, b: number) => void;
     readonly canvisteditor_selection_end: (a: number) => number;
@@ -390,8 +450,10 @@ export interface InitOutput {
     readonly canvisteditor_set_caret_visible: (a: number, b: number) => void;
     readonly canvisteditor_set_coalesce_timeout: (a: number, b: number) => void;
     readonly canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly canvisteditor_set_focused: (a: number, b: number) => void;
     readonly canvisteditor_set_font_size: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
+    readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
@@ -403,6 +465,7 @@ export interface InitOutput {
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;
+    readonly canvisteditor_word_count: (a: number) => number;
     readonly canvisteditor_queue_text_input: (a: number, b: number, c: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;

@@ -91,6 +91,21 @@ export class CanvistEditor {
         }
     }
     /**
+     * Compute the Y position of the caret in content coordinates.
+     *
+     * Returns `(y, height)` for the caret line. Useful for scroll-into-view.
+     * @returns {Float32Array}
+     */
+    caret_y() {
+        const ret = wasm.canvisteditor_caret_y(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v1 = getArrayF32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Return the character count.
      * @returns {number}
      */
@@ -125,6 +140,20 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Compute the total content height in logical pixels.
+     *
+     * Uses the paragraph layout engine to determine the full document
+     * height including padding and paragraph spacing.
+     * @returns {number}
+     */
+    content_height() {
+        const ret = wasm.canvisteditor_content_height(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0];
+    }
+    /**
      * Create a new editor attached to the canvas element with the given ID.
      *
      * # Errors
@@ -141,6 +170,28 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return CanvistEditor.__wrap(ret[0]);
+    }
+    /**
+     * Return the 1-based column (character position within the visual line).
+     * @returns {number}
+     */
+    cursor_column() {
+        const ret = wasm.canvisteditor_cursor_column(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] >>> 0;
+    }
+    /**
+     * Return the 1-based visual line number the caret is on.
+     * @returns {number}
+     */
+    cursor_line() {
+        const ret = wasm.canvisteditor_cursor_line(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] >>> 0;
     }
     /**
      * Delete a range of characters from `start` to `end`.
@@ -195,6 +246,14 @@ export class CanvistEditor {
         var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
+    }
+    /**
+     * Get the current focus state.
+     * @returns {boolean}
+     */
+    focused() {
+        const ret = wasm.canvisteditor_focused(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Return the currently selected text (empty string if selection is collapsed).
@@ -293,6 +352,17 @@ export class CanvistEditor {
     is_underline() {
         const ret = wasm.canvisteditor_is_underline(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Count the number of visual lines using the paragraph layout engine.
+     * @returns {number}
+     */
+    line_count() {
+        const ret = wasm.canvisteditor_line_count(this.__wbg_ptr);
+        if (ret[2]) {
+            throw takeFromExternrefTable0(ret[1]);
+        }
+        return ret[0] >>> 0;
     }
     /**
      * Return the end offset of the visual line containing `offset`.
@@ -491,6 +561,21 @@ export class CanvistEditor {
         }
     }
     /**
+     * Scroll by a delta (positive = down, negative = up).
+     * @param {number} delta_y
+     */
+    scroll_by(delta_y) {
+        wasm.canvisteditor_scroll_by(this.__wbg_ptr, delta_y);
+    }
+    /**
+     * Get the current vertical scroll offset.
+     * @returns {number}
+     */
+    scroll_y() {
+        const ret = wasm.canvisteditor_scroll_y(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * Select the entire document.
      */
     select_all() {
@@ -560,6 +645,16 @@ export class CanvistEditor {
         wasm.canvisteditor_set_color(this.__wbg_ptr, r, g, b, a);
     }
     /**
+     * Set whether the editor has focus.
+     *
+     * When unfocused, the caret is drawn as a gray line and selection
+     * uses a lighter highlight color.
+     * @param {boolean} focused
+     */
+    set_focused(focused) {
+        wasm.canvisteditor_set_focused(this.__wbg_ptr, focused);
+    }
+    /**
      * Set font size on the current selection.
      * @param {number} size
      */
@@ -578,6 +673,13 @@ export class CanvistEditor {
      */
     set_now_ms(ms) {
         wasm.canvisteditor_set_now_ms(this.__wbg_ptr, ms);
+    }
+    /**
+     * Set the vertical scroll offset (clamped to valid range).
+     * @param {number} y
+     */
+    set_scroll_y(y) {
+        wasm.canvisteditor_set_scroll_y(this.__wbg_ptr, y);
     }
     /**
      * Set selection range.
@@ -686,6 +788,14 @@ export class CanvistEditor {
      */
     word_boundary_right(offset) {
         const ret = wasm.canvisteditor_word_boundary_right(this.__wbg_ptr, offset);
+        return ret >>> 0;
+    }
+    /**
+     * Count the number of words (whitespace-separated tokens).
+     * @returns {number}
+     */
+    word_count() {
+        const ret = wasm.canvisteditor_word_count(this.__wbg_ptr);
         return ret >>> 0;
     }
 }
@@ -839,9 +949,22 @@ function addToExternrefTable0(obj) {
     return idx;
 }
 
+function getArrayF32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
 function getArrayU32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
+let cachedFloat32ArrayMemory0 = null;
+function getFloat32ArrayMemory0() {
+    if (cachedFloat32ArrayMemory0 === null || cachedFloat32ArrayMemory0.byteLength === 0) {
+        cachedFloat32ArrayMemory0 = new Float32Array(wasm.memory.buffer);
+    }
+    return cachedFloat32ArrayMemory0;
 }
 
 function getStringFromWasm0(ptr, len) {
@@ -961,6 +1084,7 @@ let wasmModule, wasm;
 function __wbg_finalize_init(instance, module) {
     wasm = instance.exports;
     wasmModule = module;
+    cachedFloat32ArrayMemory0 = null;
     cachedUint32ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
     wasm.__wbindgen_start();

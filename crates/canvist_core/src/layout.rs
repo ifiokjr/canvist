@@ -22,6 +22,12 @@ pub struct LayoutConfig {
 
 	/// Default style applied when a run has no explicit style.
 	pub default_style: Style,
+
+	/// Text alignment for this layout pass.
+	///
+	/// Controls the horizontal positioning of each line within the available
+	/// width. Defaults to [`TextAlign::Left`].
+	pub text_align: crate::style::TextAlign,
 }
 
 impl Default for LayoutConfig {
@@ -29,6 +35,7 @@ impl Default for LayoutConfig {
 		Self {
 			max_width: 800.0,
 			default_style: Style::new(),
+			text_align: crate::style::TextAlign::Left,
 		}
 	}
 }
@@ -66,6 +73,12 @@ pub struct LayoutLine {
 	pub height: f32,
 	/// Vertical offset from the top of the paragraph.
 	pub y: f32,
+	/// Horizontal offset from the left edge, used for center/right alignment.
+	///
+	/// For left-aligned text this is `0.0`. For center alignment it is
+	/// `(max_width - line.width) / 2.0`, and for right alignment it is
+	/// `max_width - line.width`.
+	pub x_offset: f32,
 }
 
 /// The result of laying out a paragraph.
@@ -108,6 +121,7 @@ pub fn layout_paragraph(
 				width: 0.0,
 				height: default_line_height(config),
 				y: 0.0,
+				x_offset: 0.0,
 			}],
 			total_height: default_line_height(config),
 		};
@@ -158,12 +172,20 @@ pub fn layout_paragraph(
 		};
 
 		// Measure the final line width accurately.
-		let width = (line_start..line_end)
+		let width: f32 = (line_start..line_end)
 			.map(|i| {
 				let style = fragment_style_at(fragments, i);
 				measurer.measure_char(chars[i], style)
 			})
 			.sum();
+
+		// Compute horizontal offset for text alignment.
+		let x_offset: f32 = match config.text_align {
+			crate::style::TextAlign::Center => (config.max_width - width).max(0.0) / 2.0,
+			crate::style::TextAlign::Right => (config.max_width - width).max(0.0),
+			// Left and Justify both start at x=0 (justify spacing is future work).
+			_ => 0.0,
+		};
 
 		lines.push(LayoutLine {
 			start_offset: line_start,
@@ -171,6 +193,7 @@ pub fn layout_paragraph(
 			width,
 			height: line_height,
 			y,
+			x_offset,
 		});
 
 		y += line_height;
@@ -606,5 +629,86 @@ mod tests {
 
 		let x3 = x_offset_in_line(0, 3, &fragments, &HeuristicTextMeasure);
 		assert!((x3 - 28.8).abs() < 0.1, "expected ~28.8, got {x3}");
+	}
+
+	#[test]
+	fn left_alignment_x_offset_is_zero() {
+		let style = Style::new().font_size(16.0);
+		let fragments = [TextFragment {
+			text: "Hello",
+			style: &style,
+		}];
+		let config = LayoutConfig {
+			max_width: 800.0,
+			default_style: style.clone(),
+			text_align: crate::style::TextAlign::Left,
+		};
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+		assert_eq!(layout.lines.len(), 1);
+		assert!((layout.lines[0].x_offset - 0.0).abs() < 0.01);
+	}
+
+	#[test]
+	fn center_alignment_offsets_line() {
+		let style = Style::new().font_size(16.0);
+		let fragments = [TextFragment {
+			text: "Hi",
+			style: &style,
+		}];
+		let config = LayoutConfig {
+			max_width: 400.0,
+			default_style: style.clone(),
+			text_align: crate::style::TextAlign::Center,
+		};
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+		assert_eq!(layout.lines.len(), 1);
+		// "Hi" = 2 chars × 9.6 = 19.2px wide. Center offset = (400 - 19.2) / 2 = 190.4
+		let expected = (400.0 - layout.lines[0].width) / 2.0;
+		assert!(
+			(layout.lines[0].x_offset - expected).abs() < 0.1,
+			"center x_offset: expected ~{expected}, got {}",
+			layout.lines[0].x_offset
+		);
+	}
+
+	#[test]
+	fn right_alignment_offsets_line() {
+		let style = Style::new().font_size(16.0);
+		let fragments = [TextFragment {
+			text: "Hi",
+			style: &style,
+		}];
+		let config = LayoutConfig {
+			max_width: 400.0,
+			default_style: style.clone(),
+			text_align: crate::style::TextAlign::Right,
+		};
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+		assert_eq!(layout.lines.len(), 1);
+		let expected = 400.0 - layout.lines[0].width;
+		assert!(
+			(layout.lines[0].x_offset - expected).abs() < 0.1,
+			"right x_offset: expected ~{expected}, got {}",
+			layout.lines[0].x_offset
+		);
+	}
+
+	#[test]
+	fn layout_line_x_offset_default_is_zero() {
+		// Existing tests that use LayoutConfig::new() should get x_offset = 0.
+		let style = Style::new().font_size(16.0);
+		let fragments = [TextFragment {
+			text: "Test text",
+			style: &style,
+		}];
+		let config = LayoutConfig::new(800.0);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+		for line in &layout.lines {
+			assert!(
+				(line.x_offset - 0.0).abs() < 0.01,
+				"default alignment should have x_offset=0, got {}",
+				line.x_offset
+			);
+		}
 	}
 }
