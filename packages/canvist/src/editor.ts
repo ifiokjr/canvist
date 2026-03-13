@@ -445,12 +445,25 @@ export async function createEditor(
 			return;
 		}
 
-		// Tab.
+		// Tab / Shift+Tab for indent/outdent.
 		if (e.key === "Tab") {
 			e.preventDefault();
 			syncTime();
-			inner.insert_text_at(cursorOffset, "\t");
-			cursorOffset += 1;
+			if (e.shiftKey) {
+				inner.outdent_selection();
+			} else {
+				const sel = {
+					start: inner.selection_start(),
+					end: inner.selection_end(),
+				};
+				if (sel.start !== sel.end) {
+					inner.indent_selection();
+				} else {
+					inner.insert_text_at(cursorOffset, "\t");
+					cursorOffset += 1;
+				}
+			}
+			cursorOffset = inner.selection_end();
 			renderFrame();
 			return;
 		}
@@ -903,6 +916,34 @@ export async function createEditor(
 			// ── Size ────────────────────────────────────
 			setSize(width: number, height: number) {
 				ref.set_size(width, height);
+				renderFrame();
+			},
+			// ── Read-only ───────────────────────────────
+			get readOnly() {
+				return ref.read_only();
+			},
+			setReadOnly(readOnly: boolean) {
+				ref.set_read_only(readOnly);
+			},
+			// ── Line numbers ────────────────────────────
+			get showLineNumbers() {
+				return ref.show_line_numbers();
+			},
+			setShowLineNumbers(show: boolean) {
+				ref.set_show_line_numbers(show);
+				renderFrame();
+			},
+			// ── Indentation ─────────────────────────────
+			indentSelection() {
+				syncTime();
+				ref.indent_selection();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			outdentSelection() {
+				syncTime();
+				ref.outdent_selection();
+				cursorOffset = ref.selection_end();
 				renderFrame();
 			},
 		};

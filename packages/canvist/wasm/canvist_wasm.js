@@ -323,6 +323,14 @@ export class CanvistEditor {
         return ret[0] >>> 0;
     }
     /**
+     * Indent the current selection: insert a tab character at the start
+     * of each selected line. If the selection is collapsed, insert a tab
+     * at the cursor position.
+     */
+    indent_selection() {
+        wasm.canvisteditor_indent_selection(this.__wbg_ptr);
+    }
+    /**
      * Insert text at the current cursor position (start of document).
      * @param {string} text
      */
@@ -453,6 +461,13 @@ export class CanvistEditor {
         return ret[0] >>> 0;
     }
     /**
+     * Outdent the current selection: remove one leading tab or up to 4
+     * spaces from the start of each selected line.
+     */
+    outdent_selection() {
+        wasm.canvisteditor_outdent_selection(this.__wbg_ptr);
+    }
+    /**
      * Paste HTML at the current cursor position.
      *
      * Parses the HTML to extract styled text, deletes any current selection,
@@ -517,6 +532,14 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_queue_text_input(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Check whether the editor is in read-only mode.
+     * @returns {boolean}
+     */
+    read_only() {
+        const ret = wasm.canvisteditor_read_only(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Redo the most recently undone transaction.
@@ -699,6 +722,14 @@ export class CanvistEditor {
         wasm.canvisteditor_set_now_ms(this.__wbg_ptr, ms);
     }
     /**
+     * Set the editor to read-only mode. Editing operations are blocked;
+     * selection, copy, and navigation still work.
+     * @param {boolean} read_only
+     */
+    set_read_only(read_only) {
+        wasm.canvisteditor_set_read_only(this.__wbg_ptr, read_only);
+    }
+    /**
      * Set the vertical scroll offset (clamped to valid range).
      * @param {number} y
      */
@@ -712,6 +743,13 @@ export class CanvistEditor {
      */
     set_selection(start, end) {
         wasm.canvisteditor_set_selection(this.__wbg_ptr, start, end);
+    }
+    /**
+     * Enable or disable the line-number gutter.
+     * @param {boolean} show
+     */
+    set_show_line_numbers(show) {
+        wasm.canvisteditor_set_show_line_numbers(this.__wbg_ptr, show);
     }
     /**
      * Set the logical (CSS) dimensions of the editor canvas.
@@ -733,6 +771,14 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(title, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_set_title(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Check whether line numbers are visible.
+     * @returns {boolean}
+     */
+    show_line_numbers() {
+        const ret = wasm.canvisteditor_show_line_numbers(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Export the document as HTML.

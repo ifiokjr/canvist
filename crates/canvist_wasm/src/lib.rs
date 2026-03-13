@@ -329,6 +329,10 @@ pub struct CanvistEditor {
 	scroll_y: f32,
 	/// Whether the editor currently has focus.
 	focused: bool,
+	/// When true, editing operations are blocked (selection and copy still work).
+	read_only: bool,
+	/// When true, a line-number gutter is rendered to the left of the content.
+	show_line_numbers: bool,
 }
 
 #[wasm_bindgen]
@@ -365,6 +369,8 @@ impl CanvistEditor {
 			height: canvas.height() as f32,
 			scroll_y: 0.0,
 			focused: true,
+			read_only: false,
+			show_line_numbers: false,
 		})
 	}
 
@@ -408,7 +414,7 @@ impl CanvistEditor {
 	pub fn content_height(&self) -> Result<f32, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.width);
+		let lc = LayoutConstants::new(self.content_width());
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -432,7 +438,7 @@ impl CanvistEditor {
 	pub fn caret_y(&self) -> Result<Vec<f32>, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.width);
+		let lc = LayoutConstants::new(self.content_width());
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -470,6 +476,35 @@ impl CanvistEditor {
 		self.focused
 	}
 
+	// ── Read-only mode ───────────────────────────────────────────────
+
+	/// Set the editor to read-only mode. Editing operations are blocked;
+	/// selection, copy, and navigation still work.
+	#[wasm_bindgen]
+	pub fn set_read_only(&mut self, read_only: bool) {
+		self.read_only = read_only;
+	}
+
+	/// Check whether the editor is in read-only mode.
+	#[wasm_bindgen]
+	pub fn read_only(&self) -> bool {
+		self.read_only
+	}
+
+	// ── Line numbers ─────────────────────────────────────────────────
+
+	/// Enable or disable the line-number gutter.
+	#[wasm_bindgen]
+	pub fn set_show_line_numbers(&mut self, show: bool) {
+		self.show_line_numbers = show;
+	}
+
+	/// Check whether line numbers are visible.
+	#[wasm_bindgen]
+	pub fn show_line_numbers(&self) -> bool {
+		self.show_line_numbers
+	}
+
 	// ── Statistics ───────────────────────────────────────────────────
 
 	/// Count the number of words (whitespace-separated tokens).
@@ -483,7 +518,7 @@ impl CanvistEditor {
 	pub fn line_count(&self) -> Result<usize, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.width);
+		let lc = LayoutConstants::new(self.content_width());
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -501,7 +536,7 @@ impl CanvistEditor {
 	pub fn cursor_line(&self) -> Result<usize, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.width);
+		let lc = LayoutConstants::new(self.content_width());
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -531,7 +566,7 @@ impl CanvistEditor {
 	pub fn cursor_column(&self) -> Result<usize, JsValue> {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
-		let lc = LayoutConstants::new(self.width);
+		let lc = LayoutConstants::new(self.content_width());
 		let plain_text = self.runtime.document().plain_text();
 		let styled_runs = self.runtime.document().styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -552,9 +587,28 @@ impl CanvistEditor {
 		Ok(1)
 	}
 
+	/// Returns `true` if the editor is writable. Use at the top of any
+	/// method that modifies the document.
+	fn is_writable(&self) -> bool {
+		!self.read_only
+	}
+
+	/// Width of the line-number gutter (0 when hidden).
+	fn gutter_width(&self) -> f32 {
+		if self.show_line_numbers { 48.0 } else { 0.0 }
+	}
+
+	/// Content-area width (canvas width minus gutter).
+	fn content_width(&self) -> f32 {
+		self.width - self.gutter_width()
+	}
+
 	/// Insert text at the current cursor position (start of document).
 	#[wasm_bindgen]
 	pub fn insert_text(&mut self, text: &str) {
+		if !self.is_writable() {
+			return;
+		}
 		self.event_source.push_text_input(text);
 		self.process_events();
 	}
@@ -562,6 +616,9 @@ impl CanvistEditor {
 	/// Insert text at a specific character offset.
 	#[wasm_bindgen]
 	pub fn insert_text_at(&mut self, offset: usize, text: &str) {
+		if !self.is_writable() {
+			return;
+		}
 		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
 			selection: Selection::collapsed(Position::new(offset)),
 		});
@@ -573,6 +630,9 @@ impl CanvistEditor {
 	/// Delete a range of characters from `start` to `end`.
 	#[wasm_bindgen]
 	pub fn delete_range(&mut self, start: usize, end: usize) {
+		if !self.is_writable() {
+			return;
+		}
 		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
 			selection: Selection::range(Position::new(start), Position::new(end)),
 		});
@@ -637,6 +697,9 @@ impl CanvistEditor {
 	/// `<p>`) and HTML entities.
 	#[wasm_bindgen]
 	pub fn from_html(&mut self, html: &str) {
+		if !self.is_writable() {
+			return;
+		}
 		self.runtime.document_mut().from_html(html);
 	}
 
@@ -646,6 +709,9 @@ impl CanvistEditor {
 	/// and inserts the parsed content with formatting preserved.
 	#[wasm_bindgen]
 	pub fn paste_html(&mut self, html: &str) {
+		if !self.is_writable() {
+			return;
+		}
 		use canvist_core::operation::Operation;
 
 		// Delete current selection if any.
@@ -688,6 +754,9 @@ impl CanvistEditor {
 	/// Queue canonical text input and process it into operations.
 	#[wasm_bindgen]
 	pub fn queue_text_input(&mut self, text: &str) {
+		if !self.is_writable() {
+			return;
+		}
 		self.event_source.push_text_input(text);
 		self.process_events();
 	}
@@ -780,6 +849,9 @@ impl CanvistEditor {
 	/// Otherwise, applies bold. Preserves the current selection.
 	#[wasm_bindgen]
 	pub fn toggle_bold(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
 			return;
@@ -806,6 +878,9 @@ impl CanvistEditor {
 	/// selection.
 	#[wasm_bindgen]
 	pub fn toggle_italic(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
 			return;
@@ -832,6 +907,9 @@ impl CanvistEditor {
 	/// selection.
 	#[wasm_bindgen]
 	pub fn toggle_underline(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
 			return;
@@ -883,6 +961,9 @@ impl CanvistEditor {
 	/// Toggle strikethrough on the current selection.
 	#[wasm_bindgen]
 	pub fn toggle_strikethrough(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
 			return;
@@ -955,6 +1036,9 @@ impl CanvistEditor {
 	/// This is a delete + insert.
 	#[wasm_bindgen]
 	pub fn replace_range(&mut self, start: usize, end: usize, replacement: &str) {
+		if !self.is_writable() {
+			return;
+		}
 		if start < end {
 			self.delete_range(start, end);
 		}
@@ -968,6 +1052,9 @@ impl CanvistEditor {
 	/// Returns the number of replacements made.
 	#[wasm_bindgen]
 	pub fn replace_all(&mut self, needle: &str, replacement: &str, case_sensitive: bool) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
 		let matches = self.runtime.document().find_all(needle, case_sensitive);
 		let count = matches.len();
 		// Replace from end to start so offsets stay valid.
@@ -1025,6 +1112,9 @@ impl CanvistEditor {
 	/// Set font size on the current selection.
 	#[wasm_bindgen]
 	pub fn set_font_size(&mut self, size: f32) {
+		if !self.is_writable() {
+			return;
+		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
 			return;
@@ -1039,6 +1129,9 @@ impl CanvistEditor {
 	/// Set text color on the current selection.
 	#[wasm_bindgen]
 	pub fn set_color(&mut self, r: u8, g: u8, b: u8, a: u8) {
+		if !self.is_writable() {
+			return;
+		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
 			return;
@@ -1099,6 +1192,102 @@ impl CanvistEditor {
 		chars[s..e].iter().collect()
 	}
 
+	/// Indent the current selection: insert a tab character at the start
+	/// of each selected line. If the selection is collapsed, insert a tab
+	/// at the cursor position.
+	#[wasm_bindgen]
+	pub fn indent_selection(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		let plain = self.runtime.document().plain_text();
+		let sel_start = sel.start().offset();
+		let sel_end = sel.end().offset();
+
+		// Find line boundaries encompassing the selection.
+		let chars: Vec<char> = plain.chars().collect();
+		let mut line_starts: Vec<usize> = Vec::new();
+		// First line containing sel_start.
+		let mut s = sel_start;
+		while s > 0 && chars[s - 1] != '\n' {
+			s -= 1;
+		}
+		line_starts.push(s);
+		// Find subsequent line starts within selection.
+		for i in s..sel_end.min(chars.len()) {
+			if chars[i] == '\n' && i + 1 <= sel_end {
+				line_starts.push(i + 1);
+			}
+		}
+
+		// Insert tab at each line start (from end to start to keep offsets valid).
+		for &start in line_starts.iter().rev() {
+			self.runtime
+				.apply_operation(Operation::insert(Position::new(start), "\t".to_string()));
+		}
+	}
+
+	/// Outdent the current selection: remove one leading tab or up to 4
+	/// spaces from the start of each selected line.
+	#[wasm_bindgen]
+	pub fn outdent_selection(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		let plain = self.runtime.document().plain_text();
+		let sel_start = sel.start().offset();
+		let sel_end = sel.end().offset();
+
+		let chars: Vec<char> = plain.chars().collect();
+		let mut line_starts: Vec<usize> = Vec::new();
+		let mut s = sel_start;
+		while s > 0 && chars[s - 1] != '\n' {
+			s -= 1;
+		}
+		line_starts.push(s);
+		for i in s..sel_end.min(chars.len()) {
+			if chars[i] == '\n' && i + 1 <= sel_end {
+				line_starts.push(i + 1);
+			}
+		}
+
+		// Remove indent from each line (from end to start).
+		for &start in line_starts.iter().rev() {
+			if start < chars.len() && chars[start] == '\t' {
+				// Remove one tab.
+				let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+					selection: Selection::range(Position::new(start), Position::new(start + 1)),
+				});
+				let _ = self
+					.runtime
+					.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+			} else {
+				// Remove up to 4 leading spaces.
+				let mut count = 0usize;
+				for j in start..chars.len().min(start + 4) {
+					if chars[j] == ' ' {
+						count += 1;
+					} else {
+						break;
+					}
+				}
+				if count > 0 {
+					let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+						selection: Selection::range(
+							Position::new(start),
+							Position::new(start + count),
+						),
+					});
+					let _ = self
+						.runtime
+						.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+				}
+			}
+		}
+	}
+
 	/// Perform a clipboard cut: delete the current selection.
 	///
 	/// The caller is expected to have already read `get_selected_text()` and
@@ -1117,6 +1306,9 @@ impl CanvistEditor {
 	/// Paste text at the current cursor position (replacing any selection).
 	#[wasm_bindgen]
 	pub fn clipboard_paste(&mut self, text: &str) {
+		if !self.is_writable() {
+			return;
+		}
 		let _ = self.runtime.handle_event(EditorEvent::ClipboardPaste {
 			text: text.to_string(),
 		});
@@ -1161,7 +1353,7 @@ impl CanvistEditor {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
 		let doc = self.runtime.document();
-		let lc = LayoutConstants::new(self.width);
+		let lc = LayoutConstants::new(self.content_width());
 		let plain_text = doc.plain_text();
 		let styled_runs = doc.styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -1188,7 +1380,7 @@ impl CanvistEditor {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
 		let doc = self.runtime.document();
-		let lc = LayoutConstants::new(self.width);
+		let lc = LayoutConstants::new(self.content_width());
 		let plain_text = doc.plain_text();
 		let styled_runs = doc.styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -1217,7 +1409,7 @@ impl CanvistEditor {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
 		let doc = self.runtime.document();
-		let lc = LayoutConstants::new(self.width);
+		let lc = LayoutConstants::new(self.content_width());
 		let plain_text = doc.plain_text();
 		let styled_runs = doc.styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -1277,7 +1469,7 @@ impl CanvistEditor {
 		let (_, ctx) = self.canvas_and_context()?;
 		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
 		let doc = self.runtime.document();
-		let lc = LayoutConstants::new(self.width);
+		let lc = LayoutConstants::new(self.content_width());
 		let plain_text = doc.plain_text();
 		let styled_runs = doc.styled_runs();
 		let paragraphs = layout_paragraphs(
@@ -1478,16 +1670,17 @@ impl CanvistEditor {
 
 		let width = self.width;
 		let height = self.height;
+		let gutter_w = self.gutter_width();
 
 		let renderer = Canvas2dRenderer::new(ctx, width, height);
-		let lc = LayoutConstants::new(width);
+		let lc = LayoutConstants::new(width - gutter_w);
 
 		// Convert screen coords to document coords via viewport.
 		let viewport = Viewport::new(width, height);
 		let (doc_x, doc_y) = viewport.screen_to_document(screen_x as f32, screen_y as f32);
 
 		// Coordinates relative to the content area origin, accounting for scroll.
-		let content_x = doc_x - lc.padding_x;
+		let content_x = doc_x - lc.padding_x - gutter_w;
 		let content_y = doc_y - lc.padding_y + self.scroll_y;
 
 		let doc = self.runtime.document();
@@ -1577,7 +1770,10 @@ impl CanvistEditor {
 		// Clear canvas to white.
 		renderer.clear(Color::WHITE);
 
-		let lc = LayoutConstants::new(width);
+		// Gutter width for line numbers (0 when disabled).
+		let gutter_width: f32 = if self.show_line_numbers { 48.0 } else { 0.0 };
+
+		let lc = LayoutConstants::new(width - gutter_width);
 		let doc = self.runtime.document();
 		let selection = self.runtime.selection();
 		let styled_runs = doc.styled_runs();
@@ -1635,6 +1831,9 @@ impl CanvistEditor {
 			x
 		};
 
+		// Horizontal origin of content (after gutter, if line numbers shown).
+		let content_x_origin = gutter_width;
+
 		// Scroll offset applied to all Y coordinates.
 		let sy = self.scroll_y;
 
@@ -1674,14 +1873,14 @@ impl CanvistEditor {
 					let local_sel_start = line_sel_start - para.global_char_start;
 					let local_sel_end = line_sel_end - para.global_char_start;
 
-					let x_start = lc.padding_x
+					let x_start = (lc.padding_x + content_x_origin)
 						+ line.x_offset + x_offset_in_para_line(
 						&renderer,
 						para,
 						line.start_offset,
 						local_sel_start,
 					);
-					let x_end = lc.padding_x
+					let x_end = (lc.padding_x + content_x_origin)
 						+ line.x_offset + x_offset_in_para_line(
 						&renderer,
 						para,
@@ -1703,7 +1902,8 @@ impl CanvistEditor {
 					&& para_global_end < doc.char_count()
 				{
 					if let Some(last_line) = para.layout.lines.last() {
-						let x = lc.padding_x + last_line.x_offset + last_line.width;
+						let x = (lc.padding_x + content_x_origin)
+							+ last_line.x_offset + last_line.width;
 						let y = lc.padding_y + para.y_offset + last_line.y - sy;
 						renderer.fill_rect(Rect::new(x, y, 4.0, last_line.height), selection_color);
 					}
@@ -1732,7 +1932,7 @@ impl CanvistEditor {
 					continue;
 				}
 
-				let line_x = lc.padding_x + line.x_offset;
+				let line_x = lc.padding_x + content_x_origin + line.x_offset;
 
 				if para.local_runs.is_empty() {
 					let line_text: String = para_chars[line_start..line_end.min(para_chars.len())]
@@ -1794,6 +1994,44 @@ impl CanvistEditor {
 			}
 		}
 
+		// ── Line number gutter ───────────────────────────────────────────
+		if self.show_line_numbers && gutter_width > 0.0 {
+			// Draw gutter background.
+			renderer.fill_rect(
+				Rect::new(0.0, 0.0, gutter_width, height),
+				Color::new(245, 245, 245, 255),
+			);
+			// Draw gutter border.
+			renderer.draw_line(
+				gutter_width,
+				0.0,
+				gutter_width,
+				height,
+				Color::new(220, 220, 220, 255),
+			);
+
+			let line_num_style = Style::new()
+				.font_size(12.0)
+				.color(160, 160, 160, 255)
+				.font_family("Inter, system-ui, monospace");
+
+			let mut line_number = 1u32;
+			for para in &paragraphs {
+				let first_line = para.layout.lines.first();
+				if let Some(line) = first_line {
+					let y = lc.padding_y + para.y_offset + line.y - sy;
+					if y + line.height >= 0.0 && y <= height {
+						let num_str = line_number.to_string();
+						// Right-align within gutter.
+						let num_w = renderer.measure_text(&num_str, &line_num_style);
+						let x = gutter_width - num_w - 8.0;
+						renderer.draw_text(x, y, &num_str, &line_num_style);
+					}
+				}
+				line_number += 1;
+			}
+		}
+
 		// ── Caret ────────────────────────────────────────────────────────
 		// Only draw the caret when the JS blink controller says it should be
 		// visible. This lets the JS side toggle `set_caret_visible()` on a
@@ -1807,7 +2045,7 @@ impl CanvistEditor {
 			if let Some(para) = paragraphs.get(caret_para_idx) {
 				if let Some(caret_line) = para.layout.lines.get(caret_line_idx) {
 					let local_caret = caret_offset.saturating_sub(para.global_char_start);
-					let caret_x = lc.padding_x
+					let caret_x = (lc.padding_x + content_x_origin)
 						+ caret_line.x_offset
 						+ x_offset_in_para_line(
 							&renderer,
