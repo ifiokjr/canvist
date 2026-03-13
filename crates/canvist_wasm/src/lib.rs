@@ -353,6 +353,10 @@ pub struct CanvistEditor {
 	zoom: f32,
 	/// Whether text wraps at the canvas edge (true) or extends infinitely (false).
 	word_wrap: bool,
+	/// Whether to render whitespace indicators (· for space, → for tab).
+	show_whitespace: bool,
+	/// Whether typing an opening bracket inserts the closing counterpart.
+	auto_close_brackets: bool,
 }
 
 /// Colour theme for the editor canvas.
@@ -460,6 +464,8 @@ impl CanvistEditor {
 			highlight_current_line: true,
 			zoom: 1.0,
 			word_wrap: true,
+			show_whitespace: false,
+			auto_close_brackets: false,
 		})
 	}
 
@@ -978,6 +984,302 @@ impl CanvistEditor {
 	#[wasm_bindgen]
 	pub fn remove_highlight_color(&mut self) {
 		self.set_highlight_color(0, 0, 0, 0);
+	}
+
+	// ── Delete line ──────────────────────────────────────────────────
+
+	/// Delete the entire line the cursor is on (Ctrl+Shift+K).
+	///
+	/// If the deleted line is not the last, the trailing `\n` is also
+	/// removed so the next line moves up.
+	#[wasm_bindgen]
+	pub fn delete_line(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset();
+
+		let mut line_start = offset.min(chars.len());
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		let mut line_end = offset.min(chars.len());
+		while line_end < chars.len() && chars[line_end] != '\n' {
+			line_end += 1;
+		}
+		// Include the trailing \n if present.
+		if line_end < chars.len() && chars[line_end] == '\n' {
+			line_end += 1;
+		} else if line_start > 0 {
+			// Last line — eat the preceding \n instead.
+			line_start -= 1;
+		}
+		if line_start < line_end {
+			self.delete_range(line_start, line_end);
+		}
+	}
+
+	// ── Transform case ───────────────────────────────────────────────
+
+	/// Convert selected text to UPPERCASE.
+	#[wasm_bindgen]
+	pub fn transform_uppercase(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.transform_selection(|s| s.to_uppercase());
+	}
+
+	/// Convert selected text to lowercase.
+	#[wasm_bindgen]
+	pub fn transform_lowercase(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.transform_selection(|s| s.to_lowercase());
+	}
+
+	/// Convert selected text to Title Case.
+	#[wasm_bindgen]
+	pub fn transform_title_case(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.transform_selection(|s| {
+			s.split_whitespace()
+				.map(|word| {
+					let mut chars = word.chars();
+					match chars.next() {
+						Some(c) => {
+							let upper: String = c.to_uppercase().collect();
+							let rest: String = chars.as_str().to_lowercase();
+							format!("{upper}{rest}")
+						}
+						None => String::new(),
+					}
+				})
+				.collect::<Vec<_>>()
+				.join(" ")
+		});
+	}
+
+	/// Replace the selected text with the result of `f(selected_text)`,
+	/// preserving the selection range.
+	fn transform_selection<F: FnOnce(&str) -> String>(&mut self, f: F) {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return;
+		}
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let s = start.min(chars.len());
+		let e = end.min(chars.len());
+		let selected: String = chars[s..e].iter().collect();
+		let transformed = f(&selected);
+		let new_len = transformed.chars().count();
+
+		// Delete old, insert new.
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(s), Position::new(e)),
+		});
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(s), transformed));
+
+		// Re-select the transformed text.
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(s), Position::new(s + new_len)),
+		});
+	}
+
+	// ── Sort lines ───────────────────────────────────────────────────
+
+	/// Sort selected lines in ascending alphabetical order.
+	#[wasm_bindgen]
+	pub fn sort_lines_asc(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.sort_lines(false);
+	}
+
+	/// Sort selected lines in descending alphabetical order.
+	#[wasm_bindgen]
+	pub fn sort_lines_desc(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.sort_lines(true);
+	}
+
+	/// Sort the lines covered by the current selection.
+	fn sort_lines(&mut self, descending: bool) {
+		let sel = self.runtime.selection();
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let sel_start = sel.start().offset().min(chars.len());
+		let sel_end = sel.end().offset().min(chars.len());
+
+		// Expand to full lines.
+		let mut start = sel_start;
+		while start > 0 && chars[start - 1] != '\n' {
+			start -= 1;
+		}
+		let mut end = sel_end;
+		while end < chars.len() && chars[end] != '\n' {
+			end += 1;
+		}
+
+		let block: String = chars[start..end].iter().collect();
+		let mut lines: Vec<&str> = block.split('\n').collect();
+		if descending {
+			lines.sort_unstable_by(|a, b| b.cmp(a));
+		} else {
+			lines.sort_unstable();
+		}
+		let sorted = lines.join("\n");
+
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(end)),
+		});
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		let sorted_len = sorted.chars().count();
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(start), sorted));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(start + sorted_len)),
+		});
+	}
+
+	// ── Join lines ───────────────────────────────────────────────────
+
+	/// Join the current line with the line below (Ctrl+J).
+	///
+	/// Replaces the newline between them with a single space.
+	#[wasm_bindgen]
+	pub fn join_lines(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset();
+
+		// Find end of current line.
+		let mut line_end = offset.min(chars.len());
+		while line_end < chars.len() && chars[line_end] != '\n' {
+			line_end += 1;
+		}
+		if line_end >= chars.len() {
+			return; // No line below.
+		}
+
+		// Replace the \n with a space. Also trim leading whitespace of the
+		// next line so "hello\n  world" becomes "hello world".
+		let mut trim_end = line_end + 1;
+		while trim_end < chars.len() && (chars[trim_end] == ' ' || chars[trim_end] == '\t') {
+			trim_end += 1;
+		}
+
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(line_end), Position::new(trim_end)),
+		});
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(line_end), " ".to_string()));
+	}
+
+	// ── Show whitespace ──────────────────────────────────────────────
+
+	/// Toggle the visual whitespace indicator.
+	///
+	/// When enabled, the renderer draws `·` for spaces and `→` for tabs.
+	#[wasm_bindgen]
+	pub fn set_show_whitespace(&mut self, show: bool) {
+		self.show_whitespace = show;
+	}
+
+	/// Whether whitespace visualization is enabled.
+	#[wasm_bindgen]
+	pub fn show_whitespace(&self) -> bool {
+		self.show_whitespace
+	}
+
+	// ── Bracket auto-close ───────────────────────────────────────────
+
+	/// Toggle bracket auto-closing.
+	///
+	/// When enabled, typing `(`, `[`, `{`, `"`, or `'` automatically
+	/// inserts the closing counterpart and places the cursor between them.
+	#[wasm_bindgen]
+	pub fn set_auto_close_brackets(&mut self, enabled: bool) {
+		self.auto_close_brackets = enabled;
+	}
+
+	/// Whether bracket auto-closing is enabled.
+	#[wasm_bindgen]
+	pub fn auto_close_brackets(&self) -> bool {
+		self.auto_close_brackets
+	}
+
+	/// Insert an opening bracket and its closing counterpart.
+	///
+	/// Returns the number of characters inserted (always 2 when auto-close
+	/// fires, 1 otherwise). Cursor is placed between the pair.
+	#[wasm_bindgen]
+	pub fn insert_with_auto_close(&mut self, ch: &str) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let open_char = ch.chars().next().unwrap_or(' ');
+		let close = match open_char {
+			'(' => Some(')'),
+			'[' => Some(']'),
+			'{' => Some('}'),
+			'"' => Some('"'),
+			'\'' => Some('\''),
+			'`' => Some('`'),
+			_ => None,
+		};
+
+		if !self.auto_close_brackets || close.is_none() {
+			// Normal insert.
+			let offset = self.runtime.selection().end().offset();
+			self.runtime
+				.apply_operation(Operation::insert(Position::new(offset), ch.to_string()));
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::collapsed(Position::new(offset + 1)),
+			});
+			return 1;
+		}
+
+		let close_ch = close.unwrap();
+		let offset = self.runtime.selection().end().offset();
+
+		// Delete selection if any.
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			self.delete_range(sel.start().offset(), sel.end().offset());
+		}
+		let insert_at = self.runtime.selection().end().offset();
+		let pair = format!("{open_char}{close_ch}");
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(insert_at), pair));
+		// Cursor between the pair.
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(insert_at + 1)),
+		});
+		2
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any
@@ -2663,6 +2965,44 @@ impl CanvistEditor {
 						}
 
 						x += slice_width;
+					}
+				}
+			}
+		}
+
+		// ── Whitespace indicators ────────────────────────────────────────
+		if self.show_whitespace {
+			let ws_color = Color::new(
+				theme.gutter_text.r,
+				theme.gutter_text.g,
+				theme.gutter_text.b,
+				120,
+			);
+			let ws_style = Style::new()
+				.font_size(lc.default_style.font_size.unwrap_or(16.0))
+				.color(ws_color.r, ws_color.g, ws_color.b, ws_color.a)
+				.font_family("Inter, system-ui, monospace");
+
+			for para in &paragraphs {
+				let para_chars: Vec<char> = para.text.chars().collect();
+				for line in &para.layout.lines {
+					let line_y = lc.padding_y + para.y_offset + line.y - sy;
+					if line_y + line.height < 0.0 || line_y > height {
+						continue;
+					}
+					// Walk through chars on this line, measure x, draw indicator.
+					let mut x = lc.padding_x + content_x_origin + line.x_offset;
+					for i in line.start_offset..line.end_offset.min(para_chars.len()) {
+						let ch = para_chars[i];
+						let ch_w = renderer.measure_text(&ch.to_string(), &lc.default_style);
+						if ch == ' ' {
+							let dot_x = x + ch_w * 0.5 - 1.0;
+							let dot_y = line_y + line.height * 0.5;
+							renderer.fill_rect(Rect::new(dot_x, dot_y, 2.0, 2.0), ws_color);
+						} else if ch == '\t' {
+							renderer.draw_text(x, line_y, "→", &ws_style);
+						}
+						x += ch_w;
 					}
 				}
 			}

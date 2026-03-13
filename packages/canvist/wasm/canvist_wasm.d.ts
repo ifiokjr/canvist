@@ -16,6 +16,10 @@ export class CanvistEditor {
      */
     apply_style_range(start: number, end: number, bold: boolean, italic: boolean, underline: boolean, font_size?: number | null, font_family?: string | null, color_rgba?: Uint8Array | null): void;
     /**
+     * Whether bracket auto-closing is enabled.
+     */
+    auto_close_brackets(): boolean;
+    /**
      * Insert a newline at the cursor and auto-indent with the same leading
      * whitespace as the current line.
      *
@@ -101,6 +105,13 @@ export class CanvistEditor {
      * Return the 1-based visual line number the caret is on.
      */
     cursor_line(): number;
+    /**
+     * Delete the entire line the cursor is on (Ctrl+Shift+K).
+     *
+     * If the deleted line is not the last, the trailing `\n` is also
+     * removed so the next line moves up.
+     */
+    delete_line(): void;
     /**
      * Delete a range of characters from `start` to `end`.
      */
@@ -194,6 +205,13 @@ export class CanvistEditor {
      */
     insert_text_at(offset: number, text: string): void;
     /**
+     * Insert an opening bracket and its closing counterpart.
+     *
+     * Returns the number of characters inserted (always 2 when auto-close
+     * fires, 1 otherwise). Cursor is placed between the pair.
+     */
+    insert_with_auto_close(ch: string): number;
+    /**
      * Check if the current selection is all bold.
      */
     is_bold(): boolean;
@@ -205,6 +223,12 @@ export class CanvistEditor {
      * Check if the current selection is all underline.
      */
     is_underline(): boolean;
+    /**
+     * Join the current line with the line below (Ctrl+J).
+     *
+     * Replaces the newline between them with a single space.
+     */
+    join_lines(): void;
     /**
      * Count the number of visual lines using the paragraph layout engine.
      */
@@ -362,6 +386,13 @@ export class CanvistEditor {
      */
     selection_start(): number;
     /**
+     * Toggle bracket auto-closing.
+     *
+     * When enabled, typing `(`, `[`, `{`, `"`, or `'` automatically
+     * inserts the closing counterpart and places the cursor between them.
+     */
+    set_auto_close_brackets(enabled: boolean): void;
+    /**
      * Set whether the caret (text cursor) is visible.
      *
      * Called by the JS blink controller on a 530 ms interval to toggle the
@@ -438,6 +469,12 @@ export class CanvistEditor {
      */
     set_show_line_numbers(show: boolean): void;
     /**
+     * Toggle the visual whitespace indicator.
+     *
+     * When enabled, the renderer draws `·` for spaces and `→` for tabs.
+     */
+    set_show_whitespace(show: boolean): void;
+    /**
      * Set the logical (CSS) dimensions of the editor canvas.
      *
      * Call this after changing the canvas's CSS size so layout wrapping
@@ -472,6 +509,18 @@ export class CanvistEditor {
      * Check whether line numbers are visible.
      */
     show_line_numbers(): boolean;
+    /**
+     * Whether whitespace visualization is enabled.
+     */
+    show_whitespace(): boolean;
+    /**
+     * Sort selected lines in ascending alphabetical order.
+     */
+    sort_lines_asc(): void;
+    /**
+     * Sort selected lines in descending alphabetical order.
+     */
+    sort_lines_desc(): void;
     /**
      * Return `"dark"` or `"light"` depending on the active theme.
      */
@@ -529,6 +578,18 @@ export class CanvistEditor {
      */
     toggle_underline(): void;
     /**
+     * Convert selected text to lowercase.
+     */
+    transform_lowercase(): void;
+    /**
+     * Convert selected text to Title Case.
+     */
+    transform_title_case(): void;
+    /**
+     * Convert selected text to UPPERCASE.
+     */
+    transform_uppercase(): void;
+    /**
      * Undo the most recent transaction.
      *
      * Applies inverse operations to restore the document to its previous state.
@@ -575,6 +636,7 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_canvisteditor_free: (a: number, b: number) => void;
     readonly canvisteditor_apply_style_range: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
+    readonly canvisteditor_auto_close_brackets: (a: number) => number;
     readonly canvisteditor_auto_indent_newline: (a: number) => number;
     readonly canvisteditor_break_undo_coalescing: (a: number) => void;
     readonly canvisteditor_can_redo: (a: number) => number;
@@ -589,6 +651,7 @@ export interface InitOutput {
     readonly canvisteditor_create: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_cursor_column: (a: number) => [number, number, number];
     readonly canvisteditor_cursor_line: (a: number) => [number, number, number];
+    readonly canvisteditor_delete_line: (a: number) => void;
     readonly canvisteditor_delete_range: (a: number, b: number, c: number) => void;
     readonly canvisteditor_duplicate_line: (a: number) => void;
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
@@ -603,9 +666,11 @@ export interface InitOutput {
     readonly canvisteditor_indent_selection: (a: number) => void;
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_text_at: (a: number, b: number, c: number, d: number) => void;
+    readonly canvisteditor_insert_with_auto_close: (a: number, b: number, c: number) => number;
     readonly canvisteditor_is_bold: (a: number) => number;
     readonly canvisteditor_is_italic: (a: number) => number;
     readonly canvisteditor_is_underline: (a: number) => number;
+    readonly canvisteditor_join_lines: (a: number) => void;
     readonly canvisteditor_line_count: (a: number) => [number, number, number];
     readonly canvisteditor_line_end_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
@@ -638,6 +703,7 @@ export interface InitOutput {
     readonly canvisteditor_selected_word_count: (a: number) => number;
     readonly canvisteditor_selection_end: (a: number) => number;
     readonly canvisteditor_selection_start: (a: number) => number;
+    readonly canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_caret_visible: (a: number, b: number) => void;
     readonly canvisteditor_set_coalesce_timeout: (a: number, b: number) => void;
     readonly canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -650,6 +716,7 @@ export interface InitOutput {
     readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_show_line_numbers: (a: number, b: number) => void;
+    readonly canvisteditor_set_show_whitespace: (a: number, b: number) => void;
     readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_theme_dark: (a: number) => void;
     readonly canvisteditor_set_theme_light: (a: number) => void;
@@ -657,6 +724,9 @@ export interface InitOutput {
     readonly canvisteditor_set_word_wrap: (a: number, b: number) => void;
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
     readonly canvisteditor_show_line_numbers: (a: number) => number;
+    readonly canvisteditor_show_whitespace: (a: number) => number;
+    readonly canvisteditor_sort_lines_asc: (a: number) => void;
+    readonly canvisteditor_sort_lines_desc: (a: number) => void;
     readonly canvisteditor_theme_name: (a: number) => [number, number];
     readonly canvisteditor_to_html: (a: number) => [number, number];
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
@@ -667,6 +737,9 @@ export interface InitOutput {
     readonly canvisteditor_toggle_numbered_list: (a: number) => void;
     readonly canvisteditor_toggle_strikethrough: (a: number) => void;
     readonly canvisteditor_toggle_underline: (a: number) => void;
+    readonly canvisteditor_transform_lowercase: (a: number) => void;
+    readonly canvisteditor_transform_title_case: (a: number) => void;
+    readonly canvisteditor_transform_uppercase: (a: number) => void;
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;

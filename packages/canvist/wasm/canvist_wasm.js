@@ -43,6 +43,14 @@ export class CanvistEditor {
         wasm.canvisteditor_apply_style_range(this.__wbg_ptr, start, end, bold, italic, underline, isLikeNone(font_size) ? 0x100000001 : Math.fround(font_size), ptr0, len0, ptr1, len1);
     }
     /**
+     * Whether bracket auto-closing is enabled.
+     * @returns {boolean}
+     */
+    auto_close_brackets() {
+        const ret = wasm.canvisteditor_auto_close_brackets(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Insert a newline at the cursor and auto-indent with the same leading
      * whitespace as the current line.
      *
@@ -208,6 +216,15 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0] >>> 0;
+    }
+    /**
+     * Delete the entire line the cursor is on (Ctrl+Shift+K).
+     *
+     * If the deleted line is not the last, the trailing `\n` is also
+     * removed so the next line moves up.
+     */
+    delete_line() {
+        wasm.canvisteditor_delete_line(this.__wbg_ptr);
     }
     /**
      * Delete a range of characters from `start` to `end`.
@@ -390,6 +407,20 @@ export class CanvistEditor {
         wasm.canvisteditor_insert_text_at(this.__wbg_ptr, offset, ptr0, len0);
     }
     /**
+     * Insert an opening bracket and its closing counterpart.
+     *
+     * Returns the number of characters inserted (always 2 when auto-close
+     * fires, 1 otherwise). Cursor is placed between the pair.
+     * @param {string} ch
+     * @returns {number}
+     */
+    insert_with_auto_close(ch) {
+        const ptr0 = passStringToWasm0(ch, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_insert_with_auto_close(this.__wbg_ptr, ptr0, len0);
+        return ret >>> 0;
+    }
+    /**
      * Check if the current selection is all bold.
      * @returns {boolean}
      */
@@ -412,6 +443,14 @@ export class CanvistEditor {
     is_underline() {
         const ret = wasm.canvisteditor_is_underline(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Join the current line with the line below (Ctrl+J).
+     *
+     * Replaces the newline between them with a single space.
+     */
+    join_lines() {
+        wasm.canvisteditor_join_lines(this.__wbg_ptr);
     }
     /**
      * Count the number of visual lines using the paragraph layout engine.
@@ -738,6 +777,16 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Toggle bracket auto-closing.
+     *
+     * When enabled, typing `(`, `[`, `{`, `"`, or `'` automatically
+     * inserts the closing counterpart and places the cursor between them.
+     * @param {boolean} enabled
+     */
+    set_auto_close_brackets(enabled) {
+        wasm.canvisteditor_set_auto_close_brackets(this.__wbg_ptr, enabled);
+    }
+    /**
      * Set whether the caret (text cursor) is visible.
      *
      * Called by the JS blink controller on a 530 ms interval to toggle the
@@ -857,6 +906,15 @@ export class CanvistEditor {
         wasm.canvisteditor_set_show_line_numbers(this.__wbg_ptr, show);
     }
     /**
+     * Toggle the visual whitespace indicator.
+     *
+     * When enabled, the renderer draws `·` for spaces and `→` for tabs.
+     * @param {boolean} show
+     */
+    set_show_whitespace(show) {
+        wasm.canvisteditor_set_show_whitespace(this.__wbg_ptr, show);
+    }
+    /**
      * Set the logical (CSS) dimensions of the editor canvas.
      *
      * Call this after changing the canvas's CSS size so layout wrapping
@@ -913,6 +971,26 @@ export class CanvistEditor {
     show_line_numbers() {
         const ret = wasm.canvisteditor_show_line_numbers(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Whether whitespace visualization is enabled.
+     * @returns {boolean}
+     */
+    show_whitespace() {
+        const ret = wasm.canvisteditor_show_whitespace(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Sort selected lines in ascending alphabetical order.
+     */
+    sort_lines_asc() {
+        wasm.canvisteditor_sort_lines_asc(this.__wbg_ptr);
+    }
+    /**
+     * Sort selected lines in descending alphabetical order.
+     */
+    sort_lines_desc() {
+        wasm.canvisteditor_sort_lines_desc(this.__wbg_ptr);
     }
     /**
      * Return `"dark"` or `"light"` depending on the active theme.
@@ -1035,6 +1113,24 @@ export class CanvistEditor {
      */
     toggle_underline() {
         wasm.canvisteditor_toggle_underline(this.__wbg_ptr);
+    }
+    /**
+     * Convert selected text to lowercase.
+     */
+    transform_lowercase() {
+        wasm.canvisteditor_transform_lowercase(this.__wbg_ptr);
+    }
+    /**
+     * Convert selected text to Title Case.
+     */
+    transform_title_case() {
+        wasm.canvisteditor_transform_title_case(this.__wbg_ptr);
+    }
+    /**
+     * Convert selected text to UPPERCASE.
+     */
+    transform_uppercase() {
+        wasm.canvisteditor_transform_uppercase(this.__wbg_ptr);
     }
     /**
      * Undo the most recent transaction.

@@ -364,6 +364,49 @@ export interface CanvistEditor {
 	/** Remove the background highlight from the current selection. */
 	removeHighlightColor(): void;
 
+	// ── Delete / join line ───────────────────────────────────────────
+
+	/** Delete the entire current line (Ctrl+Shift+K). */
+	deleteLine(): void;
+
+	/** Join the current line with the line below (Ctrl+J). */
+	joinLines(): void;
+
+	// ── Transform case ──────────────────────────────────────────────
+
+	/** Convert selected text to UPPERCASE. */
+	transformUppercase(): void;
+
+	/** Convert selected text to lowercase. */
+	transformLowercase(): void;
+
+	/** Convert selected text to Title Case. */
+	transformTitleCase(): void;
+
+	// ── Sort lines ──────────────────────────────────────────────────
+
+	/** Sort selected lines ascending. */
+	sortLinesAsc(): void;
+
+	/** Sort selected lines descending. */
+	sortLinesDesc(): void;
+
+	// ── Show whitespace ─────────────────────────────────────────────
+
+	/** Whether whitespace indicators are visible. */
+	readonly showWhitespace: boolean;
+
+	/** Toggle whitespace visualization. */
+	setShowWhitespace(show: boolean): void;
+
+	// ── Bracket auto-close ──────────────────────────────────────────
+
+	/** Whether bracket auto-closing is enabled. */
+	readonly autoCloseBrackets: boolean;
+
+	/** Toggle bracket auto-closing. */
+	setAutoCloseBrackets(enabled: boolean): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

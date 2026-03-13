@@ -2732,4 +2732,203 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Delete line ─────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] delete_line removes current line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\nbbb\nccc");
+						ed.set_selection(5, 5); // cursor on "bbb"
+						ed.delete_line();
+						return ed.plain_text();
+					});
+					assertEquals(result, "aaa\nccc");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Join lines ──────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] join_lines merges current and next line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello\n  world");
+						ed.set_selection(3, 3); // cursor on "hello"
+						ed.join_lines();
+						return ed.plain_text();
+					});
+					assertEquals(result, "hello world");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Transform case ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] transform case: upper, lower, title`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello world");
+						ed.select_all();
+						ed.transform_uppercase();
+						const upper = ed.plain_text();
+						ed.select_all();
+						ed.transform_lowercase();
+						const lower = ed.plain_text();
+						ed.select_all();
+						ed.transform_title_case();
+						const title = ed.plain_text();
+						return { upper, lower, title };
+					});
+					assertEquals(result.upper, "HELLO WORLD");
+					assertEquals(result.lower, "hello world");
+					assertEquals(result.title, "Hello World");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Sort lines ──────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] sort_lines_asc sorts alphabetically`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("cherry\napple\nbanana");
+						ed.select_all();
+						ed.sort_lines_asc();
+						return ed.plain_text();
+					});
+					assertEquals(result, "apple\nbanana\ncherry");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Show whitespace ─────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] show_whitespace can be toggled`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.show_whitespace();
+						ed.set_show_whitespace(true);
+						const after = ed.show_whitespace();
+						ed.set_show_whitespace(false);
+						return { before, after };
+					});
+					assertEquals(result.before, false);
+					assertEquals(result.after, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Bracket auto-close ──────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] auto-close brackets inserts pair`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_auto_close_brackets(true);
+						ed.insert_with_auto_close("(");
+						const text1 = ed.plain_text();
+						const cursor1 = ed.selection_end();
+						return { text1, cursor1 };
+					});
+					assertEquals(result.text1, "()");
+					assertEquals(result.cursor1, 1); // between ( and )
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
