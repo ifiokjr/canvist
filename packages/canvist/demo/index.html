@@ -182,6 +182,11 @@
           <input id="bracket-highlight-toggle" type="checkbox" checked style="margin-right:3px;" />
           <span>{ }</span>
         </label>
+        <label title="Indent Guides" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+          <input id="indent-guides-toggle" type="checkbox" style="margin-right:3px;" />
+          <span>┆</span>
+        </label>
+        <button id="bookmark-toggle" title="Toggle Bookmark (on current line)" style="font-size:0.8em;padding:2px 6px;">🔖</button>
         <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
         <button id="btn-theme" title="Toggle Dark/Light Mode" style="font-size:0.8em;padding:4px 8px;">🌙</button>
         <button id="btn-zoom-in" title="Zoom In (Ctrl+=)" style="font-size:0.8em;padding:4px 8px;">+</button>
@@ -595,6 +600,18 @@
         // --- Auto-close brackets toggle ---
         document.getElementById("auto-close-toggle").addEventListener("change", (e) => {
           editor.set_auto_close_brackets(e.target.checked);
+        });
+
+        // --- Indent guides toggle ---
+        document.getElementById("indent-guides-toggle").addEventListener("change", (e) => {
+          editor.set_show_indent_guides(e.target.checked);
+          editor.render();
+        });
+
+        // --- Bookmark toggle ---
+        document.getElementById("bookmark-toggle").addEventListener("click", () => {
+          editor.toggle_bookmark();
+          editor.render();
         });
 
         // --- Soft tabs toggle ---
@@ -1038,6 +1055,30 @@
           if (mod && e.key === "/") {
             e.preventDefault();
             toggleShortcuts();
+            return;
+          }
+
+          // --- Move to matching bracket (Ctrl+Shift+\) ---
+          if (mod && e.shiftKey && e.key === "|") {
+            e.preventDefault();
+            editor.move_to_matching_bracket();
+            editor.render();
+            return;
+          }
+
+          // --- Open line below (Ctrl+Enter) ---
+          if (mod && !e.shiftKey && e.key === "Enter") {
+            e.preventDefault();
+            editor.open_line_below();
+            editor.render();
+            return;
+          }
+
+          // --- Open line above (Ctrl+Shift+Enter) ---
+          if (mod && e.shiftKey && e.key === "Enter") {
+            e.preventDefault();
+            editor.open_line_above();
+            editor.render();
             return;
           }
 

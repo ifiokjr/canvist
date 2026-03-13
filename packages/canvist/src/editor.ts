@@ -614,6 +614,35 @@ export async function createEditor(
 			return;
 		}
 
+		// Move to matching bracket — Ctrl+Shift+\.
+		if (mod && e.shiftKey && e.key === "|") {
+			e.preventDefault();
+			inner.move_to_matching_bracket();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Open line below — Ctrl+Enter.
+		if (mod && !e.shiftKey && e.key === "Enter") {
+			e.preventDefault();
+			syncTime();
+			inner.open_line_below();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
+		// Open line above — Ctrl+Shift+Enter.
+		if (mod && e.shiftKey && e.key === "Enter") {
+			e.preventDefault();
+			syncTime();
+			inner.open_line_above();
+			cursorOffset = inner.selection_end();
+			renderFrame();
+			return;
+		}
+
 		// Transpose characters — Ctrl+T.
 		if (mod && e.key === "t") {
 			e.preventDefault();
@@ -1343,6 +1372,90 @@ export async function createEditor(
 			},
 			findMatchingBracket(offset: number) {
 				return ref.find_matching_bracket(offset);
+			},
+			// ── Move to matching bracket ────────────────
+			moveToMatchingBracket() {
+				ref.move_to_matching_bracket();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Document statistics (extras) ────────────
+			get paragraphCount() {
+				return ref.paragraph_count();
+			},
+			get currentLineNumber() {
+				return ref.current_line_number();
+			},
+			get currentColumn() {
+				return ref.current_column();
+			},
+			// ── Indent guides ───────────────────────────
+			get showIndentGuides() {
+				return ref.show_indent_guides();
+			},
+			setShowIndentGuides(show: boolean) {
+				ref.set_show_indent_guides(show);
+				renderFrame();
+			},
+			// ── Bookmarks ───────────────────────────────
+			toggleBookmark() {
+				const added = ref.toggle_bookmark();
+				renderFrame();
+				return added;
+			},
+			nextBookmark() {
+				const found = ref.next_bookmark();
+				if (found) {
+					cursorOffset = ref.selection_end();
+					renderFrame();
+				}
+				return found;
+			},
+			prevBookmark() {
+				const found = ref.prev_bookmark();
+				if (found) {
+					cursorOffset = ref.selection_end();
+					renderFrame();
+				}
+				return found;
+			},
+			clearBookmarks() {
+				ref.clear_bookmarks();
+				renderFrame();
+			},
+			get bookmarkCount() {
+				return ref.bookmark_count();
+			},
+			get isLineBookmarked() {
+				return ref.is_line_bookmarked();
+			},
+			// ── Convert indentation ─────────────────────
+			tabsToSpaces() {
+				syncTime();
+				const n = ref.tabs_to_spaces();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			spacesToTabs() {
+				syncTime();
+				const n = ref.spaces_to_tabs();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			// ── Open line above / below ─────────────────
+			openLineBelow() {
+				syncTime();
+				ref.open_line_below();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			openLineAbove() {
+				syncTime();
+				ref.open_line_above();
+				cursorOffset = ref.selection_end();
+				renderFrame();
 			},
 			// ── Auto-indent ─────────────────────────────
 			autoIndentNewline() {

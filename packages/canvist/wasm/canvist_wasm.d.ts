@@ -36,6 +36,14 @@ export class CanvistEditor {
      */
     auto_surround(): boolean;
     /**
+     * Number of active bookmarks.
+     */
+    bookmark_count(): number;
+    /**
+     * Return all bookmarked line numbers as a flat array (0-based).
+     */
+    bookmarked_lines(): Uint32Array;
+    /**
      * Force-break the current undo coalescing chain.
      *
      * Normally, rapid single-character inserts are merged into a single undo
@@ -71,6 +79,10 @@ export class CanvistEditor {
      * Return the character count.
      */
     char_count(): number;
+    /**
+     * Remove all bookmarks.
+     */
+    clear_bookmarks(): void;
     /**
      * Perform a clipboard cut: delete the current selection.
      *
@@ -111,6 +123,14 @@ export class CanvistEditor {
      * Returns an error if the canvas element is not found.
      */
     static create(canvas_id: string): CanvistEditor;
+    /**
+     * Current column (1-based character offset from line start).
+     */
+    current_column(): number;
+    /**
+     * Current line number the cursor is on (1-based).
+     */
+    current_line_number(): number;
     /**
      * Return the 1-based column (character position within the visual line).
      */
@@ -266,6 +286,10 @@ export class CanvistEditor {
      */
     is_italic(): boolean;
     /**
+     * Check if the current line has a bookmark.
+     */
+    is_line_bookmarked(): boolean;
+    /**
      * Check if the current selection is all underline.
      */
     is_underline(): boolean;
@@ -318,6 +342,20 @@ export class CanvistEditor {
      */
     move_text(src_start: number, src_end: number, dest: number): void;
     /**
+     * Move cursor to the matching bracket (Ctrl+Shift+\).
+     *
+     * Checks the character at the cursor and the one before it.
+     * If a bracket is found, jumps the cursor to its match.
+     */
+    move_to_matching_bracket(): void;
+    /**
+     * Jump to the next bookmark after the current line.
+     *
+     * Wraps around to the first bookmark if past the last one.
+     * Returns `true` if a bookmark was found.
+     */
+    next_bookmark(): boolean;
+    /**
      * Return the character offset on the line directly above `offset`.
      *
      * Preserves the horizontal (x) pixel position of the caret when moving
@@ -329,10 +367,24 @@ export class CanvistEditor {
      */
     offset_below(offset: number): number;
     /**
+     * Insert a new line above the current line and move cursor there
+     * (Ctrl+Shift+Enter).
+     */
+    open_line_above(): void;
+    /**
+     * Insert a new line below the current line and move cursor there
+     * (Ctrl+Enter).
+     */
+    open_line_below(): void;
+    /**
      * Outdent the current selection: remove one leading tab or up to 4
      * spaces from the start of each selected line.
      */
     outdent_selection(): void;
+    /**
+     * Total paragraph count (non-empty lines).
+     */
+    paragraph_count(): number;
     /**
      * Paste HTML at the current cursor position.
      *
@@ -344,6 +396,13 @@ export class CanvistEditor {
      * Return the full plain-text content of the document.
      */
     plain_text(): string;
+    /**
+     * Jump to the previous bookmark before the current line.
+     *
+     * Wraps around to the last bookmark if before the first one.
+     * Returns `true` if a bookmark was found.
+     */
+    prev_bookmark(): boolean;
     /**
      * Process all pending canonical events via the editor runtime.
      */
@@ -538,6 +597,10 @@ export class CanvistEditor {
      */
     set_selection(start: number, end: number): void;
     /**
+     * Toggle indent guide rendering.
+     */
+    set_show_indent_guides(show: boolean): void;
+    /**
      * Enable or disable the line-number gutter.
      */
     set_show_line_numbers(show: boolean): void;
@@ -587,6 +650,10 @@ export class CanvistEditor {
      */
     set_zoom(level: number): void;
     /**
+     * Whether indent guides are enabled.
+     */
+    show_indent_guides(): boolean;
+    /**
      * Check whether line numbers are visible.
      */
     show_line_numbers(): boolean;
@@ -614,9 +681,22 @@ export class CanvistEditor {
      */
     sort_lines_desc(): void;
     /**
+     * Convert leading spaces to tabs (using the current tab_size).
+     *
+     * Only converts groups of `tab_size` spaces at the start of lines.
+     * Returns the number of conversions made.
+     */
+    spaces_to_tabs(): number;
+    /**
      * Get the current tab size.
      */
     tab_size(): number;
+    /**
+     * Convert all tabs to spaces (using the current tab_size).
+     *
+     * Returns the number of tabs replaced.
+     */
+    tabs_to_spaces(): number;
     /**
      * Return `"dark"` or `"light"` depending on the active theme.
      */
@@ -645,6 +725,12 @@ export class CanvistEditor {
      * Otherwise, applies bold. Preserves the current selection.
      */
     toggle_bold(): void;
+    /**
+     * Toggle a bookmark on the current line.
+     *
+     * Returns `true` if the bookmark was added, `false` if removed.
+     */
+    toggle_bookmark(): boolean;
     /**
      * Toggle a bullet list prefix (`• `) on the current line.
      *
@@ -769,12 +855,15 @@ export interface InitOutput {
     readonly canvisteditor_auto_close_brackets: (a: number) => number;
     readonly canvisteditor_auto_indent_newline: (a: number) => number;
     readonly canvisteditor_auto_surround: (a: number) => number;
+    readonly canvisteditor_bookmark_count: (a: number) => number;
+    readonly canvisteditor_bookmarked_lines: (a: number) => [number, number];
     readonly canvisteditor_break_undo_coalescing: (a: number) => void;
     readonly canvisteditor_can_redo: (a: number) => number;
     readonly canvisteditor_can_undo: (a: number) => number;
     readonly canvisteditor_canvas_id: (a: number) => [number, number];
     readonly canvisteditor_caret_y: (a: number) => [number, number, number, number];
     readonly canvisteditor_char_count: (a: number) => number;
+    readonly canvisteditor_clear_bookmarks: (a: number) => void;
     readonly canvisteditor_clipboard_cut: (a: number) => void;
     readonly canvisteditor_clipboard_paste: (a: number, b: number, c: number) => void;
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
@@ -782,6 +871,8 @@ export interface InitOutput {
     readonly canvisteditor_content_height: (a: number) => [number, number, number];
     readonly canvisteditor_contract_selection: (a: number) => void;
     readonly canvisteditor_create: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_current_column: (a: number) => number;
+    readonly canvisteditor_current_line_number: (a: number) => number;
     readonly canvisteditor_cursor_column: (a: number) => [number, number, number];
     readonly canvisteditor_cursor_line: (a: number) => [number, number, number];
     readonly canvisteditor_delete_line: (a: number) => void;
@@ -808,6 +899,7 @@ export interface InitOutput {
     readonly canvisteditor_insert_with_auto_close: (a: number, b: number, c: number) => number;
     readonly canvisteditor_is_bold: (a: number) => number;
     readonly canvisteditor_is_italic: (a: number) => number;
+    readonly canvisteditor_is_line_bookmarked: (a: number) => number;
     readonly canvisteditor_is_underline: (a: number) => number;
     readonly canvisteditor_join_lines: (a: number) => void;
     readonly canvisteditor_line_count: (a: number) => [number, number, number];
@@ -819,11 +911,17 @@ export interface InitOutput {
     readonly canvisteditor_move_line_down: (a: number) => void;
     readonly canvisteditor_move_line_up: (a: number) => void;
     readonly canvisteditor_move_text: (a: number, b: number, c: number, d: number) => void;
+    readonly canvisteditor_move_to_matching_bracket: (a: number) => void;
+    readonly canvisteditor_next_bookmark: (a: number) => number;
     readonly canvisteditor_offset_above: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_offset_below: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_open_line_above: (a: number) => void;
+    readonly canvisteditor_open_line_below: (a: number) => void;
     readonly canvisteditor_outdent_selection: (a: number) => void;
+    readonly canvisteditor_paragraph_count: (a: number) => number;
     readonly canvisteditor_paste_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_plain_text: (a: number) => [number, number];
+    readonly canvisteditor_prev_bookmark: (a: number) => number;
     readonly canvisteditor_process_events: (a: number) => void;
     readonly canvisteditor_queue_key_down: (a: number, b: number, c: number) => void;
     readonly canvisteditor_queue_key_down_with_modifiers: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
@@ -859,6 +957,7 @@ export interface InitOutput {
     readonly canvisteditor_set_read_only: (a: number, b: number) => void;
     readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_show_indent_guides: (a: number, b: number) => void;
     readonly canvisteditor_set_show_line_numbers: (a: number, b: number) => void;
     readonly canvisteditor_set_show_whitespace: (a: number, b: number) => void;
     readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
@@ -869,18 +968,22 @@ export interface InitOutput {
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_word_wrap: (a: number, b: number) => void;
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
+    readonly canvisteditor_show_indent_guides: (a: number) => number;
     readonly canvisteditor_show_line_numbers: (a: number) => number;
     readonly canvisteditor_show_whitespace: (a: number) => number;
     readonly canvisteditor_smart_backspace: (a: number) => number;
     readonly canvisteditor_soft_tabs: (a: number) => number;
     readonly canvisteditor_sort_lines_asc: (a: number) => void;
     readonly canvisteditor_sort_lines_desc: (a: number) => void;
+    readonly canvisteditor_spaces_to_tabs: (a: number) => number;
     readonly canvisteditor_tab_size: (a: number) => number;
+    readonly canvisteditor_tabs_to_spaces: (a: number) => number;
     readonly canvisteditor_theme_name: (a: number) => [number, number];
     readonly canvisteditor_to_html: (a: number) => [number, number];
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
     readonly canvisteditor_to_markdown: (a: number) => [number, number];
     readonly canvisteditor_toggle_bold: (a: number) => void;
+    readonly canvisteditor_toggle_bookmark: (a: number) => number;
     readonly canvisteditor_toggle_bullet_list: (a: number) => void;
     readonly canvisteditor_toggle_italic: (a: number) => void;
     readonly canvisteditor_toggle_line_comment: (a: number) => void;
