@@ -2459,10 +2459,8 @@ impl CanvistEditor {
 		}
 
 		// After delete (if any), cursor should be at `offset`.
-		self.runtime.apply_operation(Operation::insert(
-			Position::new(offset),
-			text.to_string(),
-		));
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(offset), text.to_string()));
 		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
 			selection: Selection::collapsed(Position::new(offset + insert_len)),
 		});
