@@ -151,6 +151,52 @@ export class CanvistEditor {
         wasm.canvisteditor_delete_range(this.__wbg_ptr, start, end);
     }
     /**
+     * Find all occurrences of `needle`. Returns a flat array: [start0, end0,
+     * start1, end1, …].
+     * @param {string} needle
+     * @param {boolean} case_sensitive
+     * @returns {Uint32Array}
+     */
+    find_all(needle, case_sensitive) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_find_all(this.__wbg_ptr, ptr0, len0, case_sensitive);
+        var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
+     * Find the next occurrence of `needle` at or after `from_offset`.
+     * Returns `[start, end]` or an empty array if not found.
+     * @param {string} needle
+     * @param {number} from_offset
+     * @param {boolean} case_sensitive
+     * @returns {Uint32Array}
+     */
+    find_next(needle, from_offset, case_sensitive) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_find_next(this.__wbg_ptr, ptr0, len0, from_offset, case_sensitive);
+        var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
+     * Find the previous occurrence before `from_offset`.
+     * @param {string} needle
+     * @param {number} from_offset
+     * @param {boolean} case_sensitive
+     * @returns {Uint32Array}
+     */
+    find_prev(needle, from_offset, case_sensitive) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_find_prev(this.__wbg_ptr, ptr0, len0, from_offset, case_sensitive);
+        var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
      * Return the currently selected text (empty string if selection is collapsed).
      * @returns {string}
      */
@@ -404,6 +450,35 @@ export class CanvistEditor {
         }
     }
     /**
+     * Replace all occurrences of `needle` with `replacement`.
+     * Returns the number of replacements made.
+     * @param {string} needle
+     * @param {string} replacement
+     * @param {boolean} case_sensitive
+     * @returns {number}
+     */
+    replace_all(needle, replacement, case_sensitive) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(replacement, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_replace_all(this.__wbg_ptr, ptr0, len0, ptr1, len1, case_sensitive);
+        return ret >>> 0;
+    }
+    /**
+     * Replace the text in range `[start, end)` with `replacement`.
+     *
+     * This is a delete + insert.
+     * @param {number} start
+     * @param {number} end
+     * @param {string} replacement
+     */
+    replace_range(start, end, replacement) {
+        const ptr0 = passStringToWasm0(replacement, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_replace_range(this.__wbg_ptr, start, end, ptr0, len0);
+    }
+    /**
      * Replay a JSON-encoded operation list into current runtime.
      * @param {string} operations_json
      */
@@ -475,6 +550,23 @@ export class CanvistEditor {
         wasm.canvisteditor_set_coalesce_timeout(this.__wbg_ptr, ms);
     }
     /**
+     * Set text color on the current selection.
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @param {number} a
+     */
+    set_color(r, g, b, a) {
+        wasm.canvisteditor_set_color(this.__wbg_ptr, r, g, b, a);
+    }
+    /**
+     * Set font size on the current selection.
+     * @param {number} size
+     */
+    set_font_size(size) {
+        wasm.canvisteditor_set_font_size(this.__wbg_ptr, size);
+    }
+    /**
      * Set the current wall-clock time (milliseconds since epoch) for the
      * undo coalescing timer.
      *
@@ -494,6 +586,18 @@ export class CanvistEditor {
      */
     set_selection(start, end) {
         wasm.canvisteditor_set_selection(this.__wbg_ptr, start, end);
+    }
+    /**
+     * Set the logical (CSS) dimensions of the editor canvas.
+     *
+     * Call this after changing the canvas's CSS size so layout wrapping
+     * and hit-testing use the correct dimensions (not the DPR-scaled pixel
+     * dimensions).
+     * @param {number} width
+     * @param {number} height
+     */
+    set_size(width, height) {
+        wasm.canvisteditor_set_size(this.__wbg_ptr, width, height);
     }
     /**
      * Set the document title.
@@ -541,6 +645,12 @@ export class CanvistEditor {
      */
     toggle_italic() {
         wasm.canvisteditor_toggle_italic(this.__wbg_ptr);
+    }
+    /**
+     * Toggle strikethrough on the current selection.
+     */
+    toggle_strikethrough() {
+        wasm.canvisteditor_toggle_strikethrough(this.__wbg_ptr);
     }
     /**
      * Toggle underline on the current selection. Preserves the current
@@ -662,6 +772,9 @@ function __wbg_get_imports() {
         __wbg_set_font_b038797b3573ae5e: function(arg0, arg1, arg2) {
             arg0.font = getStringFromWasm0(arg1, arg2);
         },
+        __wbg_set_imageSmoothingEnabled_f9f883202f4f3d5e: function(arg0, arg1) {
+            arg0.imageSmoothingEnabled = arg1 !== 0;
+        },
         __wbg_set_strokeStyle_a5baa9565d8b6485: function(arg0, arg1, arg2) {
             arg0.strokeStyle = getStringFromWasm0(arg1, arg2);
         },
@@ -726,9 +839,22 @@ function addToExternrefTable0(obj) {
     return idx;
 }
 
+function getArrayU32FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
 function getStringFromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return decodeText(ptr, len);
+}
+
+let cachedUint32ArrayMemory0 = null;
+function getUint32ArrayMemory0() {
+    if (cachedUint32ArrayMemory0 === null || cachedUint32ArrayMemory0.byteLength === 0) {
+        cachedUint32ArrayMemory0 = new Uint32Array(wasm.memory.buffer);
+    }
+    return cachedUint32ArrayMemory0;
 }
 
 let cachedUint8ArrayMemory0 = null;
@@ -835,6 +961,7 @@ let wasmModule, wasm;
 function __wbg_finalize_init(instance, module) {
     wasm = instance.exports;
     wasmModule = module;
+    cachedUint32ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
     wasm.__wbindgen_start();
     return wasm;

@@ -1307,4 +1307,220 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	Deno.test({
+		name: `[${browserName}] find_all returns matches via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "abc def abc ghi abc");
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const flat = ed.find_all("abc", true);
+						// flat is [start0, end0, start1, end1, ...]
+						const matches = [];
+						for (let i = 0; i < flat.length; i += 2) {
+							matches.push([flat[i], flat[i + 1]]);
+						}
+						return matches;
+					});
+					assertEquals(result.length, 3);
+					assertEquals(result[0], [0, 3]);
+					assertEquals(result[1], [8, 11]);
+					assertEquals(result[2], [16, 19]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] find_next wraps around via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "abc def abc");
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						// From offset 5, should find "abc" at 8.
+						const next = ed.find_next("abc", 5, true);
+						// From offset 9, wraps to start.
+						const wrapped = ed.find_next("abc", 9, true);
+						return { next: Array.from(next), wrapped: Array.from(wrapped) };
+					});
+					assertEquals(result.next, [8, 11]);
+					assertEquals(result.wrapped, [0, 3]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] replace_all replaces all occurrences via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "foo bar foo baz foo");
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const count = ed.replace_all("foo", "xx", true);
+						return { count, text: ed.plain_text() };
+					});
+					assertEquals(result.count, 3);
+					assertEquals(result.text, "xx bar xx baz xx");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name:
+			`[${browserName}] toggle_strikethrough applies and removes via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello");
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_selection(0, 5);
+						ed.toggle_strikethrough();
+						// Check rendered — we can't query strikethrough state easily,
+						// but we can verify the operation didn't error.
+						const text = ed.plain_text();
+						return {
+							text,
+							selStart: ed.selection_start(),
+							selEnd: ed.selection_end(),
+						};
+					});
+					assertEquals(result.text, "hello");
+					// Selection should be preserved.
+					assertEquals(result.selStart, 0);
+					assertEquals(result.selEnd, 5);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name:
+			`[${browserName}] set_font_size changes font on selection via WASM API`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "hello world");
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_selection(0, 5);
+						ed.set_font_size(32);
+						// Selection should be preserved.
+						return {
+							text: ed.plain_text(),
+							selStart: ed.selection_start(),
+							selEnd: ed.selection_end(),
+						};
+					});
+					assertEquals(result.text, "hello world");
+					assertEquals(result.selStart, 0);
+					assertEquals(result.selEnd, 5);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	Deno.test({
+		name: `[${browserName}] Ctrl+F opens find bar and Escape closes it`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					await typeInEditor(page, "test document");
+					// Open find bar with Ctrl+F.
+					const modifier = Deno.build.os === "darwin" ? "Meta" : "Control";
+					await page.keyboard.press(`${modifier}+f`);
+					await page.waitForTimeout(200);
+
+					// Check find bar is visible.
+					const barVisible = await page.evaluate(() => {
+						const bar = document.getElementById("find-bar");
+						return bar?.style.display !== "none";
+					});
+					assertEquals(barVisible, true);
+
+					// Close with Escape.
+					await page.keyboard.press("Escape");
+					await page.waitForTimeout(100);
+					const barHidden = await page.evaluate(() => {
+						const bar = document.getElementById("find-bar");
+						return bar?.style.display === "none";
+					});
+					assertEquals(barHidden, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

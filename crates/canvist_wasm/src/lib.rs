@@ -65,7 +65,9 @@ impl LayoutConstants {
 		let padding_x: f32 = 20.0;
 		let padding_y: f32 = 20.0;
 		let content_width = (canvas_width - padding_x * 2.0).max(100.0);
-		let default_style = Style::new().font_size(16.0).font_family("sans-serif");
+		let default_style = Style::new()
+			.font_size(16.0)
+			.font_family("Inter, system-ui, -apple-system, sans-serif");
 		let layout_config = LayoutConfig {
 			max_width: content_width,
 			default_style: default_style.clone(),
@@ -359,6 +361,17 @@ impl CanvistEditor {
 		})
 	}
 
+	/// Set the logical (CSS) dimensions of the editor canvas.
+	///
+	/// Call this after changing the canvas's CSS size so layout wrapping
+	/// and hit-testing use the correct dimensions (not the DPR-scaled pixel
+	/// dimensions).
+	#[wasm_bindgen]
+	pub fn set_size(&mut self, width: f32, height: f32) {
+		self.width = width;
+		self.height = height;
+	}
+
 	/// Insert text at the current cursor position (start of document).
 	#[wasm_bindgen]
 	pub fn insert_text(&mut self, text: &str) {
@@ -616,6 +629,107 @@ impl CanvistEditor {
 			.is_underline_in_range(sel.start().offset(), sel.end().offset())
 	}
 
+	/// Toggle strikethrough on the current selection.
+	#[wasm_bindgen]
+	pub fn toggle_strikethrough(&mut self) {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return;
+		}
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		// Check if all characters in range have strikethrough.
+		let all_strike = {
+			let runs = self.runtime.document().styled_runs();
+			let mut all = true;
+			for (_, style, rs, rl) in &runs {
+				let re = rs + rl;
+				if re <= start || *rs >= end {
+					continue;
+				}
+				if !style.resolve().strikethrough {
+					all = false;
+					break;
+				}
+			}
+			all
+		};
+		let style = if all_strike {
+			Style::new() // clears strikethrough
+		} else {
+			Style::new().strikethrough()
+		};
+		self.runtime.apply_operation(Operation::format(
+			Selection::range(Position::new(start), Position::new(end)),
+			style,
+		));
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::SelectionSet { selection: sel });
+	}
+
+	/// Find all occurrences of `needle`. Returns a flat array: [start0, end0,
+	/// start1, end1, …].
+	#[wasm_bindgen]
+	pub fn find_all(&self, needle: &str, case_sensitive: bool) -> Vec<usize> {
+		self.runtime
+			.document()
+			.find_all(needle, case_sensitive)
+			.into_iter()
+			.flat_map(|(s, e)| [s, e])
+			.collect()
+	}
+
+	/// Find the next occurrence of `needle` at or after `from_offset`.
+	/// Returns `[start, end]` or an empty array if not found.
+	#[wasm_bindgen]
+	pub fn find_next(&self, needle: &str, from_offset: usize, case_sensitive: bool) -> Vec<usize> {
+		self.runtime
+			.document()
+			.find_next(needle, from_offset, case_sensitive)
+			.map_or_else(Vec::new, |(s, e)| vec![s, e])
+	}
+
+	/// Find the previous occurrence before `from_offset`.
+	#[wasm_bindgen]
+	pub fn find_prev(&self, needle: &str, from_offset: usize, case_sensitive: bool) -> Vec<usize> {
+		self.runtime
+			.document()
+			.find_prev(needle, from_offset, case_sensitive)
+			.map_or_else(Vec::new, |(s, e)| vec![s, e])
+	}
+
+	/// Replace the text in range `[start, end)` with `replacement`.
+	///
+	/// This is a delete + insert.
+	#[wasm_bindgen]
+	pub fn replace_range(&mut self, start: usize, end: usize, replacement: &str) {
+		if start < end {
+			self.delete_range(start, end);
+		}
+		self.runtime.apply_operation(Operation::insert(
+			Position::new(start),
+			replacement.to_string(),
+		));
+	}
+
+	/// Replace all occurrences of `needle` with `replacement`.
+	/// Returns the number of replacements made.
+	#[wasm_bindgen]
+	pub fn replace_all(&mut self, needle: &str, replacement: &str, case_sensitive: bool) -> usize {
+		let matches = self.runtime.document().find_all(needle, case_sensitive);
+		let count = matches.len();
+		// Replace from end to start so offsets stay valid.
+		for &(start, end) in matches.iter().rev() {
+			self.delete_range(start, end);
+			self.runtime.apply_operation(Operation::insert(
+				Position::new(start),
+				replacement.to_string(),
+			));
+		}
+		count
+	}
+
 	/// Apply style to the given character range.
 	#[wasm_bindgen]
 	pub fn apply_style_range(
@@ -655,6 +769,34 @@ impl CanvistEditor {
 			Selection::range(Position::new(start), Position::new(end)),
 			style,
 		));
+	}
+
+	/// Set font size on the current selection.
+	#[wasm_bindgen]
+	pub fn set_font_size(&mut self, size: f32) {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return;
+		}
+		let style = Style::new().font_size(size);
+		self.runtime.apply_operation(Operation::format(sel, style));
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::SelectionSet { selection: sel });
+	}
+
+	/// Set text color on the current selection.
+	#[wasm_bindgen]
+	pub fn set_color(&mut self, r: u8, g: u8, b: u8, a: u8) {
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return;
+		}
+		let style = Style::new().color(r, g, b, a);
+		self.runtime.apply_operation(Operation::format(sel, style));
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::SelectionSet { selection: sel });
 	}
 
 	/// Undo the most recent transaction.
@@ -1073,10 +1215,10 @@ impl CanvistEditor {
 	/// - `screen_y` — Y coordinate in canvas/screen pixels
 	#[wasm_bindgen]
 	pub fn hit_test(&self, screen_x: f64, screen_y: f64) -> Result<usize, JsValue> {
-		let (canvas, ctx) = self.canvas_and_context()?;
+		let (_canvas, ctx) = self.canvas_and_context()?;
 
-		let width = canvas.width() as f32;
-		let height = canvas.height() as f32;
+		let width = self.width;
+		let height = self.height;
 
 		let renderer = Canvas2dRenderer::new(ctx, width, height);
 		let lc = LayoutConstants::new(width);
@@ -1161,10 +1303,15 @@ impl CanvistEditor {
 	/// spacing between them.
 	#[wasm_bindgen]
 	pub fn render(&self) -> Result<(), JsValue> {
-		let (canvas, ctx) = self.canvas_and_context()?;
+		let (_canvas, ctx) = self.canvas_and_context()?;
 
-		let width = canvas.width() as f32;
-		let height = canvas.height() as f32;
+		// Use cached logical (CSS) dimensions — these are set by `set_size()`
+		// and exclude DPR scaling so layout wrapping is correct.
+		let width = self.width;
+		let height = self.height;
+
+		// Enable high-quality text rendering.
+		ctx.set_image_smoothing_enabled(true);
 
 		let mut renderer = Canvas2dRenderer::new(ctx, width, height);
 

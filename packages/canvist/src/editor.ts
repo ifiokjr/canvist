@@ -263,19 +263,61 @@ export async function createEditor(
 
 	textarea.addEventListener("keydown", (e: KeyboardEvent) => {
 		if (e.isComposing) return;
+		const mod = e.ctrlKey || e.metaKey;
+		const textLength = inner.plain_text().length;
 
-		// Clipboard shortcuts — let the browser fire native clipboard events
-		// on the textarea. We do NOT preventDefault so copy/cut/paste events
-		// propagate normally.
-		if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
-			if (e.key === "c" || e.key === "x" || e.key === "v") {
-				// Allow default so the browser fires the clipboard event.
-				return;
+		function startOrExtendSelection(newOffset: number) {
+			if (e.shiftKey) {
+				const anchor = inner.selection_start() === cursorOffset
+					? inner.selection_end()
+					: inner.selection_start();
+				cursorOffset = newOffset;
+				inner.set_selection(anchor, cursorOffset);
+			} else {
+				cursorOffset = newOffset;
+				inner.set_selection(cursorOffset, cursorOffset);
 			}
 		}
 
-		// Undo: Ctrl+Z / Cmd+Z
-		if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+		// Clipboard — let browser fire native events.
+		if (mod && !e.shiftKey && !e.altKey) {
+			if (e.key === "c" || e.key === "x" || e.key === "v") return;
+		}
+
+		// Select all.
+		if (mod && e.key === "a") {
+			e.preventDefault();
+			inner.select_all();
+			cursorOffset = textLength;
+			renderFrame();
+			return;
+		}
+
+		// Formatting toggles.
+		if (mod && e.key === "b") {
+			e.preventDefault();
+			syncTime();
+			inner.toggle_bold();
+			renderFrame();
+			return;
+		}
+		if (mod && e.key === "i") {
+			e.preventDefault();
+			syncTime();
+			inner.toggle_italic();
+			renderFrame();
+			return;
+		}
+		if (mod && e.key === "u") {
+			e.preventDefault();
+			syncTime();
+			inner.toggle_underline();
+			renderFrame();
+			return;
+		}
+
+		// Undo / Redo.
+		if (e.key === "z" && mod && !e.shiftKey) {
 			e.preventDefault();
 			syncTime();
 			if (inner.undo()) {
@@ -284,11 +326,9 @@ export async function createEditor(
 			}
 			return;
 		}
-
-		// Redo: Ctrl+Shift+Z / Cmd+Shift+Z  or  Ctrl+Y / Cmd+Y
 		if (
-			(e.key === "z" && (e.ctrlKey || e.metaKey) && e.shiftKey) ||
-			(e.key === "y" && (e.ctrlKey || e.metaKey))
+			(e.key === "z" && mod && e.shiftKey) ||
+			(e.key === "y" && mod)
 		) {
 			e.preventDefault();
 			syncTime();
@@ -299,48 +339,154 @@ export async function createEditor(
 			return;
 		}
 
-		switch (e.key) {
-			case "Enter": {
-				e.preventDefault();
-				syncTime();
-				inner.insert_text_at(cursorOffset, "\n");
-				cursorOffset += 1;
-				renderFrame();
-				break;
-			}
-			case "Backspace": {
-				e.preventDefault();
-				if (cursorOffset > 0) {
-					syncTime();
-					inner.delete_range(cursorOffset - 1, cursorOffset);
-					cursorOffset -= 1;
-					renderFrame();
+		// Enter.
+		if (e.key === "Enter") {
+			e.preventDefault();
+			syncTime();
+			inner.insert_text_at(cursorOffset, "\n");
+			cursorOffset += 1;
+			renderFrame();
+			return;
+		}
+
+		// Tab.
+		if (e.key === "Tab") {
+			e.preventDefault();
+			syncTime();
+			inner.insert_text_at(cursorOffset, "\t");
+			cursorOffset += 1;
+			renderFrame();
+			return;
+		}
+
+		// Backspace.
+		if (e.key === "Backspace") {
+			e.preventDefault();
+			syncTime();
+			const selStart = inner.selection_start();
+			const selEnd = inner.selection_end();
+			if (selStart !== selEnd) {
+				inner.delete_range(selStart, selEnd);
+				cursorOffset = selStart;
+			} else if (mod) {
+				const wb = inner.word_boundary_left(cursorOffset);
+				if (wb < cursorOffset) {
+					inner.delete_range(wb, cursorOffset);
+					cursorOffset = wb;
 				}
-				break;
+			} else if (cursorOffset > 0) {
+				inner.delete_range(cursorOffset - 1, cursorOffset);
+				cursorOffset -= 1;
 			}
-			case "Delete": {
-				e.preventDefault();
-				const text = inner.plain_text();
-				if (cursorOffset < text.length) {
-					syncTime();
-					inner.delete_range(cursorOffset, cursorOffset + 1);
-					renderFrame();
+			inner.set_selection(cursorOffset, cursorOffset);
+			renderFrame();
+			return;
+		}
+
+		// Delete.
+		if (e.key === "Delete") {
+			e.preventDefault();
+			syncTime();
+			const selStart = inner.selection_start();
+			const selEnd = inner.selection_end();
+			if (selStart !== selEnd) {
+				inner.delete_range(selStart, selEnd);
+				cursorOffset = selStart;
+			} else if (mod) {
+				const wb = inner.word_boundary_right(cursorOffset);
+				if (wb > cursorOffset) {
+					inner.delete_range(cursorOffset, wb);
 				}
-				break;
+			} else if (cursorOffset < textLength) {
+				inner.delete_range(cursorOffset, cursorOffset + 1);
 			}
-			case "ArrowLeft": {
-				e.preventDefault();
-				if (cursorOffset > 0) cursorOffset -= 1;
-				renderFrame();
-				break;
+			inner.set_selection(cursorOffset, cursorOffset);
+			renderFrame();
+			return;
+		}
+
+		// Home / End.
+		if (e.key === "Home") {
+			e.preventDefault();
+			try {
+				const target = mod ? 0 : inner.line_start_for_offset(cursorOffset);
+				startOrExtendSelection(target);
+			} catch {
+				startOrExtendSelection(0);
 			}
-			case "ArrowRight": {
-				e.preventDefault();
-				const text = inner.plain_text();
-				if (cursorOffset < text.length) cursorOffset += 1;
-				renderFrame();
-				break;
+			renderFrame();
+			return;
+		}
+		if (e.key === "End") {
+			e.preventDefault();
+			try {
+				const target = mod
+					? textLength
+					: inner.line_end_for_offset(cursorOffset);
+				startOrExtendSelection(target);
+			} catch {
+				startOrExtendSelection(textLength);
 			}
+			renderFrame();
+			return;
+		}
+
+		// Arrow Up / Down.
+		if (e.key === "ArrowUp") {
+			e.preventDefault();
+			try {
+				startOrExtendSelection(inner.offset_above(cursorOffset));
+			} catch {
+				startOrExtendSelection(0);
+			}
+			renderFrame();
+			return;
+		}
+		if (e.key === "ArrowDown") {
+			e.preventDefault();
+			try {
+				startOrExtendSelection(inner.offset_below(cursorOffset));
+			} catch {
+				startOrExtendSelection(textLength);
+			}
+			renderFrame();
+			return;
+		}
+
+		// Arrow Left / Right.
+		if (e.key === "ArrowLeft") {
+			e.preventDefault();
+			if (mod) {
+				startOrExtendSelection(inner.word_boundary_left(cursorOffset));
+			} else {
+				const selStart = inner.selection_start();
+				const selEnd = inner.selection_end();
+				if (!e.shiftKey && selStart !== selEnd) {
+					cursorOffset = selStart;
+					inner.set_selection(cursorOffset, cursorOffset);
+				} else {
+					startOrExtendSelection(Math.max(0, cursorOffset - 1));
+				}
+			}
+			renderFrame();
+			return;
+		}
+		if (e.key === "ArrowRight") {
+			e.preventDefault();
+			if (mod) {
+				startOrExtendSelection(inner.word_boundary_right(cursorOffset));
+			} else {
+				const selStart = inner.selection_start();
+				const selEnd = inner.selection_end();
+				if (!e.shiftKey && selStart !== selEnd) {
+					cursorOffset = selEnd;
+					inner.set_selection(cursorOffset, cursorOffset);
+				} else {
+					startOrExtendSelection(Math.min(textLength, cursorOffset + 1));
+				}
+			}
+			renderFrame();
+			return;
 		}
 	});
 
@@ -485,6 +631,87 @@ export async function createEditor(
 			},
 			toJSON() {
 				return ref.to_json();
+			},
+			toggleBold() {
+				syncTime();
+				ref.toggle_bold();
+				renderFrame();
+			},
+			toggleItalic() {
+				syncTime();
+				ref.toggle_italic();
+				renderFrame();
+			},
+			toggleUnderline() {
+				syncTime();
+				ref.toggle_underline();
+				renderFrame();
+			},
+			toggleStrikethrough() {
+				syncTime();
+				ref.toggle_strikethrough();
+				renderFrame();
+			},
+			get isBold() {
+				return ref.is_bold();
+			},
+			get isItalic() {
+				return ref.is_italic();
+			},
+			get isUnderline() {
+				return ref.is_underline();
+			},
+			setFontSize(size: number) {
+				syncTime();
+				ref.set_font_size(size);
+				renderFrame();
+			},
+			setColor(r: number, g: number, b: number, a: number) {
+				syncTime();
+				ref.set_color(r, g, b, a);
+				renderFrame();
+			},
+			selectAll() {
+				ref.select_all();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			selectWordAt(offset: number) {
+				ref.select_word_at(offset);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			get selectedText() {
+				return ref.get_selected_text();
+			},
+			findAll(needle: string, caseSensitive = false) {
+				const flat = ref.find_all(needle, caseSensitive);
+				const results: Array<{ start: number; end: number }> = [];
+				for (let i = 0; i < flat.length; i += 2) {
+					results.push({ start: flat[i], end: flat[i + 1] });
+				}
+				return results;
+			},
+			findNext(needle: string, fromOffset: number, caseSensitive = false) {
+				const r = ref.find_next(needle, fromOffset, caseSensitive);
+				return r.length === 2 ? { start: r[0], end: r[1] } : null;
+			},
+			findPrev(needle: string, fromOffset: number, caseSensitive = false) {
+				const r = ref.find_prev(needle, fromOffset, caseSensitive);
+				return r.length === 2 ? { start: r[0], end: r[1] } : null;
+			},
+			replaceRange(start: number, end: number, replacement: string) {
+				syncTime();
+				ref.replace_range(start, end, replacement);
+				cursorOffset = start + replacement.length;
+				renderFrame();
+			},
+			replaceAll(needle: string, replacement: string, caseSensitive = false) {
+				syncTime();
+				const count = ref.replace_all(needle, replacement, caseSensitive);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return count;
 			},
 		};
 	}

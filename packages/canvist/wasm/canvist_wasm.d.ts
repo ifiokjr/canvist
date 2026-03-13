@@ -73,6 +73,20 @@ export class CanvistEditor {
      */
     delete_range(start: number, end: number): void;
     /**
+     * Find all occurrences of `needle`. Returns a flat array: [start0, end0,
+     * start1, end1, …].
+     */
+    find_all(needle: string, case_sensitive: boolean): Uint32Array;
+    /**
+     * Find the next occurrence of `needle` at or after `from_offset`.
+     * Returns `[start, end]` or an empty array if not found.
+     */
+    find_next(needle: string, from_offset: number, case_sensitive: boolean): Uint32Array;
+    /**
+     * Find the previous occurrence before `from_offset`.
+     */
+    find_prev(needle: string, from_offset: number, case_sensitive: boolean): Uint32Array;
+    /**
      * Return the currently selected text (empty string if selection is collapsed).
      */
     get_selected_text(): string;
@@ -197,6 +211,17 @@ export class CanvistEditor {
      */
     render(): void;
     /**
+     * Replace all occurrences of `needle` with `replacement`.
+     * Returns the number of replacements made.
+     */
+    replace_all(needle: string, replacement: string, case_sensitive: boolean): number;
+    /**
+     * Replace the text in range `[start, end)` with `replacement`.
+     *
+     * This is a delete + insert.
+     */
+    replace_range(start: number, end: number, replacement: string): void;
+    /**
      * Replay a JSON-encoded operation list into current runtime.
      */
     replay_operations_json(operations_json: string): void;
@@ -241,6 +266,14 @@ export class CanvistEditor {
      */
     set_coalesce_timeout(ms: number): void;
     /**
+     * Set text color on the current selection.
+     */
+    set_color(r: number, g: number, b: number, a: number): void;
+    /**
+     * Set font size on the current selection.
+     */
+    set_font_size(size: number): void;
+    /**
      * Set the current wall-clock time (milliseconds since epoch) for the
      * undo coalescing timer.
      *
@@ -254,6 +287,14 @@ export class CanvistEditor {
      * Set selection range.
      */
     set_selection(start: number, end: number): void;
+    /**
+     * Set the logical (CSS) dimensions of the editor canvas.
+     *
+     * Call this after changing the canvas's CSS size so layout wrapping
+     * and hit-testing use the correct dimensions (not the DPR-scaled pixel
+     * dimensions).
+     */
+    set_size(width: number, height: number): void;
     /**
      * Set the document title.
      */
@@ -274,6 +315,10 @@ export class CanvistEditor {
      * selection.
      */
     toggle_italic(): void;
+    /**
+     * Toggle strikethrough on the current selection.
+     */
+    toggle_strikethrough(): void;
     /**
      * Toggle underline on the current selection. Preserves the current
      * selection.
@@ -312,6 +357,9 @@ export interface InitOutput {
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
     readonly canvisteditor_create: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_delete_range: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
@@ -332,6 +380,8 @@ export interface InitOutput {
     readonly canvisteditor_queue_key_down_with_modifiers: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly canvisteditor_redo: (a: number) => number;
     readonly canvisteditor_render: (a: number) => [number, number];
+    readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly canvisteditor_replace_range: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_replay_operations_json: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_select_all: (a: number) => void;
     readonly canvisteditor_select_word_at: (a: number, b: number) => void;
@@ -339,12 +389,16 @@ export interface InitOutput {
     readonly canvisteditor_selection_start: (a: number) => number;
     readonly canvisteditor_set_caret_visible: (a: number, b: number) => void;
     readonly canvisteditor_set_coalesce_timeout: (a: number, b: number) => void;
+    readonly canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly canvisteditor_set_font_size: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
     readonly canvisteditor_to_json: (a: number) => [number, number, number, number];
     readonly canvisteditor_toggle_bold: (a: number) => void;
     readonly canvisteditor_toggle_italic: (a: number) => void;
+    readonly canvisteditor_toggle_strikethrough: (a: number) => void;
     readonly canvisteditor_toggle_underline: (a: number) => void;
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
