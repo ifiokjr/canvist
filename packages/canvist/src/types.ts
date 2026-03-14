@@ -687,6 +687,78 @@ export interface CanvistEditor {
 	/** Swap case of each character in selection (a↔A). */
 	transformToggleCase(): void;
 
+	// ── Line decorations ───────────────────────────────────────────
+
+	/** Add a coloured background decoration to a line (0-based). */
+	addLineDecoration(
+		line: number,
+		r: number,
+		g: number,
+		b: number,
+		a: number,
+	): void;
+
+	/** Remove all decorations from a specific line. */
+	removeLineDecorations(line: number): void;
+
+	/** Remove all line decorations. */
+	clearLineDecorations(): void;
+
+	/** Number of active line decorations. */
+	readonly lineDecorationCount: number;
+
+	// ── Modified state ──────────────────────────────────────────────
+
+	/** Whether the document has been modified since last save. */
+	readonly isModified: boolean;
+
+	/** Mark the document as saved (clears modified flag). */
+	markSaved(): void;
+
+	/** Mark the document as modified. */
+	markModified(): void;
+
+	// ── Clipboard ring ──────────────────────────────────────────────
+
+	/** Push text into the clipboard ring. */
+	clipboardRingPush(text: string): void;
+
+	/** Get clipboard ring entry at index (0 = most recent). */
+	clipboardRingGet(index: number): string;
+
+	/** Number of entries in the clipboard ring. */
+	readonly clipboardRingLength: number;
+
+	/** Clear the clipboard ring. */
+	clipboardRingClear(): void;
+
+	/** Paste clipboard ring entry at index at cursor. */
+	clipboardRingPaste(index: number): void;
+
+	// ── Word frequency ──────────────────────────────────────────────
+
+	/** Return top N words as [word, count, word, count, ...]. */
+	wordFrequency(topN: number): string[];
+
+	// ── Highlight occurrences ───────────────────────────────────────
+
+	/** Whether occurrence highlighting is enabled. */
+	readonly highlightOccurrences: boolean;
+
+	/** Toggle occurrence highlighting. */
+	setHighlightOccurrences(enabled: boolean): void;
+
+	/** Get the word under/adjacent to the cursor. */
+	wordAtCursor(): string;
+
+	// ── Text measurement ────────────────────────────────────────────
+
+	/** Measure pixel width of a string using default style. */
+	measureTextWidth(text: string): number;
+
+	/** Measure pixel width of a single character. */
+	measureCharWidth(ch: string): number;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

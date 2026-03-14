@@ -12,6 +12,13 @@ export class CanvistEditor {
     free(): void;
     [Symbol.dispose](): void;
     /**
+     * Add a coloured background decoration to a line (0-based).
+     *
+     * Multiple decorations can be added to the same line. The colours
+     * are blended in order.
+     */
+    add_line_decoration(line: number, r: number, g: number, b: number, a: number): void;
+    /**
      * Add a single ruler at the given column.
      */
     add_ruler(column: number): void;
@@ -102,6 +109,10 @@ export class CanvistEditor {
      */
     clear_bookmarks(): void;
     /**
+     * Remove all line decorations.
+     */
+    clear_line_decorations(): void;
+    /**
      * Perform a clipboard cut: delete the current selection.
      *
      * The caller is expected to have already read `get_selected_text()` and
@@ -112,6 +123,31 @@ export class CanvistEditor {
      * Paste text at the current cursor position (replacing any selection).
      */
     clipboard_paste(text: string): void;
+    /**
+     * Clear the clipboard ring.
+     */
+    clipboard_ring_clear(): void;
+    /**
+     * Get the clipboard ring entry at `index` (0 = most recent).
+     *
+     * Returns empty string if index is out of range.
+     */
+    clipboard_ring_get(index: number): string;
+    /**
+     * Number of entries in the clipboard ring.
+     */
+    clipboard_ring_length(): number;
+    /**
+     * Paste the clipboard ring entry at `index` at the cursor.
+     */
+    clipboard_ring_paste(index: number): void;
+    /**
+     * Push a text entry into the clipboard ring.
+     *
+     * The ring holds the most recent `clipboard_ring_max` entries
+     * (default 10). Newest entry is at index 0.
+     */
+    clipboard_ring_push(text: string): void;
     /**
      * Return the current undo-coalescing timeout in milliseconds.
      */
@@ -290,6 +326,10 @@ export class CanvistEditor {
      */
     highlight_matching_brackets(): boolean;
     /**
+     * Whether occurrence highlighting is enabled.
+     */
+    highlight_occurrences(): boolean;
+    /**
      * Hit-test a screen-space point to determine the character offset at that
      * position.
      *
@@ -371,6 +411,10 @@ export class CanvistEditor {
      */
     is_line_bookmarked(): boolean;
     /**
+     * Whether the document has been modified since last save.
+     */
+    is_modified(): boolean;
+    /**
      * Check if the current selection is all underline.
      */
     is_underline(): boolean;
@@ -385,6 +429,10 @@ export class CanvistEditor {
      */
     line_count(): number;
     /**
+     * Number of active line decorations.
+     */
+    line_decoration_count(): number;
+    /**
      * Return the end offset of the visual line containing `offset`.
      */
     line_end_for_offset(offset: number): number;
@@ -395,6 +443,29 @@ export class CanvistEditor {
      * then returns the character offset where that visual line begins.
      */
     line_start_for_offset(offset: number): number;
+    /**
+     * Mark the document as modified.
+     *
+     * Called automatically by mutating operations. You can also call
+     * it manually to force the dirty state.
+     */
+    mark_modified(): void;
+    /**
+     * Mark the document as saved (clears the modified flag).
+     */
+    mark_saved(): void;
+    /**
+     * Measure the pixel width of a single character using the default
+     * style.
+     */
+    measure_char_width(ch: string): number;
+    /**
+     * Measure the pixel width of a string using the default style.
+     *
+     * Useful for external layout calculations. Returns 0.0 if the
+     * canvas context is not available.
+     */
+    measure_text_width(text: string): number;
     /**
      * Move cursor one character left.
      */
@@ -548,6 +619,10 @@ export class CanvistEditor {
      * Remove the background (highlight) colour from the current selection.
      */
     remove_highlight_color(): void;
+    /**
+     * Remove all decorations from a specific line.
+     */
+    remove_line_decorations(line: number): void;
     /**
      * Remove the ruler at the given column.
      */
@@ -726,6 +801,11 @@ export class CanvistEditor {
      * Toggle matching bracket highlight.
      */
     set_highlight_matching_brackets(enabled: boolean): void;
+    /**
+     * Enable or disable highlighting all occurrences of the word under
+     * the cursor.
+     */
+    set_highlight_occurrences(enabled: boolean): void;
     /**
      * Set the current wall-clock time (milliseconds since epoch) for the
      * undo coalescing timer.
@@ -986,6 +1066,12 @@ export class CanvistEditor {
      */
     url_encode_selection(): void;
     /**
+     * Get the word under (or adjacent to) the cursor.
+     *
+     * Returns empty string if the cursor is not on a word.
+     */
+    word_at_cursor(): string;
+    /**
      * Find the previous word boundary from a character offset.
      */
     word_boundary_left(offset: number): number;
@@ -997,6 +1083,11 @@ export class CanvistEditor {
      * Count the number of words (whitespace-separated tokens).
      */
     word_count(): number;
+    /**
+     * Return the top N most frequent words as alternating
+     * `[word, count, word, count, ...]` strings.
+     */
+    word_frequency(top_n: number): string[];
     /**
      * Whether word wrapping is enabled.
      */
@@ -1031,6 +1122,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_canvisteditor_free: (a: number, b: number) => void;
+    readonly canvisteditor_add_line_decoration: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly canvisteditor_add_ruler: (a: number, b: number) => void;
     readonly canvisteditor_apply_style_range: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly canvisteditor_auto_close_brackets: (a: number) => number;
@@ -1048,8 +1140,14 @@ export interface InitOutput {
     readonly canvisteditor_center_line_in_viewport: (a: number) => void;
     readonly canvisteditor_char_count: (a: number) => number;
     readonly canvisteditor_clear_bookmarks: (a: number) => void;
+    readonly canvisteditor_clear_line_decorations: (a: number) => void;
     readonly canvisteditor_clipboard_cut: (a: number) => void;
     readonly canvisteditor_clipboard_paste: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_clipboard_ring_clear: (a: number) => void;
+    readonly canvisteditor_clipboard_ring_get: (a: number, b: number) => [number, number];
+    readonly canvisteditor_clipboard_ring_length: (a: number) => number;
+    readonly canvisteditor_clipboard_ring_paste: (a: number, b: number) => void;
+    readonly canvisteditor_clipboard_ring_push: (a: number, b: number, c: number) => void;
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
     readonly canvisteditor_comment_prefix: (a: number) => [number, number];
     readonly canvisteditor_content_height: (a: number) => [number, number, number];
@@ -1084,6 +1182,7 @@ export interface InitOutput {
     readonly canvisteditor_go_to_line: (a: number, b: number) => void;
     readonly canvisteditor_highlight_current_line: (a: number) => number;
     readonly canvisteditor_highlight_matching_brackets: (a: number) => number;
+    readonly canvisteditor_highlight_occurrences: (a: number) => number;
     readonly canvisteditor_hit_test: (a: number, b: number, c: number) => [number, number, number];
     readonly canvisteditor_indent_selection: (a: number) => void;
     readonly canvisteditor_insert_snippet: (a: number, b: number, c: number) => void;
@@ -1095,11 +1194,16 @@ export interface InitOutput {
     readonly canvisteditor_is_bold: (a: number) => number;
     readonly canvisteditor_is_italic: (a: number) => number;
     readonly canvisteditor_is_line_bookmarked: (a: number) => number;
+    readonly canvisteditor_is_modified: (a: number) => number;
     readonly canvisteditor_is_underline: (a: number) => number;
     readonly canvisteditor_join_lines: (a: number) => void;
     readonly canvisteditor_line_count: (a: number) => [number, number, number];
+    readonly canvisteditor_line_decoration_count: (a: number) => number;
     readonly canvisteditor_line_end_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_mark_modified: (a: number) => void;
+    readonly canvisteditor_mark_saved: (a: number) => void;
+    readonly canvisteditor_measure_char_width: (a: number, b: number, c: number) => number;
     readonly canvisteditor_move_cursor_left: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_right: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_to: (a: number, b: number, c: number) => void;
@@ -1125,10 +1229,12 @@ export interface InitOutput {
     readonly canvisteditor_push_cursor_history: (a: number) => void;
     readonly canvisteditor_queue_key_down: (a: number, b: number, c: number) => void;
     readonly canvisteditor_queue_key_down_with_modifiers: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
+    readonly canvisteditor_queue_text_input: (a: number, b: number, c: number) => void;
     readonly canvisteditor_read_only: (a: number) => number;
     readonly canvisteditor_redo: (a: number) => number;
     readonly canvisteditor_remove_duplicate_lines: (a: number) => number;
     readonly canvisteditor_remove_highlight_color: (a: number) => void;
+    readonly canvisteditor_remove_line_decorations: (a: number, b: number) => void;
     readonly canvisteditor_remove_ruler: (a: number, b: number) => void;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
@@ -1162,6 +1268,7 @@ export interface InitOutput {
     readonly canvisteditor_set_highlight_color: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_set_highlight_current_line: (a: number, b: number) => void;
     readonly canvisteditor_set_highlight_matching_brackets: (a: number, b: number) => void;
+    readonly canvisteditor_set_highlight_occurrences: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_overwrite_mode: (a: number, b: number) => void;
     readonly canvisteditor_set_read_only: (a: number, b: number) => void;
@@ -1212,16 +1319,18 @@ export interface InitOutput {
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_url_decode_selection: (a: number) => void;
     readonly canvisteditor_url_encode_selection: (a: number) => void;
+    readonly canvisteditor_word_at_cursor: (a: number) => [number, number];
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;
     readonly canvisteditor_word_count: (a: number) => number;
+    readonly canvisteditor_word_frequency: (a: number, b: number) => [number, number];
     readonly canvisteditor_word_wrap: (a: number) => number;
     readonly canvisteditor_wrap_selection: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_zoom: (a: number) => number;
     readonly canvisteditor_zoom_in: (a: number) => void;
     readonly canvisteditor_zoom_out: (a: number) => void;
     readonly canvisteditor_zoom_reset: (a: number) => void;
-    readonly canvisteditor_queue_text_input: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_measure_text_width: (a: number, b: number, c: number) => number;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_exn_store: (a: number) => void;
@@ -1229,6 +1338,7 @@ export interface InitOutput {
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __externref_table_dealloc: (a: number) => void;
+    readonly __externref_drop_slice: (a: number, b: number) => void;
     readonly __wbindgen_start: () => void;
 }
 

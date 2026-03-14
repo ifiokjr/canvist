@@ -4205,4 +4205,220 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Line decorations ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line decorations add, remove, clear`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.add_line_decoration(0, 255, 0, 0, 40);
+						ed.add_line_decoration(2, 0, 255, 0, 40);
+						const count1 = ed.line_decoration_count();
+						ed.remove_line_decorations(0);
+						const count2 = ed.line_decoration_count();
+						ed.clear_line_decorations();
+						const count3 = ed.line_decoration_count();
+						return { count1, count2, count3 };
+					});
+					assertEquals(result.count1, 2);
+					assertEquals(result.count2, 1);
+					assertEquals(result.count3, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Modified state ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] modified state tracks edits and saves`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.is_modified();
+						ed.insert_text("hello");
+						const afterEdit = ed.is_modified();
+						ed.mark_saved();
+						const afterSave = ed.is_modified();
+						ed.insert_text(" world");
+						const afterEdit2 = ed.is_modified();
+						return { before, afterEdit, afterSave, afterEdit2 };
+					});
+					assertEquals(result.before, false);
+					assertEquals(result.afterEdit, true);
+					assertEquals(result.afterSave, false);
+					assertEquals(result.afterEdit2, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Clipboard ring ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] clipboard ring stores and retrieves entries`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.clipboard_ring_push("first");
+						ed.clipboard_ring_push("second");
+						ed.clipboard_ring_push("third");
+						const len = ed.clipboard_ring_length();
+						const newest = ed.clipboard_ring_get(0);
+						const oldest = ed.clipboard_ring_get(2);
+						// Paste from ring.
+						ed.clipboard_ring_paste(1); // pastes "second"
+						const text = ed.plain_text();
+						return { len, newest, oldest, text };
+					});
+					assertEquals(result.len, 3);
+					assertEquals(result.newest, "third");
+					assertEquals(result.oldest, "first");
+					assertEquals(result.text, "second");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Word frequency ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] word_frequency returns top N words`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("foo bar foo baz foo bar");
+						const freq = Array.from(ed.word_frequency(2));
+						return freq;
+					});
+					// foo=3 is most frequent, bar=2 is second
+					assertEquals(result[0], "foo");
+					assertEquals(result[1], "3");
+					assertEquals(result[2], "bar");
+					assertEquals(result[3], "2");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Highlight occurrences ───────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] word_at_cursor and highlight toggle`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello world");
+						ed.set_selection(2, 2); // inside "hello"
+						const word = ed.word_at_cursor();
+						const before = ed.highlight_occurrences();
+						ed.set_highlight_occurrences(true);
+						const after = ed.highlight_occurrences();
+						return { word, before, after };
+					});
+					assertEquals(result.word, "hello");
+					assertEquals(result.before, false);
+					assertEquals(result.after, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Text measurement ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] measure_text_width returns positive value`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const w = ed.measure_text_width("Hello");
+						const cw = ed.measure_char_width("M");
+						return { w, cw };
+					});
+					assert(result.w > 0, `text width should be > 0, got ${result.w}`);
+					assert(result.cw > 0, `char width should be > 0, got ${result.cw}`);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

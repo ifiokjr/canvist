@@ -379,6 +379,16 @@ pub struct CanvistEditor {
 	cursor_history_index: i32,
 	/// Column rulers — vertical guide lines at these column numbers.
 	rulers: Vec<usize>,
+	/// Per-line decorations: (line_0based, r, g, b, a) for background tinting.
+	line_decorations: Vec<(usize, u8, u8, u8, u8)>,
+	/// Whether the document has been modified since last `mark_saved()`.
+	is_modified: bool,
+	/// Clipboard ring — last N copied/cut texts (newest first).
+	clipboard_ring: Vec<String>,
+	/// Max entries in clipboard ring.
+	clipboard_ring_max: usize,
+	/// Whether to highlight all occurrences of the word under cursor.
+	highlight_occurrences: bool,
 }
 
 /// Colour theme for the editor canvas.
@@ -499,6 +509,11 @@ impl CanvistEditor {
 			cursor_history: Vec::new(),
 			cursor_history_index: -1,
 			rulers: Vec::new(),
+			line_decorations: Vec::new(),
+			is_modified: false,
+			clipboard_ring: Vec::new(),
+			clipboard_ring_max: 10,
+			highlight_occurrences: false,
 		})
 	}
 
@@ -3117,6 +3132,197 @@ impl CanvistEditor {
 		});
 	}
 
+	// ── Line decorations ─────────────────────────────────────────────
+
+	/// Add a coloured background decoration to a line (0-based).
+	///
+	/// Multiple decorations can be added to the same line. The colours
+	/// are blended in order.
+	#[wasm_bindgen]
+	pub fn add_line_decoration(&mut self, line: usize, r: u8, g: u8, b: u8, a: u8) {
+		self.line_decorations.push((line, r, g, b, a));
+	}
+
+	/// Remove all decorations from a specific line.
+	#[wasm_bindgen]
+	pub fn remove_line_decorations(&mut self, line: usize) {
+		self.line_decorations.retain(|&(l, ..)| l != line);
+	}
+
+	/// Remove all line decorations.
+	#[wasm_bindgen]
+	pub fn clear_line_decorations(&mut self) {
+		self.line_decorations.clear();
+	}
+
+	/// Number of active line decorations.
+	#[wasm_bindgen]
+	pub fn line_decoration_count(&self) -> usize {
+		self.line_decorations.len()
+	}
+
+	// ── Modified state tracking ──────────────────────────────────────
+
+	/// Whether the document has been modified since last save.
+	#[wasm_bindgen]
+	pub fn is_modified(&self) -> bool {
+		self.is_modified
+	}
+
+	/// Mark the document as saved (clears the modified flag).
+	#[wasm_bindgen]
+	pub fn mark_saved(&mut self) {
+		self.is_modified = false;
+	}
+
+	/// Mark the document as modified.
+	///
+	/// Called automatically by mutating operations. You can also call
+	/// it manually to force the dirty state.
+	#[wasm_bindgen]
+	pub fn mark_modified(&mut self) {
+		self.is_modified = true;
+	}
+
+	// ── Clipboard ring ───────────────────────────────────────────────
+
+	/// Push a text entry into the clipboard ring.
+	///
+	/// The ring holds the most recent `clipboard_ring_max` entries
+	/// (default 10). Newest entry is at index 0.
+	#[wasm_bindgen]
+	pub fn clipboard_ring_push(&mut self, text: &str) {
+		if text.is_empty() {
+			return;
+		}
+		// Deduplicate: remove if already present.
+		self.clipboard_ring.retain(|t| t != text);
+		self.clipboard_ring.insert(0, text.to_string());
+		if self.clipboard_ring.len() > self.clipboard_ring_max {
+			self.clipboard_ring.truncate(self.clipboard_ring_max);
+		}
+	}
+
+	/// Get the clipboard ring entry at `index` (0 = most recent).
+	///
+	/// Returns empty string if index is out of range.
+	#[wasm_bindgen]
+	pub fn clipboard_ring_get(&self, index: usize) -> String {
+		self.clipboard_ring.get(index).cloned().unwrap_or_default()
+	}
+
+	/// Number of entries in the clipboard ring.
+	#[wasm_bindgen]
+	pub fn clipboard_ring_length(&self) -> usize {
+		self.clipboard_ring.len()
+	}
+
+	/// Clear the clipboard ring.
+	#[wasm_bindgen]
+	pub fn clipboard_ring_clear(&mut self) {
+		self.clipboard_ring.clear();
+	}
+
+	/// Paste the clipboard ring entry at `index` at the cursor.
+	#[wasm_bindgen]
+	pub fn clipboard_ring_paste(&mut self, index: usize) {
+		if !self.is_writable() {
+			return;
+		}
+		let text = self.clipboard_ring_get(index);
+		if text.is_empty() {
+			return;
+		}
+		// Delete selection if any.
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			self.delete_range(sel.start().offset(), sel.end().offset());
+		}
+		let offset = self.runtime.selection().end().offset();
+		let len = text.chars().count();
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(offset), text));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(offset + len)),
+		});
+		self.is_modified = true;
+	}
+
+	// ── Word frequency ───────────────────────────────────────────────
+
+	/// Return the top N most frequent words as alternating
+	/// `[word, count, word, count, ...]` strings.
+	#[wasm_bindgen]
+	pub fn word_frequency(&self, top_n: usize) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let mut freq: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+		for word in plain.split_whitespace() {
+			*freq.entry(word).or_insert(0) += 1;
+		}
+		let mut pairs: Vec<(&&str, &usize)> = freq.iter().collect();
+		pairs.sort_by(|a, b| b.1.cmp(a.1));
+		let mut result = Vec::new();
+		for (word, count) in pairs.into_iter().take(top_n) {
+			result.push(word.to_string());
+			result.push(count.to_string());
+		}
+		result
+	}
+
+	// ── Highlight occurrences of word under cursor ───────────────────
+
+	/// Enable or disable highlighting all occurrences of the word under
+	/// the cursor.
+	#[wasm_bindgen]
+	pub fn set_highlight_occurrences(&mut self, enabled: bool) {
+		self.highlight_occurrences = enabled;
+	}
+
+	/// Whether occurrence highlighting is enabled.
+	#[wasm_bindgen]
+	pub fn highlight_occurrences(&self) -> bool {
+		self.highlight_occurrences
+	}
+
+	/// Get the word under (or adjacent to) the cursor.
+	///
+	/// Returns empty string if the cursor is not on a word.
+	#[wasm_bindgen]
+	pub fn word_at_cursor(&self) -> String {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset().min(chars.len());
+		let (start, end) = self.word_bounds(offset, &chars);
+		if start == end {
+			return String::new();
+		}
+		chars[start..end].iter().collect()
+	}
+
+	// ── Text measurement ─────────────────────────────────────────────
+
+	/// Measure the pixel width of a string using the default style.
+	///
+	/// Useful for external layout calculations. Returns 0.0 if the
+	/// canvas context is not available.
+	#[wasm_bindgen]
+	pub fn measure_text_width(&self, text: &str) -> f32 {
+		let (_, ctx) = match self.canvas_and_context() {
+			Ok(v) => v,
+			Err(_) => return 0.0,
+		};
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let lc = self.layout_constants();
+		renderer.measure_text(text, &lc.default_style)
+	}
+
+	/// Measure the pixel width of a single character using the default
+	/// style.
+	#[wasm_bindgen]
+	pub fn measure_char_width(&self, ch: &str) -> f32 {
+		self.measure_text_width(ch)
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -3187,6 +3393,7 @@ impl CanvistEditor {
 		}
 		self.event_source.push_text_input(text);
 		self.process_events();
+		self.is_modified = true;
 	}
 
 	/// Insert text at a specific character offset.
@@ -3201,6 +3408,7 @@ impl CanvistEditor {
 		let _ = self.runtime.handle_event(EditorEvent::TextInsert {
 			text: text.to_string(),
 		});
+		self.is_modified = true;
 	}
 
 	/// Delete a range of characters from `start` to `end`.
@@ -3215,6 +3423,7 @@ impl CanvistEditor {
 		let _ = self
 			.runtime
 			.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		self.is_modified = true;
 	}
 
 	/// Return the full plain-text content of the document.
@@ -4696,6 +4905,34 @@ impl CanvistEditor {
 			}
 		}
 
+		// ── Line decorations (background tint) ──────────────────────────
+		if !self.line_decorations.is_empty() {
+			let mut para_line = 0usize;
+			for para in &paragraphs {
+				for line in &para.layout.lines {
+					if self.line_decorations.iter().any(|&(l, ..)| l == para_line) {
+						let line_y = lc.padding_y + para.y_offset + line.y - sy;
+						if line_y + line.height >= 0.0 && line_y <= height {
+							for &(l, r, g, b, a) in &self.line_decorations {
+								if l == para_line {
+									renderer.fill_rect(
+										Rect::new(
+											content_x_origin,
+											line_y,
+											width - content_x_origin,
+											line.height,
+										),
+										Color::new(r, g, b, a),
+									);
+								}
+							}
+						}
+					}
+				}
+				para_line += 1;
+			}
+		}
+
 		// ── Selection highlights ─────────────────────────────────────────
 		if !selection.is_collapsed() {
 			let sel_start = selection.start().offset();
@@ -4978,6 +5215,46 @@ impl CanvistEditor {
 					}
 				}
 				line_number += 1;
+			}
+		}
+
+		// ── Occurrence highlighting (word under cursor) ─────────────────
+		if self.highlight_occurrences && self.focused {
+			let word = self.word_at_cursor();
+			if word.len() >= 2 {
+				let occ_color =
+					Color::new(theme.selection.r, theme.selection.g, theme.selection.b, 60);
+				let offsets = self.find_all_whole_word(&word);
+				let mut i = 0;
+				while i + 1 < offsets.len() {
+					let occ_start = offsets[i];
+					let occ_end = offsets[i + 1];
+					// Draw a highlight rectangle for each character in range.
+					if let Some(start_rect) = Self::char_rect(
+						occ_start,
+						&paragraphs,
+						&lc,
+						content_x_origin,
+						sy,
+						&renderer,
+					) {
+						if let Some(end_rect) = Self::char_rect(
+							(occ_end - 1).max(occ_start),
+							&paragraphs,
+							&lc,
+							content_x_origin,
+							sy,
+							&renderer,
+						) {
+							let w = (end_rect.x + end_rect.width) - start_rect.x;
+							renderer.fill_rect(
+								Rect::new(start_rect.x, start_rect.y, w, start_rect.height),
+								occ_color,
+							);
+						}
+					}
+					i += 2;
+				}
 			}
 		}
 
