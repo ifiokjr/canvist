@@ -452,6 +452,10 @@ pub struct CanvistEditor {
 	markers: Vec<(usize, usize, u8, u8, u8, u8, String)>,
 	/// Named anchors: name -> character offset.
 	anchors: std::collections::HashMap<String, usize>,
+	/// Named saved full editor states: name -> JSON payload.
+	named_states: std::collections::HashMap<String, String>,
+	/// Named saved selection ranges: name -> (start, end).
+	selection_profiles: std::collections::HashMap<String, (usize, usize)>,
 }
 
 /// Colour theme for the editor canvas.
@@ -608,6 +612,8 @@ impl CanvistEditor {
 			keybinding_overrides: std::collections::HashMap::new(),
 			markers: Vec::new(),
 			anchors: std::collections::HashMap::new(),
+			named_states: std::collections::HashMap::new(),
+			selection_profiles: std::collections::HashMap::new(),
 		})
 	}
 
@@ -7036,6 +7042,412 @@ impl CanvistEditor {
 			lines[i] = lines[i - 1].clone();
 		}
 		lines[s] = last;
+		self.runtime
+			.document_mut()
+			.set_plain_text(&lines.join("\n"));
+		self.is_modified = true;
+		true
+	}
+
+	// ── Named state slots ───────────────────────────────────────────
+
+	/// Save the full editor state under a name.
+	#[wasm_bindgen]
+	pub fn save_named_state(&mut self, name: &str) {
+		self.named_states
+			.insert(name.to_string(), self.save_state());
+	}
+
+	/// Load a previously saved named editor state.
+	///
+	/// Returns `true` when found and restored.
+	#[wasm_bindgen]
+	pub fn load_named_state(&mut self, name: &str) -> bool {
+		let Some(json) = self.named_states.get(name).cloned() else {
+			return false;
+		};
+		self.restore_state(&json);
+		true
+	}
+
+	/// Remove a named state.
+	#[wasm_bindgen]
+	pub fn delete_named_state(&mut self, name: &str) {
+		self.named_states.remove(name);
+	}
+
+	/// Remove all named states.
+	#[wasm_bindgen]
+	pub fn clear_named_states(&mut self) {
+		self.named_states.clear();
+	}
+
+	/// Number of named states currently saved.
+	#[wasm_bindgen]
+	pub fn named_state_count(&self) -> usize {
+		self.named_states.len()
+	}
+
+	/// Saved state names (sorted).
+	#[wasm_bindgen]
+	pub fn named_state_names(&self) -> Vec<String> {
+		let mut out: Vec<String> = self.named_states.keys().cloned().collect();
+		out.sort_unstable();
+		out
+	}
+
+	// ── Selection profiles ──────────────────────────────────────────
+
+	/// Save the current selection range under a name.
+	#[wasm_bindgen]
+	pub fn save_selection_profile(&mut self, name: &str) {
+		let sel = self.runtime.selection();
+		self.selection_profiles
+			.insert(name.to_string(), (sel.start().offset(), sel.end().offset()));
+	}
+
+	/// Restore a named selection profile.
+	///
+	/// Returns `true` when found.
+	#[wasm_bindgen]
+	pub fn load_selection_profile(&mut self, name: &str) -> bool {
+		let Some((start, end)) = self.selection_profiles.get(name).copied() else {
+			return false;
+		};
+		let max = self.runtime.document().char_count();
+		let s = start.min(max);
+		let e = end.min(max);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(s), Position::new(e)),
+		});
+		true
+	}
+
+	/// Remove a named selection profile.
+	#[wasm_bindgen]
+	pub fn delete_selection_profile(&mut self, name: &str) {
+		self.selection_profiles.remove(name);
+	}
+
+	/// Clear all selection profiles.
+	#[wasm_bindgen]
+	pub fn clear_selection_profiles(&mut self) {
+		self.selection_profiles.clear();
+	}
+
+	/// Number of saved selection profiles.
+	#[wasm_bindgen]
+	pub fn selection_profile_count(&self) -> usize {
+		self.selection_profiles.len()
+	}
+
+	/// Selection profile names (sorted).
+	#[wasm_bindgen]
+	pub fn selection_profile_names(&self) -> Vec<String> {
+		let mut out: Vec<String> = self.selection_profiles.keys().cloned().collect();
+		out.sort_unstable();
+		out
+	}
+
+	// ── Task workflow helpers ───────────────────────────────────────
+
+	/// Task progress as [checked, total].
+	#[wasm_bindgen]
+	pub fn task_progress(&self) -> Vec<usize> {
+		let tasks = self.scan_tasks();
+		let total = tasks.len() / 4;
+		let mut checked = 0usize;
+		let mut i = 0;
+		while i + 3 < tasks.len() {
+			if tasks[i + 2] == "true" {
+				checked += 1;
+			}
+			i += 4;
+		}
+		vec![checked, total]
+	}
+
+	/// Insert a markdown task line at the current line start.
+	#[wasm_bindgen]
+	pub fn insert_task_line(&mut self, text: &str, checked: bool) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let cursor = self.runtime.selection().end().offset().min(chars.len());
+		let mut line_start = cursor;
+		while line_start > 0 && chars[line_start - 1] != '\n' {
+			line_start -= 1;
+		}
+		let prefix = if checked { "- [x] " } else { "- [ ] " };
+		self.insert_text_at(line_start, &format!("{prefix}{text}\n"));
+	}
+
+	/// Next unchecked task line after `from_line` (wraps), or -1.
+	#[wasm_bindgen]
+	pub fn next_unchecked_task_line(&self, from_line: usize) -> i32 {
+		let tasks = self.scan_tasks();
+		let mut lines = Vec::new();
+		let mut i = 0;
+		while i + 3 < tasks.len() {
+			if tasks[i + 2] == "false" {
+				if let Ok(n) = tasks[i].parse::<usize>() {
+					lines.push(n);
+				}
+			}
+			i += 4;
+		}
+		if lines.is_empty() {
+			return -1;
+		}
+		lines.sort_unstable();
+		lines.dedup();
+		if let Some(next) = lines.iter().copied().find(|l| *l > from_line) {
+			next as i32
+		} else {
+			lines.first().copied().map(|v| v as i32).unwrap_or(-1)
+		}
+	}
+
+	/// Previous unchecked task line before `from_line` (wraps), or -1.
+	#[wasm_bindgen]
+	pub fn prev_unchecked_task_line(&self, from_line: usize) -> i32 {
+		let tasks = self.scan_tasks();
+		let mut lines = Vec::new();
+		let mut i = 0;
+		while i + 3 < tasks.len() {
+			if tasks[i + 2] == "false" {
+				if let Ok(n) = tasks[i].parse::<usize>() {
+					lines.push(n);
+				}
+			}
+			i += 4;
+		}
+		if lines.is_empty() {
+			return -1;
+		}
+		lines.sort_unstable();
+		lines.dedup();
+		if let Some(prev) = lines.iter().rev().copied().find(|l| *l < from_line) {
+			prev as i32
+		} else {
+			lines.last().copied().map(|v| v as i32).unwrap_or(-1)
+		}
+	}
+
+	/// Mark all unchecked markdown tasks as checked.
+	///
+	/// Returns number of lines updated.
+	#[wasm_bindgen]
+	pub fn complete_all_tasks(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		let mut changed = 0usize;
+		for line in &mut lines {
+			if let Some(pos) = line.find("[ ]") {
+				line.replace_range(pos..pos + 3, "[x]");
+				changed += 1;
+			}
+		}
+		if changed > 0 {
+			self.runtime
+				.document_mut()
+				.set_plain_text(&lines.join("\n"));
+			self.is_modified = true;
+		}
+		changed
+	}
+
+	/// Remove completed markdown task lines (`[x]` / `[X]`).
+	///
+	/// Returns number of lines removed.
+	#[wasm_bindgen]
+	pub fn clear_completed_tasks(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		let before = lines.len();
+		let filtered: Vec<String> = lines
+			.into_iter()
+			.filter(|line| {
+				let lower = line.to_ascii_lowercase();
+				!(lower.contains("[x]") && (lower.starts_with("- ") || lower.starts_with("* ")))
+			})
+			.collect();
+		let removed = before.saturating_sub(filtered.len());
+		if removed > 0 {
+			self.runtime
+				.document_mut()
+				.set_plain_text(&filtered.join("\n"));
+			self.is_modified = true;
+		}
+		removed
+	}
+
+	// ── Cleanup utilities ───────────────────────────────────────────
+
+	/// Trim leading spaces/tabs from every line.
+	///
+	/// Returns number of lines changed.
+	#[wasm_bindgen]
+	pub fn trim_leading_whitespace(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		let mut changed = 0usize;
+		for line in &mut lines {
+			let trimmed = line
+				.trim_start_matches(|c| c == ' ' || c == '\t')
+				.to_string();
+			if *line != trimmed {
+				*line = trimmed;
+				changed += 1;
+			}
+		}
+		if changed > 0 {
+			self.runtime
+				.document_mut()
+				.set_plain_text(&lines.join("\n"));
+			self.is_modified = true;
+		}
+		changed
+	}
+
+	/// Collapse blank-line runs to at most `max_consecutive` lines.
+	///
+	/// Returns number of lines removed.
+	#[wasm_bindgen]
+	pub fn collapse_blank_lines(&mut self, max_consecutive: usize) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		let mut out = Vec::with_capacity(lines.len());
+		let mut blank_run = 0usize;
+		for line in lines {
+			if line.trim().is_empty() {
+				blank_run += 1;
+				if blank_run <= max_consecutive {
+					out.push(line);
+				}
+			} else {
+				blank_run = 0;
+				out.push(line);
+			}
+		}
+		let new_text = out.join("\n");
+		let removed = plain.split('\n').count().saturating_sub(out.len());
+		if removed > 0 {
+			self.runtime.document_mut().set_plain_text(&new_text);
+			self.is_modified = true;
+		}
+		removed
+	}
+
+	/// Remove blank lines at end of document.
+	///
+	/// Returns number of trailing blank lines removed.
+	#[wasm_bindgen]
+	pub fn remove_trailing_blank_lines(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		let mut removed = 0usize;
+		while lines.len() > 1 {
+			let is_blank = lines.last().map(|l| l.trim().is_empty()).unwrap_or(false);
+			if is_blank {
+				lines.pop();
+				removed += 1;
+			} else {
+				break;
+			}
+		}
+		if removed > 0 {
+			self.runtime
+				.document_mut()
+				.set_plain_text(&lines.join("\n"));
+			self.is_modified = true;
+		}
+		removed
+	}
+
+	/// Ensure the document ends with exactly one trailing newline.
+	///
+	/// Returns `true` if content was changed.
+	#[wasm_bindgen]
+	pub fn ensure_single_trailing_newline(&mut self) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut normalized = plain.trim_end_matches('\n').to_string();
+		normalized.push('\n');
+		if normalized != plain {
+			self.runtime.document_mut().set_plain_text(&normalized);
+			self.is_modified = true;
+			return true;
+		}
+		false
+	}
+
+	// ── Line utilities ──────────────────────────────────────────────
+
+	/// Swap two logical lines by index.
+	///
+	/// Returns `true` on success.
+	#[wasm_bindgen]
+	pub fn swap_lines(&mut self, a: usize, b: usize) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		if a == b {
+			return true;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if a >= lines.len() || b >= lines.len() {
+			return false;
+		}
+		lines.swap(a, b);
+		self.runtime
+			.document_mut()
+			.set_plain_text(&lines.join("\n"));
+		self.is_modified = true;
+		true
+	}
+
+	/// Duplicate a line range and insert it below the range.
+	///
+	/// Returns `true` on success.
+	#[wasm_bindgen]
+	pub fn duplicate_line_range(&mut self, start_line: usize, end_line: usize) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if lines.is_empty() {
+			return false;
+		}
+		let s = start_line.min(lines.len() - 1);
+		let e = end_line.min(lines.len() - 1);
+		if s > e {
+			return false;
+		}
+		let block: Vec<String> = lines[s..=e].to_vec();
+		let insert_at = e + 1;
+		lines.splice(insert_at..insert_at, block);
 		self.runtime
 			.document_mut()
 			.set_plain_text(&lines.join("\n"));

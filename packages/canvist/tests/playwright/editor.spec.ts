@@ -6922,4 +6922,238 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Named state slots ───────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] named states save/load/list/delete`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("one");
+						ed.save_named_state("s1");
+						ed.insert_text(" two");
+						ed.save_named_state("s2");
+						const names = Array.from(ed.named_state_names());
+						const count = ed.named_state_count();
+						const loaded = ed.load_named_state("s1");
+						const textAfterLoad = ed.plain_text();
+						ed.delete_named_state("s2");
+						const countAfterDelete = ed.named_state_count();
+						ed.clear_named_states();
+						const finalCount = ed.named_state_count();
+						return {
+							names,
+							count,
+							loaded,
+							textAfterLoad,
+							countAfterDelete,
+							finalCount,
+						};
+					});
+					assert(result.names.includes("s1"));
+					assert(result.names.includes("s2"));
+					assertEquals(result.count, 2);
+					assertEquals(result.loaded, true);
+					assertEquals(result.textAfterLoad, "one");
+					assertEquals(result.countAfterDelete, 1);
+					assertEquals(result.finalCount, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Selection profiles ──────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] selection profiles save/load/list`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdef");
+						ed.set_selection(1, 3);
+						ed.save_selection_profile("p1");
+						ed.set_selection(4, 6);
+						ed.save_selection_profile("p2");
+						const names = Array.from(ed.selection_profile_names());
+						const count = ed.selection_profile_count();
+						const loaded = ed.load_selection_profile("p1");
+						const start = ed.selection_start();
+						const end = ed.selection_end();
+						ed.delete_selection_profile("p2");
+						const countAfterDelete = ed.selection_profile_count();
+						ed.clear_selection_profiles();
+						const finalCount = ed.selection_profile_count();
+						return {
+							names,
+							count,
+							loaded,
+							start,
+							end,
+							countAfterDelete,
+							finalCount,
+						};
+					});
+					assert(result.names.includes("p1"));
+					assert(result.names.includes("p2"));
+					assertEquals(result.count, 2);
+					assertEquals(result.loaded, true);
+					assertEquals(result.start, 1);
+					assertEquals(result.end, 3);
+					assertEquals(result.countAfterDelete, 1);
+					assertEquals(result.finalCount, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Task workflow helpers ───────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] task workflow progress, complete, clear`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("- [ ] a\n- [x] b\n- [ ] c");
+						const progress1 = Array.from(ed.task_progress());
+						const nextUnchecked = ed.next_unchecked_task_line(0);
+						const prevUnchecked = ed.prev_unchecked_task_line(0);
+						const completed = ed.complete_all_tasks();
+						const progress2 = Array.from(ed.task_progress());
+						const cleared = ed.clear_completed_tasks();
+						const finalText = ed.plain_text();
+						return {
+							progress1,
+							nextUnchecked,
+							prevUnchecked,
+							completed,
+							progress2,
+							cleared,
+							finalText,
+						};
+					});
+					assertEquals(result.progress1, [1, 3]);
+					assertEquals(result.nextUnchecked, 2);
+					assertEquals(result.prevUnchecked, 2);
+					assertEquals(result.completed, 2);
+					assertEquals(result.progress2, [3, 3]);
+					assertEquals(result.cleared, 3);
+					assertEquals(result.finalText, "");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Cleanup utilities ───────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] cleanup utilities normalize whitespace`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("\t  a\n\n\n\n  b\n\n");
+						const trimmed = ed.trim_leading_whitespace();
+						const collapsed = ed.collapse_blank_lines(1);
+						const removedTail = ed.remove_trailing_blank_lines();
+						const ensured = ed.ensure_single_trailing_newline();
+						const text = ed.plain_text();
+						return { trimmed, collapsed, removedTail, ensured, text };
+					});
+					assert(result.trimmed >= 2);
+					assert(result.collapsed >= 2);
+					assert(result.removedTail >= 1);
+					assertEquals(result.ensured, true);
+					assertEquals(result.text, "a\n\nb\n");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line utilities ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] swap lines and duplicate line range`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("one\ntwo\nthree\nfour");
+						const swapped = ed.swap_lines(0, 2);
+						const afterSwap = ed.plain_text();
+						const duplicated = ed.duplicate_line_range(1, 2);
+						const afterDup = ed.plain_text();
+						return { swapped, duplicated, afterSwap, afterDup };
+					});
+					assertEquals(result.swapped, true);
+					assertEquals(result.afterSwap, "three\ntwo\none\nfour");
+					assertEquals(result.duplicated, true);
+					assertEquals(result.afterDup, "three\ntwo\none\ntwo\none\nfour");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

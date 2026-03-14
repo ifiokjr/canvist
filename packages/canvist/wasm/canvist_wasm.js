@@ -434,6 +434,16 @@ export class CanvistEditor {
         wasm.canvisteditor_clear_collab_cursors(this.__wbg_ptr);
     }
     /**
+     * Remove completed markdown task lines (`[x]` / `[X]`).
+     *
+     * Returns number of lines removed.
+     * @returns {number}
+     */
+    clear_completed_tasks() {
+        const ret = wasm.canvisteditor_clear_completed_tasks(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Clear all extra cursors.
      */
     clear_cursors() {
@@ -456,6 +466,18 @@ export class CanvistEditor {
      */
     clear_markers() {
         wasm.canvisteditor_clear_markers(this.__wbg_ptr);
+    }
+    /**
+     * Remove all named states.
+     */
+    clear_named_states() {
+        wasm.canvisteditor_clear_named_states(this.__wbg_ptr);
+    }
+    /**
+     * Clear all selection profiles.
+     */
+    clear_selection_profiles() {
+        wasm.canvisteditor_clear_selection_profiles(this.__wbg_ptr);
     }
     /**
      * Clear the saved snapshot.
@@ -560,6 +582,17 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Collapse blank-line runs to at most `max_consecutive` lines.
+     *
+     * Returns number of lines removed.
+     * @param {number} max_consecutive
+     * @returns {number}
+     */
+    collapse_blank_lines(max_consecutive) {
+        const ret = wasm.canvisteditor_collapse_blank_lines(this.__wbg_ptr, max_consecutive);
+        return ret >>> 0;
+    }
+    /**
      * Return all available editor commands as a flat array:
      * [name, keybinding, name, keybinding, ...].
      *
@@ -587,6 +620,16 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Mark all unchecked markdown tasks as checked.
+     *
+     * Returns number of lines updated.
+     * @returns {number}
+     */
+    complete_all_tasks() {
+        const ret = wasm.canvisteditor_complete_all_tasks(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Suggest completions for the word currently being typed.
@@ -819,12 +862,30 @@ export class CanvistEditor {
         wasm.canvisteditor_delete_line(this.__wbg_ptr);
     }
     /**
+     * Remove a named state.
+     * @param {string} name
+     */
+    delete_named_state(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_delete_named_state(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Delete a range of characters from `start` to `end`.
      * @param {number} start
      * @param {number} end
      */
     delete_range(start, end) {
         wasm.canvisteditor_delete_range(this.__wbg_ptr, start, end);
+    }
+    /**
+     * Remove a named selection profile.
+     * @param {string} name
+     */
+    delete_selection_profile(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_delete_selection_profile(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Delete the word to the left of the cursor (Ctrl+Backspace).
@@ -938,6 +999,18 @@ export class CanvistEditor {
         wasm.canvisteditor_duplicate_line(this.__wbg_ptr);
     }
     /**
+     * Duplicate a line range and insert it below the range.
+     *
+     * Returns `true` on success.
+     * @param {number} start_line
+     * @param {number} end_line
+     * @returns {boolean}
+     */
+    duplicate_line_range(start_line, end_line) {
+        const ret = wasm.canvisteditor_duplicate_line_range(this.__wbg_ptr, start_line, end_line);
+        return ret !== 0;
+    }
+    /**
      * Editor version string.
      * @returns {string}
      */
@@ -970,6 +1043,16 @@ export class CanvistEditor {
      */
     ensure_final_newline() {
         const ret = wasm.canvisteditor_ensure_final_newline(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Ensure the document ends with exactly one trailing newline.
+     *
+     * Returns `true` if content was changed.
+     * @returns {boolean}
+     */
+    ensure_single_trailing_newline() {
+        const ret = wasm.canvisteditor_ensure_single_trailing_newline(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -1604,6 +1687,16 @@ export class CanvistEditor {
         wasm.canvisteditor_insert_tab(this.__wbg_ptr);
     }
     /**
+     * Insert a markdown task line at the current line start.
+     * @param {string} text
+     * @param {boolean} checked
+     */
+    insert_task_line(text, checked) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_insert_task_line(this.__wbg_ptr, ptr0, len0, checked);
+    }
+    /**
      * Insert text at the current cursor position (start of document).
      * @param {string} text
      */
@@ -1939,6 +2032,32 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Load a previously saved named editor state.
+     *
+     * Returns `true` when found and restored.
+     * @param {string} name
+     * @returns {boolean}
+     */
+    load_named_state(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_load_named_state(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
+     * Restore a named selection profile.
+     *
+     * Returns `true` when found.
+     * @param {string} name
+     * @returns {boolean}
+     */
+    load_selection_profile(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_load_selection_profile(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
      * Log an editor event. Newest entries are at index 0.
      *
      * The log is capped at `event_log_max` (default 50).
@@ -2243,6 +2362,24 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Number of named states currently saved.
+     * @returns {number}
+     */
+    named_state_count() {
+        const ret = wasm.canvisteditor_named_state_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Saved state names (sorted).
+     * @returns {string[]}
+     */
+    named_state_names() {
+        const ret = wasm.canvisteditor_named_state_names(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Jump to the next bookmark after the current line.
      *
      * Wraps around to the first bookmark if past the last one.
@@ -2273,6 +2410,15 @@ export class CanvistEditor {
      */
     next_task_line(from_line) {
         const ret = wasm.canvisteditor_next_task_line(this.__wbg_ptr, from_line);
+        return ret;
+    }
+    /**
+     * Next unchecked task line after `from_line` (wraps), or -1.
+     * @param {number} from_line
+     * @returns {number}
+     */
+    next_unchecked_task_line(from_line) {
+        const ret = wasm.canvisteditor_next_unchecked_task_line(this.__wbg_ptr, from_line);
         return ret;
     }
     /**
@@ -2470,6 +2616,15 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Previous unchecked task line before `from_line` (wraps), or -1.
+     * @param {number} from_line
+     * @returns {number}
+     */
+    prev_unchecked_task_line(from_line) {
+        const ret = wasm.canvisteditor_prev_unchecked_task_line(this.__wbg_ptr, from_line);
+        return ret;
+    }
+    /**
      * Process all pending canonical events via the editor runtime.
      */
     process_events() {
@@ -2652,6 +2807,16 @@ export class CanvistEditor {
         wasm.canvisteditor_remove_ruler(this.__wbg_ptr, column);
     }
     /**
+     * Remove blank lines at end of document.
+     *
+     * Returns number of trailing blank lines removed.
+     * @returns {number}
+     */
+    remove_trailing_blank_lines() {
+        const ret = wasm.canvisteditor_remove_trailing_blank_lines(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Rename all occurrences of the word under cursor to `new_name`.
      *
      * Uses whole-word matching. Returns the number of replacements.
@@ -2809,6 +2974,24 @@ export class CanvistEditor {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_run_shortcut(this.__wbg_ptr, ptr0, len0);
         return ret !== 0;
+    }
+    /**
+     * Save the full editor state under a name.
+     * @param {string} name
+     */
+    save_named_state(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_save_named_state(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Save the current selection range under a name.
+     * @param {string} name
+     */
+    save_selection_profile(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_save_selection_profile(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Serialize the editor state to a JSON string.
@@ -3112,6 +3295,24 @@ export class CanvistEditor {
     selection_line_range() {
         const ret = wasm.canvisteditor_selection_line_range(this.__wbg_ptr);
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Number of saved selection profiles.
+     * @returns {number}
+     */
+    selection_profile_count() {
+        const ret = wasm.canvisteditor_selection_profile_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Selection profile names (sorted).
+     * @returns {string[]}
+     */
+    selection_profile_names() {
+        const ret = wasm.canvisteditor_selection_profile_names(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
     }
@@ -3689,6 +3890,18 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Swap two logical lines by index.
+     *
+     * Returns `true` on success.
+     * @param {number} a
+     * @param {number} b
+     * @returns {boolean}
+     */
+    swap_lines(a, b) {
+        const ret = wasm.canvisteditor_swap_lines(this.__wbg_ptr, a, b);
+        return ret !== 0;
+    }
+    /**
      * Whether syntax highlighting is enabled.
      * @returns {boolean}
      */
@@ -3727,6 +3940,16 @@ export class CanvistEditor {
     task_count() {
         const ret = wasm.canvisteditor_task_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Task progress as [checked, total].
+     * @returns {Uint32Array}
+     */
+    task_progress() {
+        const ret = wasm.canvisteditor_task_progress(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Return up to `max_chars` immediately after the cursor.
@@ -4031,6 +4254,16 @@ export class CanvistEditor {
      */
     transpose_chars() {
         wasm.canvisteditor_transpose_chars(this.__wbg_ptr);
+    }
+    /**
+     * Trim leading spaces/tabs from every line.
+     *
+     * Returns number of lines changed.
+     * @returns {number}
+     */
+    trim_leading_whitespace() {
+        const ret = wasm.canvisteditor_trim_leading_whitespace(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Remove trailing whitespace (spaces and tabs) from every line.
