@@ -84,6 +84,21 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Apply a named configuration preset.
+     *
+     * - `"code"`: line numbers, indent guides, whitespace, bracket
+     *   highlight, occurrence highlight, auto-close brackets, soft tabs
+     * - `"prose"`: word wrap, no line numbers, no whitespace, no
+     *   indent guides, placeholder
+     * - `"minimal"`: minimal chrome, no gutter, no highlights
+     * @param {string} name
+     */
+    apply_preset(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_apply_preset(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Apply style to the given character range.
      * @param {number} start
      * @param {number} end
@@ -588,6 +603,14 @@ export class CanvistEditor {
         wasm.canvisteditor_delete_word_right(this.__wbg_ptr);
     }
     /**
+     * Whether link detection is enabled.
+     * @returns {boolean}
+     */
+    detect_links() {
+        const ret = wasm.canvisteditor_detect_links(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Compare current text against the last snapshot.
      *
      * Returns a list of changed line numbers (0-based) as a flat array.
@@ -734,6 +757,18 @@ export class CanvistEditor {
         }
     }
     /**
+     * Find all URLs in the document.
+     *
+     * Returns flat array: [start, end, start, end, ...] of char offsets.
+     * @returns {Uint32Array}
+     */
+    find_links() {
+        const ret = wasm.canvisteditor_find_links(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Find the offset of the bracket matching the one at `offset`.
      *
      * Returns `None` (via -1 in WASM) if the char at `offset` is not a
@@ -785,12 +820,51 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Flesch reading ease score (0–100, higher = easier).
+     *
+     * Simplified: uses average words per sentence and average
+     * syllables per word.
+     * @returns {number}
+     */
+    flesch_reading_ease() {
+        const ret = wasm.canvisteditor_flesch_reading_ease(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * Get the current focus state.
      * @returns {boolean}
      */
     focused() {
         const ret = wasm.canvisteditor_focused(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Number of active fold regions.
+     * @returns {number}
+     */
+    fold_count() {
+        const ret = wasm.canvisteditor_fold_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Fold (collapse) a range of lines (0-based, inclusive).
+     *
+     * The first line remains visible; subsequent lines are hidden.
+     * @param {number} start_line
+     * @param {number} end_line
+     */
+    fold_lines(start_line, end_line) {
+        wasm.canvisteditor_fold_lines(this.__wbg_ptr, start_line, end_line);
+    }
+    /**
+     * Get all folded ranges as flat array: [start0, end0, start1, end1, ...].
+     * @returns {Uint32Array}
+     */
+    folded_ranges() {
+        const ret = wasm.canvisteditor_folded_ranges(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Import HTML content, replacing the current document.
@@ -1091,6 +1165,18 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether a specific line is inside a folded (hidden) region.
+     *
+     * Returns true for lines that are hidden — NOT the first line of
+     * a fold which remains visible.
+     * @param {number} line
+     * @returns {boolean}
+     */
+    is_line_folded(line) {
+        const ret = wasm.canvisteditor_is_line_folded(this.__wbg_ptr, line);
+        return ret !== 0;
+    }
+    /**
      * Whether the document has been modified since last save.
      * @returns {boolean}
      */
@@ -1129,6 +1215,17 @@ export class CanvistEditor {
     last_visible_line() {
         const ret = wasm.canvisteditor_last_visible_line(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Determine which line number a Y-coordinate in the gutter maps to.
+     *
+     * Returns the 0-based line number, or -1 if outside content.
+     * @param {number} y
+     * @returns {number}
+     */
+    line_at_y(y) {
+        const ret = wasm.canvisteditor_line_at_y(this.__wbg_ptr, y);
+        return ret;
     }
     /**
      * Count the number of visual lines using the paragraph layout engine.
@@ -1183,6 +1280,25 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0] >>> 0;
+    }
+    /**
+     * Get the URL text at a character offset, if any.
+     *
+     * Returns empty string if offset is not inside a URL.
+     * @param {number} offset
+     * @returns {string}
+     */
+    link_at_offset(offset) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_link_at_offset(this.__wbg_ptr, offset);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Log an editor event. Newest entries are at index 0.
@@ -1621,6 +1737,14 @@ export class CanvistEditor {
     read_only() {
         const ret = wasm.canvisteditor_read_only(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Estimated reading time in seconds (assumes 250 words/minute).
+     * @returns {number}
+     */
+    reading_time_seconds() {
+        const ret = wasm.canvisteditor_reading_time_seconds(this.__wbg_ptr);
+        return ret;
     }
     /**
      * Redo the most recently undone transaction.
@@ -2126,6 +2250,13 @@ export class CanvistEditor {
      */
     set_cursor_width(w) {
         wasm.canvisteditor_set_cursor_width(this.__wbg_ptr, w);
+    }
+    /**
+     * Enable or disable URL link detection.
+     * @param {boolean} enabled
+     */
+    set_detect_links(enabled) {
+        wasm.canvisteditor_set_detect_links(this.__wbg_ptr, enabled);
     }
     /**
      * Set the maximum number of event log entries.
@@ -2646,6 +2777,14 @@ export class CanvistEditor {
         wasm.canvisteditor_toggle_bullet_list(this.__wbg_ptr);
     }
     /**
+     * Toggle fold at a line. If the line starts a fold, unfold it.
+     * Otherwise, try to fold from this line using indentation.
+     * @param {number} line
+     */
+    toggle_fold_at(line) {
+        wasm.canvisteditor_toggle_fold_at(this.__wbg_ptr, line);
+    }
+    /**
      * Toggle italic on the current selection. Preserves the current
      * selection.
      */
@@ -2769,6 +2908,20 @@ export class CanvistEditor {
     undo() {
         const ret = wasm.canvisteditor_undo(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Unfold all ranges.
+     */
+    unfold_all() {
+        wasm.canvisteditor_unfold_all(this.__wbg_ptr);
+    }
+    /**
+     * Unfold a specific range.
+     * @param {number} start_line
+     * @param {number} end_line
+     */
+    unfold_lines(start_line, end_line) {
+        wasm.canvisteditor_unfold_lines(this.__wbg_ptr, start_line, end_line);
     }
     /**
      * URL-decode the selected text, replacing the selection.
