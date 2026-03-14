@@ -1833,6 +1833,85 @@ export async function createEditor(
 			setEventLogMax(max: number) {
 				ref.set_event_log_max(max);
 			},
+			// ── Word completion ─────────────────────────
+			completions(maxResults: number) {
+				return Array.from(ref.completions(maxResults));
+			},
+			// ── Line range operations ───────────────────
+			getLineRange(startLine: number, endLine: number) {
+				return ref.get_line_range(startLine, endLine);
+			},
+			setLineRange(startLine: number, endLine: number, text: string) {
+				syncTime();
+				ref.set_line_range(startLine, endLine, text);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			get lineCountTotal() {
+				return ref.line_count_total();
+			},
+			getLine(line: number) {
+				return ref.get_line(line);
+			},
+			// ── Scroll metrics ──────────────────────────
+			get viewportHeight() {
+				return ref.viewport_height();
+			},
+			get scrollRatio() {
+				return ref.scroll_ratio();
+			},
+			get scrollFraction() {
+				return ref.scroll_fraction();
+			},
+			scrollToFraction(fraction: number) {
+				ref.scroll_to_fraction(fraction);
+				renderFrame();
+			},
+			// ── Annotations ─────────────────────────────
+			addAnnotation(start: number, end: number, kind: string, message: string) {
+				ref.add_annotation(start, end, kind, message);
+				renderFrame();
+			},
+			removeAnnotationsByKind(kind: string) {
+				ref.remove_annotations_by_kind(kind);
+				renderFrame();
+			},
+			clearAnnotations() {
+				ref.clear_annotations();
+				renderFrame();
+			},
+			get annotationCount() {
+				return ref.annotation_count();
+			},
+			getAnnotations() {
+				return Array.from(ref.get_annotations());
+			},
+			annotationsAt(offset: number) {
+				return Array.from(ref.annotations_at(offset));
+			},
+			// ── Search history ──────────────────────────
+			searchHistoryPush(term: string) {
+				ref.search_history_push(term);
+			},
+			searchHistoryGet(index: number) {
+				return ref.search_history_get(index);
+			},
+			get searchHistoryLength() {
+				return ref.search_history_length();
+			},
+			searchHistoryClear() {
+				ref.search_history_clear();
+			},
+			// ── Visible range ───────────────────────────
+			get firstVisibleLine() {
+				return ref.first_visible_line();
+			},
+			get lastVisibleLine() {
+				return ref.last_visible_line();
+			},
+			get visibleLineCount() {
+				return ref.visible_line_count();
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));

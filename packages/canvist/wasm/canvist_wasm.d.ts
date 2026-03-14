@@ -12,6 +12,13 @@ export class CanvistEditor {
     free(): void;
     [Symbol.dispose](): void;
     /**
+     * Add an annotation to a text range.
+     *
+     * `kind` examples: "error", "warning", "info", "spelling".
+     * `message` is optional descriptive text.
+     */
+    add_annotation(start: number, end: number, kind: string, message: string): void;
+    /**
      * Add a coloured background decoration to a line (0-based).
      *
      * Multiple decorations can be added to the same line. The colours
@@ -22,6 +29,16 @@ export class CanvistEditor {
      * Add a single ruler at the given column.
      */
     add_ruler(column: number): void;
+    /**
+     * Number of active annotations.
+     */
+    annotation_count(): number;
+    /**
+     * Get annotations overlapping a character offset.
+     *
+     * Returns flat array: [start, end, kind, message, ...].
+     */
+    annotations_at(offset: number): string[];
     /**
      * Apply style to the given character range.
      */
@@ -121,6 +138,10 @@ export class CanvistEditor {
      */
     char_counts(): Uint32Array;
     /**
+     * Remove all annotations.
+     */
+    clear_annotations(): void;
+    /**
      * Remove all bookmarks.
      */
     clear_bookmarks(): void;
@@ -172,6 +193,13 @@ export class CanvistEditor {
      * Get the current line comment prefix.
      */
     comment_prefix(): string;
+    /**
+     * Suggest completions for the word currently being typed.
+     *
+     * Returns up to `max_results` words from the document that start
+     * with the prefix at the cursor. Sorted alphabetically, deduplicated.
+     */
+    completions(max_results: number): string[];
     /**
      * Compute the total content height in logical pixels.
      *
@@ -335,6 +363,10 @@ export class CanvistEditor {
      */
     find_prev(needle: string, from_offset: number, case_sensitive: boolean): Uint32Array;
     /**
+     * Get the first visible line number (0-based).
+     */
+    first_visible_line(): number;
+    /**
      * Get the current focus state.
      */
     focused(): boolean;
@@ -345,6 +377,18 @@ export class CanvistEditor {
      * `<p>`) and HTML entities.
      */
     from_html(html: string): void;
+    /**
+     * Get annotations as flat array: [start, end, kind, message, ...].
+     */
+    get_annotations(): string[];
+    /**
+     * Get text of a single line (0-based).
+     */
+    get_line(line: number): string;
+    /**
+     * Get text for a range of lines (0-based, inclusive start, exclusive end).
+     */
+    get_line_range(start_line: number, end_line: number): string;
     /**
      * Return the currently selected text (empty string if selection is collapsed).
      */
@@ -483,9 +527,17 @@ export class CanvistEditor {
      */
     last_selection_end(): number;
     /**
+     * Get the last visible line number (0-based).
+     */
+    last_visible_line(): number;
+    /**
      * Count the number of visual lines using the paragraph layout engine.
      */
     line_count(): number;
+    /**
+     * Get the total number of lines in the document.
+     */
+    line_count_total(): number;
     /**
      * Number of active line decorations.
      */
@@ -689,6 +741,10 @@ export class CanvistEditor {
      */
     remaining_capacity(): number;
     /**
+     * Remove all annotations matching a kind (e.g. "error").
+     */
+    remove_annotations_by_kind(kind: string): void;
+    /**
      * Remove consecutive duplicate lines from the document.
      *
      * Returns the number of lines removed.
@@ -761,6 +817,18 @@ export class CanvistEditor {
      */
     scroll_by(delta_y: number): void;
     /**
+     * The scroll position as a fraction (0.0 = top, 1.0 = bottom).
+     */
+    scroll_fraction(): number;
+    /**
+     * The ratio of viewport to content (0.0–1.0). 1.0 = all visible.
+     */
+    scroll_ratio(): number;
+    /**
+     * Scroll to a fraction of the document (0.0 = top, 1.0 = bottom).
+     */
+    scroll_to_fraction(fraction: number): void;
+    /**
      * Ensure the current selection (or cursor) is visible in the
      * viewport. Scrolls the minimum amount needed.
      */
@@ -769,6 +837,22 @@ export class CanvistEditor {
      * Get the current vertical scroll offset.
      */
     scroll_y(): number;
+    /**
+     * Clear search history.
+     */
+    search_history_clear(): void;
+    /**
+     * Get search history entry at index (0 = most recent).
+     */
+    search_history_get(index: number): string;
+    /**
+     * Number of search history entries.
+     */
+    search_history_length(): number;
+    /**
+     * Push a search term into the search history.
+     */
+    search_history_push(term: string): void;
     /**
      * Select the entire document.
      */
@@ -924,6 +1008,10 @@ export class CanvistEditor {
      * the cursor.
      */
     set_highlight_occurrences(enabled: boolean): void;
+    /**
+     * Replace text for a range of lines (0-based, inclusive start, exclusive end).
+     */
+    set_line_range(start_line: number, end_line: number, text: string): void;
     /**
      * Set maximum character count (0 = unlimited).
      *
@@ -1213,6 +1301,14 @@ export class CanvistEditor {
      */
     url_encode_selection(): void;
     /**
+     * The viewport height in pixels (same as canvas height / zoom).
+     */
+    viewport_height(): number;
+    /**
+     * Number of lines visible in the viewport.
+     */
+    visible_line_count(): number;
+    /**
      * Get the word under (or adjacent to) the cursor.
      *
      * Returns empty string if the cursor is not on a word.
@@ -1269,8 +1365,11 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_canvisteditor_free: (a: number, b: number) => void;
+    readonly canvisteditor_add_annotation: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly canvisteditor_add_line_decoration: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly canvisteditor_add_ruler: (a: number, b: number) => void;
+    readonly canvisteditor_annotation_count: (a: number) => number;
+    readonly canvisteditor_annotations_at: (a: number, b: number) => [number, number];
     readonly canvisteditor_apply_style_range: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly canvisteditor_auto_close_brackets: (a: number) => number;
     readonly canvisteditor_auto_indent_newline: (a: number) => number;
@@ -1288,6 +1387,7 @@ export interface InitOutput {
     readonly canvisteditor_center_line_in_viewport: (a: number) => void;
     readonly canvisteditor_char_count: (a: number) => number;
     readonly canvisteditor_char_counts: (a: number) => [number, number];
+    readonly canvisteditor_clear_annotations: (a: number) => void;
     readonly canvisteditor_clear_bookmarks: (a: number) => void;
     readonly canvisteditor_clear_line_decorations: (a: number) => void;
     readonly canvisteditor_clipboard_cut: (a: number) => void;
@@ -1299,6 +1399,7 @@ export interface InitOutput {
     readonly canvisteditor_clipboard_ring_push: (a: number, b: number, c: number) => void;
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
     readonly canvisteditor_comment_prefix: (a: number) => [number, number];
+    readonly canvisteditor_completions: (a: number, b: number) => [number, number];
     readonly canvisteditor_content_height: (a: number) => [number, number, number];
     readonly canvisteditor_contract_selection: (a: number) => void;
     readonly canvisteditor_create: (a: number, b: number) => [number, number, number];
@@ -1327,8 +1428,12 @@ export interface InitOutput {
     readonly canvisteditor_find_matching_bracket: (a: number, b: number) => number;
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly canvisteditor_first_visible_line: (a: number) => number;
     readonly canvisteditor_focused: (a: number) => number;
     readonly canvisteditor_from_html: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_get_annotations: (a: number) => [number, number];
+    readonly canvisteditor_get_line: (a: number, b: number) => [number, number];
+    readonly canvisteditor_get_line_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
     readonly canvisteditor_go_to_document_end: (a: number) => void;
     readonly canvisteditor_go_to_document_start: (a: number) => void;
@@ -1352,7 +1457,9 @@ export interface InitOutput {
     readonly canvisteditor_is_underline: (a: number) => number;
     readonly canvisteditor_join_lines: (a: number) => void;
     readonly canvisteditor_last_selection_end: (a: number) => number;
+    readonly canvisteditor_last_visible_line: (a: number) => number;
     readonly canvisteditor_line_count: (a: number) => [number, number, number];
+    readonly canvisteditor_line_count_total: (a: number) => number;
     readonly canvisteditor_line_decoration_count: (a: number) => number;
     readonly canvisteditor_line_end_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
@@ -1391,6 +1498,7 @@ export interface InitOutput {
     readonly canvisteditor_read_only: (a: number) => number;
     readonly canvisteditor_redo: (a: number) => number;
     readonly canvisteditor_remaining_capacity: (a: number) => number;
+    readonly canvisteditor_remove_annotations_by_kind: (a: number, b: number, c: number) => void;
     readonly canvisteditor_remove_duplicate_lines: (a: number) => number;
     readonly canvisteditor_remove_highlight_color: (a: number) => void;
     readonly canvisteditor_remove_line_decorations: (a: number, b: number) => void;
@@ -1405,8 +1513,15 @@ export interface InitOutput {
     readonly canvisteditor_rulers: (a: number) => [number, number];
     readonly canvisteditor_save_state: (a: number) => [number, number];
     readonly canvisteditor_scroll_by: (a: number, b: number) => void;
+    readonly canvisteditor_scroll_fraction: (a: number) => number;
+    readonly canvisteditor_scroll_ratio: (a: number) => number;
+    readonly canvisteditor_scroll_to_fraction: (a: number, b: number) => void;
     readonly canvisteditor_scroll_to_selection: (a: number) => void;
     readonly canvisteditor_scroll_y: (a: number) => number;
+    readonly canvisteditor_search_history_clear: (a: number) => void;
+    readonly canvisteditor_search_history_get: (a: number, b: number) => [number, number];
+    readonly canvisteditor_search_history_length: (a: number) => number;
+    readonly canvisteditor_search_history_push: (a: number, b: number, c: number) => void;
     readonly canvisteditor_select_all: (a: number) => void;
     readonly canvisteditor_select_all_occurrences: (a: number) => number;
     readonly canvisteditor_select_between_brackets: (a: number) => number;
@@ -1434,6 +1549,7 @@ export interface InitOutput {
     readonly canvisteditor_set_highlight_current_line: (a: number, b: number) => void;
     readonly canvisteditor_set_highlight_matching_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_highlight_occurrences: (a: number, b: number) => void;
+    readonly canvisteditor_set_line_range: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_set_max_length: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_overwrite_mode: (a: number, b: number) => void;
@@ -1489,6 +1605,8 @@ export interface InitOutput {
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_url_decode_selection: (a: number) => void;
     readonly canvisteditor_url_encode_selection: (a: number) => void;
+    readonly canvisteditor_viewport_height: (a: number) => number;
+    readonly canvisteditor_visible_line_count: (a: number) => number;
     readonly canvisteditor_word_at_cursor: (a: number) => [number, number];
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;
@@ -1508,9 +1626,9 @@ export interface InitOutput {
     readonly __wbindgen_exn_store: (a: number) => void;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+    readonly __externref_drop_slice: (a: number, b: number) => void;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __externref_table_dealloc: (a: number) => void;
-    readonly __externref_drop_slice: (a: number, b: number) => void;
     readonly __wbindgen_start: () => void;
 }
 

@@ -25,6 +25,23 @@ export class CanvistEditor {
         wasm.__wbg_canvisteditor_free(ptr, 0);
     }
     /**
+     * Add an annotation to a text range.
+     *
+     * `kind` examples: "error", "warning", "info", "spelling".
+     * `message` is optional descriptive text.
+     * @param {number} start
+     * @param {number} end
+     * @param {string} kind
+     * @param {string} message
+     */
+    add_annotation(start, end, kind, message) {
+        const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_add_annotation(this.__wbg_ptr, start, end, ptr0, len0, ptr1, len1);
+    }
+    /**
      * Add a coloured background decoration to a line (0-based).
      *
      * Multiple decorations can be added to the same line. The colours
@@ -44,6 +61,27 @@ export class CanvistEditor {
      */
     add_ruler(column) {
         wasm.canvisteditor_add_ruler(this.__wbg_ptr, column);
+    }
+    /**
+     * Number of active annotations.
+     * @returns {number}
+     */
+    annotation_count() {
+        const ret = wasm.canvisteditor_annotation_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get annotations overlapping a character offset.
+     *
+     * Returns flat array: [start, end, kind, message, ...].
+     * @param {number} offset
+     * @returns {string[]}
+     */
+    annotations_at(offset) {
+        const ret = wasm.canvisteditor_annotations_at(this.__wbg_ptr, offset);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Apply style to the given character range.
@@ -229,6 +267,12 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Remove all annotations.
+     */
+    clear_annotations() {
+        wasm.canvisteditor_clear_annotations(this.__wbg_ptr);
+    }
+    /**
      * Remove all bookmarks.
      */
     clear_bookmarks() {
@@ -333,6 +377,20 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Suggest completions for the word currently being typed.
+     *
+     * Returns up to `max_results` words from the document that start
+     * with the prefix at the cursor. Sorted alphabetically, deduplicated.
+     * @param {number} max_results
+     * @returns {string[]}
+     */
+    completions(max_results) {
+        const ret = wasm.canvisteditor_completions(this.__wbg_ptr, max_results);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Compute the total content height in logical pixels.
@@ -668,6 +726,14 @@ export class CanvistEditor {
         return v2;
     }
     /**
+     * Get the first visible line number (0-based).
+     * @returns {number}
+     */
+    first_visible_line() {
+        const ret = wasm.canvisteditor_first_visible_line(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Get the current focus state.
      * @returns {boolean}
      */
@@ -686,6 +752,51 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(html, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_from_html(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Get annotations as flat array: [start, end, kind, message, ...].
+     * @returns {string[]}
+     */
+    get_annotations() {
+        const ret = wasm.canvisteditor_get_annotations(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Get text of a single line (0-based).
+     * @param {number} line
+     * @returns {string}
+     */
+    get_line(line) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_get_line(this.__wbg_ptr, line);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Get text for a range of lines (0-based, inclusive start, exclusive end).
+     * @param {number} start_line
+     * @param {number} end_line
+     * @returns {string}
+     */
+    get_line_range(start_line, end_line) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_get_line_range(this.__wbg_ptr, start_line, end_line);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Return the currently selected text (empty string if selection is collapsed).
@@ -930,6 +1041,14 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Get the last visible line number (0-based).
+     * @returns {number}
+     */
+    last_visible_line() {
+        const ret = wasm.canvisteditor_last_visible_line(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Count the number of visual lines using the paragraph layout engine.
      * @returns {number}
      */
@@ -939,6 +1058,14 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0] >>> 0;
+    }
+    /**
+     * Get the total number of lines in the document.
+     * @returns {number}
+     */
+    line_count_total() {
+        const ret = wasm.canvisteditor_line_count_total(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Number of active line decorations.
@@ -1324,6 +1451,15 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Remove all annotations matching a kind (e.g. "error").
+     * @param {string} kind
+     */
+    remove_annotations_by_kind(kind) {
+        const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_remove_annotations_by_kind(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Remove consecutive duplicate lines from the document.
      *
      * Returns the number of lines removed.
@@ -1474,6 +1610,29 @@ export class CanvistEditor {
         wasm.canvisteditor_scroll_by(this.__wbg_ptr, delta_y);
     }
     /**
+     * The scroll position as a fraction (0.0 = top, 1.0 = bottom).
+     * @returns {number}
+     */
+    scroll_fraction() {
+        const ret = wasm.canvisteditor_scroll_fraction(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * The ratio of viewport to content (0.0–1.0). 1.0 = all visible.
+     * @returns {number}
+     */
+    scroll_ratio() {
+        const ret = wasm.canvisteditor_scroll_ratio(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Scroll to a fraction of the document (0.0 = top, 1.0 = bottom).
+     * @param {number} fraction
+     */
+    scroll_to_fraction(fraction) {
+        wasm.canvisteditor_scroll_to_fraction(this.__wbg_ptr, fraction);
+    }
+    /**
      * Ensure the current selection (or cursor) is visible in the
      * viewport. Scrolls the minimum amount needed.
      */
@@ -1487,6 +1646,46 @@ export class CanvistEditor {
     scroll_y() {
         const ret = wasm.canvisteditor_scroll_y(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * Clear search history.
+     */
+    search_history_clear() {
+        wasm.canvisteditor_search_history_clear(this.__wbg_ptr);
+    }
+    /**
+     * Get search history entry at index (0 = most recent).
+     * @param {number} index
+     * @returns {string}
+     */
+    search_history_get(index) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_search_history_get(this.__wbg_ptr, index);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Number of search history entries.
+     * @returns {number}
+     */
+    search_history_length() {
+        const ret = wasm.canvisteditor_search_history_length(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Push a search term into the search history.
+     * @param {string} term
+     */
+    search_history_push(term) {
+        const ptr0 = passStringToWasm0(term, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_search_history_push(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Select the entire document.
@@ -1740,6 +1939,17 @@ export class CanvistEditor {
      */
     set_highlight_occurrences(enabled) {
         wasm.canvisteditor_set_highlight_occurrences(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Replace text for a range of lines (0-based, inclusive start, exclusive end).
+     * @param {number} start_line
+     * @param {number} end_line
+     * @param {string} text
+     */
+    set_line_range(start_line, end_line, text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_line_range(this.__wbg_ptr, start_line, end_line, ptr0, len0);
     }
     /**
      * Set maximum character count (0 = unlimited).
@@ -2249,6 +2459,22 @@ export class CanvistEditor {
      */
     url_encode_selection() {
         wasm.canvisteditor_url_encode_selection(this.__wbg_ptr);
+    }
+    /**
+     * The viewport height in pixels (same as canvas height / zoom).
+     * @returns {number}
+     */
+    viewport_height() {
+        const ret = wasm.canvisteditor_viewport_height(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Number of lines visible in the viewport.
+     * @returns {number}
+     */
+    visible_line_count() {
+        const ret = wasm.canvisteditor_visible_line_count(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Get the word under (or adjacent to) the cursor.
