@@ -81,6 +81,23 @@ export class CanvistEditor {
         wasm.canvisteditor_add_line_decoration(this.__wbg_ptr, line, r, g, b, a);
     }
     /**
+     * Add a coloured marker highlight range.
+     *
+     * Returns the marker ID for later removal.
+     * @param {number} start
+     * @param {number} end
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @param {number} a
+     * @param {string} id
+     */
+    add_marker(start, end, r, g, b, a, id) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_add_marker(this.__wbg_ptr, start, end, r, g, b, a, ptr0, len0);
+    }
+    /**
      * Add a single ruler at the given column.
      * @param {number} column
      */
@@ -194,6 +211,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Average number of characters per line.
+     * @returns {number}
+     */
+    avg_line_length() {
+        const ret = wasm.canvisteditor_avg_line_length(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * Average word length in characters.
      * @returns {number}
      */
@@ -273,6 +298,14 @@ export class CanvistEditor {
      */
     break_undo_coalescing() {
         wasm.canvisteditor_break_undo_coalescing(this.__wbg_ptr);
+    }
+    /**
+     * Total byte count of the document (UTF-8).
+     * @returns {number}
+     */
+    byte_count() {
+        const ret = wasm.canvisteditor_byte_count(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Whether there are entries on the redo stack.
@@ -372,10 +405,22 @@ export class CanvistEditor {
         wasm.canvisteditor_clear_cursors(this.__wbg_ptr);
     }
     /**
+     * Clear all custom keybinding overrides.
+     */
+    clear_keybindings() {
+        wasm.canvisteditor_clear_keybindings(this.__wbg_ptr);
+    }
+    /**
      * Remove all line decorations.
      */
     clear_line_decorations() {
         wasm.canvisteditor_clear_line_decorations(this.__wbg_ptr);
+    }
+    /**
+     * Clear all markers.
+     */
+    clear_markers() {
+        wasm.canvisteditor_clear_markers(this.__wbg_ptr);
     }
     /**
      * Clear the saved snapshot.
@@ -518,6 +563,20 @@ export class CanvistEditor {
      */
     completions(max_results) {
         const ret = wasm.canvisteditor_completions(this.__wbg_ptr, max_results);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Get filtered word completions with context.
+     *
+     * Returns [word, lineContext, ...] where lineContext is the line
+     * where the word appears. Max `limit` results.
+     * @param {number} limit
+     * @returns {string[]}
+     */
+    completions_with_context(limit) {
+        const ret = wasm.canvisteditor_completions_with_context(this.__wbg_ptr, limit);
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
@@ -1252,6 +1311,25 @@ export class CanvistEditor {
         }
     }
     /**
+     * Get the command bound to a shortcut (custom override or default).
+     * @param {string} shortcut
+     * @returns {string}
+     */
+    get_keybinding(shortcut) {
+        let deferred2_0;
+        let deferred2_1;
+        try {
+            const ptr0 = passStringToWasm0(shortcut, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len0 = WASM_VECTOR_LEN;
+            const ret = wasm.canvisteditor_get_keybinding(this.__wbg_ptr, ptr0, len0);
+            deferred2_0 = ret[0];
+            deferred2_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+        }
+    }
+    /**
      * Get text of a single line (0-based).
      * @param {number} line
      * @returns {string}
@@ -1580,6 +1658,16 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether a specific logical line (0-based) is soft-wrapped into
+     * multiple visual lines.
+     * @param {number} line
+     * @returns {boolean}
+     */
+    is_line_wrapped(line) {
+        const ret = wasm.canvisteditor_is_line_wrapped(this.__wbg_ptr, line);
+        return ret !== 0;
+    }
+    /**
      * Whether the document has been modified since last save.
      * @returns {boolean}
      */
@@ -1602,6 +1690,24 @@ export class CanvistEditor {
      */
     join_lines() {
         wasm.canvisteditor_join_lines(this.__wbg_ptr);
+    }
+    /**
+     * Number of custom keybinding overrides.
+     * @returns {number}
+     */
+    keybinding_override_count() {
+        const ret = wasm.canvisteditor_keybinding_override_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get all keybinding overrides as [shortcut, command, ...].
+     * @returns {string[]}
+     */
+    keybinding_overrides_list() {
+        const ret = wasm.canvisteditor_keybinding_overrides_list(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Get the last recorded selection end offset (from `selection_changed`).
@@ -1714,6 +1820,22 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(event, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_log_event(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Longest line length in characters.
+     * @returns {number}
+     */
+    longest_line_length() {
+        const ret = wasm.canvisteditor_longest_line_length(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Line number of the longest line (0-based).
+     * @returns {number}
+     */
+    longest_line_number() {
+        const ret = wasm.canvisteditor_longest_line_number(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * The longest word in the document.
@@ -1836,6 +1958,35 @@ export class CanvistEditor {
      */
     mark_saved() {
         wasm.canvisteditor_mark_saved(this.__wbg_ptr);
+    }
+    /**
+     * Number of active markers.
+     * @returns {number}
+     */
+    marker_count() {
+        const ret = wasm.canvisteditor_marker_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get all markers as [start, end, r, g, b, a, id, ...].
+     * @returns {string[]}
+     */
+    marker_list() {
+        const ret = wasm.canvisteditor_marker_list(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Get markers overlapping a character offset.
+     * @param {number} offset
+     * @returns {string[]}
+     */
+    markers_at(offset) {
+        const ret = wasm.canvisteditor_markers_at(this.__wbg_ptr, offset);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Get the current max character count (0 = unlimited).
@@ -2063,6 +2214,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Number of paragraph blocks (text groups separated by blank lines).
+     * @returns {number}
+     */
+    paragraph_block_count() {
+        const ret = wasm.canvisteditor_paragraph_block_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Total paragraph count (non-empty lines).
      * @returns {number}
      */
@@ -2270,11 +2429,38 @@ export class CanvistEditor {
         wasm.canvisteditor_remove_highlight_color(this.__wbg_ptr);
     }
     /**
+     * Remove a custom keybinding override.
+     * @param {string} shortcut
+     */
+    remove_keybinding(shortcut) {
+        const ptr0 = passStringToWasm0(shortcut, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_remove_keybinding(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Remove all decorations from a specific line.
      * @param {number} line
      */
     remove_line_decorations(line) {
         wasm.canvisteditor_remove_line_decorations(this.__wbg_ptr, line);
+    }
+    /**
+     * Remove a marker by ID.
+     * @param {string} id
+     */
+    remove_marker(id) {
+        const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_remove_marker(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Remove all markers with IDs starting with a prefix.
+     * @param {string} prefix
+     */
+    remove_markers_by_prefix(prefix) {
+        const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_remove_markers_by_prefix(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Remove the ruler at the given column.
@@ -2395,6 +2581,32 @@ export class CanvistEditor {
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Execute a command by name.
+     *
+     * Returns `true` if the command is recognized and executed.
+     * @param {string} command
+     * @returns {boolean}
+     */
+    run_command(command) {
+        const ptr0 = passStringToWasm0(command, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_run_command(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
+     * Execute the command bound to a shortcut.
+     *
+     * Custom overrides are checked first, then defaults.
+     * @param {string} shortcut
+     * @returns {boolean}
+     */
+    run_shortcut(shortcut) {
+        const ptr0 = passStringToWasm0(shortcut, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_run_shortcut(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
     }
     /**
      * Serialize the editor state to a JSON string.
@@ -2888,6 +3100,21 @@ export class CanvistEditor {
      */
     set_highlight_occurrences(enabled) {
         wasm.canvisteditor_set_highlight_occurrences(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Rebind a keyboard shortcut to a command.
+     *
+     * `shortcut` is e.g. "Ctrl+B", `command` is the command name from
+     * `command_list()` e.g. "Bold".
+     * @param {string} shortcut
+     * @param {string} command
+     */
+    set_keybinding(shortcut, command) {
+        const ptr0 = passStringToWasm0(shortcut, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(command, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_keybinding(this.__wbg_ptr, ptr0, len0, ptr1, len1);
     }
     /**
      * Replace text for a range of lines (0-based, inclusive start, exclusive end).
@@ -3455,10 +3682,47 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Transform selected text to camelCase.
+     */
+    transform_camel_case() {
+        wasm.canvisteditor_transform_camel_case(this.__wbg_ptr);
+    }
+    /**
+     * Transform selected text to CONSTANT_CASE (upper snake).
+     */
+    transform_constant_case() {
+        wasm.canvisteditor_transform_constant_case(this.__wbg_ptr);
+    }
+    /**
+     * Transform selected text to kebab-case.
+     */
+    transform_kebab_case() {
+        wasm.canvisteditor_transform_kebab_case(this.__wbg_ptr);
+    }
+    /**
      * Convert selected text to lowercase.
      */
     transform_lowercase() {
         wasm.canvisteditor_transform_lowercase(this.__wbg_ptr);
+    }
+    /**
+     * Apply a transformation pipeline to the current selection.
+     *
+     * Supported step names (case-insensitive, `|` separated):
+     * `upper`, `lower`, `title`, `camel`, `snake`, `kebab`, `constant`,
+     * `reverse`.
+     * @param {string} pipeline
+     */
+    transform_pipeline(pipeline) {
+        const ptr0 = passStringToWasm0(pipeline, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_transform_pipeline(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Transform selected text to snake_case.
+     */
+    transform_snake_case() {
+        wasm.canvisteditor_transform_snake_case(this.__wbg_ptr);
     }
     /**
      * Convert selected text to Title Case.
@@ -3579,6 +3843,14 @@ export class CanvistEditor {
      */
     visible_line_count() {
         const ret = wasm.canvisteditor_visible_line_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Number of visual (display) lines after word wrapping.
+     * @returns {number}
+     */
+    visual_line_count() {
+        const ret = wasm.canvisteditor_visual_line_count(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**

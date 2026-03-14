@@ -2365,6 +2365,131 @@ export async function createEditor(
 			get isFocused() {
 				return ref.is_focused();
 			},
+			// ── Custom keybindings ──────────────────────
+			setKeybinding(shortcut: string, command: string) {
+				ref.set_keybinding(shortcut, command);
+			},
+			removeKeybinding(shortcut: string) {
+				ref.remove_keybinding(shortcut);
+			},
+			clearKeybindings() {
+				ref.clear_keybindings();
+			},
+			getKeybinding(shortcut: string) {
+				return ref.get_keybinding(shortcut);
+			},
+			get keybindingOverrideCount() {
+				return ref.keybinding_override_count();
+			},
+			keybindingOverridesList() {
+				return Array.from(ref.keybinding_overrides_list());
+			},
+			runCommand(command: string) {
+				syncTime();
+				const ok = ref.run_command(command);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			runShortcut(shortcut: string) {
+				syncTime();
+				const ok = ref.run_shortcut(shortcut);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			// ── Text transform pipeline ─────────────────
+			transformCamelCase() {
+				syncTime();
+				ref.transform_camel_case();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			transformSnakeCase() {
+				syncTime();
+				ref.transform_snake_case();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			transformKebabCase() {
+				syncTime();
+				ref.transform_kebab_case();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			transformConstantCase() {
+				syncTime();
+				ref.transform_constant_case();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			transformPipeline(pipeline: string) {
+				syncTime();
+				ref.transform_pipeline(pipeline);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Marker ranges ───────────────────────────
+			addMarker(
+				start: number,
+				end: number,
+				r: number,
+				g: number,
+				b: number,
+				a: number,
+				id: string,
+			) {
+				ref.add_marker(start, end, r, g, b, a, id);
+				renderFrame();
+			},
+			removeMarker(id: string) {
+				ref.remove_marker(id);
+				renderFrame();
+			},
+			removeMarkersByPrefix(prefix: string) {
+				ref.remove_markers_by_prefix(prefix);
+				renderFrame();
+			},
+			clearMarkers() {
+				ref.clear_markers();
+				renderFrame();
+			},
+			get markerCount() {
+				return ref.marker_count();
+			},
+			markerList() {
+				return Array.from(ref.marker_list());
+			},
+			markersAt(offset: number) {
+				return Array.from(ref.markers_at(offset));
+			},
+			// ── Soft wrap info ──────────────────────────
+			get visualLineCount() {
+				return ref.visual_line_count();
+			},
+			isLineWrapped(line: number) {
+				return ref.is_line_wrapped(line);
+			},
+			// ── Extended stats ──────────────────────────
+			get paragraphBlockCount() {
+				return ref.paragraph_block_count();
+			},
+			get avgLineLength() {
+				return ref.avg_line_length();
+			},
+			get longestLineLength() {
+				return ref.longest_line_length();
+			},
+			get longestLineNumber() {
+				return ref.longest_line_number();
+			},
+			get byteCount() {
+				return ref.byte_count();
+			},
+			// ── Completion context ──────────────────────
+			completionsWithContext(limit: number) {
+				return Array.from(ref.completions_with_context(limit));
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));
