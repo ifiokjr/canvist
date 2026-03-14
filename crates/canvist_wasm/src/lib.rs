@@ -438,6 +438,8 @@ pub struct CanvistEditor {
 	syntax_highlight: bool,
 	/// Token colour overrides: kind → (r, g, b, a).
 	token_colors: std::collections::HashMap<String, (u8, u8, u8, u8)>,
+	/// Extra cursor offsets for multi-cursor editing.
+	extra_cursors: Vec<usize>,
 }
 
 /// Colour theme for the editor canvas.
@@ -587,6 +589,7 @@ impl CanvistEditor {
 			detect_links: false,
 			syntax_highlight: false,
 			token_colors: std::collections::HashMap::new(),
+			extra_cursors: Vec::new(),
 		})
 	}
 
@@ -5118,6 +5121,243 @@ impl CanvistEditor {
 		.join(",")
 	}
 
+	// ── Multi-cursor ─────────────────────────────────────────────────
+
+	/// Add an extra cursor at a character offset.
+	///
+	/// Extra cursors are rendered alongside the primary cursor.
+	/// Use `multi_cursor_insert` to type at all positions.
+	#[wasm_bindgen]
+	pub fn add_cursor(&mut self, offset: usize) {
+		if !self.extra_cursors.contains(&offset) {
+			self.extra_cursors.push(offset);
+			self.extra_cursors.sort_unstable();
+		}
+	}
+
+	/// Remove an extra cursor at a specific offset.
+	#[wasm_bindgen]
+	pub fn remove_cursor(&mut self, offset: usize) {
+		self.extra_cursors.retain(|&o| o != offset);
+	}
+
+	/// Clear all extra cursors.
+	#[wasm_bindgen]
+	pub fn clear_cursors(&mut self) {
+		self.extra_cursors.clear();
+	}
+
+	/// Number of extra cursors (not counting the primary).
+	#[wasm_bindgen]
+	pub fn extra_cursor_count(&self) -> usize {
+		self.extra_cursors.len()
+	}
+
+	/// Get all extra cursor offsets.
+	#[wasm_bindgen]
+	pub fn extra_cursor_offsets(&self) -> Vec<usize> {
+		self.extra_cursors.clone()
+	}
+
+	/// Insert text at all cursor positions (primary + extras).
+	///
+	/// Returns the number of insertions performed. Offsets are adjusted
+	/// as text is inserted (processed from end to start).
+	#[wasm_bindgen]
+	pub fn multi_cursor_insert(&mut self, text: &str) -> usize {
+		if !self.is_writable() || text.is_empty() {
+			return 0;
+		}
+		let primary = self.runtime.selection().end().offset();
+		let mut all_offsets: Vec<usize> = self.extra_cursors.clone();
+		if !all_offsets.contains(&primary) {
+			all_offsets.push(primary);
+		}
+		all_offsets.sort_unstable();
+		all_offsets.dedup();
+
+		let len = text.chars().count();
+		let count = all_offsets.len();
+
+		// Insert from end to start so earlier offsets stay valid.
+		for &offset in all_offsets.iter().rev() {
+			self.runtime
+				.apply_operation(Operation::insert(Position::new(offset), text.to_string()));
+		}
+
+		// Update extra cursor offsets.
+		let mut shift = 0usize;
+		let mut new_cursors = Vec::new();
+		for &offset in &all_offsets {
+			let new_pos = offset + shift + len;
+			if offset != primary {
+				new_cursors.push(new_pos);
+			}
+			shift += len;
+		}
+		self.extra_cursors = new_cursors;
+
+		// Move primary cursor.
+		let new_primary =
+			primary + len + all_offsets.iter().filter(|&&o| o < primary).count() * len;
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(new_primary)),
+		});
+		self.is_modified = true;
+		count
+	}
+
+	// ── Breadcrumbs ──────────────────────────────────────────────────
+
+	/// Get document breadcrumbs — lines that start with #, //, or are
+	/// all-caps (treated as section headers).
+	///
+	/// Returns flat array: [line_number, text, line_number, text, ...].
+	#[wasm_bindgen]
+	pub fn breadcrumbs(&self) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let mut result = Vec::new();
+		for (i, line) in plain.split('\n').enumerate() {
+			let trimmed = line.trim();
+			if trimmed.is_empty() {
+				continue;
+			}
+			let is_heading = trimmed.starts_with('#')
+				|| trimmed.starts_with("//")
+				|| (trimmed.len() >= 3
+					&& trimmed
+						.chars()
+						.all(|c| c.is_uppercase() || c.is_whitespace()));
+			if is_heading {
+				result.push(i.to_string());
+				result.push(trimmed.to_string());
+			}
+		}
+		result
+	}
+
+	/// Navigate to a breadcrumb by index in the breadcrumbs array.
+	///
+	/// Sets cursor to the beginning of that line and scrolls to it.
+	#[wasm_bindgen]
+	pub fn go_to_breadcrumb(&mut self, line: usize) {
+		let plain = self.runtime.document().plain_text();
+		let mut char_offset = 0usize;
+		for (i, ln) in plain.split('\n').enumerate() {
+			if i == line {
+				let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+					selection: Selection::collapsed(Position::new(char_offset)),
+				});
+				self.scroll_to_line(line);
+				return;
+			}
+			char_offset += ln.chars().count() + 1;
+		}
+	}
+
+	// ── Indent level at cursor ───────────────────────────────────────
+
+	/// Get the indentation level (number of leading whitespace chars)
+	/// of the current line.
+	#[wasm_bindgen]
+	pub fn indent_level_at_cursor(&self) -> usize {
+		let plain = self.runtime.document().plain_text();
+		let offset = self.runtime.selection().end().offset();
+		let before: String = plain.chars().take(offset).collect();
+		let current_line = before.rsplit('\n').next().unwrap_or("");
+		current_line
+			.chars()
+			.take_while(|c| c.is_whitespace())
+			.count()
+	}
+
+	/// Get the indent level of a specific line (0-based).
+	#[wasm_bindgen]
+	pub fn indent_level_of_line(&self, line: usize) -> usize {
+		let plain = self.runtime.document().plain_text();
+		plain
+			.split('\n')
+			.nth(line)
+			.unwrap_or("")
+			.chars()
+			.take_while(|c| c.is_whitespace())
+			.count()
+	}
+
+	// ── Text diff patch ──────────────────────────────────────────────
+
+	/// Apply a simple text patch.
+	///
+	/// `operations` is a flat array of strings: ["insert", "offset", "text",
+	/// "delete", "start", "end", ...]. Processed from end to start.
+	#[wasm_bindgen]
+	pub fn apply_patch(&mut self, operations: Vec<String>) {
+		if !self.is_writable() {
+			return;
+		}
+		// Parse operations.
+		struct PatchOp {
+			kind: String,
+			offset: usize,
+			end: usize,
+			text: String,
+		}
+		let mut ops = Vec::new();
+		let mut i = 0;
+		while i < operations.len() {
+			match operations[i].as_str() {
+				"insert" if i + 2 < operations.len() => {
+					let offset = operations[i + 1].parse::<usize>().unwrap_or(0);
+					let text = operations[i + 2].clone();
+					ops.push(PatchOp {
+						kind: "insert".to_string(),
+						offset,
+						end: 0,
+						text,
+					});
+					i += 3;
+				}
+				"delete" if i + 2 < operations.len() => {
+					let start = operations[i + 1].parse::<usize>().unwrap_or(0);
+					let end = operations[i + 2].parse::<usize>().unwrap_or(0);
+					ops.push(PatchOp {
+						kind: "delete".to_string(),
+						offset: start,
+						end,
+						text: String::new(),
+					});
+					i += 3;
+				}
+				_ => {
+					i += 1;
+				}
+			}
+		}
+		// Sort by offset descending so later ops don't shift earlier ones.
+		ops.sort_by(|a, b| b.offset.cmp(&a.offset));
+		for op in &ops {
+			match op.kind.as_str() {
+				"insert" => self.insert_text_at(op.offset, &op.text),
+				"delete" => self.delete_range(op.offset, op.end),
+				_ => {}
+			}
+		}
+	}
+
+	// ── Canvas export ────────────────────────────────────────────────
+
+	/// Export the current canvas as a PNG data URL.
+	///
+	/// Returns empty string if the canvas is not available.
+	#[wasm_bindgen]
+	pub fn export_canvas_data_url(&self) -> String {
+		let (canvas, _) = match self.canvas_and_context() {
+			Ok(v) => v,
+			Err(_) => return String::new(),
+		};
+		canvas.to_data_url().ok().unwrap_or_default()
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -7230,6 +7470,31 @@ impl CanvistEditor {
 								actual_caret_color,
 							);
 						}
+					}
+				}
+			}
+		}
+
+		// ── Extra cursors (multi-cursor) ─────────────────────────────────
+		if self.caret_visible && !self.extra_cursors.is_empty() {
+			let extra_color = Color::new(caret_color.r, caret_color.g, caret_color.b, 180);
+			for &offset in &self.extra_cursors {
+				let (pi, li) = find_para_and_line_for_offset(&paragraphs, offset);
+				if let Some(para) = paragraphs.get(pi) {
+					if let Some(line) = para.layout.lines.get(li) {
+						let local = offset.saturating_sub(para.global_char_start);
+						let cx = (lc.padding_x + content_x_origin)
+							+ line.x_offset + x_offset_in_para_line(
+							&renderer,
+							para,
+							line.start_offset,
+							local,
+						);
+						let cy = lc.padding_y + para.y_offset + line.y - sy;
+						renderer.fill_rect(
+							Rect::new(cx, cy, self.cursor_width, line.height),
+							extra_color,
+						);
 					}
 				}
 			}

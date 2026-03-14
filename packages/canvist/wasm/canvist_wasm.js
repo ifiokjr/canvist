@@ -42,6 +42,16 @@ export class CanvistEditor {
         wasm.canvisteditor_add_annotation(this.__wbg_ptr, start, end, ptr0, len0, ptr1, len1);
     }
     /**
+     * Add an extra cursor at a character offset.
+     *
+     * Extra cursors are rendered alongside the primary cursor.
+     * Use `multi_cursor_insert` to type at all positions.
+     * @param {number} offset
+     */
+    add_cursor(offset) {
+        wasm.canvisteditor_add_cursor(this.__wbg_ptr, offset);
+    }
+    /**
      * Add a coloured background decoration to a line (0-based).
      *
      * Multiple decorations can be added to the same line. The colours
@@ -90,6 +100,18 @@ export class CanvistEditor {
     api_count() {
         const ret = wasm.canvisteditor_api_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Apply a simple text patch.
+     *
+     * `operations` is a flat array of strings: ["insert", "offset", "text",
+     * "delete", "start", "end", ...]. Processed from end to start.
+     * @param {string[]} operations
+     */
+    apply_patch(operations) {
+        const ptr0 = passArrayJsValueToWasm0(operations, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_apply_patch(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Apply a named configuration preset.
@@ -209,6 +231,19 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Get document breadcrumbs — lines that start with #, //, or are
+     * all-caps (treated as section headers).
+     *
+     * Returns flat array: [line_number, text, line_number, text, ...].
+     * @returns {string[]}
+     */
+    breadcrumbs() {
+        const ret = wasm.canvisteditor_breadcrumbs(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Force-break the current undo coalescing chain.
      *
      * Normally, rapid single-character inserts are merged into a single undo
@@ -308,6 +343,12 @@ export class CanvistEditor {
      */
     clear_bookmarks() {
         wasm.canvisteditor_clear_bookmarks(this.__wbg_ptr);
+    }
+    /**
+     * Clear all extra cursors.
+     */
+    clear_cursors() {
+        wasm.canvisteditor_clear_cursors(this.__wbg_ptr);
     }
     /**
      * Remove all line decorations.
@@ -720,6 +761,42 @@ export class CanvistEditor {
         wasm.canvisteditor_expand_selection(this.__wbg_ptr);
     }
     /**
+     * Export the current canvas as a PNG data URL.
+     *
+     * Returns empty string if the canvas is not available.
+     * @returns {string}
+     */
+    export_canvas_data_url() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_export_canvas_data_url(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Number of extra cursors (not counting the primary).
+     * @returns {number}
+     */
+    extra_cursor_count() {
+        const ret = wasm.canvisteditor_extra_cursor_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get all extra cursor offsets.
+     * @returns {Uint32Array}
+     */
+    extra_cursor_offsets() {
+        const ret = wasm.canvisteditor_extra_cursor_offsets(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Feature summary as a comma-separated list of categories.
      * @returns {string}
      */
@@ -1080,6 +1157,15 @@ export class CanvistEditor {
         return v2;
     }
     /**
+     * Navigate to a breadcrumb by index in the breadcrumbs array.
+     *
+     * Sets cursor to the beginning of that line and scrolls to it.
+     * @param {number} line
+     */
+    go_to_breadcrumb(line) {
+        wasm.canvisteditor_go_to_breadcrumb(this.__wbg_ptr, line);
+    }
+    /**
      * Move cursor to the very end of the document (Ctrl+End).
      */
     go_to_document_end() {
@@ -1171,6 +1257,24 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0] >>> 0;
+    }
+    /**
+     * Get the indentation level (number of leading whitespace chars)
+     * of the current line.
+     * @returns {number}
+     */
+    indent_level_at_cursor() {
+        const ret = wasm.canvisteditor_indent_level_at_cursor(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get the indent level of a specific line (0-based).
+     * @param {number} line
+     * @returns {number}
+     */
+    indent_level_of_line(line) {
+        const ret = wasm.canvisteditor_indent_level_of_line(this.__wbg_ptr, line);
+        return ret >>> 0;
     }
     /**
      * Indent the current selection: insert a tab character at the start
@@ -1663,6 +1767,20 @@ export class CanvistEditor {
         wasm.canvisteditor_move_to_prev_paragraph(this.__wbg_ptr);
     }
     /**
+     * Insert text at all cursor positions (primary + extras).
+     *
+     * Returns the number of insertions performed. Offsets are adjusted
+     * as text is inserted (processed from end to start).
+     * @param {string} text
+     * @returns {number}
+     */
+    multi_cursor_insert(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_multi_cursor_insert(this.__wbg_ptr, ptr0, len0);
+        return ret >>> 0;
+    }
+    /**
      * Jump to the next bookmark after the current line.
      *
      * Wraps around to the first bookmark if past the last one.
@@ -1908,6 +2026,13 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_remove_annotations_by_kind(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Remove an extra cursor at a specific offset.
+     * @param {number} offset
+     */
+    remove_cursor(offset) {
+        wasm.canvisteditor_remove_cursor(this.__wbg_ptr, offset);
     }
     /**
      * Remove consecutive duplicate lines from the document.
@@ -3282,6 +3407,14 @@ function __wbg_get_imports() {
             const ret = arg0 === undefined;
             return ret;
         },
+        __wbg___wbindgen_string_get_395e606bd0ee4427: function(arg0, arg1) {
+            const obj = arg1;
+            const ret = typeof(obj) === 'string' ? obj : undefined;
+            var ptr1 = isLikeNone(ret) ? 0 : passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            var len1 = WASM_VECTOR_LEN;
+            getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+        },
         __wbg___wbindgen_throw_6ddd609b62940d55: function(arg0, arg1) {
             throw new Error(getStringFromWasm0(arg0, arg1));
         },
@@ -3384,6 +3517,13 @@ function __wbg_get_imports() {
         __wbg_stroke_affa71c0888c6f31: function(arg0) {
             arg0.stroke();
         },
+        __wbg_toDataURL_bf99d85b39ce57cc: function() { return handleError(function (arg0, arg1) {
+            const ret = arg1.toDataURL();
+            const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+            const len1 = WASM_VECTOR_LEN;
+            getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
+            getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
+        }, arguments); },
         __wbg_width_4d6fc7fecd877217: function(arg0) {
             const ret = arg0.width;
             return ret;
@@ -3510,6 +3650,16 @@ function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
     getUint8ArrayMemory0().set(arg, ptr / 1);
     WASM_VECTOR_LEN = arg.length;
+    return ptr;
+}
+
+function passArrayJsValueToWasm0(array, malloc) {
+    const ptr = malloc(array.length * 4, 4) >>> 0;
+    for (let i = 0; i < array.length; i++) {
+        const add = addToExternrefTable0(array[i]);
+        getDataViewMemory0().setUint32(ptr + 4 * i, add, true);
+    }
+    WASM_VECTOR_LEN = array.length;
     return ptr;
 }
 
