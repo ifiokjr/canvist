@@ -6781,6 +6781,73 @@ impl CanvistEditor {
 		true
 	}
 
+	/// Anchor entries as flat `[name, offset, ...]`, sorted by name.
+	#[wasm_bindgen]
+	pub fn anchor_entries(&self) -> Vec<String> {
+		let mut names: Vec<String> = self.anchors.keys().cloned().collect();
+		names.sort_unstable();
+		let mut out = Vec::with_capacity(names.len() * 2);
+		for name in names {
+			if let Some(offset) = self.anchors.get(&name) {
+				out.push(name);
+				out.push(offset.to_string());
+			}
+		}
+		out
+	}
+
+	/// Remove anchors whose names start with prefix.
+	///
+	/// Returns number removed.
+	#[wasm_bindgen]
+	pub fn remove_anchors_with_prefix(&mut self, prefix: &str) -> usize {
+		if prefix.is_empty() {
+			return 0;
+		}
+		let keys: Vec<String> = self
+			.anchors
+			.keys()
+			.filter(|name| name.starts_with(prefix))
+			.cloned()
+			.collect();
+		let removed = keys.len();
+		for key in keys {
+			self.anchors.remove(&key);
+		}
+		removed
+	}
+
+	/// Rename anchors with a shared prefix.
+	///
+	/// Returns number renamed. Existing destination names are overwritten.
+	#[wasm_bindgen]
+	pub fn rename_anchor_prefix(&mut self, old_prefix: &str, new_prefix: &str) -> usize {
+		if old_prefix.is_empty() {
+			return 0;
+		}
+		let mut keys: Vec<String> = self
+			.anchors
+			.keys()
+			.filter(|name| name.starts_with(old_prefix))
+			.cloned()
+			.collect();
+		if keys.is_empty() {
+			return 0;
+		}
+		keys.sort_unstable();
+		let mut renamed = 0usize;
+		for old_name in keys {
+			let Some(offset) = self.anchors.remove(&old_name) else {
+				continue;
+			};
+			let suffix = &old_name[old_prefix.len()..];
+			let new_name = format!("{new_prefix}{suffix}");
+			self.anchors.insert(new_name, offset);
+			renamed += 1;
+		}
+		renamed
+	}
+
 	// ── Tasks / TODO scanner ────────────────────────────────────────
 
 	/// Scan the document for task-style lines.
@@ -7700,6 +7767,86 @@ impl CanvistEditor {
 		changed
 	}
 
+	/// Whether a line starts with a prefix.
+	#[wasm_bindgen]
+	pub fn line_has_prefix(&self, line: usize, prefix: &str, case_sensitive: bool) -> bool {
+		let plain = self.runtime.document().plain_text();
+		let Some(text) = plain.split('\n').nth(line) else {
+			return false;
+		};
+		if case_sensitive {
+			text.starts_with(prefix)
+		} else {
+			text.to_lowercase().starts_with(&prefix.to_lowercase())
+		}
+	}
+
+	/// Whether a line ends with a suffix.
+	#[wasm_bindgen]
+	pub fn line_has_suffix(&self, line: usize, suffix: &str, case_sensitive: bool) -> bool {
+		let plain = self.runtime.document().plain_text();
+		let Some(text) = plain.split('\n').nth(line) else {
+			return false;
+		};
+		if case_sensitive {
+			text.ends_with(suffix)
+		} else {
+			text.to_lowercase().ends_with(&suffix.to_lowercase())
+		}
+	}
+
+	/// Line numbers whose text starts with prefix.
+	#[wasm_bindgen]
+	pub fn lines_with_prefix(&self, prefix: &str, case_sensitive: bool) -> Vec<usize> {
+		if prefix.is_empty() {
+			return Vec::new();
+		}
+		let needle = if case_sensitive {
+			String::new()
+		} else {
+			prefix.to_lowercase()
+		};
+		let plain = self.runtime.document().plain_text();
+		let mut out = Vec::new();
+		for (i, line) in plain.split('\n').enumerate() {
+			let hit = if case_sensitive {
+				line.starts_with(prefix)
+			} else {
+				line.to_lowercase().starts_with(&needle)
+			};
+			if hit {
+				out.push(i);
+			}
+		}
+		out
+	}
+
+	/// Line numbers whose text ends with suffix.
+	#[wasm_bindgen]
+	pub fn lines_with_suffix(&self, suffix: &str, case_sensitive: bool) -> Vec<usize> {
+		if suffix.is_empty() {
+			return Vec::new();
+		}
+		let needle = if case_sensitive {
+			String::new()
+		} else {
+			suffix.to_lowercase()
+		};
+		let plain = self.runtime.document().plain_text();
+		let mut out = Vec::new();
+		for (i, line) in plain.split('\n').enumerate() {
+			let hit = if case_sensitive {
+				line.ends_with(suffix)
+			} else {
+				line.to_lowercase().ends_with(&needle)
+			};
+			if hit {
+				out.push(i);
+			}
+		}
+		out
+	}
+
 	/// Number a line range with `N. ` prefix.
 	///
 	/// Returns number of lines changed.
@@ -7842,6 +7989,32 @@ impl CanvistEditor {
 		out
 	}
 
+	/// Return line hashes for an inclusive range as `[line, hash, ...]`.
+	#[wasm_bindgen]
+	pub fn line_hashes_in_range(&self, start_line: usize, end_line: usize) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		if lines.is_empty() {
+			return Vec::new();
+		}
+		let s = start_line.min(lines.len() - 1);
+		let e = end_line.min(lines.len() - 1);
+		if s > e {
+			return Vec::new();
+		}
+		let mut out = Vec::new();
+		for (idx, line) in lines.iter().enumerate().take(e + 1).skip(s) {
+			let mut hash: u64 = 0xcbf29ce484222325;
+			for byte in line.as_bytes() {
+				hash ^= *byte as u64;
+				hash = hash.wrapping_mul(0x100000001b3);
+			}
+			out.push(idx.to_string());
+			out.push(format!("{hash:016x}"));
+		}
+		out
+	}
+
 	/// Compare two line hashes for equality.
 	///
 	/// Returns `false` if either line is out of range.
@@ -7896,6 +8069,23 @@ impl CanvistEditor {
 		}
 		out.sort_unstable();
 		out
+	}
+
+	/// Number of lines that belong to duplicate-content groups.
+	#[wasm_bindgen]
+	pub fn duplicate_line_count(&self, case_sensitive: bool, ignore_whitespace: bool) -> usize {
+		self.duplicate_line_numbers(case_sensitive, ignore_whitespace)
+			.len()
+	}
+
+	/// Ratio of duplicate lines to total lines.
+	#[wasm_bindgen]
+	pub fn duplicate_line_ratio(&self, case_sensitive: bool, ignore_whitespace: bool) -> f64 {
+		let total = self.runtime.document().plain_text().split('\n').count();
+		if total == 0 {
+			return 0.0;
+		}
+		self.duplicate_line_count(case_sensitive, ignore_whitespace) as f64 / total as f64
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any

@@ -7522,4 +7522,162 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor prefix/bulk utilities ────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor entries and prefix bulk operations`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghij");
+						ed.set_anchor("foo.1", 1);
+						ed.set_anchor("foo.2", 2);
+						ed.set_anchor("bar.1", 3);
+						const entriesBefore = Array.from(ed.anchor_entries());
+						const renamed = ed.rename_anchor_prefix("foo.", "x.");
+						const namesAfterRename = Array.from(ed.anchor_names());
+						const removed = ed.remove_anchors_with_prefix("x.");
+						const finalNames = Array.from(ed.anchor_names());
+						const finalCount = ed.anchor_count();
+						return {
+							entriesBefore,
+							renamed,
+							namesAfterRename,
+							removed,
+							finalNames,
+							finalCount,
+						};
+					});
+					assertEquals(result.entriesBefore, [
+						"bar.1",
+						"3",
+						"foo.1",
+						"1",
+						"foo.2",
+						"2",
+					]);
+					assertEquals(result.renamed, 2);
+					assert(result.namesAfterRename.includes("x.1"));
+					assert(result.namesAfterRename.includes("x.2"));
+					assertEquals(result.removed, 2);
+					assertEquals(result.finalNames, ["bar.1"]);
+					assertEquals(result.finalCount, 1);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line prefix/suffix query helpers ────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line prefix and suffix query helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Alpha\nbeta\nalpha!\nzeta!");
+						return {
+							hasPrefixCs: ed.line_has_prefix(0, "Al", true),
+							hasPrefixCi: ed.line_has_prefix(2, "al", false),
+							hasSuffixCs: ed.line_has_suffix(3, "!", true),
+							hasSuffixCi: ed.line_has_suffix(1, "TA", false),
+							prefixLines: Array.from(ed.lines_with_prefix("a", false)),
+							suffixLines: Array.from(ed.lines_with_suffix("!", true)),
+						};
+					});
+					assertEquals(result.hasPrefixCs, true);
+					assertEquals(result.hasPrefixCi, true);
+					assertEquals(result.hasSuffixCs, true);
+					assertEquals(result.hasSuffixCi, true);
+					assertEquals(result.prefixLines, [0, 2]);
+					assertEquals(result.suffixLines, [2, 3]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Hash range + duplicate aggregates ───────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line hashes in range and duplicate aggregates`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aa\nbb\ncc\ndd");
+						const all = Array.from(ed.line_hashes());
+						const inRange = Array.from(ed.line_hashes_in_range(1, 2));
+						const h1 = ed.line_hash(1);
+						const h2 = ed.line_hash(2);
+
+						ed.delete_range(0, ed.char_count());
+						ed.insert_text("one\nTwo\none \n two\nsolo");
+						const dupCountLoose = ed.duplicate_line_count(false, true);
+						const dupRatioLoose = ed.duplicate_line_ratio(false, true);
+						const dupCountStrict = ed.duplicate_line_count(true, false);
+						const dupRatioStrict = ed.duplicate_line_ratio(true, false);
+						return {
+							all,
+							inRange,
+							h1,
+							h2,
+							dupCountLoose,
+							dupRatioLoose,
+							dupCountStrict,
+							dupRatioStrict,
+						};
+					});
+
+					assertEquals(result.all.length, 8);
+					assertEquals(result.inRange.length, 4);
+					assertEquals(result.inRange[0], "1");
+					assertEquals(result.inRange[1], result.h1);
+					assertEquals(result.inRange[2], "2");
+					assertEquals(result.inRange[3], result.h2);
+					assertEquals(result.dupCountLoose, 4);
+					assert(Math.abs(result.dupRatioLoose - 0.8) < 1e-9);
+					assertEquals(result.dupCountStrict, 0);
+					assertEquals(result.dupRatioStrict, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

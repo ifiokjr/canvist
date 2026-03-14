@@ -1495,6 +1495,15 @@ export interface CanvistEditor {
 	/** Shift a named anchor by signed delta, clamped to doc bounds. */
 	shiftAnchor(name: string, delta: number): boolean;
 
+	/** Anchor entries as [name, offset, ...], sorted by name. */
+	anchorEntries(): string[];
+
+	/** Remove anchors whose names start with prefix. */
+	removeAnchorsWithPrefix(prefix: string): number;
+
+	/** Rename anchors with a shared prefix. */
+	renameAnchorPrefix(oldPrefix: string, newPrefix: string): number;
+
 	// ── Tasks / TODO scanner ────────────────────────────────────────
 
 	/** Scan tasks: [line, kind, checked, text, ...]. */
@@ -1661,6 +1670,26 @@ export interface CanvistEditor {
 	/** Remove suffix from lines in range when present. Returns lines changed. */
 	unsuffixLines(startLine: number, endLine: number, suffix: string): number;
 
+	/** Whether a line starts with prefix. */
+	lineHasPrefix(
+		line: number,
+		prefix: string,
+		caseSensitive?: boolean,
+	): boolean;
+
+	/** Whether a line ends with suffix. */
+	lineHasSuffix(
+		line: number,
+		suffix: string,
+		caseSensitive?: boolean,
+	): boolean;
+
+	/** Line numbers that start with prefix. */
+	linesWithPrefix(prefix: string, caseSensitive?: boolean): number[];
+
+	/** Line numbers that end with suffix. */
+	linesWithSuffix(suffix: string, caseSensitive?: boolean): number[];
+
 	/** Number each line in range with N. prefix. Returns lines changed. */
 	numberLines(
 		startLine: number,
@@ -1681,6 +1710,9 @@ export interface CanvistEditor {
 	/** All line hashes: [line, hash, ...]. */
 	lineHashes(): string[];
 
+	/** Line hashes for inclusive range: [line, hash, ...]. */
+	lineHashesInRange(startLine: number, endLine: number): string[];
+
 	/** Compare hashes of two lines. */
 	lineHashEquals(a: number, b: number): boolean;
 
@@ -1696,6 +1728,18 @@ export interface CanvistEditor {
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
 	): number[];
+
+	/** Number of lines in duplicate-content groups. */
+	duplicateLineCount(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of duplicate lines to total lines. */
+	duplicateLineRatio(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
 
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;

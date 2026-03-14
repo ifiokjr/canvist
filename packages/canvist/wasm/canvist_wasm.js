@@ -113,6 +113,16 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Anchor entries as flat `[name, offset, ...]`, sorted by name.
+     * @returns {string[]}
+     */
+    anchor_entries() {
+        const ret = wasm.canvisteditor_anchor_entries(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Whether a named anchor exists.
      * @param {string} name
      * @returns {boolean}
@@ -1035,6 +1045,16 @@ export class CanvistEditor {
         wasm.canvisteditor_duplicate_line(this.__wbg_ptr);
     }
     /**
+     * Number of lines that belong to duplicate-content groups.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    duplicate_line_count(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_line_count(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        return ret >>> 0;
+    }
+    /**
      * Line numbers that have duplicated content.
      *
      * `ignore_whitespace` collapses whitespace and trims ends before
@@ -1060,6 +1080,16 @@ export class CanvistEditor {
     duplicate_line_range(start_line, end_line) {
         const ret = wasm.canvisteditor_duplicate_line_range(this.__wbg_ptr, start_line, end_line);
         return ret !== 0;
+    }
+    /**
+     * Ratio of duplicate lines to total lines.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    duplicate_line_ratio(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_line_ratio(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        return ret;
     }
     /**
      * Editor version string.
@@ -1982,6 +2012,32 @@ export class CanvistEditor {
         return ret[0] >>> 0;
     }
     /**
+     * Whether a line starts with a prefix.
+     * @param {number} line
+     * @param {string} prefix
+     * @param {boolean} case_sensitive
+     * @returns {boolean}
+     */
+    line_has_prefix(line, prefix, case_sensitive) {
+        const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_line_has_prefix(this.__wbg_ptr, line, ptr0, len0, case_sensitive);
+        return ret !== 0;
+    }
+    /**
+     * Whether a line ends with a suffix.
+     * @param {number} line
+     * @param {string} suffix
+     * @param {boolean} case_sensitive
+     * @returns {boolean}
+     */
+    line_has_suffix(line, suffix, case_sensitive) {
+        const ptr0 = passStringToWasm0(suffix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_line_has_suffix(this.__wbg_ptr, line, ptr0, len0, case_sensitive);
+        return ret !== 0;
+    }
+    /**
      * Compute FNV-1a 64-bit hash of a logical line.
      *
      * Returns empty string when line is out of range.
@@ -2018,6 +2074,18 @@ export class CanvistEditor {
      */
     line_hashes() {
         const ret = wasm.canvisteditor_line_hashes(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Return line hashes for an inclusive range as `[line, hash, ...]`.
+     * @param {number} start_line
+     * @param {number} end_line
+     * @returns {string[]}
+     */
+    line_hashes_in_range(start_line, end_line) {
+        const ret = wasm.canvisteditor_line_hashes_in_range(this.__wbg_ptr, start_line, end_line);
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
@@ -2073,6 +2141,34 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0] >>> 0;
+    }
+    /**
+     * Line numbers whose text starts with prefix.
+     * @param {string} prefix
+     * @param {boolean} case_sensitive
+     * @returns {Uint32Array}
+     */
+    lines_with_prefix(prefix, case_sensitive) {
+        const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_lines_with_prefix(this.__wbg_ptr, ptr0, len0, case_sensitive);
+        var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
+     * Line numbers whose text ends with suffix.
+     * @param {string} suffix
+     * @param {boolean} case_sensitive
+     * @returns {Uint32Array}
+     */
+    lines_with_suffix(suffix, case_sensitive) {
+        const ptr0 = passStringToWasm0(suffix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_lines_with_suffix(this.__wbg_ptr, ptr0, len0, case_sensitive);
+        var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
     }
     /**
      * Get the URL text at a character offset, if any.
@@ -2893,6 +2989,19 @@ export class CanvistEditor {
         wasm.canvisteditor_remove_anchor(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Remove anchors whose names start with prefix.
+     *
+     * Returns number removed.
+     * @param {string} prefix
+     * @returns {number}
+     */
+    remove_anchors_with_prefix(prefix) {
+        const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_remove_anchors_with_prefix(this.__wbg_ptr, ptr0, len0);
+        return ret >>> 0;
+    }
+    /**
      * Remove all annotations matching a kind (e.g. "error").
      * @param {string} kind
      */
@@ -3012,6 +3121,22 @@ export class CanvistEditor {
         const len1 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_rename_anchor(this.__wbg_ptr, ptr0, len0, ptr1, len1);
         return ret !== 0;
+    }
+    /**
+     * Rename anchors with a shared prefix.
+     *
+     * Returns number renamed. Existing destination names are overwritten.
+     * @param {string} old_prefix
+     * @param {string} new_prefix
+     * @returns {number}
+     */
+    rename_anchor_prefix(old_prefix, new_prefix) {
+        const ptr0 = passStringToWasm0(old_prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(new_prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_rename_anchor_prefix(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret >>> 0;
     }
     /**
      * Request a re-render of the document to the canvas.
