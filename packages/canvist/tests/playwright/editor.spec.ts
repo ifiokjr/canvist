@@ -43,6 +43,25 @@ async function launchBrowser(
 	const browser = await browserLauncher.launch({ headless: true });
 	const context = await browser.newContext();
 	const page = await context.newPage();
+
+	// Firefox can be slower/flakier under heavy suites; harden navigation.
+	page.setDefaultTimeout(60_000);
+	page.setDefaultNavigationTimeout(60_000);
+	const rawGoto: (...args: any[]) => Promise<any> = page.goto.bind(page);
+	(page as any).goto = async (...args: any[]) => {
+		let lastErr: unknown;
+		for (let attempt = 0; attempt < 3; attempt++) {
+			try {
+				return await rawGoto(...args);
+			} catch (err) {
+				lastErr = err;
+				if (attempt === 2) break;
+				await page.waitForTimeout(250);
+			}
+		}
+		throw lastErr;
+	};
+
 	return { browser, context, page };
 }
 
@@ -7146,6 +7165,210 @@ for (const browserName of BROWSERS) {
 					assertEquals(result.afterSwap, "three\ntwo\none\nfour");
 					assertEquals(result.duplicated, true);
 					assertEquals(result.afterDup, "three\ntwo\none\ntwo\none\nfour");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Anchor utilities ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor exists, rename, nearest before/after`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghijklmnop");
+						ed.set_anchor("a", 2);
+						ed.set_anchor("b", 8);
+						ed.set_anchor("c", 14);
+						const hasB = ed.anchor_exists("b");
+						const renamed = ed.rename_anchor("b", "beta");
+						const hasOld = ed.anchor_exists("b");
+						const hasNew = ed.anchor_exists("beta");
+						const before = Array.from(ed.nearest_anchor_before(9));
+						const after = Array.from(ed.nearest_anchor_after(9));
+						return { hasB, renamed, hasOld, hasNew, before, after };
+					});
+					assertEquals(result.hasB, true);
+					assertEquals(result.renamed, true);
+					assertEquals(result.hasOld, false);
+					assertEquals(result.hasNew, true);
+					assertEquals(result.before, ["beta", "8"]);
+					assertEquals(result.after, ["c", "14"]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line prefix/suffix/number utilities ────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] prefix, suffix, and number lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("apple\nbanana\ncherry");
+						const p = ed.prefix_lines(0, 1, "> ");
+						const s = ed.suffix_lines(1, 2, " !");
+						const n = ed.number_lines(0, 2, 1, 2);
+						return { p, s, n, text: ed.plain_text() };
+					});
+					assertEquals(result.p, 2);
+					assertEquals(result.s, 2);
+					assertEquals(result.n, 3);
+					assertEquals(
+						result.text,
+						"01. > apple\n02. > banana !\n03. cherry !",
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Cleanup additions ───────────────────────────────────────────
+
+	Deno.test({
+		name:
+			`[${browserName}] strip non-printable and normalize unicode whitespace`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("a\u0001b\u0007c\u00A0d\u2009e");
+						const removed = ed.strip_non_printable();
+						const replaced = ed.normalize_unicode_whitespace();
+						const text = ed.plain_text();
+						return { removed, replaced, text };
+					});
+					assertEquals(result.removed, 2);
+					assertEquals(result.replaced, 2);
+					assertEquals(result.text, "abc d e");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line hashes + duplicate detection ───────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line hashes and duplicate line numbers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("alpha\nbeta\nalpha");
+						const h0 = ed.line_hash(0);
+						const h1 = ed.line_hash(1);
+						const h2 = ed.line_hash(2);
+						const miss = ed.line_hash(99);
+						const hashes = Array.from(ed.line_hashes());
+						ed.delete_range(0, ed.char_count());
+						ed.insert_text("one\nTwo\none \n two\nTHREE");
+						const dupLoose = Array.from(ed.duplicate_line_numbers(false, true));
+						const dupStrict = Array.from(
+							ed.duplicate_line_numbers(true, false),
+						);
+						return {
+							h0,
+							h1,
+							h2,
+							miss,
+							hashes,
+							dupLoose,
+							dupStrict,
+						};
+					});
+					assertEquals(result.h0, result.h2);
+					assert(result.h0 !== result.h1);
+					assertEquals(result.miss, "");
+					assertEquals(result.hashes.length, 6);
+					assertEquals(result.dupLoose, [0, 1, 2, 3]);
+					assertEquals(result.dupStrict, []);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Task line insertion helper ──────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] insert task line helper`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("alpha\nbeta");
+						ed.set_selection(6, 6);
+						ed.insert_task_line("todo item", false);
+						return {
+							text: ed.plain_text(),
+							count: ed.task_count(),
+						};
+					});
+					assertEquals(result.count, 1);
+					assertEquals(result.text, "alpha\n- [ ] todo item\nbeta");
 				} finally {
 					await browser.close();
 				}
