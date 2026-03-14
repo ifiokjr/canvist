@@ -1912,6 +1912,69 @@ export async function createEditor(
 			get visibleLineCount() {
 				return ref.visible_line_count();
 			},
+			// ── Minimap ─────────────────────────────────
+			get showMinimap() {
+				return ref.show_minimap();
+			},
+			setShowMinimap(enabled: boolean) {
+				ref.set_show_minimap(enabled);
+				renderFrame();
+			},
+			get minimapWidth() {
+				return ref.minimap_width();
+			},
+			setMinimapWidth(w: number) {
+				ref.set_minimap_width(w);
+				renderFrame();
+			},
+			// ── Sticky scroll ───────────────────────────
+			get stickyScroll() {
+				return ref.sticky_scroll();
+			},
+			setStickyScroll(enabled: boolean) {
+				ref.set_sticky_scroll(enabled);
+				renderFrame();
+			},
+			// ── Rename all ──────────────────────────────
+			renameAll(newName: string) {
+				syncTime();
+				const n = ref.rename_all(newName);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			// ── Cursor style ────────────────────────────
+			get cursorStyle() {
+				return ref.cursor_style();
+			},
+			setCursorStyle(style: number) {
+				ref.set_cursor_style(style);
+				renderFrame();
+			},
+			get cursorWidthPx() {
+				return ref.cursor_width_px();
+			},
+			setCursorWidth(w: number) {
+				ref.set_cursor_width(w);
+				renderFrame();
+			},
+			setCursorColor(r: number, g: number, b: number, a: number) {
+				ref.set_cursor_color(r, g, b, a);
+				renderFrame();
+			},
+			// ── Snapshot diff ───────────────────────────
+			takeSnapshot() {
+				ref.take_snapshot();
+			},
+			diffFromSnapshot() {
+				return Array.from(ref.diff_from_snapshot());
+			},
+			get hasSnapshot() {
+				return ref.has_snapshot();
+			},
+			clearSnapshot() {
+				ref.clear_snapshot();
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));

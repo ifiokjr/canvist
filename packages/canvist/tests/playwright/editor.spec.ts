@@ -5058,4 +5058,183 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Minimap ─────────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] minimap toggle and width`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.show_minimap();
+						ed.set_show_minimap(true);
+						const after = ed.show_minimap();
+						ed.set_minimap_width(80);
+						const w = ed.minimap_width();
+						return { before, after, w };
+					});
+					assertEquals(result.before, false);
+					assertEquals(result.after, true);
+					assertEquals(result.w, 80);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Sticky scroll ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] sticky scroll toggle`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.sticky_scroll();
+						ed.set_sticky_scroll(true);
+						const after = ed.sticky_scroll();
+						return { before, after };
+					});
+					assertEquals(result.before, false);
+					assertEquals(result.after, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Rename all ──────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] rename_all replaces word under cursor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("foo bar foo baz foo");
+						ed.set_selection(1, 1); // inside first "foo"
+						const count = ed.rename_all("qux");
+						return { count, text: ed.plain_text() };
+					});
+					assertEquals(result.count, 3);
+					assertEquals(result.text, "qux bar qux baz qux");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Cursor style ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] cursor style, width, colour`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_cursor_style(1);
+						const style = ed.cursor_style();
+						ed.set_cursor_width(4);
+						const w = ed.cursor_width_px();
+						ed.set_cursor_color(255, 0, 0, 255);
+						// Reset.
+						ed.set_cursor_color(0, 0, 0, 0);
+						ed.set_cursor_style(0);
+						return { style, w };
+					});
+					assertEquals(result.style, 1);
+					assertEquals(result.w, 4);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Snapshot diff ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] snapshot diff detects changed lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("line0\nline1\nline2");
+						ed.take_snapshot();
+						const hasBefore = ed.has_snapshot();
+						// Modify line 1.
+						ed.set_selection(6, 11); // "line1"
+						ed.delete_range(6, 11);
+						ed.insert_text_at(6, "CHANGED");
+						const changed = Array.from(ed.diff_from_snapshot());
+						ed.clear_snapshot();
+						const hasAfter = ed.has_snapshot();
+						return { hasBefore, changed, hasAfter };
+					});
+					assertEquals(result.hasBefore, true);
+					assert(
+						result.changed.includes(1),
+						`line 1 should be changed, got ${result.changed}`,
+					);
+					assertEquals(result.hasAfter, false);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

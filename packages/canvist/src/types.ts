@@ -936,6 +936,64 @@ export interface CanvistEditor {
 	/** Number of visible lines in viewport. */
 	readonly visibleLineCount: number;
 
+	// ── Minimap ─────────────────────────────────────────────────────
+
+	/** Whether the minimap is shown. */
+	readonly showMinimap: boolean;
+
+	/** Toggle the minimap sidebar. */
+	setShowMinimap(enabled: boolean): void;
+
+	/** Minimap width in pixels. */
+	readonly minimapWidth: number;
+
+	/** Set minimap width (30–200). */
+	setMinimapWidth(w: number): void;
+
+	// ── Sticky scroll ───────────────────────────────────────────────
+
+	/** Whether sticky scroll is enabled. */
+	readonly stickyScroll: boolean;
+
+	/** Toggle sticky scroll. */
+	setStickyScroll(enabled: boolean): void;
+
+	// ── Rename all ──────────────────────────────────────────────────
+
+	/** Rename all whole-word occurrences of word under cursor. Returns count. */
+	renameAll(newName: string): number;
+
+	// ── Cursor style ────────────────────────────────────────────────
+
+	/** Get cursor style (0=line, 1=block, 2=underline). */
+	readonly cursorStyle: number;
+
+	/** Set cursor style. */
+	setCursorStyle(style: number): void;
+
+	/** Get cursor width in pixels. */
+	readonly cursorWidthPx: number;
+
+	/** Set cursor width. */
+	setCursorWidth(w: number): void;
+
+	/** Set cursor colour (pass a=0 to reset to theme). */
+	setCursorColor(r: number, g: number, b: number, a: number): void;
+
+	// ── Snapshot diff ───────────────────────────────────────────────
+
+	/** Take a snapshot of current text. */
+	takeSnapshot(): void;
+
+	/** Compare current text vs snapshot; returns changed line numbers. */
+	diffFromSnapshot(): number[];
+
+	/** Whether a snapshot exists. */
+	readonly hasSnapshot: boolean;
+
+	/** Clear the snapshot. */
+	clearSnapshot(): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }
