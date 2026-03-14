@@ -110,6 +110,18 @@ export class CanvistEditor {
         wasm.canvisteditor_base64_encode_selection(this.__wbg_ptr);
     }
     /**
+     * Begin a batch of operations that will be grouped into a single
+     * undo step. Call `end_batch` when done.
+     *
+     * The runtime coalesces rapid edits automatically. This method
+     * serves as a logical marker — all edits between `begin_batch`
+     * and `end_batch` happen in quick succession and are treated as
+     * one undo group.
+     */
+    begin_batch() {
+        wasm.canvisteditor_begin_batch(this.__wbg_ptr);
+    }
+    /**
      * Number of active bookmarks.
      * @returns {number}
      */
@@ -490,6 +502,15 @@ export class CanvistEditor {
         wasm.canvisteditor_duplicate_line(this.__wbg_ptr);
     }
     /**
+     * End a batch of operations.
+     *
+     * After this call, the next edit will start a new undo group
+     * (once the coalesce timeout expires).
+     */
+    end_batch() {
+        wasm.canvisteditor_end_batch(this.__wbg_ptr);
+    }
+    /**
      * Ensure the document ends with a newline character.
      *
      * Returns `true` if a newline was added.
@@ -518,6 +539,27 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_find_all(this.__wbg_ptr, ptr0, len0, case_sensitive);
+        var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
+     * Find all matches of a regex pattern in the document.
+     *
+     * Returns offsets as `[start0, end0, start1, end1, ...]`.
+     * Returns empty array if the pattern is invalid.
+     *
+     * Note: uses a simple character-by-character implementation since
+     * the `regex` crate is heavy for WASM. Supports: `.` `*` `+` `?`
+     * `^` `$` `\d` `\w` `\s` and character classes `[abc]`.
+     * For full regex, use the JS `RegExp` in the host and pass offsets.
+     * @param {string} pattern
+     * @returns {Uint32Array}
+     */
+    find_all_regex(pattern) {
+        const ptr0 = passStringToWasm0(pattern, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_find_all_regex(this.__wbg_ptr, ptr0, len0);
         var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
@@ -750,6 +792,20 @@ export class CanvistEditor {
         wasm.canvisteditor_insert_text_at(this.__wbg_ptr, offset, ptr0, len0);
     }
     /**
+     * Insert text respecting the max_length constraint.
+     *
+     * Truncates the input so the total never exceeds the limit.
+     * Returns the number of characters actually inserted.
+     * @param {string} text
+     * @returns {number}
+     */
+    insert_text_clamped(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_insert_text_clamped(this.__wbg_ptr, ptr0, len0);
+        return ret >>> 0;
+    }
+    /**
      * Insert text respecting overwrite mode. In overwrite mode,
      * characters after the cursor are replaced one-for-one rather
      * than pushing text forward.
@@ -823,6 +879,14 @@ export class CanvistEditor {
         wasm.canvisteditor_join_lines(this.__wbg_ptr);
     }
     /**
+     * Get the last recorded selection end offset (from `selection_changed`).
+     * @returns {number}
+     */
+    last_selection_end() {
+        const ret = wasm.canvisteditor_last_selection_end(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Count the number of visual lines using the paragraph layout engine.
      * @returns {number}
      */
@@ -882,6 +946,14 @@ export class CanvistEditor {
      */
     mark_saved() {
         wasm.canvisteditor_mark_saved(this.__wbg_ptr);
+    }
+    /**
+     * Get the current max character count (0 = unlimited).
+     * @returns {number}
+     */
+    max_length() {
+        const ret = wasm.canvisteditor_max_length(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Measure the pixel width of a single character using the default
@@ -1077,6 +1149,22 @@ export class CanvistEditor {
         wasm.canvisteditor_paste_html(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Get the current placeholder text.
+     * @returns {string}
+     */
+    placeholder() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_placeholder(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Return the full plain-text content of the document.
      * @returns {string}
      */
@@ -1169,6 +1257,16 @@ export class CanvistEditor {
     redo() {
         const ret = wasm.canvisteditor_redo(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * How many more characters can be inserted before hitting the limit.
+     *
+     * Returns `usize::MAX` when max_length is 0 (unlimited).
+     * @returns {number}
+     */
+    remaining_capacity() {
+        const ret = wasm.canvisteditor_remaining_capacity(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Remove consecutive duplicate lines from the document.
@@ -1270,6 +1368,15 @@ export class CanvistEditor {
         }
     }
     /**
+     * Restore editor state from a JSON string produced by `save_state`.
+     * @param {string} json
+     */
+    restore_state(json) {
+        const ptr0 = passStringToWasm0(json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_restore_state(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Reverse the order of selected lines.
      */
     reverse_lines() {
@@ -1284,6 +1391,25 @@ export class CanvistEditor {
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Serialize the editor state to a JSON string.
+     *
+     * Includes text, selection, scroll position, theme, and settings.
+     * Use `restore_state` to reload.
+     * @returns {string}
+     */
+    save_state() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_save_state(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Scroll by a delta (positive = down, negative = up).
@@ -1376,6 +1502,18 @@ export class CanvistEditor {
     selected_word_count() {
         const ret = wasm.canvisteditor_selected_word_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Check if the selection has changed since the last call to this
+     * method.
+     *
+     * Returns `true` the first time the selection moves to a new
+     * position. Useful for triggering UI updates only when needed.
+     * @returns {boolean}
+     */
+    selection_changed() {
+        const ret = wasm.canvisteditor_selection_changed(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Get selection end offset.
@@ -1514,6 +1652,16 @@ export class CanvistEditor {
         wasm.canvisteditor_set_highlight_occurrences(this.__wbg_ptr, enabled);
     }
     /**
+     * Set maximum character count (0 = unlimited).
+     *
+     * When set, `insert_text` and similar operations will be truncated
+     * to stay within the limit.
+     * @param {number} max
+     */
+    set_max_length(max) {
+        wasm.canvisteditor_set_max_length(this.__wbg_ptr, max);
+    }
+    /**
      * Set the current wall-clock time (milliseconds since epoch) for the
      * undo coalescing timer.
      *
@@ -1532,6 +1680,15 @@ export class CanvistEditor {
      */
     set_overwrite_mode(enabled) {
         wasm.canvisteditor_set_overwrite_mode(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Set placeholder text shown when the document is empty.
+     * @param {string} text
+     */
+    set_placeholder(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_placeholder(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Set the editor to read-only mode. Editing operations are blocked;

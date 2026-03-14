@@ -4421,4 +4421,223 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── State serialization ─────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] save and restore state round-trips`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						ed.set_selection(3, 3);
+						const state = ed.save_state();
+						const parsed = JSON.parse(state);
+						// Clear and restore.
+						const len = ed.plain_text().length;
+						ed.delete_range(0, len);
+						ed.restore_state(state);
+						return {
+							text: ed.plain_text(),
+							selEnd: ed.selection_end(),
+							hasText: parsed.text === "Hello World",
+						};
+					});
+					assertEquals(result.text, "Hello World");
+					assertEquals(result.selEnd, 3);
+					assertEquals(result.hasText, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Placeholder text ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] placeholder text set and get`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const len = ed.plain_text().length;
+						if (len > 0) ed.delete_range(0, len);
+						const before = ed.placeholder();
+						ed.set_placeholder("Type something...");
+						const after = ed.placeholder();
+						return { before, after };
+					});
+					assertEquals(result.before, "");
+					assertEquals(result.after, "Type something...");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Max length ──────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] max length clamps text insertion`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_max_length(10);
+						const n1 = ed.insert_text_clamped("Hello");
+						const n2 = ed.insert_text_clamped(" World!!");
+						const text = ed.plain_text();
+						const remaining = ed.remaining_capacity();
+						return { n1, n2, text, remaining };
+					});
+					assertEquals(result.n1, 5);
+					assertEquals(result.n2, 5); // truncated to fit 10
+					assertEquals(result.text, "Hello Worl");
+					assertEquals(result.remaining, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Regex find ──────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] find_all_regex finds case-insensitive matches`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello hello HELLO");
+						const offsets = Array.from(ed.find_all_regex("hello"));
+						return offsets;
+					});
+					// Should find 3 matches: 0-5, 6-11, 12-17
+					assertEquals(result.length, 6);
+					assertEquals(result[0], 0);
+					assertEquals(result[1], 5);
+					assertEquals(result[2], 6);
+					assertEquals(result[3], 11);
+					assertEquals(result[4], 12);
+					assertEquals(result[5], 17);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Selection change detection ──────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] selection_changed detects cursor movement`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello");
+						// First call — cursor moved from 0 to 5.
+						const changed1 = ed.selection_changed();
+						// Second call — cursor hasn't moved.
+						const changed2 = ed.selection_changed();
+						// Move cursor and check again.
+						ed.set_selection(2, 2);
+						const changed3 = ed.selection_changed();
+						return { changed1, changed2, changed3 };
+					});
+					assertEquals(result.changed1, true);
+					assertEquals(result.changed2, false);
+					assertEquals(result.changed3, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Batch operations ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] begin_batch and end_batch do not crash`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.begin_batch();
+						ed.insert_text("Batch1");
+						ed.insert_text("Batch2");
+						ed.end_batch();
+						return ed.plain_text();
+					});
+					assertEquals(result, "Batch1Batch2");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

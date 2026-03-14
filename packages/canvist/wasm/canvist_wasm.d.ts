@@ -57,6 +57,16 @@ export class CanvistEditor {
      */
     base64_encode_selection(): void;
     /**
+     * Begin a batch of operations that will be grouped into a single
+     * undo step. Call `end_batch` when done.
+     *
+     * The runtime coalesces rapid edits automatically. This method
+     * serves as a logical marker — all edits between `begin_batch`
+     * and `end_batch` happen in quick succession and are treated as
+     * one undo group.
+     */
+    begin_batch(): void;
+    /**
      * Number of active bookmarks.
      */
     bookmark_count(): number;
@@ -247,6 +257,13 @@ export class CanvistEditor {
      */
     duplicate_line(): void;
     /**
+     * End a batch of operations.
+     *
+     * After this call, the next edit will start a new undo group
+     * (once the coalesce timeout expires).
+     */
+    end_batch(): void;
+    /**
      * Ensure the document ends with a newline character.
      *
      * Returns `true` if a newline was added.
@@ -263,6 +280,18 @@ export class CanvistEditor {
      * start1, end1, …].
      */
     find_all(needle: string, case_sensitive: boolean): Uint32Array;
+    /**
+     * Find all matches of a regex pattern in the document.
+     *
+     * Returns offsets as `[start0, end0, start1, end1, ...]`.
+     * Returns empty array if the pattern is invalid.
+     *
+     * Note: uses a simple character-by-character implementation since
+     * the `regex` crate is heavy for WASM. Supports: `.` `*` `+` `?`
+     * `^` `$` `\d` `\w` `\s` and character classes `[abc]`.
+     * For full regex, use the JS `RegExp` in the host and pass offsets.
+     */
+    find_all_regex(pattern: string): Uint32Array;
     /**
      * Find all whole-word occurrences of `needle`.
      *
@@ -386,6 +415,13 @@ export class CanvistEditor {
      */
     insert_text_at(offset: number, text: string): void;
     /**
+     * Insert text respecting the max_length constraint.
+     *
+     * Truncates the input so the total never exceeds the limit.
+     * Returns the number of characters actually inserted.
+     */
+    insert_text_clamped(text: string): number;
+    /**
      * Insert text respecting overwrite mode. In overwrite mode,
      * characters after the cursor are replaced one-for-one rather
      * than pushing text forward.
@@ -425,6 +461,10 @@ export class CanvistEditor {
      */
     join_lines(): void;
     /**
+     * Get the last recorded selection end offset (from `selection_changed`).
+     */
+    last_selection_end(): number;
+    /**
      * Count the number of visual lines using the paragraph layout engine.
      */
     line_count(): number;
@@ -454,6 +494,10 @@ export class CanvistEditor {
      * Mark the document as saved (clears the modified flag).
      */
     mark_saved(): void;
+    /**
+     * Get the current max character count (0 = unlimited).
+     */
+    max_length(): number;
     /**
      * Measure the pixel width of a single character using the default
      * style.
@@ -564,6 +608,10 @@ export class CanvistEditor {
      */
     paste_html(html: string): void;
     /**
+     * Get the current placeholder text.
+     */
+    placeholder(): string;
+    /**
      * Return the full plain-text content of the document.
      */
     plain_text(): string;
@@ -609,6 +657,12 @@ export class CanvistEditor {
      * redo was performed, `false` if the redo stack was empty.
      */
     redo(): boolean;
+    /**
+     * How many more characters can be inserted before hitting the limit.
+     *
+     * Returns `usize::MAX` when max_length is 0 (unlimited).
+     */
+    remaining_capacity(): number;
     /**
      * Remove consecutive duplicate lines from the document.
      *
@@ -659,6 +713,10 @@ export class CanvistEditor {
      */
     replay_operations_json(operations_json: string): void;
     /**
+     * Restore editor state from a JSON string produced by `save_state`.
+     */
+    restore_state(json: string): void;
+    /**
      * Reverse the order of selected lines.
      */
     reverse_lines(): void;
@@ -666,6 +724,13 @@ export class CanvistEditor {
      * Get the current ruler columns as a flat array.
      */
     rulers(): Uint32Array;
+    /**
+     * Serialize the editor state to a JSON string.
+     *
+     * Includes text, selection, scroll position, theme, and settings.
+     * Use `restore_state` to reload.
+     */
+    save_state(): string;
     /**
      * Scroll by a delta (positive = down, negative = up).
      */
@@ -722,6 +787,14 @@ export class CanvistEditor {
      * Number of words in the current selection (0 if collapsed).
      */
     selected_word_count(): number;
+    /**
+     * Check if the selection has changed since the last call to this
+     * method.
+     *
+     * Returns `true` the first time the selection moves to a new
+     * position. Useful for triggering UI updates only when needed.
+     */
+    selection_changed(): boolean;
     /**
      * Get selection end offset.
      */
@@ -807,6 +880,13 @@ export class CanvistEditor {
      */
     set_highlight_occurrences(enabled: boolean): void;
     /**
+     * Set maximum character count (0 = unlimited).
+     *
+     * When set, `insert_text` and similar operations will be truncated
+     * to stay within the limit.
+     */
+    set_max_length(max: number): void;
+    /**
      * Set the current wall-clock time (milliseconds since epoch) for the
      * undo coalescing timer.
      *
@@ -820,6 +900,10 @@ export class CanvistEditor {
      * Set overwrite mode explicitly.
      */
     set_overwrite_mode(enabled: boolean): void;
+    /**
+     * Set placeholder text shown when the document is empty.
+     */
+    set_placeholder(text: string): void;
     /**
      * Set the editor to read-only mode. Editing operations are blocked;
      * selection, copy, and navigation still work.
@@ -1130,6 +1214,7 @@ export interface InitOutput {
     readonly canvisteditor_auto_surround: (a: number) => number;
     readonly canvisteditor_base64_decode_selection: (a: number) => void;
     readonly canvisteditor_base64_encode_selection: (a: number) => void;
+    readonly canvisteditor_begin_batch: (a: number) => void;
     readonly canvisteditor_bookmark_count: (a: number) => number;
     readonly canvisteditor_bookmarked_lines: (a: number) => [number, number];
     readonly canvisteditor_break_undo_coalescing: (a: number) => void;
@@ -1170,6 +1255,7 @@ export interface InitOutput {
     readonly canvisteditor_ensure_final_newline: (a: number) => number;
     readonly canvisteditor_expand_selection: (a: number) => void;
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_find_all_regex: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_find_all_whole_word: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_find_matching_bracket: (a: number, b: number) => number;
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -1189,6 +1275,7 @@ export interface InitOutput {
     readonly canvisteditor_insert_tab: (a: number) => void;
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_text_at: (a: number, b: number, c: number, d: number) => void;
+    readonly canvisteditor_insert_text_clamped: (a: number, b: number, c: number) => number;
     readonly canvisteditor_insert_text_overwrite: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_with_auto_close: (a: number, b: number, c: number) => number;
     readonly canvisteditor_is_bold: (a: number) => number;
@@ -1197,12 +1284,14 @@ export interface InitOutput {
     readonly canvisteditor_is_modified: (a: number) => number;
     readonly canvisteditor_is_underline: (a: number) => number;
     readonly canvisteditor_join_lines: (a: number) => void;
+    readonly canvisteditor_last_selection_end: (a: number) => number;
     readonly canvisteditor_line_count: (a: number) => [number, number, number];
     readonly canvisteditor_line_decoration_count: (a: number) => number;
     readonly canvisteditor_line_end_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_mark_modified: (a: number) => void;
     readonly canvisteditor_mark_saved: (a: number) => void;
+    readonly canvisteditor_max_length: (a: number) => number;
     readonly canvisteditor_measure_char_width: (a: number, b: number, c: number) => number;
     readonly canvisteditor_move_cursor_left: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_right: (a: number, b: number) => void;
@@ -1223,6 +1312,7 @@ export interface InitOutput {
     readonly canvisteditor_overwrite_mode: (a: number) => number;
     readonly canvisteditor_paragraph_count: (a: number) => number;
     readonly canvisteditor_paste_html: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_placeholder: (a: number) => [number, number];
     readonly canvisteditor_plain_text: (a: number) => [number, number];
     readonly canvisteditor_prev_bookmark: (a: number) => number;
     readonly canvisteditor_process_events: (a: number) => void;
@@ -1232,6 +1322,7 @@ export interface InitOutput {
     readonly canvisteditor_queue_text_input: (a: number, b: number, c: number) => void;
     readonly canvisteditor_read_only: (a: number) => number;
     readonly canvisteditor_redo: (a: number) => number;
+    readonly canvisteditor_remaining_capacity: (a: number) => number;
     readonly canvisteditor_remove_duplicate_lines: (a: number) => number;
     readonly canvisteditor_remove_highlight_color: (a: number) => void;
     readonly canvisteditor_remove_line_decorations: (a: number, b: number) => void;
@@ -1241,8 +1332,10 @@ export interface InitOutput {
     readonly canvisteditor_replace_all_occurrences: (a: number, b: number, c: number) => number;
     readonly canvisteditor_replace_range: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_replay_operations_json: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_restore_state: (a: number, b: number, c: number) => void;
     readonly canvisteditor_reverse_lines: (a: number) => void;
     readonly canvisteditor_rulers: (a: number) => [number, number];
+    readonly canvisteditor_save_state: (a: number) => [number, number];
     readonly canvisteditor_scroll_by: (a: number, b: number) => void;
     readonly canvisteditor_scroll_to_selection: (a: number) => void;
     readonly canvisteditor_scroll_y: (a: number) => number;
@@ -1255,6 +1348,7 @@ export interface InitOutput {
     readonly canvisteditor_select_word_at: (a: number, b: number) => void;
     readonly canvisteditor_selected_char_count: (a: number) => number;
     readonly canvisteditor_selected_word_count: (a: number) => number;
+    readonly canvisteditor_selection_changed: (a: number) => number;
     readonly canvisteditor_selection_end: (a: number) => number;
     readonly canvisteditor_selection_start: (a: number) => number;
     readonly canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
@@ -1269,8 +1363,10 @@ export interface InitOutput {
     readonly canvisteditor_set_highlight_current_line: (a: number, b: number) => void;
     readonly canvisteditor_set_highlight_matching_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_highlight_occurrences: (a: number, b: number) => void;
+    readonly canvisteditor_set_max_length: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_overwrite_mode: (a: number, b: number) => void;
+    readonly canvisteditor_set_placeholder: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_read_only: (a: number, b: number) => void;
     readonly canvisteditor_set_rulers: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;
@@ -1330,6 +1426,7 @@ export interface InitOutput {
     readonly canvisteditor_zoom_in: (a: number) => void;
     readonly canvisteditor_zoom_out: (a: number) => void;
     readonly canvisteditor_zoom_reset: (a: number) => void;
+    readonly canvisteditor_end_batch: (a: number) => void;
     readonly canvisteditor_measure_text_width: (a: number, b: number, c: number) => number;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;

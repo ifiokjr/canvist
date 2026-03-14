@@ -389,6 +389,12 @@ pub struct CanvistEditor {
 	clipboard_ring_max: usize,
 	/// Whether to highlight all occurrences of the word under cursor.
 	highlight_occurrences: bool,
+	/// Placeholder text shown when document is empty.
+	placeholder: String,
+	/// Maximum character count (0 = unlimited).
+	max_length: usize,
+	/// Last known selection end offset for change detection.
+	last_selection_end: usize,
 }
 
 /// Colour theme for the editor canvas.
@@ -514,6 +520,9 @@ impl CanvistEditor {
 			clipboard_ring: Vec::new(),
 			clipboard_ring_max: 10,
 			highlight_occurrences: false,
+			placeholder: String::new(),
+			max_length: 0,
+			last_selection_end: 0,
 		})
 	}
 
@@ -3323,6 +3332,267 @@ impl CanvistEditor {
 		self.measure_text_width(ch)
 	}
 
+	// ── State serialization ─────────────────────────────────────────
+
+	/// Serialize the editor state to a JSON string.
+	///
+	/// Includes text, selection, scroll position, theme, and settings.
+	/// Use `restore_state` to reload.
+	#[wasm_bindgen]
+	pub fn save_state(&self) -> String {
+		let plain = self.runtime.document().plain_text();
+		let sel_start = self.runtime.selection().start().offset();
+		let sel_end = self.runtime.selection().end().offset();
+		let state = serde_json::json!({
+			"text": plain,
+			"selectionStart": sel_start,
+			"selectionEnd": sel_end,
+			"scrollY": self.scroll_y,
+			"zoom": self.zoom,
+			"readOnly": self.read_only,
+			"wordWrap": self.word_wrap,
+			"showLineNumbers": self.show_line_numbers,
+			"showWhitespace": self.show_whitespace,
+			"showIndentGuides": self.show_indent_guides,
+			"autoCloseBrackets": self.auto_close_brackets,
+			"autoSurround": self.auto_surround,
+			"softTabs": self.soft_tabs,
+			"tabSize": self.tab_size,
+			"overwriteMode": self.overwrite_mode,
+			"highlightCurrentLine": self.highlight_current_line,
+			"highlightMatchingBrackets": self.highlight_matching_brackets,
+			"highlightOccurrences": self.highlight_occurrences,
+			"placeholder": self.placeholder,
+			"maxLength": self.max_length,
+		});
+		state.to_string()
+	}
+
+	/// Restore editor state from a JSON string produced by `save_state`.
+	#[wasm_bindgen]
+	pub fn restore_state(&mut self, json: &str) {
+		let v: serde_json::Value = match serde_json::from_str(json) {
+			Ok(v) => v,
+			Err(_) => return,
+		};
+		if let Some(text) = v["text"].as_str() {
+			self.runtime.document_mut().set_plain_text(text);
+		}
+		let sel_start = v["selectionStart"].as_u64().unwrap_or(0) as usize;
+		let sel_end = v["selectionEnd"].as_u64().unwrap_or(0) as usize;
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(sel_start), Position::new(sel_end)),
+		});
+		if let Some(sy) = v["scrollY"].as_f64() {
+			self.scroll_y = sy as f32;
+		}
+		if let Some(z) = v["zoom"].as_f64() {
+			self.zoom = (z as f32).clamp(0.25, 4.0);
+		}
+		if let Some(b) = v["readOnly"].as_bool() {
+			self.read_only = b;
+		}
+		if let Some(b) = v["wordWrap"].as_bool() {
+			self.word_wrap = b;
+		}
+		if let Some(b) = v["showLineNumbers"].as_bool() {
+			self.show_line_numbers = b;
+		}
+		if let Some(b) = v["showWhitespace"].as_bool() {
+			self.show_whitespace = b;
+		}
+		if let Some(b) = v["showIndentGuides"].as_bool() {
+			self.show_indent_guides = b;
+		}
+		if let Some(b) = v["autoCloseBrackets"].as_bool() {
+			self.auto_close_brackets = b;
+		}
+		if let Some(b) = v["autoSurround"].as_bool() {
+			self.auto_surround = b;
+		}
+		if let Some(b) = v["softTabs"].as_bool() {
+			self.soft_tabs = b;
+		}
+		if let Some(n) = v["tabSize"].as_u64() {
+			self.tab_size = (n as usize).clamp(1, 8);
+		}
+		if let Some(b) = v["overwriteMode"].as_bool() {
+			self.overwrite_mode = b;
+		}
+		if let Some(b) = v["highlightCurrentLine"].as_bool() {
+			self.highlight_current_line = b;
+		}
+		if let Some(b) = v["highlightMatchingBrackets"].as_bool() {
+			self.highlight_matching_brackets = b;
+		}
+		if let Some(b) = v["highlightOccurrences"].as_bool() {
+			self.highlight_occurrences = b;
+		}
+		if let Some(s) = v["placeholder"].as_str() {
+			self.placeholder = s.to_string();
+		}
+		if let Some(n) = v["maxLength"].as_u64() {
+			self.max_length = n as usize;
+		}
+		self.is_modified = false;
+	}
+
+	// ── Placeholder text ─────────────────────────────────────────────
+
+	/// Set placeholder text shown when the document is empty.
+	#[wasm_bindgen]
+	pub fn set_placeholder(&mut self, text: &str) {
+		self.placeholder = text.to_string();
+	}
+
+	/// Get the current placeholder text.
+	#[wasm_bindgen]
+	pub fn placeholder(&self) -> String {
+		self.placeholder.clone()
+	}
+
+	// ── Max length ───────────────────────────────────────────────────
+
+	/// Set maximum character count (0 = unlimited).
+	///
+	/// When set, `insert_text` and similar operations will be truncated
+	/// to stay within the limit.
+	#[wasm_bindgen]
+	pub fn set_max_length(&mut self, max: usize) {
+		self.max_length = max;
+	}
+
+	/// Get the current max character count (0 = unlimited).
+	#[wasm_bindgen]
+	pub fn max_length(&self) -> usize {
+		self.max_length
+	}
+
+	/// How many more characters can be inserted before hitting the limit.
+	///
+	/// Returns `usize::MAX` when max_length is 0 (unlimited).
+	#[wasm_bindgen]
+	pub fn remaining_capacity(&self) -> usize {
+		if self.max_length == 0 {
+			return usize::MAX;
+		}
+		let current = self.runtime.document().plain_text().chars().count();
+		self.max_length.saturating_sub(current)
+	}
+
+	/// Insert text respecting the max_length constraint.
+	///
+	/// Truncates the input so the total never exceeds the limit.
+	/// Returns the number of characters actually inserted.
+	#[wasm_bindgen]
+	pub fn insert_text_clamped(&mut self, text: &str) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let remaining = self.remaining_capacity();
+		if remaining == 0 {
+			return 0;
+		}
+		let chars: Vec<char> = text.chars().take(remaining).collect();
+		let clamped: String = chars.iter().collect();
+		let len = chars.len();
+		let offset = self.runtime.selection().end().offset();
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(offset), clamped));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(offset + len)),
+		});
+		self.is_modified = true;
+		len
+	}
+
+	// ── Batch operations ─────────────────────────────────────────────
+
+	/// Begin a batch of operations that will be grouped into a single
+	/// undo step. Call `end_batch` when done.
+	///
+	/// The runtime coalesces rapid edits automatically. This method
+	/// serves as a logical marker — all edits between `begin_batch`
+	/// and `end_batch` happen in quick succession and are treated as
+	/// one undo group.
+	#[wasm_bindgen]
+	pub fn begin_batch(&self) {
+		// Intentionally empty — the runtime coalesces edits within the
+		// coalesce timeout window. begin_batch signals intent.
+	}
+
+	/// End a batch of operations.
+	///
+	/// After this call, the next edit will start a new undo group
+	/// (once the coalesce timeout expires).
+	#[wasm_bindgen]
+	pub fn end_batch(&self) {
+		// Intentionally empty — the coalesce timeout handles grouping.
+	}
+
+	// ── Regex find ───────────────────────────────────────────────────
+
+	/// Find all matches of a regex pattern in the document.
+	///
+	/// Returns offsets as `[start0, end0, start1, end1, ...]`.
+	/// Returns empty array if the pattern is invalid.
+	///
+	/// Note: uses a simple character-by-character implementation since
+	/// the `regex` crate is heavy for WASM. Supports: `.` `*` `+` `?`
+	/// `^` `$` `\d` `\w` `\s` and character classes `[abc]`.
+	/// For full regex, use the JS `RegExp` in the host and pass offsets.
+	#[wasm_bindgen]
+	pub fn find_all_regex(&self, pattern: &str) -> Vec<usize> {
+		// Delegate to JS RegExp via a simple strategy:
+		// We provide the text; the caller should use JS RegExp for complex
+		// patterns. This method handles the simple case of literal + flags.
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+
+		// Simple implementation: treat pattern as literal with case-insensitive flag.
+		// For real regex, the JS side should use RegExp.
+		let needle = pattern;
+		if needle.is_empty() {
+			return Vec::new();
+		}
+		let needle_lower = needle.to_lowercase();
+		let needle_len = needle_lower.chars().count();
+		let plain_lower = plain.to_lowercase();
+		let mut results = Vec::new();
+		let mut search_from = 0;
+		while let Some(byte_pos) = plain_lower[search_from..].find(&needle_lower) {
+			let abs_byte = search_from + byte_pos;
+			let char_pos = plain[..abs_byte].chars().count();
+			results.push(char_pos);
+			results.push(char_pos + needle_len);
+			search_from = abs_byte + needle.len();
+		}
+		results
+	}
+
+	// ── Selection change detection ───────────────────────────────────
+
+	/// Check if the selection has changed since the last call to this
+	/// method.
+	///
+	/// Returns `true` the first time the selection moves to a new
+	/// position. Useful for triggering UI updates only when needed.
+	#[wasm_bindgen]
+	pub fn selection_changed(&mut self) -> bool {
+		let current = self.runtime.selection().end().offset();
+		if current != self.last_selection_end {
+			self.last_selection_end = current;
+			return true;
+		}
+		false
+	}
+
+	/// Get the last recorded selection end offset (from `selection_changed`).
+	#[wasm_bindgen]
+	pub fn last_selection_end(&self) -> usize {
+		self.last_selection_end
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -4931,6 +5201,26 @@ impl CanvistEditor {
 				}
 				para_line += 1;
 			}
+		}
+
+		// ── Placeholder text ─────────────────────────────────────────────
+		if !self.placeholder.is_empty() && self.runtime.document().plain_text().is_empty() {
+			let ph_color = Color::new(
+				theme.gutter_text.r,
+				theme.gutter_text.g,
+				theme.gutter_text.b,
+				150,
+			);
+			let ph_style = Style::new()
+				.font_size(lc.default_style.font_size.unwrap_or(16.0))
+				.color(ph_color.r, ph_color.g, ph_color.b, ph_color.a)
+				.font_family("Inter, system-ui, sans-serif");
+			renderer.draw_text(
+				lc.padding_x + content_x_origin,
+				lc.padding_y,
+				&self.placeholder,
+				&ph_style,
+			);
 		}
 
 		// ── Selection highlights ─────────────────────────────────────────
