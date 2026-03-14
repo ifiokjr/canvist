@@ -759,6 +759,54 @@ export interface CanvistEditor {
 	/** Measure pixel width of a single character. */
 	measureCharWidth(ch: string): number;
 
+	// ── State serialization ────────────────────────────────────────
+
+	/** Serialize editor state to JSON (text, selection, scroll, settings). */
+	saveState(): string;
+
+	/** Restore editor state from JSON. */
+	restoreState(json: string): void;
+
+	// ── Placeholder text ────────────────────────────────────────────
+
+	/** Get placeholder text. */
+	readonly placeholder: string;
+
+	/** Set placeholder text shown when document is empty. */
+	setPlaceholder(text: string): void;
+
+	// ── Max length ──────────────────────────────────────────────────
+
+	/** Get max character count (0 = unlimited). */
+	readonly maxLength: number;
+
+	/** Set max character count. */
+	setMaxLength(max: number): void;
+
+	/** How many more characters can be inserted. */
+	readonly remainingCapacity: number;
+
+	/** Insert text respecting max length. Returns chars inserted. */
+	insertTextClamped(text: string): number;
+
+	// ── Batch operations ────────────────────────────────────────────
+
+	/** Begin a batch of edits (for undo grouping). */
+	beginBatch(): void;
+
+	/** End a batch of edits. */
+	endBatch(): void;
+
+	// ── Regex find ──────────────────────────────────────────────────
+
+	/** Case-insensitive find. Returns [start0, end0, ...]. */
+	findAllRegex(pattern: string): number[];
+
+	// ── Selection change detection ──────────────────────────────────
+
+	/** Returns true if selection moved since last check. */
+	selectionChanged(): boolean;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

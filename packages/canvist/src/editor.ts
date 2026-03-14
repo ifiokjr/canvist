@@ -1742,6 +1742,55 @@ export async function createEditor(
 			measureCharWidth(ch: string) {
 				return ref.measure_char_width(ch);
 			},
+			// ── State serialization ─────────────────────
+			saveState() {
+				return ref.save_state();
+			},
+			restoreState(json: string) {
+				ref.restore_state(json);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Placeholder text ────────────────────────
+			get placeholder() {
+				return ref.placeholder();
+			},
+			setPlaceholder(text: string) {
+				ref.set_placeholder(text);
+				renderFrame();
+			},
+			// ── Max length ──────────────────────────────
+			get maxLength() {
+				return ref.max_length();
+			},
+			setMaxLength(max: number) {
+				ref.set_max_length(max);
+			},
+			get remainingCapacity() {
+				return ref.remaining_capacity();
+			},
+			insertTextClamped(text: string) {
+				syncTime();
+				const n = ref.insert_text_clamped(text);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			// ── Batch operations ────────────────────────
+			beginBatch() {
+				ref.begin_batch();
+			},
+			endBatch() {
+				ref.end_batch();
+			},
+			// ── Regex find ──────────────────────────────
+			findAllRegex(pattern: string) {
+				return Array.from(ref.find_all_regex(pattern));
+			},
+			// ── Selection change detection ──────────────
+			selectionChanged() {
+				return ref.selection_changed();
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));
