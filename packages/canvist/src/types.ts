@@ -639,6 +639,54 @@ export interface CanvistEditor {
 	/** Ensure the selection is visible in the viewport. */
 	scrollToSelection(): void;
 
+	// ── Column ruler ───────────────────────────────────────────────
+
+	/** Set column ruler positions (e.g. [80, 120]). */
+	setRulers(columns: number[]): void;
+
+	/** Get current ruler columns. */
+	readonly rulers: number[];
+
+	/** Add a ruler at the given column. */
+	addRuler(column: number): void;
+
+	/** Remove the ruler at the given column. */
+	removeRuler(column: number): void;
+
+	// ── Ensure final newline ────────────────────────────────────────
+
+	/** Ensure document ends with \n. Returns true if added. */
+	ensureFinalNewline(): boolean;
+
+	// ── Replace all occurrences ─────────────────────────────────────
+
+	/** Replace all occurrences of selected text with replacement. Returns count. */
+	replaceAllOccurrences(replacement: string): number;
+
+	// ── Reverse lines ───────────────────────────────────────────────
+
+	/** Reverse the order of selected lines. */
+	reverseLines(): void;
+
+	// ── Encode / decode ─────────────────────────────────────────────
+
+	/** Base64-encode the selected text. */
+	base64EncodeSelection(): void;
+
+	/** Base64-decode the selected text. */
+	base64DecodeSelection(): void;
+
+	/** URL-encode the selected text. */
+	urlEncodeSelection(): void;
+
+	/** URL-decode the selected text. */
+	urlDecodeSelection(): void;
+
+	// ── Toggle case ─────────────────────────────────────────────────
+
+	/** Swap case of each character in selection (a↔A). */
+	transformToggleCase(): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

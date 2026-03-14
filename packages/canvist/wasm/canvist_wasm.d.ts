@@ -12,6 +12,10 @@ export class CanvistEditor {
     free(): void;
     [Symbol.dispose](): void;
     /**
+     * Add a single ruler at the given column.
+     */
+    add_ruler(column: number): void;
+    /**
      * Apply style to the given character range.
      */
     apply_style_range(start: number, end: number, bold: boolean, italic: boolean, underline: boolean, font_size?: number | null, font_family?: string | null, color_rgba?: Uint8Array | null): void;
@@ -35,6 +39,16 @@ export class CanvistEditor {
      * Whether auto-surround is enabled.
      */
     auto_surround(): boolean;
+    /**
+     * Base64-decode the selected text, replacing the selection.
+     *
+     * If the selected text is not valid base64, the selection is unchanged.
+     */
+    base64_decode_selection(): void;
+    /**
+     * Base64-encode the selected text, replacing the selection.
+     */
+    base64_encode_selection(): void;
     /**
      * Number of active bookmarks.
      */
@@ -196,6 +210,12 @@ export class CanvistEditor {
      * Duplicate the current line (or selected lines) below.
      */
     duplicate_line(): void;
+    /**
+     * Ensure the document ends with a newline character.
+     *
+     * Returns `true` if a newline was added.
+     */
+    ensure_final_newline(): boolean;
     /**
      * Expand selection intelligently: word → quoted → bracketed → line → all.
      *
@@ -529,6 +549,10 @@ export class CanvistEditor {
      */
     remove_highlight_color(): void;
     /**
+     * Remove the ruler at the given column.
+     */
+    remove_ruler(column: number): void;
+    /**
      * Request a re-render of the document to the canvas.
      *
      * Performs multi-paragraph, multi-line text rendering with styled runs,
@@ -543,6 +567,13 @@ export class CanvistEditor {
      */
     replace_all(needle: string, replacement: string, case_sensitive: boolean): number;
     /**
+     * Replace all occurrences of the selected text with `replacement`.
+     *
+     * Returns the number of replacements made. Processes from end to
+     * start so offsets remain valid.
+     */
+    replace_all_occurrences(replacement: string): number;
+    /**
      * Replace the text in range `[start, end)` with `replacement`.
      *
      * This is a delete + insert.
@@ -552,6 +583,14 @@ export class CanvistEditor {
      * Replay a JSON-encoded operation list into current runtime.
      */
     replay_operations_json(operations_json: string): void;
+    /**
+     * Reverse the order of selected lines.
+     */
+    reverse_lines(): void;
+    /**
+     * Get the current ruler columns as a flat array.
+     */
+    rulers(): Uint32Array;
     /**
      * Scroll by a delta (positive = down, negative = up).
      */
@@ -706,6 +745,13 @@ export class CanvistEditor {
      * selection, copy, and navigation still work.
      */
     set_read_only(read_only: boolean): void;
+    /**
+     * Set column ruler positions (e.g. `[80, 120]`).
+     *
+     * Pass an empty array to remove all rulers. Rulers are drawn as
+     * thin vertical lines at the specified column offsets.
+     */
+    set_rulers(columns: Uint32Array): void;
     /**
      * Set the vertical scroll offset (clamped to valid range).
      */
@@ -898,6 +944,10 @@ export class CanvistEditor {
      */
     transform_title_case(): void;
     /**
+     * Swap the case of each character in the selection (a↔A).
+     */
+    transform_toggle_case(): void;
+    /**
      * Convert selected text to UPPERCASE.
      */
     transform_uppercase(): void;
@@ -927,6 +977,14 @@ export class CanvistEditor {
      * Returns `true` if an undo was performed, `false` if the undo stack was empty.
      */
     undo(): boolean;
+    /**
+     * URL-decode the selected text, replacing the selection.
+     */
+    url_decode_selection(): void;
+    /**
+     * URL-encode the selected text, replacing the selection.
+     */
+    url_encode_selection(): void;
     /**
      * Find the previous word boundary from a character offset.
      */
@@ -973,10 +1031,13 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_canvisteditor_free: (a: number, b: number) => void;
+    readonly canvisteditor_add_ruler: (a: number, b: number) => void;
     readonly canvisteditor_apply_style_range: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly canvisteditor_auto_close_brackets: (a: number) => number;
     readonly canvisteditor_auto_indent_newline: (a: number) => number;
     readonly canvisteditor_auto_surround: (a: number) => number;
+    readonly canvisteditor_base64_decode_selection: (a: number) => void;
+    readonly canvisteditor_base64_encode_selection: (a: number) => void;
     readonly canvisteditor_bookmark_count: (a: number) => number;
     readonly canvisteditor_bookmarked_lines: (a: number) => [number, number];
     readonly canvisteditor_break_undo_coalescing: (a: number) => void;
@@ -1008,6 +1069,7 @@ export interface InitOutput {
     readonly canvisteditor_delete_word_left: (a: number) => void;
     readonly canvisteditor_delete_word_right: (a: number) => void;
     readonly canvisteditor_duplicate_line: (a: number) => void;
+    readonly canvisteditor_ensure_final_newline: (a: number) => number;
     readonly canvisteditor_expand_selection: (a: number) => void;
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_find_all_whole_word: (a: number, b: number, c: number) => [number, number];
@@ -1067,10 +1129,14 @@ export interface InitOutput {
     readonly canvisteditor_redo: (a: number) => number;
     readonly canvisteditor_remove_duplicate_lines: (a: number) => number;
     readonly canvisteditor_remove_highlight_color: (a: number) => void;
+    readonly canvisteditor_remove_ruler: (a: number, b: number) => void;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
+    readonly canvisteditor_replace_all_occurrences: (a: number, b: number, c: number) => number;
     readonly canvisteditor_replace_range: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_replay_operations_json: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_reverse_lines: (a: number) => void;
+    readonly canvisteditor_rulers: (a: number) => [number, number];
     readonly canvisteditor_scroll_by: (a: number, b: number) => void;
     readonly canvisteditor_scroll_to_selection: (a: number) => void;
     readonly canvisteditor_scroll_y: (a: number) => number;
@@ -1099,6 +1165,7 @@ export interface InitOutput {
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_overwrite_mode: (a: number, b: number) => void;
     readonly canvisteditor_set_read_only: (a: number, b: number) => void;
+    readonly canvisteditor_set_rulers: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_show_indent_guides: (a: number, b: number) => void;
@@ -1137,11 +1204,14 @@ export interface InitOutput {
     readonly canvisteditor_toggle_underline: (a: number) => void;
     readonly canvisteditor_transform_lowercase: (a: number) => void;
     readonly canvisteditor_transform_title_case: (a: number) => void;
+    readonly canvisteditor_transform_toggle_case: (a: number) => void;
     readonly canvisteditor_transform_uppercase: (a: number) => void;
     readonly canvisteditor_transpose_chars: (a: number) => void;
     readonly canvisteditor_trim_trailing_whitespace: (a: number) => number;
     readonly canvisteditor_try_auto_surround: (a: number, b: number, c: number) => number;
     readonly canvisteditor_undo: (a: number) => number;
+    readonly canvisteditor_url_decode_selection: (a: number) => void;
+    readonly canvisteditor_url_encode_selection: (a: number) => void;
     readonly canvisteditor_word_boundary_left: (a: number, b: number) => number;
     readonly canvisteditor_word_boundary_right: (a: number, b: number) => number;
     readonly canvisteditor_word_count: (a: number) => number;

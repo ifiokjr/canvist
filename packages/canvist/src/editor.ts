@@ -1667,6 +1667,77 @@ export async function createEditor(
 				ref.scroll_to_selection();
 				renderFrame();
 			},
+			// ── Column ruler ────────────────────────────
+			setRulers(columns: number[]) {
+				ref.set_rulers(new Uint32Array(columns));
+				renderFrame();
+			},
+			get rulers() {
+				return Array.from(ref.rulers());
+			},
+			addRuler(column: number) {
+				ref.add_ruler(column);
+				renderFrame();
+			},
+			removeRuler(column: number) {
+				ref.remove_ruler(column);
+				renderFrame();
+			},
+			// ── Ensure final newline ────────────────────
+			ensureFinalNewline() {
+				syncTime();
+				const added = ref.ensure_final_newline();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return added;
+			},
+			// ── Replace all occurrences ─────────────────
+			replaceAllOccurrences(replacement: string) {
+				syncTime();
+				const count = ref.replace_all_occurrences(replacement);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return count;
+			},
+			// ── Reverse lines ───────────────────────────
+			reverseLines() {
+				syncTime();
+				ref.reverse_lines();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Encode / decode ─────────────────────────
+			base64EncodeSelection() {
+				syncTime();
+				ref.base64_encode_selection();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			base64DecodeSelection() {
+				syncTime();
+				ref.base64_decode_selection();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			urlEncodeSelection() {
+				syncTime();
+				ref.url_encode_selection();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			urlDecodeSelection() {
+				syncTime();
+				ref.url_decode_selection();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Toggle case ─────────────────────────────
+			transformToggleCase() {
+				syncTime();
+				ref.transform_toggle_case();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
 			// ── Auto-indent ─────────────────────────────
 			autoIndentNewline() {
 				syncTime();

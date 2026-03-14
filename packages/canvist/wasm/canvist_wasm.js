@@ -25,6 +25,13 @@ export class CanvistEditor {
         wasm.__wbg_canvisteditor_free(ptr, 0);
     }
     /**
+     * Add a single ruler at the given column.
+     * @param {number} column
+     */
+    add_ruler(column) {
+        wasm.canvisteditor_add_ruler(this.__wbg_ptr, column);
+    }
+    /**
      * Apply style to the given character range.
      * @param {number} start
      * @param {number} end
@@ -73,6 +80,20 @@ export class CanvistEditor {
     auto_surround() {
         const ret = wasm.canvisteditor_auto_surround(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Base64-decode the selected text, replacing the selection.
+     *
+     * If the selected text is not valid base64, the selection is unchanged.
+     */
+    base64_decode_selection() {
+        wasm.canvisteditor_base64_decode_selection(this.__wbg_ptr);
+    }
+    /**
+     * Base64-encode the selected text, replacing the selection.
+     */
+    base64_encode_selection() {
+        wasm.canvisteditor_base64_encode_selection(this.__wbg_ptr);
     }
     /**
      * Number of active bookmarks.
@@ -395,6 +416,16 @@ export class CanvistEditor {
      */
     duplicate_line() {
         wasm.canvisteditor_duplicate_line(this.__wbg_ptr);
+    }
+    /**
+     * Ensure the document ends with a newline character.
+     *
+     * Returns `true` if a newline was added.
+     * @returns {boolean}
+     */
+    ensure_final_newline() {
+        const ret = wasm.canvisteditor_ensure_final_newline(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Expand selection intelligently: word → quoted → bracketed → line → all.
@@ -1019,6 +1050,13 @@ export class CanvistEditor {
         wasm.canvisteditor_remove_highlight_color(this.__wbg_ptr);
     }
     /**
+     * Remove the ruler at the given column.
+     * @param {number} column
+     */
+    remove_ruler(column) {
+        wasm.canvisteditor_remove_ruler(this.__wbg_ptr, column);
+    }
+    /**
      * Request a re-render of the document to the canvas.
      *
      * Performs multi-paragraph, multi-line text rendering with styled runs,
@@ -1049,6 +1087,20 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Replace all occurrences of the selected text with `replacement`.
+     *
+     * Returns the number of replacements made. Processes from end to
+     * start so offsets remain valid.
+     * @param {string} replacement
+     * @returns {number}
+     */
+    replace_all_occurrences(replacement) {
+        const ptr0 = passStringToWasm0(replacement, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_replace_all_occurrences(this.__wbg_ptr, ptr0, len0);
+        return ret >>> 0;
+    }
+    /**
      * Replace the text in range `[start, end)` with `replacement`.
      *
      * This is a delete + insert.
@@ -1072,6 +1124,22 @@ export class CanvistEditor {
         if (ret[1]) {
             throw takeFromExternrefTable0(ret[0]);
         }
+    }
+    /**
+     * Reverse the order of selected lines.
+     */
+    reverse_lines() {
+        wasm.canvisteditor_reverse_lines(this.__wbg_ptr);
+    }
+    /**
+     * Get the current ruler columns as a flat array.
+     * @returns {Uint32Array}
+     */
+    rulers() {
+        const ret = wasm.canvisteditor_rulers(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Scroll by a delta (positive = down, negative = up).
@@ -1320,6 +1388,18 @@ export class CanvistEditor {
      */
     set_read_only(read_only) {
         wasm.canvisteditor_set_read_only(this.__wbg_ptr, read_only);
+    }
+    /**
+     * Set column ruler positions (e.g. `[80, 120]`).
+     *
+     * Pass an empty array to remove all rulers. Rulers are drawn as
+     * thin vertical lines at the specified column offsets.
+     * @param {Uint32Array} columns
+     */
+    set_rulers(columns) {
+        const ptr0 = passArray32ToWasm0(columns, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_rulers(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Set the vertical scroll offset (clamped to valid range).
@@ -1668,6 +1748,12 @@ export class CanvistEditor {
         wasm.canvisteditor_transform_title_case(this.__wbg_ptr);
     }
     /**
+     * Swap the case of each character in the selection (a↔A).
+     */
+    transform_toggle_case() {
+        wasm.canvisteditor_transform_toggle_case(this.__wbg_ptr);
+    }
+    /**
      * Convert selected text to UPPERCASE.
      */
     transform_uppercase() {
@@ -1715,6 +1801,18 @@ export class CanvistEditor {
     undo() {
         const ret = wasm.canvisteditor_undo(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * URL-decode the selected text, replacing the selection.
+     */
+    url_decode_selection() {
+        wasm.canvisteditor_url_decode_selection(this.__wbg_ptr);
+    }
+    /**
+     * URL-encode the selected text, replacing the selection.
+     */
+    url_encode_selection() {
+        wasm.canvisteditor_url_encode_selection(this.__wbg_ptr);
     }
     /**
      * Find the previous word boundary from a character offset.
@@ -1992,6 +2090,13 @@ function handleError(f, args) {
 
 function isLikeNone(x) {
     return x === undefined || x === null;
+}
+
+function passArray32ToWasm0(arg, malloc) {
+    const ptr = malloc(arg.length * 4, 4) >>> 0;
+    getUint32ArrayMemory0().set(arg, ptr / 4);
+    WASM_VECTOR_LEN = arg.length;
+    return ptr;
 }
 
 function passArray8ToWasm0(arg, malloc) {

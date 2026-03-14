@@ -194,6 +194,7 @@ dependencies = [
 name = "canvist_wasm"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "canvist_core",
  "canvist_render",
  "js-sys",
