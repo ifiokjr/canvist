@@ -40,6 +40,10 @@ export class CanvistEditor {
      */
     annotations_at(offset: number): string[];
     /**
+     * Total number of public API methods.
+     */
+    api_count(): number;
+    /**
      * Apply a named configuration preset.
      *
      * - `"code"`: line numbers, indent guides, whitespace, bracket
@@ -73,6 +77,10 @@ export class CanvistEditor {
      * Whether auto-surround is enabled.
      */
     auto_surround(): boolean;
+    /**
+     * Average word length in characters.
+     */
+    avg_word_length(): number;
     /**
      * Base64-decode the selected text, replacing the selection.
      *
@@ -324,6 +332,10 @@ export class CanvistEditor {
      */
     duplicate_line(): void;
     /**
+     * Editor version string.
+     */
+    editor_version(): string;
+    /**
      * End a batch of operations.
      *
      * After this call, the next edit will start a new undo group
@@ -354,6 +366,10 @@ export class CanvistEditor {
      * Each call expands to the next logical boundary.
      */
     expand_selection(): void;
+    /**
+     * Feature summary as a comma-separated list of categories.
+     */
+    feature_categories(): string;
     /**
      * Find all occurrences of `needle`. Returns a flat array: [start0, end0,
      * start1, end1, …].
@@ -435,6 +451,26 @@ export class CanvistEditor {
      */
     folded_ranges(): Uint32Array;
     /**
+     * Apply bold to a character range.
+     */
+    format_range_bold(start: number, end: number): void;
+    /**
+     * Set font size for a character range.
+     */
+    format_range_font_size(start: number, end: number, size: number): void;
+    /**
+     * Apply italic to a character range.
+     */
+    format_range_italic(start: number, end: number): void;
+    /**
+     * Apply strikethrough to a character range.
+     */
+    format_range_strikethrough(start: number, end: number): void;
+    /**
+     * Apply underline to a character range.
+     */
+    format_range_underline(start: number, end: number): void;
+    /**
      * Import HTML content, replacing the current document.
      *
      * Parses basic inline elements (`<strong>`, `<em>`, `<u>`, `<s>`, `<br>`,
@@ -464,6 +500,16 @@ export class CanvistEditor {
      * Return the currently selected text (empty string if selection is collapsed).
      */
     get_selected_text(): string;
+    /**
+     * Get a theme colour slot as [r, g, b, a].
+     */
+    get_theme_color(slot: string): Uint8Array;
+    /**
+     * Get the colour for a token kind as [r, g, b, a].
+     *
+     * Returns default colours if not customised.
+     */
+    get_token_color(kind: string): Uint8Array;
     /**
      * Move cursor to the very end of the document (Ctrl+End).
      */
@@ -654,6 +700,10 @@ export class CanvistEditor {
      * Call from JS to record significant actions.
      */
     log_event(event: string): void;
+    /**
+     * The longest word in the document.
+     */
+    longest_word(): string;
     /**
      * Delete a saved macro.
      */
@@ -953,6 +1003,10 @@ export class CanvistEditor {
      */
     replay_operations_json(operations_json: string): void;
     /**
+     * Reset all token colours to defaults.
+     */
+    reset_token_colors(): void;
+    /**
      * Restore editor state from a JSON string produced by `save_state`.
      */
     restore_state(json: string): void;
@@ -987,6 +1041,13 @@ export class CanvistEditor {
      * Scroll to a fraction of the document (0.0 = top, 1.0 = bottom).
      */
     scroll_to_fraction(fraction: number): void;
+    /**
+     * Scroll the viewport to make a specific line visible.
+     *
+     * The line will be positioned near the top of the viewport with
+     * a 2-line padding.
+     */
+    scroll_to_line(line: number): void;
     /**
      * Ensure the current selection (or cursor) is visible in the
      * viewport. Scrolls the minimum amount needed.
@@ -1087,6 +1148,10 @@ export class CanvistEditor {
      * Get selection start offset.
      */
     selection_start(): number;
+    /**
+     * Sentence count (split on . ! ?).
+     */
+    sentence_count(): number;
     /**
      * Toggle bracket auto-closing.
      *
@@ -1292,9 +1357,24 @@ export class CanvistEditor {
      */
     set_sticky_scroll(enabled: boolean): void;
     /**
+     * Enable or disable syntax highlighting.
+     *
+     * When enabled, the tokenizer colours are applied during rendering.
+     */
+    set_syntax_highlight(enabled: boolean): void;
+    /**
      * Set the tab display/insert size (1–8). Default: 4.
      */
     set_tab_size(size: number): void;
+    /**
+     * Set a single theme colour slot.
+     *
+     * Slot names: "background", "text", "caret", "caret_blur",
+     * "selection", "selection_blur", "line_highlight",
+     * "gutter_bg", "gutter_text", "gutter_border",
+     * "scrollbar_track", "scrollbar_thumb".
+     */
+    set_theme_color(slot: string, r: number, g: number, b: number, a: number): void;
     /**
      * Switch to the dark colour theme.
      */
@@ -1307,6 +1387,13 @@ export class CanvistEditor {
      * Set the document title.
      */
     set_title(title: string): void;
+    /**
+     * Set a colour for a token kind.
+     *
+     * Kinds: "word", "number", "whitespace", "punctuation", "newline".
+     * Use this to customise syntax colours.
+     */
+    set_token_color(kind: string, r: number, g: number, b: number, a: number): void;
     /**
      * Enable or disable word wrapping at the canvas edge.
      *
@@ -1372,6 +1459,10 @@ export class CanvistEditor {
      * Whether sticky scroll is enabled.
      */
     sticky_scroll(): boolean;
+    /**
+     * Whether syntax highlighting is enabled.
+     */
+    syntax_highlight(): boolean;
     /**
      * Get the current tab size.
      */
@@ -1530,6 +1621,10 @@ export class CanvistEditor {
      */
     unfold_lines(start_line: number, end_line: number): void;
     /**
+     * Count of unique words (case-insensitive).
+     */
+    unique_word_count(): number;
+    /**
      * URL-decode the selected text, replacing the selection.
      */
     url_decode_selection(): void;
@@ -1607,11 +1702,13 @@ export interface InitOutput {
     readonly canvisteditor_add_ruler: (a: number, b: number) => void;
     readonly canvisteditor_annotation_count: (a: number) => number;
     readonly canvisteditor_annotations_at: (a: number, b: number) => [number, number];
+    readonly canvisteditor_api_count: (a: number) => number;
     readonly canvisteditor_apply_preset: (a: number, b: number, c: number) => void;
     readonly canvisteditor_apply_style_range: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly canvisteditor_auto_close_brackets: (a: number) => number;
     readonly canvisteditor_auto_indent_newline: (a: number) => number;
     readonly canvisteditor_auto_surround: (a: number) => number;
+    readonly canvisteditor_avg_word_length: (a: number) => number;
     readonly canvisteditor_base64_decode_selection: (a: number) => void;
     readonly canvisteditor_base64_encode_selection: (a: number) => void;
     readonly canvisteditor_begin_batch: (a: number) => void;
@@ -1660,11 +1757,13 @@ export interface InitOutput {
     readonly canvisteditor_detect_links: (a: number) => number;
     readonly canvisteditor_diff_from_snapshot: (a: number) => [number, number];
     readonly canvisteditor_duplicate_line: (a: number) => void;
+    readonly canvisteditor_editor_version: (a: number) => [number, number];
     readonly canvisteditor_ensure_final_newline: (a: number) => number;
     readonly canvisteditor_event_log_clear: (a: number) => void;
     readonly canvisteditor_event_log_get: (a: number, b: number) => [number, number];
     readonly canvisteditor_event_log_length: (a: number) => number;
     readonly canvisteditor_expand_selection: (a: number) => void;
+    readonly canvisteditor_feature_categories: (a: number) => [number, number];
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_find_all_regex: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_find_all_whole_word: (a: number, b: number, c: number) => [number, number];
@@ -1679,12 +1778,19 @@ export interface InitOutput {
     readonly canvisteditor_fold_count: (a: number) => number;
     readonly canvisteditor_fold_lines: (a: number, b: number, c: number) => void;
     readonly canvisteditor_folded_ranges: (a: number) => [number, number];
+    readonly canvisteditor_format_range_bold: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_format_range_font_size: (a: number, b: number, c: number, d: number) => void;
+    readonly canvisteditor_format_range_italic: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_format_range_strikethrough: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_format_range_underline: (a: number, b: number, c: number) => void;
     readonly canvisteditor_from_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_get_annotations: (a: number) => [number, number];
     readonly canvisteditor_get_block_selection: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_get_line: (a: number, b: number) => [number, number];
     readonly canvisteditor_get_line_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
+    readonly canvisteditor_get_theme_color: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_get_token_color: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_go_to_document_end: (a: number) => void;
     readonly canvisteditor_go_to_document_start: (a: number) => void;
     readonly canvisteditor_go_to_line: (a: number, b: number) => void;
@@ -1718,6 +1824,7 @@ export interface InitOutput {
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_link_at_offset: (a: number, b: number) => [number, number];
     readonly canvisteditor_log_event: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_longest_word: (a: number) => [number, number];
     readonly canvisteditor_macro_delete_saved: (a: number, b: number, c: number) => void;
     readonly canvisteditor_macro_is_recording: (a: number) => number;
     readonly canvisteditor_macro_list_saved: (a: number) => [number, number];
@@ -1776,6 +1883,7 @@ export interface InitOutput {
     readonly canvisteditor_replace_all_occurrences: (a: number, b: number, c: number) => number;
     readonly canvisteditor_replace_range: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_replay_operations_json: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_reset_token_colors: (a: number) => void;
     readonly canvisteditor_restore_state: (a: number, b: number, c: number) => void;
     readonly canvisteditor_reverse_lines: (a: number) => void;
     readonly canvisteditor_rulers: (a: number) => [number, number];
@@ -1784,6 +1892,7 @@ export interface InitOutput {
     readonly canvisteditor_scroll_fraction: (a: number) => number;
     readonly canvisteditor_scroll_ratio: (a: number) => number;
     readonly canvisteditor_scroll_to_fraction: (a: number, b: number) => void;
+    readonly canvisteditor_scroll_to_line: (a: number, b: number) => void;
     readonly canvisteditor_scroll_to_selection: (a: number) => void;
     readonly canvisteditor_scroll_y: (a: number) => number;
     readonly canvisteditor_search_history_clear: (a: number) => void;
@@ -1804,6 +1913,7 @@ export interface InitOutput {
     readonly canvisteditor_selection_end: (a: number) => number;
     readonly canvisteditor_selection_is_collapsed: (a: number) => number;
     readonly canvisteditor_selection_length: (a: number) => number;
+    readonly canvisteditor_sentence_count: (a: number) => number;
     readonly canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_auto_surround: (a: number, b: number) => void;
     readonly canvisteditor_set_block_selection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
@@ -1841,10 +1951,13 @@ export interface InitOutput {
     readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_soft_tabs: (a: number, b: number) => void;
     readonly canvisteditor_set_sticky_scroll: (a: number, b: number) => void;
+    readonly canvisteditor_set_syntax_highlight: (a: number, b: number) => void;
     readonly canvisteditor_set_tab_size: (a: number, b: number) => void;
+    readonly canvisteditor_set_theme_color: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly canvisteditor_set_theme_dark: (a: number) => void;
     readonly canvisteditor_set_theme_light: (a: number) => void;
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_token_color: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly canvisteditor_set_word_wrap: (a: number, b: number) => void;
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
     readonly canvisteditor_show_find_highlights: (a: number) => number;
@@ -1859,6 +1972,7 @@ export interface InitOutput {
     readonly canvisteditor_sort_lines_desc: (a: number) => void;
     readonly canvisteditor_spaces_to_tabs: (a: number) => number;
     readonly canvisteditor_sticky_scroll: (a: number) => number;
+    readonly canvisteditor_syntax_highlight: (a: number) => number;
     readonly canvisteditor_tab_size: (a: number) => number;
     readonly canvisteditor_tabs_to_spaces: (a: number) => number;
     readonly canvisteditor_take_snapshot: (a: number) => void;
@@ -1888,6 +2002,7 @@ export interface InitOutput {
     readonly canvisteditor_undo: (a: number) => number;
     readonly canvisteditor_unfold_all: (a: number) => void;
     readonly canvisteditor_unfold_lines: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_unique_word_count: (a: number) => number;
     readonly canvisteditor_url_decode_selection: (a: number) => void;
     readonly canvisteditor_url_encode_selection: (a: number) => void;
     readonly canvisteditor_viewport_height: (a: number) => number;

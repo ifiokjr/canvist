@@ -84,6 +84,14 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Total number of public API methods.
+     * @returns {number}
+     */
+    api_count() {
+        const ret = wasm.canvisteditor_api_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Apply a named configuration preset.
      *
      * - `"code"`: line numbers, indent guides, whitespace, bracket
@@ -147,6 +155,14 @@ export class CanvistEditor {
     auto_surround() {
         const ret = wasm.canvisteditor_auto_surround(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Average word length in characters.
+     * @returns {number}
+     */
+    avg_word_length() {
+        const ret = wasm.canvisteditor_avg_word_length(this.__wbg_ptr);
+        return ret;
     }
     /**
      * Base64-decode the selected text, replacing the selection.
@@ -630,6 +646,22 @@ export class CanvistEditor {
         wasm.canvisteditor_duplicate_line(this.__wbg_ptr);
     }
     /**
+     * Editor version string.
+     * @returns {string}
+     */
+    editor_version() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_editor_version(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * End a batch of operations.
      *
      * After this call, the next edit will start a new undo group
@@ -686,6 +718,22 @@ export class CanvistEditor {
      */
     expand_selection() {
         wasm.canvisteditor_expand_selection(this.__wbg_ptr);
+    }
+    /**
+     * Feature summary as a comma-separated list of categories.
+     * @returns {string}
+     */
+    feature_categories() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_feature_categories(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Find all occurrences of `needle`. Returns a flat array: [start0, end0,
@@ -867,6 +915,47 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Apply bold to a character range.
+     * @param {number} start
+     * @param {number} end
+     */
+    format_range_bold(start, end) {
+        wasm.canvisteditor_format_range_bold(this.__wbg_ptr, start, end);
+    }
+    /**
+     * Set font size for a character range.
+     * @param {number} start
+     * @param {number} end
+     * @param {number} size
+     */
+    format_range_font_size(start, end, size) {
+        wasm.canvisteditor_format_range_font_size(this.__wbg_ptr, start, end, size);
+    }
+    /**
+     * Apply italic to a character range.
+     * @param {number} start
+     * @param {number} end
+     */
+    format_range_italic(start, end) {
+        wasm.canvisteditor_format_range_italic(this.__wbg_ptr, start, end);
+    }
+    /**
+     * Apply strikethrough to a character range.
+     * @param {number} start
+     * @param {number} end
+     */
+    format_range_strikethrough(start, end) {
+        wasm.canvisteditor_format_range_strikethrough(this.__wbg_ptr, start, end);
+    }
+    /**
+     * Apply underline to a character range.
+     * @param {number} start
+     * @param {number} end
+     */
+    format_range_underline(start, end) {
+        wasm.canvisteditor_format_range_underline(this.__wbg_ptr, start, end);
+    }
+    /**
      * Import HTML content, replacing the current document.
      *
      * Parses basic inline elements (`<strong>`, `<em>`, `<u>`, `<s>`, `<br>`,
@@ -961,6 +1050,34 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Get a theme colour slot as [r, g, b, a].
+     * @param {string} slot
+     * @returns {Uint8Array}
+     */
+    get_theme_color(slot) {
+        const ptr0 = passStringToWasm0(slot, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_get_theme_color(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
+    }
+    /**
+     * Get the colour for a token kind as [r, g, b, a].
+     *
+     * Returns default colours if not customised.
+     * @param {string} kind
+     * @returns {Uint8Array}
+     */
+    get_token_color(kind) {
+        const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_get_token_color(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v2;
     }
     /**
      * Move cursor to the very end of the document (Ctrl+End).
@@ -1311,6 +1428,22 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(event, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_log_event(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * The longest word in the document.
+     * @returns {string}
+     */
+    longest_word() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_longest_word(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Delete a saved macro.
@@ -1889,6 +2022,12 @@ export class CanvistEditor {
         }
     }
     /**
+     * Reset all token colours to defaults.
+     */
+    reset_token_colors() {
+        wasm.canvisteditor_reset_token_colors(this.__wbg_ptr);
+    }
+    /**
      * Restore editor state from a JSON string produced by `save_state`.
      * @param {string} json
      */
@@ -1961,6 +2100,16 @@ export class CanvistEditor {
      */
     scroll_to_fraction(fraction) {
         wasm.canvisteditor_scroll_to_fraction(this.__wbg_ptr, fraction);
+    }
+    /**
+     * Scroll the viewport to make a specific line visible.
+     *
+     * The line will be positioned near the top of the viewport with
+     * a 2-line padding.
+     * @param {number} line
+     */
+    scroll_to_line(line) {
+        wasm.canvisteditor_scroll_to_line(this.__wbg_ptr, line);
     }
     /**
      * Ensure the current selection (or cursor) is visible in the
@@ -2141,6 +2290,14 @@ export class CanvistEditor {
      */
     selection_start() {
         const ret = wasm.canvisteditor_selection_start(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Sentence count (split on . ! ?).
+     * @returns {number}
+     */
+    sentence_count() {
+        const ret = wasm.canvisteditor_sentence_count(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
@@ -2488,11 +2645,38 @@ export class CanvistEditor {
         wasm.canvisteditor_set_sticky_scroll(this.__wbg_ptr, enabled);
     }
     /**
+     * Enable or disable syntax highlighting.
+     *
+     * When enabled, the tokenizer colours are applied during rendering.
+     * @param {boolean} enabled
+     */
+    set_syntax_highlight(enabled) {
+        wasm.canvisteditor_set_syntax_highlight(this.__wbg_ptr, enabled);
+    }
+    /**
      * Set the tab display/insert size (1–8). Default: 4.
      * @param {number} size
      */
     set_tab_size(size) {
         wasm.canvisteditor_set_tab_size(this.__wbg_ptr, size);
+    }
+    /**
+     * Set a single theme colour slot.
+     *
+     * Slot names: "background", "text", "caret", "caret_blur",
+     * "selection", "selection_blur", "line_highlight",
+     * "gutter_bg", "gutter_text", "gutter_border",
+     * "scrollbar_track", "scrollbar_thumb".
+     * @param {string} slot
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @param {number} a
+     */
+    set_theme_color(slot, r, g, b, a) {
+        const ptr0 = passStringToWasm0(slot, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_theme_color(this.__wbg_ptr, ptr0, len0, r, g, b, a);
     }
     /**
      * Switch to the dark colour theme.
@@ -2514,6 +2698,22 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(title, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_set_title(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Set a colour for a token kind.
+     *
+     * Kinds: "word", "number", "whitespace", "punctuation", "newline".
+     * Use this to customise syntax colours.
+     * @param {string} kind
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @param {number} a
+     */
+    set_token_color(kind, r, g, b, a) {
+        const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_token_color(this.__wbg_ptr, ptr0, len0, r, g, b, a);
     }
     /**
      * Enable or disable word wrapping at the canvas edge.
@@ -2628,6 +2828,14 @@ export class CanvistEditor {
      */
     sticky_scroll() {
         const ret = wasm.canvisteditor_sticky_scroll(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Whether syntax highlighting is enabled.
+     * @returns {boolean}
+     */
+    syntax_highlight() {
+        const ret = wasm.canvisteditor_syntax_highlight(this.__wbg_ptr);
         return ret !== 0;
     }
     /**
@@ -2922,6 +3130,14 @@ export class CanvistEditor {
      */
     unfold_lines(start_line, end_line) {
         wasm.canvisteditor_unfold_lines(this.__wbg_ptr, start_line, end_line);
+    }
+    /**
+     * Count of unique words (case-insensitive).
+     * @returns {number}
+     */
+    unique_word_count() {
+        const ret = wasm.canvisteditor_unique_word_count(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * URL-decode the selected text, replacing the selection.
@@ -3226,6 +3442,11 @@ function getArrayJsValueFromWasm0(ptr, len) {
 function getArrayU32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
+function getArrayU8FromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
 }
 
 let cachedDataViewMemory0 = null;

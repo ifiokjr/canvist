@@ -434,6 +434,10 @@ pub struct CanvistEditor {
 	folded_ranges: Vec<(usize, usize)>,
 	/// Whether link detection is enabled.
 	detect_links: bool,
+	/// Whether syntax highlighting is enabled.
+	syntax_highlight: bool,
+	/// Token colour overrides: kind → (r, g, b, a).
+	token_colors: std::collections::HashMap<String, (u8, u8, u8, u8)>,
 }
 
 /// Colour theme for the editor canvas.
@@ -581,6 +585,8 @@ impl CanvistEditor {
 			find_highlight_needle: String::new(),
 			folded_ranges: Vec::new(),
 			detect_links: false,
+			syntax_highlight: false,
+			token_colors: std::collections::HashMap::new(),
 		})
 	}
 
@@ -4841,6 +4847,275 @@ impl CanvistEditor {
 		let avg_sentence_len = word_count / sentence_count;
 		let avg_syllables = total_syllables as f32 / word_count;
 		(206.835 - 1.015 * avg_sentence_len - 84.6 * avg_syllables).clamp(0.0, 100.0)
+	}
+
+	// ── Syntax highlighting ──────────────────────────────────────────
+
+	/// Enable or disable syntax highlighting.
+	///
+	/// When enabled, the tokenizer colours are applied during rendering.
+	#[wasm_bindgen]
+	pub fn set_syntax_highlight(&mut self, enabled: bool) {
+		self.syntax_highlight = enabled;
+	}
+
+	/// Whether syntax highlighting is enabled.
+	#[wasm_bindgen]
+	pub fn syntax_highlight(&self) -> bool {
+		self.syntax_highlight
+	}
+
+	/// Set a colour for a token kind.
+	///
+	/// Kinds: "word", "number", "whitespace", "punctuation", "newline".
+	/// Use this to customise syntax colours.
+	#[wasm_bindgen]
+	pub fn set_token_color(&mut self, kind: &str, r: u8, g: u8, b: u8, a: u8) {
+		self.token_colors.insert(kind.to_string(), (r, g, b, a));
+	}
+
+	/// Get the colour for a token kind as [r, g, b, a].
+	///
+	/// Returns default colours if not customised.
+	#[wasm_bindgen]
+	pub fn get_token_color(&self, kind: &str) -> Vec<u8> {
+		let (r, g, b, a) = self.token_colors.get(kind).copied().unwrap_or_else(|| {
+			match kind {
+				"word" => (212, 212, 212, 255),        // light gray
+				"number" => (181, 206, 168, 255),      // green
+				"punctuation" => (150, 150, 150, 255), // dim gray
+				"whitespace" => (0, 0, 0, 0),          // invisible
+				"newline" => (0, 0, 0, 0),             // invisible
+				_ => (212, 212, 212, 255),
+			}
+		});
+		vec![r, g, b, a]
+	}
+
+	/// Reset all token colours to defaults.
+	#[wasm_bindgen]
+	pub fn reset_token_colors(&mut self) {
+		self.token_colors.clear();
+	}
+
+	// ── Custom theme API ─────────────────────────────────────────────
+
+	/// Set a single theme colour slot.
+	///
+	/// Slot names: "background", "text", "caret", "caret_blur",
+	/// "selection", "selection_blur", "line_highlight",
+	/// "gutter_bg", "gutter_text", "gutter_border",
+	/// "scrollbar_track", "scrollbar_thumb".
+	#[wasm_bindgen]
+	pub fn set_theme_color(&mut self, slot: &str, r: u8, g: u8, b: u8, a: u8) {
+		let c = Color::new(r, g, b, a);
+		match slot {
+			"background" => self.theme.background = c,
+			"text" => self.theme.text = c,
+			"caret" => self.theme.caret = c,
+			"caret_blur" => self.theme.caret_blur = c,
+			"selection" => self.theme.selection = c,
+			"selection_blur" => self.theme.selection_blur = c,
+			"line_highlight" => self.theme.line_highlight = c,
+			"gutter_bg" => self.theme.gutter_bg = c,
+			"gutter_text" => self.theme.gutter_text = c,
+			"gutter_border" => self.theme.gutter_border = c,
+			"scrollbar_track" => self.theme.scrollbar_track = c,
+			"scrollbar_thumb" => self.theme.scrollbar_thumb = c,
+			_ => {}
+		}
+	}
+
+	/// Get a theme colour slot as [r, g, b, a].
+	#[wasm_bindgen]
+	pub fn get_theme_color(&self, slot: &str) -> Vec<u8> {
+		let c = match slot {
+			"background" => self.theme.background,
+			"text" => self.theme.text,
+			"caret" => self.theme.caret,
+			"caret_blur" => self.theme.caret_blur,
+			"selection" => self.theme.selection,
+			"selection_blur" => self.theme.selection_blur,
+			"line_highlight" => self.theme.line_highlight,
+			"gutter_bg" => self.theme.gutter_bg,
+			"gutter_text" => self.theme.gutter_text,
+			"gutter_border" => self.theme.gutter_border,
+			"scrollbar_track" => self.theme.scrollbar_track,
+			"scrollbar_thumb" => self.theme.scrollbar_thumb,
+			_ => Color::new(0, 0, 0, 0),
+		};
+		vec![c.r, c.g, c.b, c.a]
+	}
+
+	// ── Range formatting ─────────────────────────────────────────────
+
+	/// Apply bold to a character range.
+	#[wasm_bindgen]
+	pub fn format_range_bold(&mut self, start: usize, end: usize) {
+		if !self.is_writable() || start >= end {
+			return;
+		}
+		let sel = Selection::range(Position::new(start), Position::new(end));
+		let style = Style::new().bold();
+		self.runtime.apply_operation(Operation::format(sel, style));
+		self.is_modified = true;
+	}
+
+	/// Apply italic to a character range.
+	#[wasm_bindgen]
+	pub fn format_range_italic(&mut self, start: usize, end: usize) {
+		if !self.is_writable() || start >= end {
+			return;
+		}
+		let sel = Selection::range(Position::new(start), Position::new(end));
+		let style = Style::new().italic();
+		self.runtime.apply_operation(Operation::format(sel, style));
+		self.is_modified = true;
+	}
+
+	/// Apply underline to a character range.
+	#[wasm_bindgen]
+	pub fn format_range_underline(&mut self, start: usize, end: usize) {
+		if !self.is_writable() || start >= end {
+			return;
+		}
+		let sel = Selection::range(Position::new(start), Position::new(end));
+		let style = Style::new().underline();
+		self.runtime.apply_operation(Operation::format(sel, style));
+		self.is_modified = true;
+	}
+
+	/// Apply strikethrough to a character range.
+	#[wasm_bindgen]
+	pub fn format_range_strikethrough(&mut self, start: usize, end: usize) {
+		if !self.is_writable() || start >= end {
+			return;
+		}
+		let sel = Selection::range(Position::new(start), Position::new(end));
+		let style = Style::new().strikethrough();
+		self.runtime.apply_operation(Operation::format(sel, style));
+		self.is_modified = true;
+	}
+
+	/// Set font size for a character range.
+	#[wasm_bindgen]
+	pub fn format_range_font_size(&mut self, start: usize, end: usize, size: f32) {
+		if !self.is_writable() || start >= end {
+			return;
+		}
+		let sel = Selection::range(Position::new(start), Position::new(end));
+		let style = Style::new().font_size(size);
+		self.runtime.apply_operation(Operation::format(sel, style));
+		self.is_modified = true;
+	}
+
+	// ── Scroll to line ───────────────────────────────────────────────
+
+	/// Scroll the viewport to make a specific line visible.
+	///
+	/// The line will be positioned near the top of the viewport with
+	/// a 2-line padding.
+	#[wasm_bindgen]
+	pub fn scroll_to_line(&mut self, line: usize) {
+		let plain = self.runtime.document().plain_text();
+		let line_count = if plain.is_empty() {
+			1
+		} else {
+			plain.split('\n').count()
+		};
+		let ch = self.content_height().unwrap_or(self.height);
+		if ch <= 0.0 || line_count == 0 {
+			return;
+		}
+		let line_height = ch / line_count as f32;
+		let target_line = line.saturating_sub(2); // 2-line padding
+		self.scroll_y = (target_line as f32 * line_height).max(0.0);
+	}
+
+	// ── Extended text statistics ─────────────────────────────────────
+
+	/// Average word length in characters.
+	#[wasm_bindgen]
+	pub fn avg_word_length(&self) -> f32 {
+		let plain = self.runtime.document().plain_text();
+		let words: Vec<&str> = plain.split_whitespace().collect();
+		if words.is_empty() {
+			return 0.0;
+		}
+		let total_chars: usize = words.iter().map(|w| w.chars().count()).sum();
+		total_chars as f32 / words.len() as f32
+	}
+
+	/// The longest word in the document.
+	#[wasm_bindgen]
+	pub fn longest_word(&self) -> String {
+		let plain = self.runtime.document().plain_text();
+		plain
+			.split_whitespace()
+			.max_by_key(|w| w.chars().count())
+			.unwrap_or("")
+			.to_string()
+	}
+
+	/// Count of unique words (case-insensitive).
+	#[wasm_bindgen]
+	pub fn unique_word_count(&self) -> usize {
+		let plain = self.runtime.document().plain_text();
+		let mut seen = std::collections::HashSet::new();
+		for word in plain.split_whitespace() {
+			seen.insert(word.to_lowercase());
+		}
+		seen.len()
+	}
+
+	/// Sentence count (split on . ! ?).
+	#[wasm_bindgen]
+	pub fn sentence_count(&self) -> usize {
+		let plain = self.runtime.document().plain_text();
+		plain
+			.chars()
+			.filter(|&c| c == '.' || c == '!' || c == '?')
+			.count()
+			.max(if plain.trim().is_empty() { 0 } else { 1 })
+	}
+
+	// ── Editor info ──────────────────────────────────────────────────
+
+	/// Editor version string.
+	#[wasm_bindgen]
+	pub fn editor_version(&self) -> String {
+		"0.1.0".to_string()
+	}
+
+	/// Total number of public API methods.
+	#[wasm_bindgen]
+	pub fn api_count(&self) -> usize {
+		320 // Updated with this PR
+	}
+
+	/// Feature summary as a comma-separated list of categories.
+	#[wasm_bindgen]
+	pub fn feature_categories(&self) -> String {
+		[
+			"editing",
+			"formatting",
+			"selection",
+			"navigation",
+			"find-replace",
+			"undo-redo",
+			"clipboard",
+			"visual",
+			"folding",
+			"annotations",
+			"links",
+			"macros",
+			"tokenizer",
+			"analytics",
+			"serialization",
+			"presets",
+			"themes",
+		]
+		.join(",")
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any

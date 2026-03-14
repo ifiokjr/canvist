@@ -1121,6 +1121,78 @@ export interface CanvistEditor {
 	/** Flesch reading ease score (0–100). */
 	readonly fleschReadingEase: number;
 
+	// ── Syntax highlighting ─────────────────────────────────────────
+
+	/** Toggle syntax highlighting. */
+	setSyntaxHighlight(enabled: boolean): void;
+
+	/** Whether syntax highlighting is on. */
+	readonly syntaxHighlight: boolean;
+
+	/** Set colour for a token kind. */
+	setTokenColor(kind: string, r: number, g: number, b: number, a: number): void;
+
+	/** Get colour for a token kind: [r, g, b, a]. */
+	getTokenColor(kind: string): number[];
+
+	/** Reset all token colours to defaults. */
+	resetTokenColors(): void;
+
+	// ── Custom theme API ────────────────────────────────────────────
+
+	/** Set a theme colour slot (background, text, caret, selection, etc). */
+	setThemeColor(slot: string, r: number, g: number, b: number, a: number): void;
+
+	/** Get a theme colour slot: [r, g, b, a]. */
+	getThemeColor(slot: string): number[];
+
+	// ── Range formatting ────────────────────────────────────────────
+
+	/** Apply bold to a char range. */
+	formatRangeBold(start: number, end: number): void;
+
+	/** Apply italic to a char range. */
+	formatRangeItalic(start: number, end: number): void;
+
+	/** Apply underline to a char range. */
+	formatRangeUnderline(start: number, end: number): void;
+
+	/** Apply strikethrough to a char range. */
+	formatRangeStrikethrough(start: number, end: number): void;
+
+	/** Set font size for a char range. */
+	formatRangeFontSize(start: number, end: number, size: number): void;
+
+	// ── Scroll to line ──────────────────────────────────────────────
+
+	/** Scroll viewport to show a specific line. */
+	scrollToLine(line: number): void;
+
+	// ── Extended statistics ──────────────────────────────────────────
+
+	/** Average word length in characters. */
+	readonly avgWordLength: number;
+
+	/** The longest word in the document. */
+	longestWord(): string;
+
+	/** Count of unique words (case-insensitive). */
+	readonly uniqueWordCount: number;
+
+	/** Sentence count. */
+	readonly sentenceCount: number;
+
+	// ── Editor info ─────────────────────────────────────────────────
+
+	/** Editor version string. */
+	readonly editorVersion: string;
+
+	/** Total API method count. */
+	readonly apiCount: number;
+
+	/** Feature categories as comma-separated string. */
+	featureCategories(): string;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }
