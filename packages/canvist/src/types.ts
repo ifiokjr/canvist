@@ -1347,6 +1347,110 @@ export interface CanvistEditor {
 	/** Whether the editor is focused. */
 	readonly isFocused: boolean;
 
+	// ── Custom keybindings ──────────────────────────────────────────
+
+	/** Set a custom keybinding override: shortcut -> command. */
+	setKeybinding(shortcut: string, command: string): void;
+
+	/** Remove a custom keybinding override. */
+	removeKeybinding(shortcut: string): void;
+
+	/** Clear all custom keybinding overrides. */
+	clearKeybindings(): void;
+
+	/** Get command for shortcut (override or default). */
+	getKeybinding(shortcut: string): string;
+
+	/** Number of custom keybinding overrides. */
+	readonly keybindingOverrideCount: number;
+
+	/** Overrides as [shortcut, command, ...]. */
+	keybindingOverridesList(): string[];
+
+	/** Execute a command by name. */
+	runCommand(command: string): boolean;
+
+	/** Execute command bound to shortcut. */
+	runShortcut(shortcut: string): boolean;
+
+	// ── Text transform pipeline ─────────────────────────────────────
+
+	/** Transform selection to camelCase. */
+	transformCamelCase(): void;
+
+	/** Transform selection to snake_case. */
+	transformSnakeCase(): void;
+
+	/** Transform selection to kebab-case. */
+	transformKebabCase(): void;
+
+	/** Transform selection to CONSTANT_CASE. */
+	transformConstantCase(): void;
+
+	/** Apply `|`-separated transform steps (upper|snake|...). */
+	transformPipeline(pipeline: string): void;
+
+	// ── Marker ranges ───────────────────────────────────────────────
+
+	/** Add a marker highlight range with explicit RGBA and id. */
+	addMarker(
+		start: number,
+		end: number,
+		r: number,
+		g: number,
+		b: number,
+		a: number,
+		id: string,
+	): void;
+
+	/** Remove marker by id. */
+	removeMarker(id: string): void;
+
+	/** Remove markers whose ids start with prefix. */
+	removeMarkersByPrefix(prefix: string): void;
+
+	/** Clear all marker ranges. */
+	clearMarkers(): void;
+
+	/** Number of markers. */
+	readonly markerCount: number;
+
+	/** Marker list: [start, end, r, g, b, a, id, ...]. */
+	markerList(): string[];
+
+	/** Markers overlapping offset in same flat format. */
+	markersAt(offset: number): string[];
+
+	// ── Soft wrap info ──────────────────────────────────────────────
+
+	/** Number of visual lines after wrapping. */
+	readonly visualLineCount: number;
+
+	/** Whether a logical line is wrapped. */
+	isLineWrapped(line: number): boolean;
+
+	// ── Extended stats ───────────────────────────────────────────────
+
+	/** Paragraph blocks separated by blank lines. */
+	readonly paragraphBlockCount: number;
+
+	/** Average line length in characters. */
+	readonly avgLineLength: number;
+
+	/** Longest line length in characters. */
+	readonly longestLineLength: number;
+
+	/** 0-based line number of longest line. */
+	readonly longestLineNumber: number;
+
+	/** Total UTF-8 byte count. */
+	readonly byteCount: number;
+
+	// ── Completion context ───────────────────────────────────────────
+
+	/** Context completions: [word, lineContext, ...]. */
+	completionsWithContext(limit: number): string[];
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

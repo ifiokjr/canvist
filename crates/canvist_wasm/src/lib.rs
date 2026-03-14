@@ -446,6 +446,10 @@ pub struct CanvistEditor {
 	selection_history: Vec<(usize, usize)>,
 	/// Selection history index (-1 = current).
 	selection_history_index: i32,
+	/// Custom keybinding overrides: shortcut → command name.
+	keybinding_overrides: std::collections::HashMap<String, String>,
+	/// Marker highlight ranges: (start, end, r, g, b, a, id).
+	markers: Vec<(usize, usize, u8, u8, u8, u8, String)>,
 }
 
 /// Colour theme for the editor canvas.
@@ -599,6 +603,8 @@ impl CanvistEditor {
 			collab_cursors: Vec::new(),
 			selection_history: Vec::new(),
 			selection_history_index: -1,
+			keybinding_overrides: std::collections::HashMap::new(),
+			markers: Vec::new(),
 		})
 	}
 
@@ -5932,6 +5938,663 @@ impl CanvistEditor {
 		self.focused
 	}
 
+	// ── Custom keybindings ───────────────────────────────────────────
+
+	/// Rebind a keyboard shortcut to a command.
+	///
+	/// `shortcut` is e.g. "Ctrl+B", `command` is the command name from
+	/// `command_list()` e.g. "Bold".
+	#[wasm_bindgen]
+	pub fn set_keybinding(&mut self, shortcut: &str, command: &str) {
+		self.keybinding_overrides
+			.insert(shortcut.to_string(), command.to_string());
+	}
+
+	/// Remove a custom keybinding override.
+	#[wasm_bindgen]
+	pub fn remove_keybinding(&mut self, shortcut: &str) {
+		self.keybinding_overrides.remove(shortcut);
+	}
+
+	/// Clear all custom keybinding overrides.
+	#[wasm_bindgen]
+	pub fn clear_keybindings(&mut self) {
+		self.keybinding_overrides.clear();
+	}
+
+	/// Get the command bound to a shortcut (custom override or default).
+	#[wasm_bindgen]
+	pub fn get_keybinding(&self, shortcut: &str) -> String {
+		if let Some(cmd) = self.keybinding_overrides.get(shortcut) {
+			return cmd.clone();
+		}
+		// Check default bindings.
+		let all = self.command_list();
+		let mut i = 0;
+		while i + 1 < all.len() {
+			if all[i + 1] == shortcut {
+				return all[i].clone();
+			}
+			i += 2;
+		}
+		String::new()
+	}
+
+	/// Number of custom keybinding overrides.
+	#[wasm_bindgen]
+	pub fn keybinding_override_count(&self) -> usize {
+		self.keybinding_overrides.len()
+	}
+
+	/// Get all keybinding overrides as [shortcut, command, ...].
+	#[wasm_bindgen]
+	pub fn keybinding_overrides_list(&self) -> Vec<String> {
+		let mut out = Vec::with_capacity(self.keybinding_overrides.len() * 2);
+		for (shortcut, command) in &self.keybinding_overrides {
+			out.push(shortcut.clone());
+			out.push(command.clone());
+		}
+		out
+	}
+
+	/// Execute a command by name.
+	///
+	/// Returns `true` if the command is recognized and executed.
+	#[wasm_bindgen]
+	pub fn run_command(&mut self, command: &str) -> bool {
+		match command {
+			"Bold" => {
+				self.toggle_bold();
+				true
+			}
+			"Italic" => {
+				self.toggle_italic();
+				true
+			}
+			"Underline" => {
+				self.toggle_underline();
+				true
+			}
+			"Strikethrough" => {
+				self.toggle_strikethrough();
+				true
+			}
+			"Undo" => self.undo(),
+			"Redo" => self.redo(),
+			"Select All" => {
+				self.select_all();
+				true
+			}
+			"Duplicate Line" => {
+				self.duplicate_line();
+				true
+			}
+			"Delete Line" => {
+				self.delete_line();
+				true
+			}
+			"Move Line Up" => {
+				self.move_line_up();
+				true
+			}
+			"Move Line Down" => {
+				self.move_line_down();
+				true
+			}
+			"Toggle Comment" => {
+				self.toggle_line_comment();
+				true
+			}
+			"Go To Line" => {
+				self.go_to_line(1);
+				true
+			}
+			"Toggle Word Wrap" => {
+				let next = !self.word_wrap;
+				self.set_word_wrap(next);
+				true
+			}
+			"Transform Upper Case" => {
+				self.transform_uppercase();
+				true
+			}
+			"Transform Lower Case" => {
+				self.transform_lowercase();
+				true
+			}
+			"Join Lines" => {
+				self.join_lines();
+				true
+			}
+			"Sort Lines" => {
+				self.sort_lines_asc();
+				true
+			}
+			"Select Line" => {
+				self.select_line();
+				true
+			}
+			"Expand Selection" => {
+				self.expand_selection();
+				true
+			}
+			"Contract Selection" => {
+				self.contract_selection();
+				true
+			}
+			"Transpose Chars" => {
+				self.transpose_chars();
+				true
+			}
+			"Go To Matching Bracket" => {
+				self.move_to_matching_bracket();
+				true
+			}
+			"Delete Word Left" => {
+				self.delete_word_left();
+				true
+			}
+			"Delete Word Right" => {
+				self.delete_word_right();
+				true
+			}
+			"Open Line Below" => {
+				self.open_line_below();
+				true
+			}
+			"Open Line Above" => {
+				self.open_line_above();
+				true
+			}
+			"Select Between Brackets" => {
+				self.select_between_brackets();
+				true
+			}
+			"Document Start" => {
+				self.go_to_document_start();
+				true
+			}
+			"Document End" => {
+				self.go_to_document_end();
+				true
+			}
+			"Center Line" => {
+				self.center_line_in_viewport();
+				true
+			}
+			"Toggle Overwrite" => {
+				self.toggle_overwrite_mode();
+				true
+			}
+			_ => false,
+		}
+	}
+
+	/// Execute the command bound to a shortcut.
+	///
+	/// Custom overrides are checked first, then defaults.
+	#[wasm_bindgen]
+	pub fn run_shortcut(&mut self, shortcut: &str) -> bool {
+		let cmd = self.get_keybinding(shortcut);
+		if cmd.is_empty() {
+			return false;
+		}
+		self.run_command(&cmd)
+	}
+
+	// ── Text transform pipeline ──────────────────────────────────────
+
+	/// Apply a transformation pipeline to the current selection.
+	///
+	/// Supported step names (case-insensitive, `|` separated):
+	/// `upper`, `lower`, `title`, `camel`, `snake`, `kebab`, `constant`,
+	/// `reverse`.
+	#[wasm_bindgen]
+	pub fn transform_pipeline(&mut self, pipeline: &str) {
+		if !self.is_writable() {
+			return;
+		}
+
+		let words = |text: &str| {
+			text.split(|c: char| !c.is_alphanumeric())
+				.filter(|w| !w.is_empty())
+				.map(|w| w.to_string())
+				.collect::<Vec<String>>()
+		};
+		let to_title = |text: &str| {
+			text.split_whitespace()
+				.map(|word| {
+					let mut chars = word.chars();
+					match chars.next() {
+						Some(c) => {
+							let first: String = c.to_uppercase().collect();
+							format!("{first}{}", chars.as_str().to_lowercase())
+						}
+						None => String::new(),
+					}
+				})
+				.collect::<Vec<String>>()
+				.join(" ")
+		};
+		let to_camel = |text: &str| {
+			let parts = words(text);
+			parts
+				.iter()
+				.enumerate()
+				.map(|(i, w)| {
+					if i == 0 {
+						w.to_lowercase()
+					} else {
+						let mut chars = w.chars();
+						match chars.next() {
+							Some(c) => {
+								let first: String = c.to_uppercase().collect();
+								format!("{first}{}", chars.as_str().to_lowercase())
+							}
+							None => String::new(),
+						}
+					}
+				})
+				.collect::<String>()
+		};
+		let to_snake = |text: &str| {
+			words(text)
+				.iter()
+				.map(|w| w.to_lowercase())
+				.collect::<Vec<String>>()
+				.join("_")
+		};
+		let to_kebab = |text: &str| {
+			words(text)
+				.iter()
+				.map(|w| w.to_lowercase())
+				.collect::<Vec<String>>()
+				.join("-")
+		};
+
+		self.transform_selection(|selected| {
+			let mut out = selected.to_string();
+			for raw_step in pipeline.split('|') {
+				let step = raw_step.trim().to_ascii_lowercase();
+				out = match step.as_str() {
+					"upper" | "uppercase" => out.to_uppercase(),
+					"lower" | "lowercase" => out.to_lowercase(),
+					"title" | "title_case" => to_title(&out),
+					"camel" | "camel_case" => to_camel(&out),
+					"snake" | "snake_case" => to_snake(&out),
+					"kebab" | "kebab_case" => to_kebab(&out),
+					"constant" | "constant_case" => to_snake(&out).to_uppercase(),
+					"reverse" => out.chars().rev().collect(),
+					_ => out,
+				};
+			}
+			out
+		});
+	}
+
+	/// Transform selected text to camelCase.
+	#[wasm_bindgen]
+	pub fn transform_camel_case(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		if start == end {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let selected: String = chars[start..end].iter().collect();
+		let words: Vec<&str> = selected
+			.split(|c: char| c.is_whitespace() || c == '-' || c == '_')
+			.filter(|w| !w.is_empty())
+			.collect();
+		let transformed: String = words
+			.iter()
+			.enumerate()
+			.map(|(i, w)| {
+				if i == 0 {
+					w.to_lowercase()
+				} else {
+					let mut chars = w.chars();
+					match chars.next() {
+						Some(c) => {
+							let upper: String = c.to_uppercase().collect();
+							format!("{upper}{}", chars.as_str().to_lowercase())
+						}
+						None => String::new(),
+					}
+				}
+			})
+			.collect();
+		self.delete_range(start, end);
+		self.insert_text_at(start, &transformed);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(
+				Position::new(start),
+				Position::new(start + transformed.chars().count()),
+			),
+		});
+	}
+
+	/// Transform selected text to snake_case.
+	#[wasm_bindgen]
+	pub fn transform_snake_case(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		if start == end {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let selected: String = chars[start..end].iter().collect();
+		let words: Vec<&str> = selected
+			.split(|c: char| c.is_whitespace() || c == '-' || c == '_')
+			.filter(|w| !w.is_empty())
+			.collect();
+		let transformed = words
+			.iter()
+			.map(|w| w.to_lowercase())
+			.collect::<Vec<String>>()
+			.join("_");
+		self.delete_range(start, end);
+		self.insert_text_at(start, &transformed);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(
+				Position::new(start),
+				Position::new(start + transformed.chars().count()),
+			),
+		});
+	}
+
+	/// Transform selected text to kebab-case.
+	#[wasm_bindgen]
+	pub fn transform_kebab_case(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		if start == end {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let selected: String = chars[start..end].iter().collect();
+		let words: Vec<&str> = selected
+			.split(|c: char| c.is_whitespace() || c == '-' || c == '_')
+			.filter(|w| !w.is_empty())
+			.collect();
+		let transformed = words
+			.iter()
+			.map(|w| w.to_lowercase())
+			.collect::<Vec<String>>()
+			.join("-");
+		self.delete_range(start, end);
+		self.insert_text_at(start, &transformed);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(
+				Position::new(start),
+				Position::new(start + transformed.chars().count()),
+			),
+		});
+	}
+
+	/// Transform selected text to CONSTANT_CASE (upper snake).
+	#[wasm_bindgen]
+	pub fn transform_constant_case(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let sel = self.runtime.selection();
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		if start == end {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let selected: String = chars[start..end].iter().collect();
+		let words: Vec<&str> = selected
+			.split(|c: char| c.is_whitespace() || c == '-' || c == '_')
+			.filter(|w| !w.is_empty())
+			.collect();
+		let transformed = words
+			.iter()
+			.map(|w| w.to_uppercase())
+			.collect::<Vec<String>>()
+			.join("_");
+		self.delete_range(start, end);
+		self.insert_text_at(start, &transformed);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(
+				Position::new(start),
+				Position::new(start + transformed.chars().count()),
+			),
+		});
+	}
+
+	// ── Marker ranges ────────────────────────────────────────────────
+
+	/// Add a coloured marker highlight range.
+	///
+	/// Returns the marker ID for later removal.
+	#[wasm_bindgen]
+	pub fn add_marker(&mut self, start: usize, end: usize, r: u8, g: u8, b: u8, a: u8, id: &str) {
+		self.markers.retain(|m| m.6 != id);
+		self.markers.push((start, end, r, g, b, a, id.to_string()));
+	}
+
+	/// Remove a marker by ID.
+	#[wasm_bindgen]
+	pub fn remove_marker(&mut self, id: &str) {
+		self.markers.retain(|m| m.6 != id);
+	}
+
+	/// Remove all markers with IDs starting with a prefix.
+	#[wasm_bindgen]
+	pub fn remove_markers_by_prefix(&mut self, prefix: &str) {
+		self.markers.retain(|m| !m.6.starts_with(prefix));
+	}
+
+	/// Clear all markers.
+	#[wasm_bindgen]
+	pub fn clear_markers(&mut self) {
+		self.markers.clear();
+	}
+
+	/// Number of active markers.
+	#[wasm_bindgen]
+	pub fn marker_count(&self) -> usize {
+		self.markers.len()
+	}
+
+	/// Get all markers as [start, end, r, g, b, a, id, ...].
+	#[wasm_bindgen]
+	pub fn marker_list(&self) -> Vec<String> {
+		let mut result = Vec::with_capacity(self.markers.len() * 7);
+		for (start, end, r, g, b, a, id) in &self.markers {
+			result.push(start.to_string());
+			result.push(end.to_string());
+			result.push(r.to_string());
+			result.push(g.to_string());
+			result.push(b.to_string());
+			result.push(a.to_string());
+			result.push(id.clone());
+		}
+		result
+	}
+
+	/// Get markers overlapping a character offset.
+	#[wasm_bindgen]
+	pub fn markers_at(&self, offset: usize) -> Vec<String> {
+		let mut result = Vec::new();
+		for (start, end, r, g, b, a, id) in &self.markers {
+			if offset >= *start && offset < *end {
+				result.push(start.to_string());
+				result.push(end.to_string());
+				result.push(r.to_string());
+				result.push(g.to_string());
+				result.push(b.to_string());
+				result.push(a.to_string());
+				result.push(id.clone());
+			}
+		}
+		result
+	}
+
+	// ── Soft wrap info ───────────────────────────────────────────────
+
+	/// Number of visual (display) lines after word wrapping.
+	#[wasm_bindgen]
+	pub fn visual_line_count(&self) -> usize {
+		self.line_count()
+			.unwrap_or_else(|_| self.runtime.document().plain_text().split('\n').count())
+	}
+
+	/// Whether a specific logical line (0-based) is soft-wrapped into
+	/// multiple visual lines.
+	#[wasm_bindgen]
+	pub fn is_line_wrapped(&self, line: usize) -> bool {
+		if !self.word_wrap {
+			return false;
+		}
+		let (_, ctx) = match self.canvas_and_context() {
+			Ok(v) => v,
+			Err(_) => return false,
+		};
+		let renderer = Canvas2dRenderer::new(ctx, self.width, self.height);
+		let lc = self.layout_constants();
+		let plain = self.runtime.document().plain_text();
+		let styled_runs = self.runtime.document().styled_runs();
+		let paragraphs = layout_paragraphs(
+			&plain,
+			&styled_runs,
+			&lc.layout_config,
+			&renderer,
+			&lc.default_style,
+		);
+		paragraphs
+			.get(line)
+			.map(|p| p.layout.lines.len() > 1)
+			.unwrap_or(false)
+	}
+
+	// ── Extended statistics ──────────────────────────────────────────
+
+	/// Number of paragraph blocks (text groups separated by blank lines).
+	#[wasm_bindgen]
+	pub fn paragraph_block_count(&self) -> usize {
+		let plain = self.runtime.document().plain_text();
+		if plain.trim().is_empty() {
+			return 0;
+		}
+		let mut count = 0usize;
+		let mut in_para = false;
+		for line in plain.split('\n') {
+			if line.trim().is_empty() {
+				if in_para {
+					in_para = false;
+				}
+			} else if !in_para {
+				in_para = true;
+				count += 1;
+			}
+		}
+		count
+	}
+
+	/// Average number of characters per line.
+	#[wasm_bindgen]
+	pub fn avg_line_length(&self) -> f64 {
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		if lines.is_empty() {
+			return 0.0;
+		}
+		let total: usize = lines.iter().map(|l| l.chars().count()).sum();
+		total as f64 / lines.len() as f64
+	}
+
+	/// Longest line length in characters.
+	#[wasm_bindgen]
+	pub fn longest_line_length(&self) -> usize {
+		let plain = self.runtime.document().plain_text();
+		plain
+			.split('\n')
+			.map(|l| l.chars().count())
+			.max()
+			.unwrap_or(0)
+	}
+
+	/// Line number of the longest line (0-based).
+	#[wasm_bindgen]
+	pub fn longest_line_number(&self) -> usize {
+		let plain = self.runtime.document().plain_text();
+		plain
+			.split('\n')
+			.enumerate()
+			.max_by_key(|(_, l)| l.chars().count())
+			.map(|(i, _)| i)
+			.unwrap_or(0)
+	}
+
+	/// Total byte count of the document (UTF-8).
+	#[wasm_bindgen]
+	pub fn byte_count(&self) -> usize {
+		self.runtime.document().plain_text().len()
+	}
+
+	// ── Auto-complete context ────────────────────────────────────────
+
+	/// Get filtered word completions with context.
+	///
+	/// Returns [word, lineContext, ...] where lineContext is the line
+	/// where the word appears. Max `limit` results.
+	#[wasm_bindgen]
+	pub fn completions_with_context(&self, limit: usize) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let offset = self.runtime.selection().end().offset();
+		let chars: Vec<char> = plain.chars().collect();
+
+		// Find prefix at cursor.
+		let mut start = offset;
+		while start > 0 && chars[start - 1].is_alphanumeric() {
+			start -= 1;
+		}
+		if start == offset {
+			return Vec::new();
+		}
+		let prefix: String = chars[start..offset].iter().collect();
+		let prefix_lower = prefix.to_lowercase();
+
+		// Collect unique words matching the prefix.
+		let mut seen = std::collections::HashSet::new();
+		let mut result = Vec::new();
+		for line in plain.split('\n') {
+			for word in line.split(|c: char| !c.is_alphanumeric()) {
+				if word.len() > prefix.len()
+					&& word.to_lowercase().starts_with(&prefix_lower)
+					&& seen.insert(word.to_lowercase())
+				{
+					result.push(word.to_string());
+					result.push(line.trim().to_string());
+					if result.len() / 2 >= limit {
+						return result;
+					}
+				}
+			}
+		}
+		result
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -8044,6 +8707,36 @@ impl CanvistEditor {
 								actual_caret_color,
 							);
 						}
+					}
+				}
+			}
+		}
+
+		// ── Marker ranges ────────────────────────────────────────────────
+		for (m_start, m_end, mr, mg, mb, ma, _id) in &self.markers {
+			for ch_off in *m_start..*m_end {
+				let (pi, li) = find_para_and_line_for_offset(&paragraphs, ch_off);
+				if let Some(para) = paragraphs.get(pi) {
+					if let Some(line) = para.layout.lines.get(li) {
+						let local = ch_off.saturating_sub(para.global_char_start);
+						let next_local = local + 1;
+						let cx = (lc.padding_x + content_x_origin)
+							+ line.x_offset + x_offset_in_para_line(
+							&renderer,
+							para,
+							line.start_offset,
+							local,
+						);
+						let cx2 = (lc.padding_x + content_x_origin)
+							+ line.x_offset + x_offset_in_para_line(
+							&renderer,
+							para,
+							line.start_offset,
+							next_local,
+						);
+						let cy = lc.padding_y + para.y_offset + line.y - sy;
+						let marker_color = Color::new(*mr, *mg, *mb, *ma);
+						renderer.fill_rect(Rect::new(cx, cy, cx2 - cx, line.height), marker_color);
 					}
 				}
 			}

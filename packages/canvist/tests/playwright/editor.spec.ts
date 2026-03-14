@@ -6450,4 +6450,253 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Custom keybindings ──────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] keybinding override and run_shortcut`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello");
+						ed.set_selection(0, 5);
+						ed.set_keybinding("Ctrl+Shift+1", "Transform Upper Case");
+						const cmd = ed.get_keybinding("Ctrl+Shift+1");
+						const ok = ed.run_shortcut("Ctrl+Shift+1");
+						const text = ed.plain_text();
+						const count = ed.keybinding_override_count();
+						ed.remove_keybinding("Ctrl+Shift+1");
+						const countAfterRemove = ed.keybinding_override_count();
+						return { cmd, ok, text, count, countAfterRemove };
+					});
+					assertEquals(result.cmd, "Transform Upper Case");
+					assertEquals(result.ok, true);
+					assertEquals(result.text, "HELLO");
+					assertEquals(result.count, 1);
+					assertEquals(result.countAfterRemove, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Transform pipeline ──────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] transform cases and pipeline`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello world test");
+						ed.set_selection(0, ed.char_count());
+						ed.transform_camel_case();
+						const camel = ed.plain_text();
+
+						ed.delete_range(0, ed.char_count());
+						ed.insert_text("hello world test");
+						ed.set_selection(0, ed.char_count());
+						ed.transform_snake_case();
+						const snake = ed.plain_text();
+
+						ed.delete_range(0, ed.char_count());
+						ed.insert_text("hello world test");
+						ed.set_selection(0, ed.char_count());
+						ed.transform_kebab_case();
+						const kebab = ed.plain_text();
+
+						ed.delete_range(0, ed.char_count());
+						ed.insert_text("hello world test");
+						ed.set_selection(0, ed.char_count());
+						ed.transform_constant_case();
+						const constant = ed.plain_text();
+
+						ed.set_selection(0, ed.char_count());
+						ed.transform_pipeline("lower|snake|upper");
+						const pipeline = ed.plain_text();
+						return { camel, snake, kebab, constant, pipeline };
+					});
+					assertEquals(result.camel, "helloWorldTest");
+					assertEquals(result.snake, "hello_world_test");
+					assertEquals(result.kebab, "hello-world-test");
+					assertEquals(result.constant, "HELLO_WORLD_TEST");
+					assertEquals(result.pipeline, "HELLO_WORLD_TEST");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Marker ranges ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] markers add, query, remove`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdef");
+						ed.add_marker(1, 4, 255, 200, 0, 80, "m1");
+						ed.add_marker(2, 5, 255, 0, 0, 80, "lint-1");
+						const count1 = ed.marker_count();
+						const at3 = Array.from(ed.markers_at(3));
+						ed.remove_markers_by_prefix("lint-");
+						const count2 = ed.marker_count();
+						ed.remove_marker("m1");
+						const count3 = ed.marker_count();
+						return { count1, at3, count2, count3 };
+					});
+					assertEquals(result.count1, 2);
+					assert(result.at3.includes("m1"));
+					assertEquals(result.count2, 1);
+					assertEquals(result.count3, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Soft wrap info ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] visual line count and line wrapped`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_size(160, 200);
+						ed.set_word_wrap(true);
+						ed.insert_text(
+							"This is a very long line that should wrap at least once in a narrow viewport.",
+						);
+						const visual = ed.visual_line_count();
+						const wrapped = ed.is_line_wrapped(0);
+						return { visual, wrapped };
+					});
+					assert(
+						result.visual > 1,
+						`expected wrapped visual lines, got ${result.visual}`,
+					);
+					assertEquals(result.wrapped, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Extended statistics ─────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] extended statistics`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const text = "alpha beta\n\ngamma delta epsilon\nshort";
+						ed.insert_text(text);
+						return {
+							paragraphs: ed.paragraph_block_count(),
+							avg: ed.avg_line_length(),
+							longestLen: ed.longest_line_length(),
+							longestLine: ed.longest_line_number(),
+							bytes: ed.byte_count(),
+							expectedBytes: text.length,
+						};
+					});
+					assertEquals(result.paragraphs, 2);
+					assert(result.avg > 0);
+					assert(result.longestLen >= 10);
+					assertEquals(result.longestLine, 2);
+					assertEquals(result.bytes, result.expectedBytes);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Completion context ──────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] completions_with_context returns word + line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("apple apricot banana\nape apex\nap");
+						return Array.from(ed.completions_with_context(6));
+					});
+					assert(result.length >= 2);
+					assert(result.some((s: string) => s.toLowerCase() === "apple"));
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
