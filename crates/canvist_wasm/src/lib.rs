@@ -6663,6 +6663,69 @@ impl CanvistEditor {
 		true
 	}
 
+	/// Whether a named anchor exists.
+	#[wasm_bindgen]
+	pub fn anchor_exists(&self, name: &str) -> bool {
+		self.anchors.contains_key(name)
+	}
+
+	/// Rename an anchor key.
+	///
+	/// Returns `true` when source anchor existed.
+	#[wasm_bindgen]
+	pub fn rename_anchor(&mut self, old_name: &str, new_name: &str) -> bool {
+		if old_name == new_name {
+			return self.anchors.contains_key(old_name);
+		}
+		let Some(offset) = self.anchors.remove(old_name) else {
+			return false;
+		};
+		self.anchors.insert(new_name.to_string(), offset);
+		true
+	}
+
+	/// Find nearest anchor at or before the given offset.
+	///
+	/// Returns `[name, offset]` or empty when none.
+	#[wasm_bindgen]
+	pub fn nearest_anchor_before(&self, offset: usize) -> Vec<String> {
+		let mut best: Option<(&String, usize)> = None;
+		for (name, pos) in &self.anchors {
+			if *pos <= offset {
+				match best {
+					Some((_, best_pos)) if *pos <= best_pos => {}
+					_ => best = Some((name, *pos)),
+				}
+			}
+		}
+		if let Some((name, pos)) = best {
+			vec![name.clone(), pos.to_string()]
+		} else {
+			Vec::new()
+		}
+	}
+
+	/// Find nearest anchor at or after the given offset.
+	///
+	/// Returns `[name, offset]` or empty when none.
+	#[wasm_bindgen]
+	pub fn nearest_anchor_after(&self, offset: usize) -> Vec<String> {
+		let mut best: Option<(&String, usize)> = None;
+		for (name, pos) in &self.anchors {
+			if *pos >= offset {
+				match best {
+					Some((_, best_pos)) if *pos >= best_pos => {}
+					_ => best = Some((name, *pos)),
+				}
+			}
+		}
+		if let Some((name, pos)) = best {
+			vec![name.clone(), pos.to_string()]
+		} else {
+			Vec::new()
+		}
+	}
+
 	// ── Tasks / TODO scanner ────────────────────────────────────────
 
 	/// Scan the document for task-style lines.
@@ -7453,6 +7516,240 @@ impl CanvistEditor {
 			.set_plain_text(&lines.join("\n"));
 		self.is_modified = true;
 		true
+	}
+
+	/// Prefix each line in range with `prefix`.
+	///
+	/// Returns number of lines changed.
+	#[wasm_bindgen]
+	pub fn prefix_lines(&mut self, start_line: usize, end_line: usize, prefix: &str) -> usize {
+		if !self.is_writable() || prefix.is_empty() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if lines.is_empty() {
+			return 0;
+		}
+		let s = start_line.min(lines.len() - 1);
+		let e = end_line.min(lines.len() - 1);
+		if s > e {
+			return 0;
+		}
+		for line in lines.iter_mut().take(e + 1).skip(s) {
+			*line = format!("{prefix}{line}");
+		}
+		let changed = e - s + 1;
+		self.runtime
+			.document_mut()
+			.set_plain_text(&lines.join("\n"));
+		self.is_modified = true;
+		changed
+	}
+
+	/// Suffix each line in range with `suffix`.
+	///
+	/// Returns number of lines changed.
+	#[wasm_bindgen]
+	pub fn suffix_lines(&mut self, start_line: usize, end_line: usize, suffix: &str) -> usize {
+		if !self.is_writable() || suffix.is_empty() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if lines.is_empty() {
+			return 0;
+		}
+		let s = start_line.min(lines.len() - 1);
+		let e = end_line.min(lines.len() - 1);
+		if s > e {
+			return 0;
+		}
+		for line in lines.iter_mut().take(e + 1).skip(s) {
+			line.push_str(suffix);
+		}
+		let changed = e - s + 1;
+		self.runtime
+			.document_mut()
+			.set_plain_text(&lines.join("\n"));
+		self.is_modified = true;
+		changed
+	}
+
+	/// Number a line range with `N. ` prefix.
+	///
+	/// Returns number of lines changed.
+	#[wasm_bindgen]
+	pub fn number_lines(
+		&mut self,
+		start_line: usize,
+		end_line: usize,
+		start_number: usize,
+		pad_width: usize,
+	) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if lines.is_empty() {
+			return 0;
+		}
+		let s = start_line.min(lines.len() - 1);
+		let e = end_line.min(lines.len() - 1);
+		if s > e {
+			return 0;
+		}
+		for i in s..=e {
+			let n = start_number + (i - s);
+			let label = if pad_width > 0 {
+				format!("{n:0pad_width$}. ")
+			} else {
+				format!("{n}. ")
+			};
+			lines[i] = format!("{label}{}", lines[i]);
+		}
+		let changed = e - s + 1;
+		self.runtime
+			.document_mut()
+			.set_plain_text(&lines.join("\n"));
+		self.is_modified = true;
+		changed
+	}
+
+	// ── Cleanup additions ───────────────────────────────────────────
+
+	/// Remove non-printable control characters.
+	///
+	/// Keeps `\n`, `\r`, and `\t`. Returns chars removed.
+	#[wasm_bindgen]
+	pub fn strip_non_printable(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut out = String::with_capacity(plain.len());
+		let mut removed = 0usize;
+		for ch in plain.chars() {
+			let keep = match ch {
+				'\n' | '\r' | '\t' => true,
+				c if c.is_control() => false,
+				_ => true,
+			};
+			if keep {
+				out.push(ch);
+			} else {
+				removed += 1;
+			}
+		}
+		if removed > 0 {
+			self.runtime.document_mut().set_plain_text(&out);
+			self.is_modified = true;
+		}
+		removed
+	}
+
+	/// Normalize common Unicode whitespace characters to ASCII space.
+	///
+	/// Returns number of replaced characters.
+	#[wasm_bindgen]
+	pub fn normalize_unicode_whitespace(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut out = String::with_capacity(plain.len());
+		let mut replaced = 0usize;
+		for ch in plain.chars() {
+			let mapped = match ch {
+				'\u{00A0}'
+				| '\u{1680}'
+				| '\u{2000}'..='\u{200A}'
+				| '\u{202F}'
+				| '\u{205F}'
+				| '\u{3000}' => ' ',
+				_ => ch,
+			};
+			if mapped != ch {
+				replaced += 1;
+			}
+			out.push(mapped);
+		}
+		if replaced > 0 {
+			self.runtime.document_mut().set_plain_text(&out);
+			self.is_modified = true;
+		}
+		replaced
+	}
+
+	// ── Line fingerprints ───────────────────────────────────────────
+
+	/// Compute FNV-1a 64-bit hash of a logical line.
+	///
+	/// Returns empty string when line is out of range.
+	#[wasm_bindgen]
+	pub fn line_hash(&self, line: usize) -> String {
+		let plain = self.runtime.document().plain_text();
+		let Some(text) = plain.split('\n').nth(line) else {
+			return String::new();
+		};
+		let mut hash: u64 = 0xcbf29ce484222325;
+		for byte in text.as_bytes() {
+			hash ^= *byte as u64;
+			hash = hash.wrapping_mul(0x100000001b3);
+		}
+		format!("{hash:016x}")
+	}
+
+	/// Return all line hashes as flat array: [line, hash, ...].
+	#[wasm_bindgen]
+	pub fn line_hashes(&self) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let mut out = Vec::new();
+		for (i, line) in plain.split('\n').enumerate() {
+			let mut hash: u64 = 0xcbf29ce484222325;
+			for byte in line.as_bytes() {
+				hash ^= *byte as u64;
+				hash = hash.wrapping_mul(0x100000001b3);
+			}
+			out.push(i.to_string());
+			out.push(format!("{hash:016x}"));
+		}
+		out
+	}
+
+	/// Line numbers that have duplicated content.
+	///
+	/// `ignore_whitespace` collapses whitespace and trims ends before
+	/// comparison. Returns sorted 0-based line numbers.
+	#[wasm_bindgen]
+	pub fn duplicate_line_numbers(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> Vec<usize> {
+		let plain = self.runtime.document().plain_text();
+		let mut groups: std::collections::HashMap<String, Vec<usize>> =
+			std::collections::HashMap::new();
+		for (i, line) in plain.split('\n').enumerate() {
+			let mut key = if ignore_whitespace {
+				line.split_whitespace().collect::<Vec<&str>>().join(" ")
+			} else {
+				line.to_string()
+			};
+			if !case_sensitive {
+				key = key.to_lowercase();
+			}
+			groups.entry(key).or_default().push(i);
+		}
+		let mut out = Vec::new();
+		for lines in groups.values() {
+			if lines.len() > 1 {
+				out.extend(lines.iter().copied());
+			}
+		}
+		out.sort_unstable();
+		out
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any

@@ -2515,6 +2515,18 @@ export async function createEditor(
 				renderFrame();
 				return ok;
 			},
+			anchorExists(name: string) {
+				return ref.anchor_exists(name);
+			},
+			renameAnchor(oldName: string, newName: string) {
+				return ref.rename_anchor(oldName, newName);
+			},
+			nearestAnchorBefore(offset: number) {
+				return Array.from(ref.nearest_anchor_before(offset));
+			},
+			nearestAnchorAfter(offset: number) {
+				return Array.from(ref.nearest_anchor_after(offset));
+			},
 			// ── Tasks / TODO scanner ────────────────────
 			scanTasks() {
 				return Array.from(ref.scan_tasks());
@@ -2703,6 +2715,57 @@ export async function createEditor(
 				cursorOffset = ref.selection_end();
 				renderFrame();
 				return ok;
+			},
+			prefixLines(startLine: number, endLine: number, prefix: string) {
+				syncTime();
+				const n = ref.prefix_lines(startLine, endLine, prefix);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			suffixLines(startLine: number, endLine: number, suffix: string) {
+				syncTime();
+				const n = ref.suffix_lines(startLine, endLine, suffix);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			numberLines(
+				startLine: number,
+				endLine: number,
+				startNumber = 1,
+				padWidth = 0,
+			) {
+				syncTime();
+				const n = ref.number_lines(startLine, endLine, startNumber, padWidth);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			stripNonPrintable() {
+				syncTime();
+				const n = ref.strip_non_printable();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			normalizeUnicodeWhitespace() {
+				syncTime();
+				const n = ref.normalize_unicode_whitespace();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			lineHash(line: number) {
+				return ref.line_hash(line);
+			},
+			lineHashes() {
+				return Array.from(ref.line_hashes());
+			},
+			duplicateLineNumbers(caseSensitive = false, ignoreWhitespace = false) {
+				return Array.from(
+					ref.duplicate_line_numbers(caseSensitive, ignoreWhitespace),
+				);
 			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {

@@ -113,6 +113,17 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Whether a named anchor exists.
+     * @param {string} name
+     * @returns {boolean}
+     */
+    anchor_exists(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_exists(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
      * List anchor names sorted alphabetically.
      * @returns {string[]}
      */
@@ -997,6 +1008,21 @@ export class CanvistEditor {
      */
     duplicate_line() {
         wasm.canvisteditor_duplicate_line(this.__wbg_ptr);
+    }
+    /**
+     * Line numbers that have duplicated content.
+     *
+     * `ignore_whitespace` collapses whitespace and trims ends before
+     * comparison. Returns sorted 0-based line numbers.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {Uint32Array}
+     */
+    duplicate_line_numbers(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_line_numbers(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Duplicate a line range and insert it below the range.
@@ -1931,6 +1957,35 @@ export class CanvistEditor {
         return ret[0] >>> 0;
     }
     /**
+     * Compute FNV-1a 64-bit hash of a logical line.
+     *
+     * Returns empty string when line is out of range.
+     * @param {number} line
+     * @returns {string}
+     */
+    line_hash(line) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_line_hash(this.__wbg_ptr, line);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Return all line hashes as flat array: [line, hash, ...].
+     * @returns {string[]}
+     */
+    line_hashes() {
+        const ret = wasm.canvisteditor_line_hashes(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Count lines containing `needle`.
      * @param {string} needle
      * @param {boolean} case_sensitive
@@ -2380,6 +2435,32 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Find nearest anchor at or after the given offset.
+     *
+     * Returns `[name, offset]` or empty when none.
+     * @param {number} offset
+     * @returns {string[]}
+     */
+    nearest_anchor_after(offset) {
+        const ret = wasm.canvisteditor_nearest_anchor_after(this.__wbg_ptr, offset);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Find nearest anchor at or before the given offset.
+     *
+     * Returns `[name, offset]` or empty when none.
+     * @param {number} offset
+     * @returns {string[]}
+     */
+    nearest_anchor_before(offset) {
+        const ret = wasm.canvisteditor_nearest_anchor_before(this.__wbg_ptr, offset);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Jump to the next bookmark after the current line.
      *
      * Wraps around to the first bookmark if past the last one.
@@ -2441,6 +2522,30 @@ export class CanvistEditor {
      */
     normalize_line_endings() {
         const ret = wasm.canvisteditor_normalize_line_endings(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Normalize common Unicode whitespace characters to ASCII space.
+     *
+     * Returns number of replaced characters.
+     * @returns {number}
+     */
+    normalize_unicode_whitespace() {
+        const ret = wasm.canvisteditor_normalize_unicode_whitespace(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Number a line range with `N. ` prefix.
+     *
+     * Returns number of lines changed.
+     * @param {number} start_line
+     * @param {number} end_line
+     * @param {number} start_number
+     * @param {number} pad_width
+     * @returns {number}
+     */
+    number_lines(start_line, end_line, start_number, pad_width) {
+        const ret = wasm.canvisteditor_number_lines(this.__wbg_ptr, start_line, end_line, start_number, pad_width);
         return ret >>> 0;
     }
     /**
@@ -2581,6 +2686,21 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Prefix each line in range with `prefix`.
+     *
+     * Returns number of lines changed.
+     * @param {number} start_line
+     * @param {number} end_line
+     * @param {string} prefix
+     * @returns {number}
+     */
+    prefix_lines(start_line, end_line, prefix) {
+        const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_prefix_lines(this.__wbg_ptr, start_line, end_line, ptr0, len0);
+        return ret >>> 0;
     }
     /**
      * Jump to the previous bookmark before the current line.
@@ -2828,6 +2948,22 @@ export class CanvistEditor {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_rename_all(this.__wbg_ptr, ptr0, len0);
         return ret >>> 0;
+    }
+    /**
+     * Rename an anchor key.
+     *
+     * Returns `true` when source anchor existed.
+     * @param {string} old_name
+     * @param {string} new_name
+     * @returns {boolean}
+     */
+    rename_anchor(old_name, new_name) {
+        const ptr0 = passStringToWasm0(old_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(new_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_rename_anchor(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret !== 0;
     }
     /**
      * Request a re-render of the document to the canvas.
@@ -3888,6 +4024,31 @@ export class CanvistEditor {
     sticky_scroll() {
         const ret = wasm.canvisteditor_sticky_scroll(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Remove non-printable control characters.
+     *
+     * Keeps `\n`, `\r`, and `\t`. Returns chars removed.
+     * @returns {number}
+     */
+    strip_non_printable() {
+        const ret = wasm.canvisteditor_strip_non_printable(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Suffix each line in range with `suffix`.
+     *
+     * Returns number of lines changed.
+     * @param {number} start_line
+     * @param {number} end_line
+     * @param {string} suffix
+     * @returns {number}
+     */
+    suffix_lines(start_line, end_line, suffix) {
+        const ptr0 = passStringToWasm0(suffix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_suffix_lines(this.__wbg_ptr, start_line, end_line, ptr0, len0);
+        return ret >>> 0;
     }
     /**
      * Swap two logical lines by index.

@@ -1474,6 +1474,18 @@ export interface CanvistEditor {
 	/** Move cursor to anchor. */
 	goToAnchor(name: string): boolean;
 
+	/** Whether an anchor exists. */
+	anchorExists(name: string): boolean;
+
+	/** Rename an anchor key. */
+	renameAnchor(oldName: string, newName: string): boolean;
+
+	/** Nearest anchor at/before offset: [name, offset] or empty. */
+	nearestAnchorBefore(offset: number): string[];
+
+	/** Nearest anchor at/after offset: [name, offset] or empty. */
+	nearestAnchorAfter(offset: number): string[];
+
 	// ── Tasks / TODO scanner ────────────────────────────────────────
 
 	/** Scan tasks: [line, kind, checked, text, ...]. */
@@ -1627,6 +1639,38 @@ export interface CanvistEditor {
 
 	/** Duplicate line range and insert below it. */
 	duplicateLineRange(startLine: number, endLine: number): boolean;
+
+	/** Prefix each line in range. Returns lines changed. */
+	prefixLines(startLine: number, endLine: number, prefix: string): number;
+
+	/** Suffix each line in range. Returns lines changed. */
+	suffixLines(startLine: number, endLine: number, suffix: string): number;
+
+	/** Number each line in range with N. prefix. Returns lines changed. */
+	numberLines(
+		startLine: number,
+		endLine: number,
+		startNumber?: number,
+		padWidth?: number,
+	): number;
+
+	/** Remove control chars except LF/CR/TAB. Returns chars removed. */
+	stripNonPrintable(): number;
+
+	/** Normalize Unicode spaces to ASCII spaces. Returns replacements. */
+	normalizeUnicodeWhitespace(): number;
+
+	/** Hash a logical line (FNV-1a 64-bit hex). */
+	lineHash(line: number): string;
+
+	/** All line hashes: [line, hash, ...]. */
+	lineHashes(): string[];
+
+	/** Duplicate line numbers by content matching. */
+	duplicateLineNumbers(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
 
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
