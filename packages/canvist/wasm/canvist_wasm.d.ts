@@ -65,6 +65,16 @@ export class CanvistEditor {
      */
     anchor_offset(name: string): number;
     /**
+     * Anchor names set exactly at a given offset.
+     */
+    anchors_at_offset(offset: number): string[];
+    /**
+     * Anchors inside an inclusive character-offset range.
+     *
+     * Returns `[name, offset, ...]` sorted by offset then name.
+     */
+    anchors_in_range(start_offset: number, end_offset: number): string[];
+    /**
      * Number of active annotations.
      */
     annotation_count(): number;
@@ -965,9 +975,19 @@ export class CanvistEditor {
      */
     line_hash(line: number): string;
     /**
+     * Compare two line hashes for equality.
+     *
+     * Returns `false` if either line is out of range.
+     */
+    line_hash_equals(a: number, b: number): boolean;
+    /**
      * Return all line hashes as flat array: [line, hash, ...].
      */
     line_hashes(): string[];
+    /**
+     * Whether a line participates in a duplicate-content set.
+     */
+    line_is_duplicate(line: number, case_sensitive: boolean, ignore_whitespace: boolean): boolean;
     /**
      * Count lines containing `needle`.
      */
@@ -1962,6 +1982,13 @@ export class CanvistEditor {
      */
     set_zoom(level: number): void;
     /**
+     * Shift a named anchor by a signed delta.
+     *
+     * The resulting offset is clamped to the current document bounds.
+     * Returns `false` when the anchor does not exist.
+     */
+    shift_anchor(name: string, delta: number): boolean;
+    /**
      * Whether find highlights are active.
      */
     show_find_highlights(): boolean;
@@ -2252,6 +2279,18 @@ export class CanvistEditor {
      */
     unique_word_count(): number;
     /**
+     * Remove `prefix` from each line in range when present.
+     *
+     * Returns number of lines changed.
+     */
+    unprefix_lines(start_line: number, end_line: number, prefix: string): number;
+    /**
+     * Remove `suffix` from each line in range when present.
+     *
+     * Returns number of lines changed.
+     */
+    unsuffix_lines(start_line: number, end_line: number, suffix: string): number;
+    /**
      * Update a collaborative cursor's position.
      */
     update_collab_cursor(name: string, offset: number): void;
@@ -2342,6 +2381,8 @@ export interface InitOutput {
     readonly canvisteditor_anchor_exists: (a: number, b: number, c: number) => number;
     readonly canvisteditor_anchor_names: (a: number) => [number, number];
     readonly canvisteditor_anchor_offset: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_anchors_at_offset: (a: number, b: number) => [number, number];
+    readonly canvisteditor_anchors_in_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_annotation_count: (a: number) => number;
     readonly canvisteditor_annotations_at: (a: number, b: number) => [number, number];
     readonly canvisteditor_api_count: (a: number) => number;
@@ -2509,7 +2550,9 @@ export interface InitOutput {
     readonly canvisteditor_line_decoration_count: (a: number) => number;
     readonly canvisteditor_line_end_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_line_hash: (a: number, b: number) => [number, number];
+    readonly canvisteditor_line_hash_equals: (a: number, b: number, c: number) => number;
     readonly canvisteditor_line_hashes: (a: number) => [number, number];
+    readonly canvisteditor_line_is_duplicate: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_count: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrences: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
@@ -2705,6 +2748,7 @@ export interface InitOutput {
     readonly canvisteditor_set_token_color: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly canvisteditor_set_word_wrap: (a: number, b: number) => void;
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
+    readonly canvisteditor_shift_anchor: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_show_find_highlights: (a: number) => number;
     readonly canvisteditor_show_indent_guides: (a: number) => number;
     readonly canvisteditor_show_line_numbers: (a: number) => number;
@@ -2762,6 +2806,8 @@ export interface InitOutput {
     readonly canvisteditor_unfold_all: (a: number) => void;
     readonly canvisteditor_unfold_lines: (a: number, b: number, c: number) => void;
     readonly canvisteditor_unique_word_count: (a: number) => number;
+    readonly canvisteditor_unprefix_lines: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_unsuffix_lines: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_update_collab_cursor: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_url_decode_selection: (a: number) => void;
     readonly canvisteditor_url_encode_selection: (a: number) => void;

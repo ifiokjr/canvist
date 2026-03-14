@@ -1486,6 +1486,15 @@ export interface CanvistEditor {
 	/** Nearest anchor at/after offset: [name, offset] or empty. */
 	nearestAnchorAfter(offset: number): string[];
 
+	/** Anchor names exactly at offset (sorted). */
+	anchorsAtOffset(offset: number): string[];
+
+	/** Anchors in inclusive range as [name, offset, ...]. */
+	anchorsInRange(startOffset: number, endOffset: number): string[];
+
+	/** Shift a named anchor by signed delta, clamped to doc bounds. */
+	shiftAnchor(name: string, delta: number): boolean;
+
 	// ── Tasks / TODO scanner ────────────────────────────────────────
 
 	/** Scan tasks: [line, kind, checked, text, ...]. */
@@ -1646,6 +1655,12 @@ export interface CanvistEditor {
 	/** Suffix each line in range. Returns lines changed. */
 	suffixLines(startLine: number, endLine: number, suffix: string): number;
 
+	/** Remove prefix from lines in range when present. Returns lines changed. */
+	unprefixLines(startLine: number, endLine: number, prefix: string): number;
+
+	/** Remove suffix from lines in range when present. Returns lines changed. */
+	unsuffixLines(startLine: number, endLine: number, suffix: string): number;
+
 	/** Number each line in range with N. prefix. Returns lines changed. */
 	numberLines(
 		startLine: number,
@@ -1665,6 +1680,16 @@ export interface CanvistEditor {
 
 	/** All line hashes: [line, hash, ...]. */
 	lineHashes(): string[];
+
+	/** Compare hashes of two lines. */
+	lineHashEquals(a: number, b: number): boolean;
+
+	/** Whether a line is part of a duplicate-content set. */
+	lineIsDuplicate(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): boolean;
 
 	/** Duplicate line numbers by content matching. */
 	duplicateLineNumbers(

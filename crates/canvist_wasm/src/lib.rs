@@ -6726,6 +6726,61 @@ impl CanvistEditor {
 		}
 	}
 
+	/// Anchor names set exactly at a given offset.
+	#[wasm_bindgen]
+	pub fn anchors_at_offset(&self, offset: usize) -> Vec<String> {
+		let mut out: Vec<String> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| (*pos == offset).then_some(name.clone()))
+			.collect();
+		out.sort_unstable();
+		out
+	}
+
+	/// Anchors inside an inclusive character-offset range.
+	///
+	/// Returns `[name, offset, ...]` sorted by offset then name.
+	#[wasm_bindgen]
+	pub fn anchors_in_range(&self, start_offset: usize, end_offset: usize) -> Vec<String> {
+		let (start, end) = if start_offset <= end_offset {
+			(start_offset, end_offset)
+		} else {
+			(end_offset, start_offset)
+		};
+
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(*pos >= start && *pos <= end).then_some((*pos, name.clone()))
+			})
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+
+		let mut out = Vec::with_capacity(pairs.len() * 2);
+		for (pos, name) in pairs {
+			out.push(name);
+			out.push(pos.to_string());
+		}
+		out
+	}
+
+	/// Shift a named anchor by a signed delta.
+	///
+	/// The resulting offset is clamped to the current document bounds.
+	/// Returns `false` when the anchor does not exist.
+	#[wasm_bindgen]
+	pub fn shift_anchor(&mut self, name: &str, delta: i32) -> bool {
+		let Some(offset) = self.anchors.get_mut(name) else {
+			return false;
+		};
+		let max = self.runtime.document().char_count() as i64;
+		let next = ((*offset as i64) + i64::from(delta)).clamp(0, max) as usize;
+		*offset = next;
+		true
+	}
+
 	// ── Tasks / TODO scanner ────────────────────────────────────────
 
 	/// Scan the document for task-style lines.
@@ -7576,6 +7631,75 @@ impl CanvistEditor {
 		changed
 	}
 
+	/// Remove `prefix` from each line in range when present.
+	///
+	/// Returns number of lines changed.
+	#[wasm_bindgen]
+	pub fn unprefix_lines(&mut self, start_line: usize, end_line: usize, prefix: &str) -> usize {
+		if !self.is_writable() || prefix.is_empty() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if lines.is_empty() {
+			return 0;
+		}
+		let s = start_line.min(lines.len() - 1);
+		let e = end_line.min(lines.len() - 1);
+		if s > e {
+			return 0;
+		}
+		let mut changed = 0usize;
+		for line in lines.iter_mut().take(e + 1).skip(s) {
+			if line.starts_with(prefix) {
+				line.drain(..prefix.len());
+				changed += 1;
+			}
+		}
+		if changed > 0 {
+			self.runtime
+				.document_mut()
+				.set_plain_text(&lines.join("\n"));
+			self.is_modified = true;
+		}
+		changed
+	}
+
+	/// Remove `suffix` from each line in range when present.
+	///
+	/// Returns number of lines changed.
+	#[wasm_bindgen]
+	pub fn unsuffix_lines(&mut self, start_line: usize, end_line: usize, suffix: &str) -> usize {
+		if !self.is_writable() || suffix.is_empty() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if lines.is_empty() {
+			return 0;
+		}
+		let s = start_line.min(lines.len() - 1);
+		let e = end_line.min(lines.len() - 1);
+		if s > e {
+			return 0;
+		}
+		let mut changed = 0usize;
+		for line in lines.iter_mut().take(e + 1).skip(s) {
+			if line.ends_with(suffix) {
+				let new_len = line.len() - suffix.len();
+				line.truncate(new_len);
+				changed += 1;
+			}
+		}
+		if changed > 0 {
+			self.runtime
+				.document_mut()
+				.set_plain_text(&lines.join("\n"));
+			self.is_modified = true;
+		}
+		changed
+	}
+
 	/// Number a line range with `N. ` prefix.
 	///
 	/// Returns number of lines changed.
@@ -7716,6 +7840,28 @@ impl CanvistEditor {
 			out.push(format!("{hash:016x}"));
 		}
 		out
+	}
+
+	/// Compare two line hashes for equality.
+	///
+	/// Returns `false` if either line is out of range.
+	#[wasm_bindgen]
+	pub fn line_hash_equals(&self, a: usize, b: usize) -> bool {
+		let ha = self.line_hash(a);
+		let hb = self.line_hash(b);
+		!ha.is_empty() && !hb.is_empty() && ha == hb
+	}
+
+	/// Whether a line participates in a duplicate-content set.
+	#[wasm_bindgen]
+	pub fn line_is_duplicate(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> bool {
+		self.duplicate_line_numbers(case_sensitive, ignore_whitespace)
+			.contains(&line)
 	}
 
 	/// Line numbers that have duplicated content.
