@@ -1546,6 +1546,88 @@ export interface CanvistEditor {
 	/** Rotate line range down by one. */
 	rotateLinesDown(startLine: number, endLine: number): boolean;
 
+	// ── Named state slots ───────────────────────────────────────────
+
+	/** Save full editor state under a name. */
+	saveNamedState(name: string): void;
+
+	/** Load a named editor state. */
+	loadNamedState(name: string): boolean;
+
+	/** Delete a named state. */
+	deleteNamedState(name: string): void;
+
+	/** Clear all named states. */
+	clearNamedStates(): void;
+
+	/** Number of saved named states. */
+	readonly namedStateCount: number;
+
+	/** Named state keys (sorted). */
+	namedStateNames(): string[];
+
+	// ── Selection profiles ──────────────────────────────────────────
+
+	/** Save current selection under a profile name. */
+	saveSelectionProfile(name: string): void;
+
+	/** Load a named selection profile. */
+	loadSelectionProfile(name: string): boolean;
+
+	/** Delete a named selection profile. */
+	deleteSelectionProfile(name: string): void;
+
+	/** Clear all selection profiles. */
+	clearSelectionProfiles(): void;
+
+	/** Number of selection profiles. */
+	readonly selectionProfileCount: number;
+
+	/** Selection profile names (sorted). */
+	selectionProfileNames(): string[];
+
+	// ── Task workflow helpers ───────────────────────────────────────
+
+	/** Task progress: [checked, total]. */
+	taskProgress(): number[];
+
+	/** Insert markdown task line at current line start. */
+	insertTaskLine(text: string, checked?: boolean): void;
+
+	/** Next unchecked task line after fromLine, wraps. */
+	nextUncheckedTaskLine(fromLine: number): number;
+
+	/** Previous unchecked task line before fromLine, wraps. */
+	prevUncheckedTaskLine(fromLine: number): number;
+
+	/** Mark all unchecked tasks as checked. Returns line count. */
+	completeAllTasks(): number;
+
+	/** Remove completed markdown task lines. Returns removed count. */
+	clearCompletedTasks(): number;
+
+	// ── Cleanup utilities ───────────────────────────────────────────
+
+	/** Trim leading spaces/tabs on each line. Returns line count changed. */
+	trimLeadingWhitespace(): number;
+
+	/** Collapse blank runs to at most maxConsecutive lines. Returns removed. */
+	collapseBlankLines(maxConsecutive: number): number;
+
+	/** Remove trailing blank lines. Returns removed count. */
+	removeTrailingBlankLines(): number;
+
+	/** Ensure document ends with exactly one trailing newline. */
+	ensureSingleTrailingNewline(): boolean;
+
+	// ── Line utilities ──────────────────────────────────────────────
+
+	/** Swap two logical lines by index. */
+	swapLines(a: number, b: number): boolean;
+
+	/** Duplicate line range and insert below it. */
+	duplicateLineRange(startLine: number, endLine: number): boolean;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

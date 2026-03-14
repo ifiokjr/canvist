@@ -2586,6 +2586,124 @@ export async function createEditor(
 				renderFrame();
 				return ok;
 			},
+			// ── Named state slots ───────────────────────
+			saveNamedState(name: string) {
+				ref.save_named_state(name);
+			},
+			loadNamedState(name: string) {
+				const ok = ref.load_named_state(name);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			deleteNamedState(name: string) {
+				ref.delete_named_state(name);
+			},
+			clearNamedStates() {
+				ref.clear_named_states();
+			},
+			get namedStateCount() {
+				return ref.named_state_count();
+			},
+			namedStateNames() {
+				return Array.from(ref.named_state_names());
+			},
+			// ── Selection profiles ──────────────────────
+			saveSelectionProfile(name: string) {
+				ref.save_selection_profile(name);
+			},
+			loadSelectionProfile(name: string) {
+				const ok = ref.load_selection_profile(name);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			deleteSelectionProfile(name: string) {
+				ref.delete_selection_profile(name);
+			},
+			clearSelectionProfiles() {
+				ref.clear_selection_profiles();
+			},
+			get selectionProfileCount() {
+				return ref.selection_profile_count();
+			},
+			selectionProfileNames() {
+				return Array.from(ref.selection_profile_names());
+			},
+			// ── Task workflow helpers ───────────────────
+			taskProgress() {
+				return Array.from(ref.task_progress());
+			},
+			insertTaskLine(text: string, checked = false) {
+				syncTime();
+				ref.insert_task_line(text, checked);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			nextUncheckedTaskLine(fromLine: number) {
+				return ref.next_unchecked_task_line(fromLine);
+			},
+			prevUncheckedTaskLine(fromLine: number) {
+				return ref.prev_unchecked_task_line(fromLine);
+			},
+			completeAllTasks() {
+				syncTime();
+				const n = ref.complete_all_tasks();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			clearCompletedTasks() {
+				syncTime();
+				const n = ref.clear_completed_tasks();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			// ── Cleanup utilities ───────────────────────
+			trimLeadingWhitespace() {
+				syncTime();
+				const n = ref.trim_leading_whitespace();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			collapseBlankLines(maxConsecutive: number) {
+				syncTime();
+				const n = ref.collapse_blank_lines(maxConsecutive);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			removeTrailingBlankLines() {
+				syncTime();
+				const n = ref.remove_trailing_blank_lines();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			ensureSingleTrailingNewline() {
+				syncTime();
+				const ok = ref.ensure_single_trailing_newline();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			// ── Line utilities ──────────────────────────
+			swapLines(a: number, b: number) {
+				syncTime();
+				const ok = ref.swap_lines(a, b);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			duplicateLineRange(startLine: number, endLine: number) {
+				syncTime();
+				const ok = ref.duplicate_line_range(startLine, endLine);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));

@@ -225,6 +225,12 @@ export class CanvistEditor {
      */
     clear_collab_cursors(): void;
     /**
+     * Remove completed markdown task lines (`[x]` / `[X]`).
+     *
+     * Returns number of lines removed.
+     */
+    clear_completed_tasks(): number;
+    /**
      * Clear all extra cursors.
      */
     clear_cursors(): void;
@@ -240,6 +246,14 @@ export class CanvistEditor {
      * Clear all markers.
      */
     clear_markers(): void;
+    /**
+     * Remove all named states.
+     */
+    clear_named_states(): void;
+    /**
+     * Clear all selection profiles.
+     */
+    clear_selection_profiles(): void;
     /**
      * Clear the saved snapshot.
      */
@@ -293,6 +307,12 @@ export class CanvistEditor {
      */
     collab_cursor_list(): string[];
     /**
+     * Collapse blank-line runs to at most `max_consecutive` lines.
+     *
+     * Returns number of lines removed.
+     */
+    collapse_blank_lines(max_consecutive: number): number;
+    /**
      * Return all available editor commands as a flat array:
      * [name, keybinding, name, keybinding, ...].
      *
@@ -303,6 +323,12 @@ export class CanvistEditor {
      * Get the current line comment prefix.
      */
     comment_prefix(): string;
+    /**
+     * Mark all unchecked markdown tasks as checked.
+     *
+     * Returns number of lines updated.
+     */
+    complete_all_tasks(): number;
     /**
      * Suggest completions for the word currently being typed.
      *
@@ -417,9 +443,17 @@ export class CanvistEditor {
      */
     delete_line(): void;
     /**
+     * Remove a named state.
+     */
+    delete_named_state(name: string): void;
+    /**
      * Delete a range of characters from `start` to `end`.
      */
     delete_range(start: number, end: number): void;
+    /**
+     * Remove a named selection profile.
+     */
+    delete_selection_profile(name: string): void;
     /**
      * Delete the word to the left of the cursor (Ctrl+Backspace).
      *
@@ -474,6 +508,12 @@ export class CanvistEditor {
      */
     duplicate_line(): void;
     /**
+     * Duplicate a line range and insert it below the range.
+     *
+     * Returns `true` on success.
+     */
+    duplicate_line_range(start_line: number, end_line: number): boolean;
+    /**
      * Editor version string.
      */
     editor_version(): string;
@@ -490,6 +530,12 @@ export class CanvistEditor {
      * Returns `true` if a newline was added.
      */
     ensure_final_newline(): boolean;
+    /**
+     * Ensure the document ends with exactly one trailing newline.
+     *
+     * Returns `true` if content was changed.
+     */
+    ensure_single_trailing_newline(): boolean;
     /**
      * Clear the event log.
      */
@@ -784,6 +830,10 @@ export class CanvistEditor {
      */
     insert_tab(): void;
     /**
+     * Insert a markdown task line at the current line start.
+     */
+    insert_task_line(text: string, checked: boolean): void;
+    /**
      * Insert text at the current cursor position (start of document).
      */
     insert_text(text: string): void;
@@ -934,6 +984,18 @@ export class CanvistEditor {
      * Return line numbers that end with trailing spaces or tabs.
      */
     lint_trailing_whitespace(): Uint32Array;
+    /**
+     * Load a previously saved named editor state.
+     *
+     * Returns `true` when found and restored.
+     */
+    load_named_state(name: string): boolean;
+    /**
+     * Restore a named selection profile.
+     *
+     * Returns `true` when found.
+     */
+    load_selection_profile(name: string): boolean;
     /**
      * Log an editor event. Newest entries are at index 0.
      *
@@ -1092,6 +1154,14 @@ export class CanvistEditor {
      */
     multi_cursor_insert(text: string): number;
     /**
+     * Number of named states currently saved.
+     */
+    named_state_count(): number;
+    /**
+     * Saved state names (sorted).
+     */
+    named_state_names(): string[];
+    /**
      * Jump to the next bookmark after the current line.
      *
      * Wraps around to the first bookmark if past the last one.
@@ -1106,6 +1176,10 @@ export class CanvistEditor {
      * Return the next task line after `from_line` (wraps), or -1.
      */
     next_task_line(from_line: number): number;
+    /**
+     * Next unchecked task line after `from_line` (wraps), or -1.
+     */
+    next_unchecked_task_line(from_line: number): number;
     /**
      * Normalize all indentation to the current tab style.
      *
@@ -1200,6 +1274,10 @@ export class CanvistEditor {
      * Return the previous task line before `from_line` (wraps), or -1.
      */
     prev_task_line(from_line: number): number;
+    /**
+     * Previous unchecked task line before `from_line` (wraps), or -1.
+     */
+    prev_unchecked_task_line(from_line: number): number;
     /**
      * Process all pending canonical events via the editor runtime.
      */
@@ -1296,6 +1374,12 @@ export class CanvistEditor {
      */
     remove_ruler(column: number): void;
     /**
+     * Remove blank lines at end of document.
+     *
+     * Returns number of trailing blank lines removed.
+     */
+    remove_trailing_blank_lines(): number;
+    /**
      * Rename all occurrences of the word under cursor to `new_name`.
      *
      * Uses whole-word matching. Returns the number of replacements.
@@ -1368,6 +1452,14 @@ export class CanvistEditor {
      * Custom overrides are checked first, then defaults.
      */
     run_shortcut(shortcut: string): boolean;
+    /**
+     * Save the full editor state under a name.
+     */
+    save_named_state(name: string): void;
+    /**
+     * Save the current selection range under a name.
+     */
+    save_selection_profile(name: string): void;
     /**
      * Serialize the editor state to a JSON string.
      *
@@ -1530,6 +1622,14 @@ export class CanvistEditor {
      * Returns [startLine, endLine] (0-based, inclusive).
      */
     selection_line_range(): Uint32Array;
+    /**
+     * Number of saved selection profiles.
+     */
+    selection_profile_count(): number;
+    /**
+     * Selection profile names (sorted).
+     */
+    selection_profile_names(): string[];
     /**
      * Get selection start offset.
      */
@@ -1859,6 +1959,12 @@ export class CanvistEditor {
      */
     sticky_scroll(): boolean;
     /**
+     * Swap two logical lines by index.
+     *
+     * Returns `true` on success.
+     */
+    swap_lines(a: number, b: number): boolean;
+    /**
      * Whether syntax highlighting is enabled.
      */
     syntax_highlight(): boolean;
@@ -1880,6 +1986,10 @@ export class CanvistEditor {
      * Count task-style lines in the document.
      */
     task_count(): number;
+    /**
+     * Task progress as [checked, total].
+     */
+    task_progress(): Uint32Array;
     /**
      * Return up to `max_chars` immediately after the cursor.
      */
@@ -2036,6 +2146,12 @@ export class CanvistEditor {
      */
     transpose_chars(): void;
     /**
+     * Trim leading spaces/tabs from every line.
+     *
+     * Returns number of lines changed.
+     */
+    trim_leading_whitespace(): number;
+    /**
      * Remove trailing whitespace (spaces and tabs) from every line.
      *
      * Returns the number of characters removed.
@@ -2186,10 +2302,13 @@ export interface InitOutput {
     readonly canvisteditor_clear_annotations: (a: number) => void;
     readonly canvisteditor_clear_bookmarks: (a: number) => void;
     readonly canvisteditor_clear_collab_cursors: (a: number) => void;
+    readonly canvisteditor_clear_completed_tasks: (a: number) => number;
     readonly canvisteditor_clear_cursors: (a: number) => void;
     readonly canvisteditor_clear_keybindings: (a: number) => void;
     readonly canvisteditor_clear_line_decorations: (a: number) => void;
     readonly canvisteditor_clear_markers: (a: number) => void;
+    readonly canvisteditor_clear_named_states: (a: number) => void;
+    readonly canvisteditor_clear_selection_profiles: (a: number) => void;
     readonly canvisteditor_clear_snapshot: (a: number) => void;
     readonly canvisteditor_clipboard_cut: (a: number) => void;
     readonly canvisteditor_clipboard_paste: (a: number, b: number, c: number) => void;
@@ -2201,8 +2320,10 @@ export interface InitOutput {
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
     readonly canvisteditor_collab_cursor_count: (a: number) => number;
     readonly canvisteditor_collab_cursor_list: (a: number) => [number, number];
+    readonly canvisteditor_collapse_blank_lines: (a: number, b: number) => number;
     readonly canvisteditor_command_list: (a: number) => [number, number];
     readonly canvisteditor_comment_prefix: (a: number) => [number, number];
+    readonly canvisteditor_complete_all_tasks: (a: number) => number;
     readonly canvisteditor_completions: (a: number, b: number) => [number, number];
     readonly canvisteditor_completions_with_context: (a: number, b: number) => [number, number];
     readonly canvisteditor_contains_non_ascii: (a: number) => number;
@@ -2224,7 +2345,9 @@ export interface InitOutput {
     readonly canvisteditor_cursor_width_px: (a: number) => number;
     readonly canvisteditor_cut_line: (a: number) => [number, number];
     readonly canvisteditor_delete_line: (a: number) => void;
+    readonly canvisteditor_delete_named_state: (a: number, b: number, c: number) => void;
     readonly canvisteditor_delete_range: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_delete_selection_profile: (a: number, b: number, c: number) => void;
     readonly canvisteditor_delete_word_left: (a: number) => void;
     readonly canvisteditor_delete_word_right: (a: number) => void;
     readonly canvisteditor_detect_file_type: (a: number) => [number, number];
@@ -2234,8 +2357,10 @@ export interface InitOutput {
     readonly canvisteditor_diff_texts: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_document_outline: (a: number) => [number, number];
     readonly canvisteditor_duplicate_line: (a: number) => void;
+    readonly canvisteditor_duplicate_line_range: (a: number, b: number, c: number) => number;
     readonly canvisteditor_editor_version: (a: number) => [number, number];
     readonly canvisteditor_ensure_final_newline: (a: number) => number;
+    readonly canvisteditor_ensure_single_trailing_newline: (a: number) => number;
     readonly canvisteditor_event_log_clear: (a: number) => void;
     readonly canvisteditor_event_log_get: (a: number, b: number) => [number, number];
     readonly canvisteditor_event_log_length: (a: number) => number;
@@ -2288,6 +2413,7 @@ export interface InitOutput {
     readonly canvisteditor_indent_selection: (a: number) => void;
     readonly canvisteditor_insert_snippet: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_tab: (a: number) => void;
+    readonly canvisteditor_insert_task_line: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_insert_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_insert_text_at: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_insert_text_clamped: (a: number, b: number, c: number) => number;
@@ -2319,6 +2445,8 @@ export interface InitOutput {
     readonly canvisteditor_lint_mixed_indentation: (a: number) => [number, number];
     readonly canvisteditor_lint_non_ascii_lines: (a: number) => [number, number];
     readonly canvisteditor_lint_trailing_whitespace: (a: number) => [number, number];
+    readonly canvisteditor_load_named_state: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_load_selection_profile: (a: number, b: number, c: number) => number;
     readonly canvisteditor_log_event: (a: number, b: number, c: number) => void;
     readonly canvisteditor_longest_line_length: (a: number) => number;
     readonly canvisteditor_longest_line_number: (a: number) => number;
@@ -2351,9 +2479,12 @@ export interface InitOutput {
     readonly canvisteditor_move_to_next_paragraph: (a: number) => void;
     readonly canvisteditor_move_to_prev_paragraph: (a: number) => void;
     readonly canvisteditor_multi_cursor_insert: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_named_state_count: (a: number) => number;
+    readonly canvisteditor_named_state_names: (a: number) => [number, number];
     readonly canvisteditor_next_bookmark: (a: number) => number;
     readonly canvisteditor_next_line_with: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_next_task_line: (a: number, b: number) => number;
+    readonly canvisteditor_next_unchecked_task_line: (a: number, b: number) => number;
     readonly canvisteditor_normalize_indentation: (a: number) => number;
     readonly canvisteditor_normalize_line_endings: (a: number) => number;
     readonly canvisteditor_occurrence_offsets: (a: number) => [number, number];
@@ -2372,6 +2503,7 @@ export interface InitOutput {
     readonly canvisteditor_prev_bookmark: (a: number) => number;
     readonly canvisteditor_prev_line_with: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_prev_task_line: (a: number, b: number) => number;
+    readonly canvisteditor_prev_unchecked_task_line: (a: number, b: number) => number;
     readonly canvisteditor_process_events: (a: number) => void;
     readonly canvisteditor_push_cursor_history: (a: number) => void;
     readonly canvisteditor_push_selection_history: (a: number) => void;
@@ -2393,6 +2525,7 @@ export interface InitOutput {
     readonly canvisteditor_remove_marker: (a: number, b: number, c: number) => void;
     readonly canvisteditor_remove_markers_by_prefix: (a: number, b: number, c: number) => void;
     readonly canvisteditor_remove_ruler: (a: number, b: number) => void;
+    readonly canvisteditor_remove_trailing_blank_lines: (a: number) => number;
     readonly canvisteditor_rename_all: (a: number, b: number, c: number) => number;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
@@ -2407,6 +2540,8 @@ export interface InitOutput {
     readonly canvisteditor_rulers: (a: number) => [number, number];
     readonly canvisteditor_run_command: (a: number, b: number, c: number) => number;
     readonly canvisteditor_run_shortcut: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_save_named_state: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_save_selection_profile: (a: number, b: number, c: number) => void;
     readonly canvisteditor_save_state: (a: number) => [number, number];
     readonly canvisteditor_scan_tasks: (a: number) => [number, number];
     readonly canvisteditor_scroll_by: (a: number, b: number) => void;
@@ -2440,6 +2575,8 @@ export interface InitOutput {
     readonly canvisteditor_selection_is_collapsed: (a: number) => number;
     readonly canvisteditor_selection_length: (a: number) => number;
     readonly canvisteditor_selection_line_range: (a: number) => [number, number];
+    readonly canvisteditor_selection_profile_count: (a: number) => number;
+    readonly canvisteditor_selection_profile_names: (a: number) => [number, number];
     readonly canvisteditor_sentence_count: (a: number) => number;
     readonly canvisteditor_set_anchor: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
@@ -2501,11 +2638,13 @@ export interface InitOutput {
     readonly canvisteditor_sort_lines_desc: (a: number) => void;
     readonly canvisteditor_spaces_to_tabs: (a: number) => number;
     readonly canvisteditor_sticky_scroll: (a: number) => number;
+    readonly canvisteditor_swap_lines: (a: number, b: number, c: number) => number;
     readonly canvisteditor_syntax_highlight: (a: number) => number;
     readonly canvisteditor_tab_size: (a: number) => number;
     readonly canvisteditor_tabs_to_spaces: (a: number) => number;
     readonly canvisteditor_take_snapshot: (a: number) => void;
     readonly canvisteditor_task_count: (a: number) => number;
+    readonly canvisteditor_task_progress: (a: number) => [number, number];
     readonly canvisteditor_text_after_cursor: (a: number, b: number) => [number, number];
     readonly canvisteditor_text_before_cursor: (a: number, b: number) => [number, number];
     readonly canvisteditor_text_hash: (a: number) => [number, number];
@@ -2535,6 +2674,7 @@ export interface InitOutput {
     readonly canvisteditor_transform_toggle_case: (a: number) => void;
     readonly canvisteditor_transform_uppercase: (a: number) => void;
     readonly canvisteditor_transpose_chars: (a: number) => void;
+    readonly canvisteditor_trim_leading_whitespace: (a: number) => number;
     readonly canvisteditor_trim_trailing_whitespace: (a: number) => number;
     readonly canvisteditor_try_auto_surround: (a: number, b: number, c: number) => number;
     readonly canvisteditor_undo: (a: number) => number;
