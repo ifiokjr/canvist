@@ -5640,4 +5640,225 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Syntax highlighting ─────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] syntax highlight toggle and token colors`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.syntax_highlight();
+						ed.set_syntax_highlight(true);
+						const after = ed.syntax_highlight();
+						ed.set_token_color("number", 0, 255, 128, 255);
+						const numColor = Array.from(ed.get_token_color("number"));
+						ed.reset_token_colors();
+						const defaultColor = Array.from(ed.get_token_color("number"));
+						return { before, after, numColor, defaultColor };
+					});
+					assertEquals(result.before, false);
+					assertEquals(result.after, true);
+					assertEquals(result.numColor, [0, 255, 128, 255]);
+					assertEquals(result.defaultColor, [181, 206, 168, 255]); // default green
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Custom theme API ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] set and get theme color`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_theme_color("background", 30, 30, 30, 255);
+						const bg = Array.from(ed.get_theme_color("background"));
+						return bg;
+					});
+					assertEquals(result, [30, 30, 30, 255]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Range formatting ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] format_range_bold applies to range`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						ed.format_range_bold(0, 5);
+						ed.format_range_italic(6, 11);
+						// Verify text unchanged and editor is modified.
+						return { text: ed.plain_text(), modified: ed.is_modified() };
+					});
+					assertEquals(result.text, "Hello World");
+					assertEquals(result.modified, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Scroll to line ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] scroll_to_line adjusts scroll`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						// Create many lines.
+						const lines = Array.from({ length: 100 }, (_, i) => `Line ${i}`)
+							.join("\n");
+						ed.insert_text(lines);
+						const beforeY = ed.scroll_y();
+						ed.scroll_to_line(50);
+						const afterY = ed.scroll_y();
+						return { beforeY, afterY };
+					});
+					assert(
+						result.afterY > result.beforeY,
+						`scroll should move down, before=${result.beforeY} after=${result.afterY}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Extended statistics ──────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] extended text statistics`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("The quick brown fox. The lazy dog!");
+						return {
+							avg: ed.avg_word_length(),
+							longest: ed.longest_word(),
+							unique: ed.unique_word_count(),
+							sentences: ed.sentence_count(),
+						};
+					});
+					assert(
+						result.avg > 2,
+						`avg word length should be > 2, got ${result.avg}`,
+					);
+					assertEquals(result.longest, "brown");
+					// "the" appears twice → 6 unique words
+					assertEquals(result.unique, 6);
+					assertEquals(result.sentences, 2);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Editor info ─────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] editor version and info`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						return {
+							version: ed.editor_version(),
+							apiCount: ed.api_count(),
+							categories: ed.feature_categories(),
+						};
+					});
+					assertEquals(result.version, "0.1.0");
+					assert(
+						result.apiCount > 300,
+						`api count should be > 300, got ${result.apiCount}`,
+					);
+					assert(
+						result.categories.includes("editing"),
+						"should include editing",
+					);
+					assert(result.categories.includes("themes"), "should include themes");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

@@ -2107,6 +2107,87 @@ export async function createEditor(
 			get fleschReadingEase() {
 				return ref.flesch_reading_ease();
 			},
+			// ── Syntax highlighting ─────────────────────
+			setSyntaxHighlight(enabled: boolean) {
+				ref.set_syntax_highlight(enabled);
+				renderFrame();
+			},
+			get syntaxHighlight() {
+				return ref.syntax_highlight();
+			},
+			setTokenColor(kind: string, r: number, g: number, b: number, a: number) {
+				ref.set_token_color(kind, r, g, b, a);
+				renderFrame();
+			},
+			getTokenColor(kind: string) {
+				return Array.from(ref.get_token_color(kind));
+			},
+			resetTokenColors() {
+				ref.reset_token_colors();
+				renderFrame();
+			},
+			// ── Custom theme API ────────────────────────
+			setThemeColor(slot: string, r: number, g: number, b: number, a: number) {
+				ref.set_theme_color(slot, r, g, b, a);
+				renderFrame();
+			},
+			getThemeColor(slot: string) {
+				return Array.from(ref.get_theme_color(slot));
+			},
+			// ── Range formatting ────────────────────────
+			formatRangeBold(start: number, end: number) {
+				syncTime();
+				ref.format_range_bold(start, end);
+				renderFrame();
+			},
+			formatRangeItalic(start: number, end: number) {
+				syncTime();
+				ref.format_range_italic(start, end);
+				renderFrame();
+			},
+			formatRangeUnderline(start: number, end: number) {
+				syncTime();
+				ref.format_range_underline(start, end);
+				renderFrame();
+			},
+			formatRangeStrikethrough(start: number, end: number) {
+				syncTime();
+				ref.format_range_strikethrough(start, end);
+				renderFrame();
+			},
+			formatRangeFontSize(start: number, end: number, size: number) {
+				syncTime();
+				ref.format_range_font_size(start, end, size);
+				renderFrame();
+			},
+			// ── Scroll to line ──────────────────────────
+			scrollToLine(line: number) {
+				ref.scroll_to_line(line);
+				renderFrame();
+			},
+			// ── Extended statistics ─────────────────────
+			get avgWordLength() {
+				return ref.avg_word_length();
+			},
+			longestWord() {
+				return ref.longest_word();
+			},
+			get uniqueWordCount() {
+				return ref.unique_word_count();
+			},
+			get sentenceCount() {
+				return ref.sentence_count();
+			},
+			// ── Editor info ─────────────────────────────
+			get editorVersion() {
+				return ref.editor_version();
+			},
+			get apiCount() {
+				return ref.api_count();
+			},
+			featureCategories() {
+				return ref.feature_categories();
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));
