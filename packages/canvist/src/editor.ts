@@ -2490,6 +2490,102 @@ export async function createEditor(
 			completionsWithContext(limit: number) {
 				return Array.from(ref.completions_with_context(limit));
 			},
+			// ── Named anchors ───────────────────────────
+			setAnchor(name: string, offset: number) {
+				ref.set_anchor(name, offset);
+			},
+			anchorOffset(name: string) {
+				return ref.anchor_offset(name);
+			},
+			removeAnchor(name: string) {
+				ref.remove_anchor(name);
+			},
+			clearAnchors() {
+				ref.clear_anchors();
+			},
+			get anchorCount() {
+				return ref.anchor_count();
+			},
+			anchorNames() {
+				return Array.from(ref.anchor_names());
+			},
+			goToAnchor(name: string) {
+				const ok = ref.go_to_anchor(name);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			// ── Tasks / TODO scanner ────────────────────
+			scanTasks() {
+				return Array.from(ref.scan_tasks());
+			},
+			get taskCount() {
+				return ref.task_count();
+			},
+			nextTaskLine(fromLine: number) {
+				return ref.next_task_line(fromLine);
+			},
+			prevTaskLine(fromLine: number) {
+				return ref.prev_task_line(fromLine);
+			},
+			toggleTaskCheckbox(line: number) {
+				syncTime();
+				const ok = ref.toggle_task_checkbox(line);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			// ── Lint helpers ────────────────────────────
+			lintTrailingWhitespace() {
+				return Array.from(ref.lint_trailing_whitespace());
+			},
+			lintLongLines(maxLen: number) {
+				return Array.from(ref.lint_long_lines(maxLen));
+			},
+			lintMixedIndentation() {
+				return Array.from(ref.lint_mixed_indentation());
+			},
+			lintNonAsciiLines() {
+				return Array.from(ref.lint_non_ascii_lines());
+			},
+			// ── Line occurrence navigation ──────────────
+			lineOccurrences(needle: string, caseSensitive = false) {
+				return Array.from(ref.line_occurrences(needle, caseSensitive));
+			},
+			lineOccurrenceCount(needle: string, caseSensitive = false) {
+				return ref.line_occurrence_count(needle, caseSensitive);
+			},
+			nextLineWith(needle: string, fromLine: number, caseSensitive = false) {
+				return ref.next_line_with(needle, fromLine, caseSensitive);
+			},
+			prevLineWith(needle: string, fromLine: number, caseSensitive = false) {
+				return ref.prev_line_with(needle, fromLine, caseSensitive);
+			},
+			// ── Cursor context helpers ──────────────────
+			textBeforeCursor(maxChars: number) {
+				return ref.text_before_cursor(maxChars);
+			},
+			textAfterCursor(maxChars: number) {
+				return ref.text_after_cursor(maxChars);
+			},
+			lineContext(line: number, radius: number) {
+				return Array.from(ref.line_context(line, radius));
+			},
+			// ── Rotate lines ────────────────────────────
+			rotateLinesUp(startLine: number, endLine: number) {
+				syncTime();
+				const ok = ref.rotate_lines_up(startLine, endLine);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			rotateLinesDown(startLine: number, endLine: number) {
+				syncTime();
+				const ok = ref.rotate_lines_down(startLine, endLine);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));

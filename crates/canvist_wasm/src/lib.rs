@@ -450,6 +450,8 @@ pub struct CanvistEditor {
 	keybinding_overrides: std::collections::HashMap<String, String>,
 	/// Marker highlight ranges: (start, end, r, g, b, a, id).
 	markers: Vec<(usize, usize, u8, u8, u8, u8, String)>,
+	/// Named anchors: name -> character offset.
+	anchors: std::collections::HashMap<String, usize>,
 }
 
 /// Colour theme for the editor canvas.
@@ -605,6 +607,7 @@ impl CanvistEditor {
 			selection_history_index: -1,
 			keybinding_overrides: std::collections::HashMap::new(),
 			markers: Vec::new(),
+			anchors: std::collections::HashMap::new(),
 		})
 	}
 
@@ -6593,6 +6596,451 @@ impl CanvistEditor {
 			}
 		}
 		result
+	}
+
+	// ── Named anchors ────────────────────────────────────────────────
+
+	/// Set a named anchor to a character offset.
+	///
+	/// If the anchor already exists, it is updated.
+	#[wasm_bindgen]
+	pub fn set_anchor(&mut self, name: &str, offset: usize) {
+		let max = self.runtime.document().char_count();
+		self.anchors.insert(name.to_string(), offset.min(max));
+	}
+
+	/// Get a named anchor offset, or -1 if not found.
+	#[wasm_bindgen]
+	pub fn anchor_offset(&self, name: &str) -> i32 {
+		self.anchors.get(name).map(|v| *v as i32).unwrap_or(-1)
+	}
+
+	/// Remove a named anchor.
+	#[wasm_bindgen]
+	pub fn remove_anchor(&mut self, name: &str) {
+		self.anchors.remove(name);
+	}
+
+	/// Clear all named anchors.
+	#[wasm_bindgen]
+	pub fn clear_anchors(&mut self) {
+		self.anchors.clear();
+	}
+
+	/// Number of named anchors.
+	#[wasm_bindgen]
+	pub fn anchor_count(&self) -> usize {
+		self.anchors.len()
+	}
+
+	/// List anchor names sorted alphabetically.
+	#[wasm_bindgen]
+	pub fn anchor_names(&self) -> Vec<String> {
+		let mut out: Vec<String> = self.anchors.keys().cloned().collect();
+		out.sort_unstable();
+		out
+	}
+
+	/// Move cursor to a named anchor.
+	///
+	/// Returns true if the anchor exists.
+	#[wasm_bindgen]
+	pub fn go_to_anchor(&mut self, name: &str) -> bool {
+		let Some(offset) = self.anchors.get(name).copied() else {
+			return false;
+		};
+		let max = self.runtime.document().char_count();
+		let target = offset.min(max);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(target)),
+		});
+		true
+	}
+
+	// ── Tasks / TODO scanner ────────────────────────────────────────
+
+	/// Scan the document for task-style lines.
+	///
+	/// Returns flat array [line, kind, checked, text, ...].
+	/// Kinds: `task`, `todo`, `fixme`, `note`, `hack`.
+	#[wasm_bindgen]
+	pub fn scan_tasks(&self) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let mut out = Vec::new();
+		for (line_no, line) in plain.split('\n').enumerate() {
+			let trimmed = line.trim_start();
+			let lower = trimmed.to_ascii_lowercase();
+
+			// Markdown checkbox tasks.
+			if lower.starts_with("- [ ]") || lower.starts_with("* [ ]") {
+				out.push(line_no.to_string());
+				out.push("task".to_string());
+				out.push("false".to_string());
+				out.push(trimmed[5..].trim().to_string());
+				continue;
+			}
+			if lower.starts_with("- [x]") || lower.starts_with("* [x]") {
+				out.push(line_no.to_string());
+				out.push("task".to_string());
+				out.push("true".to_string());
+				out.push(trimmed[5..].trim().to_string());
+				continue;
+			}
+
+			// Comment prefixes then label.
+			let stripped = trimmed
+				.trim_start_matches('/')
+				.trim_start_matches('/')
+				.trim_start()
+				.trim_start_matches('#')
+				.trim_start()
+				.trim_start_matches(';')
+				.trim_start()
+				.trim_start_matches("--")
+				.trim_start()
+				.to_ascii_lowercase();
+
+			for kind in ["todo", "fixme", "note", "hack"] {
+				let needle = format!("{kind}:");
+				if let Some(pos) = stripped.find(&needle) {
+					let msg = stripped[pos + needle.len()..].trim().to_string();
+					out.push(line_no.to_string());
+					out.push(kind.to_string());
+					out.push("false".to_string());
+					out.push(msg);
+					break;
+				}
+			}
+		}
+		out
+	}
+
+	/// Count task-style lines in the document.
+	#[wasm_bindgen]
+	pub fn task_count(&self) -> usize {
+		self.scan_tasks().len() / 4
+	}
+
+	/// Return the next task line after `from_line` (wraps), or -1.
+	#[wasm_bindgen]
+	pub fn next_task_line(&self, from_line: usize) -> i32 {
+		let tasks = self.scan_tasks();
+		if tasks.is_empty() {
+			return -1;
+		}
+		let mut lines = Vec::new();
+		let mut i = 0;
+		while i + 3 < tasks.len() {
+			if let Ok(n) = tasks[i].parse::<usize>() {
+				lines.push(n);
+			}
+			i += 4;
+		}
+		lines.sort_unstable();
+		lines.dedup();
+		if let Some(next) = lines.iter().copied().find(|l| *l > from_line) {
+			next as i32
+		} else {
+			lines.first().copied().map(|v| v as i32).unwrap_or(-1)
+		}
+	}
+
+	/// Return the previous task line before `from_line` (wraps), or -1.
+	#[wasm_bindgen]
+	pub fn prev_task_line(&self, from_line: usize) -> i32 {
+		let tasks = self.scan_tasks();
+		if tasks.is_empty() {
+			return -1;
+		}
+		let mut lines = Vec::new();
+		let mut i = 0;
+		while i + 3 < tasks.len() {
+			if let Ok(n) = tasks[i].parse::<usize>() {
+				lines.push(n);
+			}
+			i += 4;
+		}
+		lines.sort_unstable();
+		lines.dedup();
+		if let Some(prev) = lines.iter().rev().copied().find(|l| *l < from_line) {
+			prev as i32
+		} else {
+			lines.last().copied().map(|v| v as i32).unwrap_or(-1)
+		}
+	}
+
+	/// Toggle markdown checkbox state on a line.
+	///
+	/// Supports `- [ ]` <-> `- [x]` and `* [ ]` <-> `* [x]`.
+	/// Returns true if a toggle occurred.
+	#[wasm_bindgen]
+	pub fn toggle_task_checkbox(&mut self, line: usize) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if line >= lines.len() {
+			return false;
+		}
+		let mut changed = false;
+		if let Some(pos) = lines[line].find("[ ]") {
+			lines[line].replace_range(pos..pos + 3, "[x]");
+			changed = true;
+		} else if let Some(pos) = lines[line].find("[x]") {
+			lines[line].replace_range(pos..pos + 3, "[ ]");
+			changed = true;
+		} else if let Some(pos) = lines[line].find("[X]") {
+			lines[line].replace_range(pos..pos + 3, "[ ]");
+			changed = true;
+		}
+		if changed {
+			self.runtime
+				.document_mut()
+				.set_plain_text(&lines.join("\n"));
+			self.is_modified = true;
+		}
+		changed
+	}
+
+	// ── Lint helpers ────────────────────────────────────────────────
+
+	/// Return line numbers that end with trailing spaces or tabs.
+	#[wasm_bindgen]
+	pub fn lint_trailing_whitespace(&self) -> Vec<usize> {
+		self.runtime
+			.document()
+			.plain_text()
+			.split('\n')
+			.enumerate()
+			.filter_map(|(i, line)| {
+				if line.ends_with(' ') || line.ends_with('\t') {
+					Some(i)
+				} else {
+					None
+				}
+			})
+			.collect()
+	}
+
+	/// Return line numbers longer than `max_len` characters.
+	#[wasm_bindgen]
+	pub fn lint_long_lines(&self, max_len: usize) -> Vec<usize> {
+		self.runtime
+			.document()
+			.plain_text()
+			.split('\n')
+			.enumerate()
+			.filter_map(|(i, line)| {
+				if line.chars().count() > max_len {
+					Some(i)
+				} else {
+					None
+				}
+			})
+			.collect()
+	}
+
+	/// Return line numbers with mixed leading tabs and spaces.
+	#[wasm_bindgen]
+	pub fn lint_mixed_indentation(&self) -> Vec<usize> {
+		self.runtime
+			.document()
+			.plain_text()
+			.split('\n')
+			.enumerate()
+			.filter_map(|(i, line)| {
+				let indent: String = line.chars().take_while(|c| c.is_whitespace()).collect();
+				let has_tab = indent.contains('\t');
+				let has_space = indent.contains(' ');
+				if has_tab && has_space { Some(i) } else { None }
+			})
+			.collect()
+	}
+
+	/// Return line numbers containing non-ASCII characters.
+	#[wasm_bindgen]
+	pub fn lint_non_ascii_lines(&self) -> Vec<usize> {
+		self.runtime
+			.document()
+			.plain_text()
+			.split('\n')
+			.enumerate()
+			.filter_map(|(i, line)| {
+				if line.chars().any(|c| !c.is_ascii()) {
+					Some(i)
+				} else {
+					None
+				}
+			})
+			.collect()
+	}
+
+	// ── Line occurrence navigation ──────────────────────────────────
+
+	/// Return line numbers containing `needle`.
+	#[wasm_bindgen]
+	pub fn line_occurrences(&self, needle: &str, case_sensitive: bool) -> Vec<usize> {
+		if needle.is_empty() {
+			return Vec::new();
+		}
+		let plain = self.runtime.document().plain_text();
+		let needle_cmp = if case_sensitive {
+			needle.to_string()
+		} else {
+			needle.to_lowercase()
+		};
+		plain
+			.split('\n')
+			.enumerate()
+			.filter_map(|(i, line)| {
+				let hay = if case_sensitive {
+					line.to_string()
+				} else {
+					line.to_lowercase()
+				};
+				if hay.contains(&needle_cmp) {
+					Some(i)
+				} else {
+					None
+				}
+			})
+			.collect()
+	}
+
+	/// Count lines containing `needle`.
+	#[wasm_bindgen]
+	pub fn line_occurrence_count(&self, needle: &str, case_sensitive: bool) -> usize {
+		self.line_occurrences(needle, case_sensitive).len()
+	}
+
+	/// Next line containing `needle` after `from_line` (wraps), or -1.
+	#[wasm_bindgen]
+	pub fn next_line_with(&self, needle: &str, from_line: usize, case_sensitive: bool) -> i32 {
+		let lines = self.line_occurrences(needle, case_sensitive);
+		if lines.is_empty() {
+			return -1;
+		}
+		if let Some(next) = lines.iter().copied().find(|l| *l > from_line) {
+			next as i32
+		} else {
+			lines.first().copied().map(|v| v as i32).unwrap_or(-1)
+		}
+	}
+
+	/// Previous line containing `needle` before `from_line` (wraps), or -1.
+	#[wasm_bindgen]
+	pub fn prev_line_with(&self, needle: &str, from_line: usize, case_sensitive: bool) -> i32 {
+		let lines = self.line_occurrences(needle, case_sensitive);
+		if lines.is_empty() {
+			return -1;
+		}
+		if let Some(prev) = lines.iter().rev().copied().find(|l| *l < from_line) {
+			prev as i32
+		} else {
+			lines.last().copied().map(|v| v as i32).unwrap_or(-1)
+		}
+	}
+
+	// ── Cursor context helpers ──────────────────────────────────────
+
+	/// Return up to `max_chars` immediately before the cursor.
+	#[wasm_bindgen]
+	pub fn text_before_cursor(&self, max_chars: usize) -> String {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let cursor = self.runtime.selection().end().offset().min(chars.len());
+		let start = cursor.saturating_sub(max_chars);
+		chars[start..cursor].iter().collect()
+	}
+
+	/// Return up to `max_chars` immediately after the cursor.
+	#[wasm_bindgen]
+	pub fn text_after_cursor(&self, max_chars: usize) -> String {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let cursor = self.runtime.selection().end().offset().min(chars.len());
+		let end = (cursor + max_chars).min(chars.len());
+		chars[cursor..end].iter().collect()
+	}
+
+	/// Return line context window around a target line.
+	///
+	/// Flat format: [lineNumber, text, lineNumber, text, ...].
+	#[wasm_bindgen]
+	pub fn line_context(&self, line: usize, radius: usize) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		if lines.is_empty() {
+			return Vec::new();
+		}
+		let center = line.min(lines.len() - 1);
+		let start = center.saturating_sub(radius);
+		let end = (center + radius).min(lines.len() - 1);
+		let mut out = Vec::new();
+		for (i, text) in lines.iter().enumerate().skip(start).take(end - start + 1) {
+			out.push(i.to_string());
+			out.push((*text).to_string());
+		}
+		out
+	}
+
+	// ── Rotate lines ────────────────────────────────────────────────
+
+	/// Rotate a line range up by one (first line moves to end).
+	#[wasm_bindgen]
+	pub fn rotate_lines_up(&mut self, start_line: usize, end_line: usize) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if lines.len() < 2 {
+			return false;
+		}
+		let s = start_line.min(lines.len() - 1);
+		let e = end_line.min(lines.len() - 1);
+		if s >= e {
+			return false;
+		}
+		let first = lines[s].clone();
+		for i in s..e {
+			lines[i] = lines[i + 1].clone();
+		}
+		lines[e] = first;
+		self.runtime
+			.document_mut()
+			.set_plain_text(&lines.join("\n"));
+		self.is_modified = true;
+		true
+	}
+
+	/// Rotate a line range down by one (last line moves to start).
+	#[wasm_bindgen]
+	pub fn rotate_lines_down(&mut self, start_line: usize, end_line: usize) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		let plain = self.runtime.document().plain_text();
+		let mut lines: Vec<String> = plain.split('\n').map(|s| s.to_string()).collect();
+		if lines.len() < 2 {
+			return false;
+		}
+		let s = start_line.min(lines.len() - 1);
+		let e = end_line.min(lines.len() - 1);
+		if s >= e {
+			return false;
+		}
+		let last = lines[e].clone();
+		for i in (s + 1..=e).rev() {
+			lines[i] = lines[i - 1].clone();
+		}
+		lines[s] = last;
+		self.runtime
+			.document_mut()
+			.set_plain_text(&lines.join("\n"));
+		self.is_modified = true;
+		true
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any
