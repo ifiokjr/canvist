@@ -6699,4 +6699,227 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Named anchors ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchors set, list, go, remove`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello\nworld");
+						ed.set_anchor("start", 0);
+						ed.set_anchor("line2", 6);
+						const a0 = ed.anchor_offset("start");
+						const a1 = ed.anchor_offset("line2");
+						const names = Array.from(ed.anchor_names());
+						const moved = ed.go_to_anchor("line2");
+						const cursor = ed.selection_end();
+						ed.remove_anchor("start");
+						const countAfterRemove = ed.anchor_count();
+						ed.clear_anchors();
+						const finalCount = ed.anchor_count();
+						return {
+							a0,
+							a1,
+							names,
+							moved,
+							cursor,
+							countAfterRemove,
+							finalCount,
+						};
+					});
+					assertEquals(result.a0, 0);
+					assertEquals(result.a1, 6);
+					assert(result.names.includes("start"));
+					assert(result.names.includes("line2"));
+					assertEquals(result.moved, true);
+					assertEquals(result.cursor, 6);
+					assertEquals(result.countAfterRemove, 1);
+					assertEquals(result.finalCount, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Tasks / TODO scanner ────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] scan tasks and toggle checkbox`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text(
+							"- [ ] first\n// TODO: ship\ntext\n* [x] done\n# FIXME: bug",
+						);
+						const tasks = Array.from(ed.scan_tasks());
+						const count = ed.task_count();
+						const next = ed.next_task_line(0);
+						const prev = ed.prev_task_line(0);
+						const toggled1 = ed.toggle_task_checkbox(0);
+						const toggled2 = ed.toggle_task_checkbox(3);
+						const text = ed.plain_text();
+						return { tasks, count, next, prev, toggled1, toggled2, text };
+					});
+					assert(result.tasks.length >= 16);
+					assertEquals(result.count, 4);
+					assertEquals(result.next, 1);
+					assertEquals(result.prev, 4);
+					assertEquals(result.toggled1, true);
+					assertEquals(result.toggled2, true);
+					assert(result.text.includes("- [x] first"));
+					assert(result.text.includes("* [ ] done"));
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Lint helpers ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] lint helper line sets`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text(
+							"ok\ntrail \n\ttabonly\n \tmixed\nunicodé\nveryverylongline",
+						);
+						return {
+							trailing: Array.from(ed.lint_trailing_whitespace()),
+							long: Array.from(ed.lint_long_lines(10)),
+							mixed: Array.from(ed.lint_mixed_indentation()),
+							nonAscii: Array.from(ed.lint_non_ascii_lines()),
+						};
+					});
+					assert(result.trailing.includes(1));
+					assert(result.long.includes(5));
+					assert(result.mixed.includes(3));
+					assert(result.nonAscii.includes(4));
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line occurrence navigation ──────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line occurrences and next/prev line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("alpha\nbeta alpha\ngamma\nAlpha");
+						return {
+							linesCi: Array.from(ed.line_occurrences("alpha", false)),
+							linesCs: Array.from(ed.line_occurrences("alpha", true)),
+							count: ed.line_occurrence_count("alpha", false),
+							next: ed.next_line_with("alpha", 0, false),
+							prev: ed.prev_line_with("alpha", 0, false),
+						};
+					});
+					assertEquals(result.linesCi, [0, 1, 3]);
+					assertEquals(result.linesCs, [0, 1]);
+					assertEquals(result.count, 3);
+					assertEquals(result.next, 1);
+					assertEquals(result.prev, 3);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Cursor context + rotate lines ───────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] cursor context and rotate lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("1234567890\nabcdef");
+						ed.set_selection(5, 5);
+						const before = ed.text_before_cursor(3);
+						const after = ed.text_after_cursor(4);
+						const ctx = Array.from(ed.line_context(0, 1));
+						ed.delete_range(0, ed.char_count());
+						ed.insert_text("a\nb\nc\nd");
+						const up = ed.rotate_lines_up(1, 3);
+						const textUp = ed.plain_text();
+						const down = ed.rotate_lines_down(1, 3);
+						const textDown = ed.plain_text();
+						return { before, after, ctx, up, down, textUp, textDown };
+					});
+					assertEquals(result.before, "345");
+					assertEquals(result.after, "6789");
+					assertEquals(result.ctx, ["0", "1234567890", "1", "abcdef"]);
+					assertEquals(result.up, true);
+					assertEquals(result.textUp, "a\nc\nd\nb");
+					assertEquals(result.down, true);
+					assertEquals(result.textDown, "a\nb\nc\nd");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

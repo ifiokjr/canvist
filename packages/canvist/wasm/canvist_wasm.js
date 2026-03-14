@@ -105,6 +105,35 @@ export class CanvistEditor {
         wasm.canvisteditor_add_ruler(this.__wbg_ptr, column);
     }
     /**
+     * Number of named anchors.
+     * @returns {number}
+     */
+    anchor_count() {
+        const ret = wasm.canvisteditor_anchor_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * List anchor names sorted alphabetically.
+     * @returns {string[]}
+     */
+    anchor_names() {
+        const ret = wasm.canvisteditor_anchor_names(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Get a named anchor offset, or -1 if not found.
+     * @param {string} name
+     * @returns {number}
+     */
+    anchor_offset(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_offset(this.__wbg_ptr, ptr0, len0);
+        return ret;
+    }
+    /**
      * Number of active annotations.
      * @returns {number}
      */
@@ -379,6 +408,12 @@ export class CanvistEditor {
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Clear all named anchors.
+     */
+    clear_anchors() {
+        wasm.canvisteditor_clear_anchors(this.__wbg_ptr);
     }
     /**
      * Remove all annotations.
@@ -1409,6 +1444,19 @@ export class CanvistEditor {
         return v2;
     }
     /**
+     * Move cursor to a named anchor.
+     *
+     * Returns true if the anchor exists.
+     * @param {string} name
+     * @returns {boolean}
+     */
+    go_to_anchor(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_go_to_anchor(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
      * Navigate to a breadcrumb by index in the breadcrumbs array.
      *
      * Sets cursor to the beginning of that line and scrolls to it.
@@ -1737,6 +1785,20 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Return line context window around a target line.
+     *
+     * Flat format: [lineNumber, text, lineNumber, text, ...].
+     * @param {number} line
+     * @param {number} radius
+     * @returns {string[]}
+     */
+    line_context(line, radius) {
+        const ret = wasm.canvisteditor_line_context(this.__wbg_ptr, line, radius);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Count the number of visual lines using the paragraph layout engine.
      * @returns {number}
      */
@@ -1776,6 +1838,32 @@ export class CanvistEditor {
         return ret[0] >>> 0;
     }
     /**
+     * Count lines containing `needle`.
+     * @param {string} needle
+     * @param {boolean} case_sensitive
+     * @returns {number}
+     */
+    line_occurrence_count(needle, case_sensitive) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_line_occurrence_count(this.__wbg_ptr, ptr0, len0, case_sensitive);
+        return ret >>> 0;
+    }
+    /**
+     * Return line numbers containing `needle`.
+     * @param {string} needle
+     * @param {boolean} case_sensitive
+     * @returns {Uint32Array}
+     */
+    line_occurrences(needle, case_sensitive) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_line_occurrences(this.__wbg_ptr, ptr0, len0, case_sensitive);
+        var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
      * Return the start offset of the visual line containing `offset`.
      *
      * This performs a full paragraph layout to determine where lines wrap,
@@ -1808,6 +1896,47 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Return line numbers longer than `max_len` characters.
+     * @param {number} max_len
+     * @returns {Uint32Array}
+     */
+    lint_long_lines(max_len) {
+        const ret = wasm.canvisteditor_lint_long_lines(this.__wbg_ptr, max_len);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Return line numbers with mixed leading tabs and spaces.
+     * @returns {Uint32Array}
+     */
+    lint_mixed_indentation() {
+        const ret = wasm.canvisteditor_lint_mixed_indentation(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Return line numbers containing non-ASCII characters.
+     * @returns {Uint32Array}
+     */
+    lint_non_ascii_lines() {
+        const ret = wasm.canvisteditor_lint_non_ascii_lines(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Return line numbers that end with trailing spaces or tabs.
+     * @returns {Uint32Array}
+     */
+    lint_trailing_whitespace() {
+        const ret = wasm.canvisteditor_lint_trailing_whitespace(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Log an editor event. Newest entries are at index 0.
@@ -2125,6 +2254,28 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Next line containing `needle` after `from_line` (wraps), or -1.
+     * @param {string} needle
+     * @param {number} from_line
+     * @param {boolean} case_sensitive
+     * @returns {number}
+     */
+    next_line_with(needle, from_line, case_sensitive) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_next_line_with(this.__wbg_ptr, ptr0, len0, from_line, case_sensitive);
+        return ret;
+    }
+    /**
+     * Return the next task line after `from_line` (wraps), or -1.
+     * @param {number} from_line
+     * @returns {number}
+     */
+    next_task_line(from_line) {
+        const ret = wasm.canvisteditor_next_task_line(this.__wbg_ptr, from_line);
+        return ret;
+    }
+    /**
      * Normalize all indentation to the current tab style.
      *
      * If soft_tabs is true, converts tabs to spaces (tab_size).
@@ -2297,6 +2448,28 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Previous line containing `needle` before `from_line` (wraps), or -1.
+     * @param {string} needle
+     * @param {number} from_line
+     * @param {boolean} case_sensitive
+     * @returns {number}
+     */
+    prev_line_with(needle, from_line, case_sensitive) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_prev_line_with(this.__wbg_ptr, ptr0, len0, from_line, case_sensitive);
+        return ret;
+    }
+    /**
+     * Return the previous task line before `from_line` (wraps), or -1.
+     * @param {number} from_line
+     * @returns {number}
+     */
+    prev_task_line(from_line) {
+        const ret = wasm.canvisteditor_prev_task_line(this.__wbg_ptr, from_line);
+        return ret;
+    }
+    /**
      * Process all pending canonical events via the editor runtime.
      */
     process_events() {
@@ -2386,6 +2559,15 @@ export class CanvistEditor {
     remaining_capacity() {
         const ret = wasm.canvisteditor_remaining_capacity(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Remove a named anchor.
+     * @param {string} name
+     */
+    remove_anchor(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_remove_anchor(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Remove all annotations matching a kind (e.g. "error").
@@ -2573,6 +2755,26 @@ export class CanvistEditor {
         wasm.canvisteditor_reverse_lines(this.__wbg_ptr);
     }
     /**
+     * Rotate a line range down by one (last line moves to start).
+     * @param {number} start_line
+     * @param {number} end_line
+     * @returns {boolean}
+     */
+    rotate_lines_down(start_line, end_line) {
+        const ret = wasm.canvisteditor_rotate_lines_down(this.__wbg_ptr, start_line, end_line);
+        return ret !== 0;
+    }
+    /**
+     * Rotate a line range up by one (first line moves to end).
+     * @param {number} start_line
+     * @param {number} end_line
+     * @returns {boolean}
+     */
+    rotate_lines_up(start_line, end_line) {
+        const ret = wasm.canvisteditor_rotate_lines_up(this.__wbg_ptr, start_line, end_line);
+        return ret !== 0;
+    }
+    /**
      * Get the current ruler columns as a flat array.
      * @returns {Uint32Array}
      */
@@ -2626,6 +2828,19 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Scan the document for task-style lines.
+     *
+     * Returns flat array [line, kind, checked, text, ...].
+     * Kinds: `task`, `todo`, `fixme`, `note`, `hack`.
+     * @returns {string[]}
+     */
+    scan_tasks() {
+        const ret = wasm.canvisteditor_scan_tasks(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Scroll by a delta (positive = down, negative = up).
@@ -2915,6 +3130,18 @@ export class CanvistEditor {
     sentence_count() {
         const ret = wasm.canvisteditor_sentence_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Set a named anchor to a character offset.
+     *
+     * If the anchor already exists, it is updated.
+     * @param {string} name
+     * @param {number} offset
+     */
+    set_anchor(name, offset) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_anchor(this.__wbg_ptr, ptr0, len0, offset);
     }
     /**
      * Toggle bracket auto-closing.
@@ -3494,6 +3721,48 @@ export class CanvistEditor {
         wasm.canvisteditor_take_snapshot(this.__wbg_ptr);
     }
     /**
+     * Count task-style lines in the document.
+     * @returns {number}
+     */
+    task_count() {
+        const ret = wasm.canvisteditor_task_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Return up to `max_chars` immediately after the cursor.
+     * @param {number} max_chars
+     * @returns {string}
+     */
+    text_after_cursor(max_chars) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_text_after_cursor(this.__wbg_ptr, max_chars);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Return up to `max_chars` immediately before the cursor.
+     * @param {number} max_chars
+     * @returns {string}
+     */
+    text_before_cursor(max_chars) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_text_before_cursor(this.__wbg_ptr, max_chars);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Fast content fingerprint (FNV-1a 64-bit hash as hex string).
      *
      * Useful for external change detection: compare hashes to check
@@ -3660,6 +3929,18 @@ export class CanvistEditor {
      */
     toggle_strikethrough() {
         wasm.canvisteditor_toggle_strikethrough(this.__wbg_ptr);
+    }
+    /**
+     * Toggle markdown checkbox state on a line.
+     *
+     * Supports `- [ ]` <-> `- [x]` and `* [ ]` <-> `* [x]`.
+     * Returns true if a toggle occurred.
+     * @param {number} line
+     * @returns {boolean}
+     */
+    toggle_task_checkbox(line) {
+        const ret = wasm.canvisteditor_toggle_task_checkbox(this.__wbg_ptr, line);
+        return ret !== 0;
     }
     /**
      * Toggle underline on the current selection. Preserves the current

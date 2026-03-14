@@ -1451,6 +1451,101 @@ export interface CanvistEditor {
 	/** Context completions: [word, lineContext, ...]. */
 	completionsWithContext(limit: number): string[];
 
+	// ── Named anchors ───────────────────────────────────────────────
+
+	/** Set a named anchor to a character offset. */
+	setAnchor(name: string, offset: number): void;
+
+	/** Get anchor offset, or -1 if missing. */
+	anchorOffset(name: string): number;
+
+	/** Remove a named anchor. */
+	removeAnchor(name: string): void;
+
+	/** Clear all anchors. */
+	clearAnchors(): void;
+
+	/** Number of named anchors. */
+	readonly anchorCount: number;
+
+	/** All anchor names (sorted). */
+	anchorNames(): string[];
+
+	/** Move cursor to anchor. */
+	goToAnchor(name: string): boolean;
+
+	// ── Tasks / TODO scanner ────────────────────────────────────────
+
+	/** Scan tasks: [line, kind, checked, text, ...]. */
+	scanTasks(): string[];
+
+	/** Number of task lines. */
+	readonly taskCount: number;
+
+	/** Next task line after fromLine, wraps, -1 if none. */
+	nextTaskLine(fromLine: number): number;
+
+	/** Previous task line before fromLine, wraps, -1 if none. */
+	prevTaskLine(fromLine: number): number;
+
+	/** Toggle markdown task checkbox on line. */
+	toggleTaskCheckbox(line: number): boolean;
+
+	// ── Lint helpers ────────────────────────────────────────────────
+
+	/** Lines with trailing whitespace. */
+	lintTrailingWhitespace(): number[];
+
+	/** Lines longer than maxLen chars. */
+	lintLongLines(maxLen: number): number[];
+
+	/** Lines with mixed tabs/spaces in leading indent. */
+	lintMixedIndentation(): number[];
+
+	/** Lines containing non-ASCII chars. */
+	lintNonAsciiLines(): number[];
+
+	// ── Line occurrence navigation ──────────────────────────────────
+
+	/** Lines containing needle. */
+	lineOccurrences(needle: string, caseSensitive?: boolean): number[];
+
+	/** Number of matching lines. */
+	lineOccurrenceCount(needle: string, caseSensitive?: boolean): number;
+
+	/** Next matching line after fromLine, wraps, -1 if none. */
+	nextLineWith(
+		needle: string,
+		fromLine: number,
+		caseSensitive?: boolean,
+	): number;
+
+	/** Previous matching line before fromLine, wraps, -1 if none. */
+	prevLineWith(
+		needle: string,
+		fromLine: number,
+		caseSensitive?: boolean,
+	): number;
+
+	// ── Cursor context helpers ──────────────────────────────────────
+
+	/** Text before cursor, up to maxChars. */
+	textBeforeCursor(maxChars: number): string;
+
+	/** Text after cursor, up to maxChars. */
+	textAfterCursor(maxChars: number): string;
+
+	/** Line context window: [lineNumber, text, ...]. */
+	lineContext(line: number, radius: number): string[];
+
+	// ── Rotate lines ────────────────────────────────────────────────
+
+	/** Rotate line range up by one. */
+	rotateLinesUp(startLine: number, endLine: number): boolean;
+
+	/** Rotate line range down by one. */
+	rotateLinesDown(startLine: number, endLine: number): boolean;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }
