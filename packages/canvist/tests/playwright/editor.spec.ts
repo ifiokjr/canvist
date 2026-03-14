@@ -4640,4 +4640,193 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Wrap indicators ─────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] wrap indicators toggle`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const before = ed.show_wrap_indicators();
+						ed.set_show_wrap_indicators(true);
+						const after = ed.show_wrap_indicators();
+						ed.set_show_wrap_indicators(false);
+						const reset = ed.show_wrap_indicators();
+						return { before, after, reset };
+					});
+					assertEquals(result.before, false);
+					assertEquals(result.after, true);
+					assertEquals(result.reset, false);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Selection anchor ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] selection anchor, collapsed, length`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						// Collapsed cursor at offset 5.
+						ed.set_selection(5, 5);
+						const collapsed = ed.selection_is_collapsed();
+						const anchor1 = ed.selection_anchor();
+						// Select range 2..7.
+						ed.set_selection(2, 7);
+						const collapsed2 = ed.selection_is_collapsed();
+						const length = ed.selection_length();
+						return { collapsed, anchor1, collapsed2, length };
+					});
+					assertEquals(result.collapsed, true);
+					assertEquals(result.anchor1, 5);
+					assertEquals(result.collapsed2, false);
+					assertEquals(result.length, 5);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Character counts ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] char_counts categorizes characters`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hi 42!");
+						return Array.from(ed.char_counts());
+					});
+					// "Hi 42!" → letters=2, digits=2, spaces=1, punct=1, other=0
+					assertEquals(result[0], 2); // letters
+					assertEquals(result[1], 2); // digits
+					assertEquals(result[2], 1); // spaces
+					assertEquals(result[3], 1); // punctuation
+					assertEquals(result[4], 0); // other
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Text hash ───────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] text_hash returns stable hex string`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello");
+						const h1 = ed.text_hash();
+						const h2 = ed.text_hash();
+						ed.insert_text("!");
+						const h3 = ed.text_hash();
+						return { h1, h2, h3 };
+					});
+					assert(
+						result.h1.length === 16,
+						`hash should be 16 hex chars, got ${result.h1.length}`,
+					);
+					assertEquals(result.h1, result.h2); // same text = same hash
+					assert(
+						result.h1 !== result.h3,
+						"different text should have different hash",
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Event log ───────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] event log stores and retrieves entries`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.log_event("insert");
+						ed.log_event("delete");
+						ed.log_event("format");
+						const len = ed.event_log_length();
+						const newest = ed.event_log_get(0);
+						const oldest = ed.event_log_get(2);
+						ed.event_log_clear();
+						const afterClear = ed.event_log_length();
+						return { len, newest, oldest, afterClear };
+					});
+					assertEquals(result.len, 3);
+					assertEquals(result.newest, "format");
+					assertEquals(result.oldest, "insert");
+					assertEquals(result.afterClear, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

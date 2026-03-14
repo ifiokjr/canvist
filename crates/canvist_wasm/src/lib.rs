@@ -395,6 +395,12 @@ pub struct CanvistEditor {
 	max_length: usize,
 	/// Last known selection end offset for change detection.
 	last_selection_end: usize,
+	/// Whether to show wrap continuation indicators in the gutter.
+	show_wrap_indicators: bool,
+	/// Recent editor events log (newest first, max 50).
+	event_log: Vec<String>,
+	/// Max entries in event log.
+	event_log_max: usize,
 }
 
 /// Colour theme for the editor canvas.
@@ -523,6 +529,9 @@ impl CanvistEditor {
 			placeholder: String::new(),
 			max_length: 0,
 			last_selection_end: 0,
+			show_wrap_indicators: false,
+			event_log: Vec::new(),
+			event_log_max: 50,
 		})
 	}
 
@@ -3593,6 +3602,141 @@ impl CanvistEditor {
 		self.last_selection_end
 	}
 
+	// ── Wrap continuation indicators ─────────────────────────────────
+
+	/// Enable/disable wrap continuation indicators in the gutter.
+	///
+	/// When enabled, wrapped continuation lines show a `↪` glyph in
+	/// the gutter to distinguish them from real line breaks.
+	#[wasm_bindgen]
+	pub fn set_show_wrap_indicators(&mut self, enabled: bool) {
+		self.show_wrap_indicators = enabled;
+	}
+
+	/// Whether wrap indicators are shown.
+	#[wasm_bindgen]
+	pub fn show_wrap_indicators(&self) -> bool {
+		self.show_wrap_indicators
+	}
+
+	// ── Selection anchor ─────────────────────────────────────────────
+
+	/// Get the selection anchor (start) offset.
+	///
+	/// When selecting left-to-right, anchor < focus (end).
+	/// When selecting right-to-left, anchor > focus.
+	/// When collapsed, anchor == focus.
+	#[wasm_bindgen]
+	pub fn selection_anchor(&self) -> usize {
+		self.runtime.selection().start().offset()
+	}
+
+	/// Whether the selection is collapsed (no text selected).
+	#[wasm_bindgen]
+	pub fn selection_is_collapsed(&self) -> bool {
+		self.runtime.selection().is_collapsed()
+	}
+
+	/// Length of the current selection in characters.
+	#[wasm_bindgen]
+	pub fn selection_length(&self) -> usize {
+		let sel = self.runtime.selection();
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		if end >= start {
+			end - start
+		} else {
+			start - end
+		}
+	}
+
+	// ── Character count by type ──────────────────────────────────────
+
+	/// Count characters by type: [letters, digits, spaces, punctuation, other].
+	///
+	/// Returns a 5-element array.
+	#[wasm_bindgen]
+	pub fn char_counts(&self) -> Vec<usize> {
+		let plain = self.runtime.document().plain_text();
+		let mut letters = 0usize;
+		let mut digits = 0usize;
+		let mut spaces = 0usize;
+		let mut punct = 0usize;
+		let mut other = 0usize;
+		for ch in plain.chars() {
+			if ch.is_alphabetic() {
+				letters += 1;
+			} else if ch.is_ascii_digit() {
+				digits += 1;
+			} else if ch.is_whitespace() {
+				spaces += 1;
+			} else if ch.is_ascii_punctuation() {
+				punct += 1;
+			} else {
+				other += 1;
+			}
+		}
+		vec![letters, digits, spaces, punct, other]
+	}
+
+	// ── Text hash ────────────────────────────────────────────────────
+
+	/// Fast content fingerprint (FNV-1a 64-bit hash as hex string).
+	///
+	/// Useful for external change detection: compare hashes to check
+	/// if content has changed without comparing full text.
+	#[wasm_bindgen]
+	pub fn text_hash(&self) -> String {
+		let plain = self.runtime.document().plain_text();
+		let mut hash: u64 = 0xcbf29ce484222325;
+		for byte in plain.as_bytes() {
+			hash ^= *byte as u64;
+			hash = hash.wrapping_mul(0x100000001b3);
+		}
+		format!("{hash:016x}")
+	}
+
+	// ── Event log ────────────────────────────────────────────────────
+
+	/// Log an editor event. Newest entries are at index 0.
+	///
+	/// The log is capped at `event_log_max` (default 50).
+	/// Call from JS to record significant actions.
+	#[wasm_bindgen]
+	pub fn log_event(&mut self, event: &str) {
+		self.event_log.insert(0, event.to_string());
+		if self.event_log.len() > self.event_log_max {
+			self.event_log.truncate(self.event_log_max);
+		}
+	}
+
+	/// Get event log entry at index (0 = newest).
+	#[wasm_bindgen]
+	pub fn event_log_get(&self, index: usize) -> String {
+		self.event_log.get(index).cloned().unwrap_or_default()
+	}
+
+	/// Number of entries in the event log.
+	#[wasm_bindgen]
+	pub fn event_log_length(&self) -> usize {
+		self.event_log.len()
+	}
+
+	/// Clear the event log.
+	#[wasm_bindgen]
+	pub fn event_log_clear(&mut self) {
+		self.event_log.clear();
+	}
+
+	/// Set the maximum number of event log entries.
+	#[wasm_bindgen]
+	pub fn set_event_log_max(&mut self, max: usize) {
+		self.event_log_max = max.max(1);
+		if self.event_log.len() > self.event_log_max {
+			self.event_log.truncate(self.event_log_max);
+		}
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -5502,6 +5646,16 @@ impl CanvistEditor {
 						let num_w = renderer.measure_text(&num_str, &line_num_style);
 						let x = gutter_width - num_w - 8.0;
 						renderer.draw_text(x, y, &num_str, &line_num_style);
+					}
+				}
+				// Wrap continuation indicators.
+				if self.show_wrap_indicators && para.layout.lines.len() > 1 {
+					for wrap_line in para.layout.lines.iter().skip(1) {
+						let wy = lc.padding_y + para.y_offset + wrap_line.y - sy;
+						if wy + wrap_line.height >= 0.0 && wy <= height {
+							let wx = gutter_width - 16.0;
+							renderer.draw_text(wx, wy, "↪", &line_num_style);
+						}
 					}
 				}
 				line_number += 1;

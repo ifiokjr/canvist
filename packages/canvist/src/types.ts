@@ -807,6 +807,52 @@ export interface CanvistEditor {
 	/** Returns true if selection moved since last check. */
 	selectionChanged(): boolean;
 
+	// ── Wrap indicators ────────────────────────────────────────────
+
+	/** Whether wrap continuation indicators are shown. */
+	readonly showWrapIndicators: boolean;
+
+	/** Toggle wrap continuation indicators (↪ in gutter). */
+	setShowWrapIndicators(enabled: boolean): void;
+
+	// ── Selection anchor ────────────────────────────────────────────
+
+	/** Get selection anchor (start) offset. */
+	readonly selectionAnchor: number;
+
+	/** Whether the selection is collapsed (cursor, no range). */
+	readonly selectionIsCollapsed: boolean;
+
+	/** Character length of the current selection. */
+	readonly selectionLength: number;
+
+	// ── Character counts ────────────────────────────────────────────
+
+	/** Count chars by type: [letters, digits, spaces, punctuation, other]. */
+	charCounts(): number[];
+
+	// ── Text hash ───────────────────────────────────────────────────
+
+	/** FNV-1a 64-bit hash of document text (hex string). */
+	textHash(): string;
+
+	// ── Event log ───────────────────────────────────────────────────
+
+	/** Log an editor event. */
+	logEvent(event: string): void;
+
+	/** Get event log entry at index (0 = newest). */
+	eventLogGet(index: number): string;
+
+	/** Number of entries in the event log. */
+	readonly eventLogLength: number;
+
+	/** Clear the event log. */
+	eventLogClear(): void;
+
+	/** Set max event log entries. */
+	setEventLogMax(max: number): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }
