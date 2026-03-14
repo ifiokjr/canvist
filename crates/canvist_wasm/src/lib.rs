@@ -401,6 +401,10 @@ pub struct CanvistEditor {
 	event_log: Vec<String>,
 	/// Max entries in event log.
 	event_log_max: usize,
+	/// Annotations: (start_offset, end_offset, kind, message).
+	annotations: Vec<(usize, usize, String, String)>,
+	/// Recent search terms (newest first, max 20).
+	search_history: Vec<String>,
 }
 
 /// Colour theme for the editor canvas.
@@ -532,6 +536,8 @@ impl CanvistEditor {
 			show_wrap_indicators: false,
 			event_log: Vec::new(),
 			event_log_max: 50,
+			annotations: Vec::new(),
+			search_history: Vec::new(),
 		})
 	}
 
@@ -3737,6 +3743,298 @@ impl CanvistEditor {
 		}
 	}
 
+	// ── Word completion ──────────────────────────────────────────────
+
+	/// Suggest completions for the word currently being typed.
+	///
+	/// Returns up to `max_results` words from the document that start
+	/// with the prefix at the cursor. Sorted alphabetically, deduplicated.
+	#[wasm_bindgen]
+	pub fn completions(&self, max_results: usize) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let offset = self.runtime.selection().end().offset().min(chars.len());
+
+		// Find the prefix — walk backwards from cursor while alphanumeric.
+		let mut start = offset;
+		while start > 0 && (chars[start - 1].is_alphanumeric() || chars[start - 1] == '_') {
+			start -= 1;
+		}
+		if start == offset {
+			return Vec::new();
+		}
+		let prefix: String = chars[start..offset].iter().collect();
+		let prefix_lower = prefix.to_lowercase();
+
+		// Collect unique words from document that start with prefix.
+		let mut seen = std::collections::HashSet::new();
+		let mut results = Vec::new();
+		for word in plain.split(|c: char| !c.is_alphanumeric() && c != '_') {
+			if word.len() > prefix.len()
+				&& word.to_lowercase().starts_with(&prefix_lower)
+				&& !seen.contains(word)
+			{
+				seen.insert(word.to_string());
+				results.push(word.to_string());
+			}
+		}
+		results.sort();
+		results.truncate(max_results);
+		results
+	}
+
+	// ── Line range operations ────────────────────────────────────────
+
+	/// Get text for a range of lines (0-based, inclusive start, exclusive end).
+	#[wasm_bindgen]
+	pub fn get_line_range(&self, start_line: usize, end_line: usize) -> String {
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		let s = start_line.min(lines.len());
+		let e = end_line.min(lines.len());
+		if s >= e {
+			return String::new();
+		}
+		lines[s..e].join("\n")
+	}
+
+	/// Replace text for a range of lines (0-based, inclusive start, exclusive end).
+	#[wasm_bindgen]
+	pub fn set_line_range(&mut self, start_line: usize, end_line: usize, text: &str) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		let s = start_line.min(lines.len());
+		let e = end_line.min(lines.len());
+		if s > e {
+			return;
+		}
+		// Calculate char offsets for the line range.
+		let mut char_start = 0usize;
+		for (i, line) in lines.iter().enumerate() {
+			if i == s {
+				break;
+			}
+			char_start += line.chars().count() + 1; // +1 for \n
+		}
+		let mut char_end = char_start;
+		for i in s..e {
+			if i < lines.len() {
+				char_end += lines[i].chars().count();
+				if i + 1 < e && i + 1 < lines.len() {
+					char_end += 1; // \n between lines
+				}
+			}
+		}
+		self.delete_range(char_start, char_end);
+		self.insert_text_at(char_start, text);
+	}
+
+	/// Get the total number of lines in the document.
+	#[wasm_bindgen]
+	pub fn line_count_total(&self) -> usize {
+		let plain = self.runtime.document().plain_text();
+		if plain.is_empty() {
+			return 1;
+		}
+		plain.split('\n').count()
+	}
+
+	/// Get text of a single line (0-based).
+	#[wasm_bindgen]
+	pub fn get_line(&self, line: usize) -> String {
+		let plain = self.runtime.document().plain_text();
+		plain.split('\n').nth(line).unwrap_or("").to_string()
+	}
+
+	// ── Scroll metrics ──────────────────────────────────────────────
+
+	/// The viewport height in pixels (same as canvas height / zoom).
+	#[wasm_bindgen]
+	pub fn viewport_height(&self) -> f32 {
+		self.height / self.zoom
+	}
+
+	/// The ratio of viewport to content (0.0–1.0). 1.0 = all visible.
+	#[wasm_bindgen]
+	pub fn scroll_ratio(&self) -> f32 {
+		let ch = self.content_height().unwrap_or(self.height);
+		if ch <= 0.0 {
+			return 1.0;
+		}
+		(self.viewport_height() / ch).min(1.0)
+	}
+
+	/// The scroll position as a fraction (0.0 = top, 1.0 = bottom).
+	#[wasm_bindgen]
+	pub fn scroll_fraction(&self) -> f32 {
+		let ch = self.content_height().unwrap_or(self.height);
+		let max_scroll = (ch - self.viewport_height()).max(0.0);
+		if max_scroll <= 0.0 {
+			return 0.0;
+		}
+		(self.scroll_y / max_scroll).clamp(0.0, 1.0)
+	}
+
+	/// Scroll to a fraction of the document (0.0 = top, 1.0 = bottom).
+	#[wasm_bindgen]
+	pub fn scroll_to_fraction(&mut self, fraction: f32) {
+		let ch = self.content_height().unwrap_or(self.height);
+		let max_scroll = (ch - self.viewport_height()).max(0.0);
+		self.scroll_y = (fraction.clamp(0.0, 1.0) * max_scroll).max(0.0);
+	}
+
+	// ── Annotations ──────────────────────────────────────────────────
+
+	/// Add an annotation to a text range.
+	///
+	/// `kind` examples: "error", "warning", "info", "spelling".
+	/// `message` is optional descriptive text.
+	#[wasm_bindgen]
+	pub fn add_annotation(&mut self, start: usize, end: usize, kind: &str, message: &str) {
+		self.annotations
+			.push((start, end, kind.to_string(), message.to_string()));
+	}
+
+	/// Remove all annotations matching a kind (e.g. "error").
+	#[wasm_bindgen]
+	pub fn remove_annotations_by_kind(&mut self, kind: &str) {
+		self.annotations.retain(|a| a.2 != kind);
+	}
+
+	/// Remove all annotations.
+	#[wasm_bindgen]
+	pub fn clear_annotations(&mut self) {
+		self.annotations.clear();
+	}
+
+	/// Number of active annotations.
+	#[wasm_bindgen]
+	pub fn annotation_count(&self) -> usize {
+		self.annotations.len()
+	}
+
+	/// Get annotations as flat array: [start, end, kind, message, ...].
+	#[wasm_bindgen]
+	pub fn get_annotations(&self) -> Vec<String> {
+		let mut result = Vec::with_capacity(self.annotations.len() * 4);
+		for (start, end, kind, msg) in &self.annotations {
+			result.push(start.to_string());
+			result.push(end.to_string());
+			result.push(kind.clone());
+			result.push(msg.clone());
+		}
+		result
+	}
+
+	/// Get annotations overlapping a character offset.
+	///
+	/// Returns flat array: [start, end, kind, message, ...].
+	#[wasm_bindgen]
+	pub fn annotations_at(&self, offset: usize) -> Vec<String> {
+		let mut result = Vec::new();
+		for (start, end, kind, msg) in &self.annotations {
+			if offset >= *start && offset < *end {
+				result.push(start.to_string());
+				result.push(end.to_string());
+				result.push(kind.clone());
+				result.push(msg.clone());
+			}
+		}
+		result
+	}
+
+	// ── Search history ───────────────────────────────────────────────
+
+	/// Push a search term into the search history.
+	#[wasm_bindgen]
+	pub fn search_history_push(&mut self, term: &str) {
+		if term.is_empty() {
+			return;
+		}
+		self.search_history.retain(|t| t != term);
+		self.search_history.insert(0, term.to_string());
+		if self.search_history.len() > 20 {
+			self.search_history.truncate(20);
+		}
+	}
+
+	/// Get search history entry at index (0 = most recent).
+	#[wasm_bindgen]
+	pub fn search_history_get(&self, index: usize) -> String {
+		self.search_history.get(index).cloned().unwrap_or_default()
+	}
+
+	/// Number of search history entries.
+	#[wasm_bindgen]
+	pub fn search_history_length(&self) -> usize {
+		self.search_history.len()
+	}
+
+	/// Clear search history.
+	#[wasm_bindgen]
+	pub fn search_history_clear(&mut self) {
+		self.search_history.clear();
+	}
+
+	// ── Visible range ────────────────────────────────────────────────
+
+	/// Get the first visible line number (0-based).
+	#[wasm_bindgen]
+	pub fn first_visible_line(&self) -> usize {
+		if self.scroll_y <= 0.0 {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let line_count = if plain.is_empty() {
+			1
+		} else {
+			plain.split('\n').count()
+		};
+		let ch = self.content_height().unwrap_or(self.height);
+		if ch <= 0.0 {
+			return 0;
+		}
+		let line_height = ch / line_count as f32;
+		if line_height <= 0.0 {
+			return 0;
+		}
+		let approx = (self.scroll_y / line_height) as usize;
+		approx.min(line_count.saturating_sub(1))
+	}
+
+	/// Get the last visible line number (0-based).
+	#[wasm_bindgen]
+	pub fn last_visible_line(&self) -> usize {
+		let plain = self.runtime.document().plain_text();
+		let line_count = if plain.is_empty() {
+			1
+		} else {
+			plain.split('\n').count()
+		};
+		let ch = self.content_height().unwrap_or(self.height);
+		if ch <= 0.0 {
+			return 0;
+		}
+		let line_height = ch / line_count as f32;
+		if line_height <= 0.0 {
+			return 0;
+		}
+		let bottom = self.scroll_y + self.viewport_height();
+		let approx = (bottom / line_height) as usize;
+		approx.min(line_count.saturating_sub(1))
+	}
+
+	/// Number of lines visible in the viewport.
+	#[wasm_bindgen]
+	pub fn visible_line_count(&self) -> usize {
+		let first = self.first_visible_line();
+		let last = self.last_visible_line();
+		(last - first) + 1
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -5698,6 +5996,41 @@ impl CanvistEditor {
 						}
 					}
 					i += 2;
+				}
+			}
+		}
+
+		// ── Annotation underlines ────────────────────────────────────────
+		for (ann_start, ann_end, kind, _msg) in &self.annotations {
+			let underline_color = match kind.as_str() {
+				"error" => Color::new(255, 0, 0, 200),
+				"warning" => Color::new(255, 165, 0, 200),
+				"info" => Color::new(66, 135, 245, 200),
+				"spelling" => Color::new(0, 180, 0, 180),
+				_ => Color::new(128, 128, 128, 150),
+			};
+			// Draw wavy underline for each annotated character.
+			if let Some(start_rect) = Self::char_rect(
+				*ann_start,
+				&paragraphs,
+				&lc,
+				content_x_origin,
+				sy,
+				&renderer,
+			) {
+				if let Some(end_rect) = Self::char_rect(
+					(*ann_end).saturating_sub(1).max(*ann_start),
+					&paragraphs,
+					&lc,
+					content_x_origin,
+					sy,
+					&renderer,
+				) {
+					let x1 = start_rect.x;
+					let x2 = end_rect.x + end_rect.width;
+					let y_base = start_rect.y + start_rect.height - 1.0;
+					// Draw 2px thick underline.
+					renderer.fill_rect(Rect::new(x1, y_base, x2 - x1, 2.0), underline_color);
 				}
 			}
 		}

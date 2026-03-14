@@ -4829,4 +4829,233 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Word completion ─────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] completions suggests from document vocabulary`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("function foo foobar fuzzy\nfo");
+						// Cursor is after "fo" — should suggest foo, foobar, function.
+						const suggestions = Array.from(ed.completions(5));
+						return suggestions;
+					});
+					assert(result.length > 0, "should have suggestions");
+					assert(result.includes("foo"), `should include "foo", got ${result}`);
+					assert(
+						result.includes("foobar"),
+						`should include "foobar", got ${result}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line range operations ───────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line range get and set`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("line0\nline1\nline2\nline3");
+						const total = ed.line_count_total();
+						const range = ed.get_line_range(1, 3);
+						const single = ed.get_line(2);
+						return { total, range, single };
+					});
+					assertEquals(result.total, 4);
+					assertEquals(result.range, "line1\nline2");
+					assertEquals(result.single, "line2");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Scroll metrics ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] scroll metrics return valid values`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const vh = ed.viewport_height();
+						const ratio = ed.scroll_ratio();
+						const frac = ed.scroll_fraction();
+						return { vh, ratio, frac };
+					});
+					assert(
+						result.vh > 0,
+						`viewport_height should be > 0, got ${result.vh}`,
+					);
+					assert(
+						result.ratio > 0 && result.ratio <= 1.0,
+						`scroll_ratio should be 0-1, got ${result.ratio}`,
+					);
+					assert(
+						result.frac >= 0 && result.frac <= 1.0,
+						`scroll_fraction should be 0-1, got ${result.frac}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Annotations ─────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] annotations add, query, remove`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						ed.add_annotation(0, 5, "error", "spelling");
+						ed.add_annotation(6, 11, "warning", "style");
+						const count1 = ed.annotation_count();
+						const at3 = Array.from(ed.annotations_at(3));
+						ed.remove_annotations_by_kind("error");
+						const count2 = ed.annotation_count();
+						ed.clear_annotations();
+						const count3 = ed.annotation_count();
+						return { count1, at3, count2, count3 };
+					});
+					assertEquals(result.count1, 2);
+					assertEquals(result.at3[2], "error");
+					assertEquals(result.at3[3], "spelling");
+					assertEquals(result.count2, 1);
+					assertEquals(result.count3, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Search history ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] search history stores and retrieves`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.search_history_push("foo");
+						ed.search_history_push("bar");
+						ed.search_history_push("baz");
+						const len = ed.search_history_length();
+						const newest = ed.search_history_get(0);
+						const oldest = ed.search_history_get(2);
+						// Push duplicate — should deduplicate.
+						ed.search_history_push("foo");
+						const len2 = ed.search_history_length();
+						const top = ed.search_history_get(0);
+						return { len, newest, oldest, len2, top };
+					});
+					assertEquals(result.len, 3);
+					assertEquals(result.newest, "baz");
+					assertEquals(result.oldest, "foo");
+					assertEquals(result.len2, 3); // deduped
+					assertEquals(result.top, "foo"); // moved to front
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Visible range ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] visible range returns valid line numbers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("a\nb\nc\nd\ne");
+						const first = ed.first_visible_line();
+						const last = ed.last_visible_line();
+						const count = ed.visible_line_count();
+						return { first, last, count };
+					});
+					assertEquals(result.first, 0);
+					assert(result.last >= result.first, "last >= first");
+					assert(result.count > 0, "visible count > 0");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

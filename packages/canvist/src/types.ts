@@ -853,6 +853,89 @@ export interface CanvistEditor {
 	/** Set max event log entries. */
 	setEventLogMax(max: number): void;
 
+	// ── Word completion ────────────────────────────────────────────
+
+	/** Suggest completions from document vocabulary. */
+	completions(maxResults: number): string[];
+
+	// ── Line range operations ───────────────────────────────────────
+
+	/** Get text for a range of lines (0-based, start inclusive, end exclusive). */
+	getLineRange(startLine: number, endLine: number): string;
+
+	/** Replace text for a range of lines. */
+	setLineRange(startLine: number, endLine: number, text: string): void;
+
+	/** Total number of lines. */
+	readonly lineCountTotal: number;
+
+	/** Get text of a single line (0-based). */
+	getLine(line: number): string;
+
+	// ── Scroll metrics ──────────────────────────────────────────────
+
+	/** Viewport height in pixels. */
+	readonly viewportHeight: number;
+
+	/** Ratio of viewport to content (0–1, 1 = all visible). */
+	readonly scrollRatio: number;
+
+	/** Scroll position as fraction (0 = top, 1 = bottom). */
+	readonly scrollFraction: number;
+
+	/** Scroll to a fraction of the document. */
+	scrollToFraction(fraction: number): void;
+
+	// ── Annotations ─────────────────────────────────────────────────
+
+	/** Add an annotation to a range (kind: error/warning/info/spelling). */
+	addAnnotation(
+		start: number,
+		end: number,
+		kind: string,
+		message: string,
+	): void;
+
+	/** Remove all annotations of a kind. */
+	removeAnnotationsByKind(kind: string): void;
+
+	/** Clear all annotations. */
+	clearAnnotations(): void;
+
+	/** Number of annotations. */
+	readonly annotationCount: number;
+
+	/** All annotations as [start, end, kind, message, ...]. */
+	getAnnotations(): string[];
+
+	/** Annotations overlapping an offset. */
+	annotationsAt(offset: number): string[];
+
+	// ── Search history ──────────────────────────────────────────────
+
+	/** Push a search term into history. */
+	searchHistoryPush(term: string): void;
+
+	/** Get search history entry (0 = newest). */
+	searchHistoryGet(index: number): string;
+
+	/** Search history length. */
+	readonly searchHistoryLength: number;
+
+	/** Clear search history. */
+	searchHistoryClear(): void;
+
+	// ── Visible range ───────────────────────────────────────────────
+
+	/** First visible line (0-based). */
+	readonly firstVisibleLine: number;
+
+	/** Last visible line (0-based). */
+	readonly lastVisibleLine: number;
+
+	/** Number of visible lines in viewport. */
+	readonly visibleLineCount: number;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }
