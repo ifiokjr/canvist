@@ -2536,6 +2536,15 @@ export async function createEditor(
 			shiftAnchor(name: string, delta: number) {
 				return ref.shift_anchor(name, delta);
 			},
+			anchorEntries() {
+				return Array.from(ref.anchor_entries());
+			},
+			removeAnchorsWithPrefix(prefix: string) {
+				return ref.remove_anchors_with_prefix(prefix);
+			},
+			renameAnchorPrefix(oldPrefix: string, newPrefix: string) {
+				return ref.rename_anchor_prefix(oldPrefix, newPrefix);
+			},
 			// ── Tasks / TODO scanner ────────────────────
 			scanTasks() {
 				return Array.from(ref.scan_tasks());
@@ -2753,6 +2762,18 @@ export async function createEditor(
 				renderFrame();
 				return n;
 			},
+			lineHasPrefix(line: number, prefix: string, caseSensitive = false) {
+				return ref.line_has_prefix(line, prefix, caseSensitive);
+			},
+			lineHasSuffix(line: number, suffix: string, caseSensitive = false) {
+				return ref.line_has_suffix(line, suffix, caseSensitive);
+			},
+			linesWithPrefix(prefix: string, caseSensitive = false) {
+				return Array.from(ref.lines_with_prefix(prefix, caseSensitive));
+			},
+			linesWithSuffix(suffix: string, caseSensitive = false) {
+				return Array.from(ref.lines_with_suffix(suffix, caseSensitive));
+			},
 			numberLines(
 				startLine: number,
 				endLine: number,
@@ -2785,6 +2806,9 @@ export async function createEditor(
 			lineHashes() {
 				return Array.from(ref.line_hashes());
 			},
+			lineHashesInRange(startLine: number, endLine: number) {
+				return Array.from(ref.line_hashes_in_range(startLine, endLine));
+			},
 			lineHashEquals(a: number, b: number) {
 				return ref.line_hash_equals(a, b);
 			},
@@ -2799,6 +2823,12 @@ export async function createEditor(
 				return Array.from(
 					ref.duplicate_line_numbers(caseSensitive, ignoreWhitespace),
 				);
+			},
+			duplicateLineCount(caseSensitive = false, ignoreWhitespace = false) {
+				return ref.duplicate_line_count(caseSensitive, ignoreWhitespace);
+			},
+			duplicateLineRatio(caseSensitive = false, ignoreWhitespace = false) {
+				return ref.duplicate_line_ratio(caseSensitive, ignoreWhitespace);
 			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {

@@ -53,6 +53,10 @@ export class CanvistEditor {
      */
     anchor_count(): number;
     /**
+     * Anchor entries as flat `[name, offset, ...]`, sorted by name.
+     */
+    anchor_entries(): string[];
+    /**
      * Whether a named anchor exists.
      */
     anchor_exists(name: string): boolean;
@@ -522,6 +526,10 @@ export class CanvistEditor {
      */
     duplicate_line(): void;
     /**
+     * Number of lines that belong to duplicate-content groups.
+     */
+    duplicate_line_count(case_sensitive: boolean, ignore_whitespace: boolean): number;
+    /**
      * Line numbers that have duplicated content.
      *
      * `ignore_whitespace` collapses whitespace and trims ends before
@@ -534,6 +542,10 @@ export class CanvistEditor {
      * Returns `true` on success.
      */
     duplicate_line_range(start_line: number, end_line: number): boolean;
+    /**
+     * Ratio of duplicate lines to total lines.
+     */
+    duplicate_line_ratio(case_sensitive: boolean, ignore_whitespace: boolean): number;
     /**
      * Editor version string.
      */
@@ -969,6 +981,14 @@ export class CanvistEditor {
      */
     line_end_for_offset(offset: number): number;
     /**
+     * Whether a line starts with a prefix.
+     */
+    line_has_prefix(line: number, prefix: string, case_sensitive: boolean): boolean;
+    /**
+     * Whether a line ends with a suffix.
+     */
+    line_has_suffix(line: number, suffix: string, case_sensitive: boolean): boolean;
+    /**
      * Compute FNV-1a 64-bit hash of a logical line.
      *
      * Returns empty string when line is out of range.
@@ -984,6 +1004,10 @@ export class CanvistEditor {
      * Return all line hashes as flat array: [line, hash, ...].
      */
     line_hashes(): string[];
+    /**
+     * Return line hashes for an inclusive range as `[line, hash, ...]`.
+     */
+    line_hashes_in_range(start_line: number, end_line: number): string[];
     /**
      * Whether a line participates in a duplicate-content set.
      */
@@ -1003,6 +1027,14 @@ export class CanvistEditor {
      * then returns the character offset where that visual line begins.
      */
     line_start_for_offset(offset: number): number;
+    /**
+     * Line numbers whose text starts with prefix.
+     */
+    lines_with_prefix(prefix: string, case_sensitive: boolean): Uint32Array;
+    /**
+     * Line numbers whose text ends with suffix.
+     */
+    lines_with_suffix(suffix: string, case_sensitive: boolean): Uint32Array;
     /**
      * Get the URL text at a character offset, if any.
      *
@@ -1403,6 +1435,12 @@ export class CanvistEditor {
      */
     remove_anchor(name: string): void;
     /**
+     * Remove anchors whose names start with prefix.
+     *
+     * Returns number removed.
+     */
+    remove_anchors_with_prefix(prefix: string): number;
+    /**
      * Remove all annotations matching a kind (e.g. "error").
      */
     remove_annotations_by_kind(kind: string): void;
@@ -1462,6 +1500,12 @@ export class CanvistEditor {
      * Returns `true` when source anchor existed.
      */
     rename_anchor(old_name: string, new_name: string): boolean;
+    /**
+     * Rename anchors with a shared prefix.
+     *
+     * Returns number renamed. Existing destination names are overwritten.
+     */
+    rename_anchor_prefix(old_prefix: string, new_prefix: string): number;
     /**
      * Request a re-render of the document to the canvas.
      *
@@ -2378,6 +2422,7 @@ export interface InitOutput {
     readonly canvisteditor_add_marker: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
     readonly canvisteditor_add_ruler: (a: number, b: number) => void;
     readonly canvisteditor_anchor_count: (a: number) => number;
+    readonly canvisteditor_anchor_entries: (a: number) => [number, number];
     readonly canvisteditor_anchor_exists: (a: number, b: number, c: number) => number;
     readonly canvisteditor_anchor_names: (a: number) => [number, number];
     readonly canvisteditor_anchor_offset: (a: number, b: number, c: number) => number;
@@ -2468,8 +2513,10 @@ export interface InitOutput {
     readonly canvisteditor_diff_texts: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_document_outline: (a: number) => [number, number];
     readonly canvisteditor_duplicate_line: (a: number) => void;
+    readonly canvisteditor_duplicate_line_count: (a: number, b: number, c: number) => number;
     readonly canvisteditor_duplicate_line_numbers: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_duplicate_line_range: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_duplicate_line_ratio: (a: number, b: number, c: number) => number;
     readonly canvisteditor_editor_version: (a: number) => [number, number];
     readonly canvisteditor_ensure_final_newline: (a: number) => number;
     readonly canvisteditor_ensure_single_trailing_newline: (a: number) => number;
@@ -2549,13 +2596,18 @@ export interface InitOutput {
     readonly canvisteditor_line_count_total: (a: number) => number;
     readonly canvisteditor_line_decoration_count: (a: number) => number;
     readonly canvisteditor_line_end_for_offset: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_line_has_prefix: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_line_has_suffix: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_line_hash: (a: number, b: number) => [number, number];
     readonly canvisteditor_line_hash_equals: (a: number, b: number, c: number) => number;
     readonly canvisteditor_line_hashes: (a: number) => [number, number];
+    readonly canvisteditor_line_hashes_in_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_line_is_duplicate: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_count: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrences: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
+    readonly canvisteditor_lines_with_prefix: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_lines_with_suffix: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_link_at_offset: (a: number, b: number) => [number, number];
     readonly canvisteditor_lint_long_lines: (a: number, b: number) => [number, number];
     readonly canvisteditor_lint_mixed_indentation: (a: number) => [number, number];
@@ -2636,6 +2688,7 @@ export interface InitOutput {
     readonly canvisteditor_redo: (a: number) => number;
     readonly canvisteditor_remaining_capacity: (a: number) => number;
     readonly canvisteditor_remove_anchor: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_remove_anchors_with_prefix: (a: number, b: number, c: number) => number;
     readonly canvisteditor_remove_annotations_by_kind: (a: number, b: number, c: number) => void;
     readonly canvisteditor_remove_collab_cursor: (a: number, b: number, c: number) => void;
     readonly canvisteditor_remove_cursor: (a: number, b: number) => void;
@@ -2649,6 +2702,7 @@ export interface InitOutput {
     readonly canvisteditor_remove_trailing_blank_lines: (a: number) => number;
     readonly canvisteditor_rename_all: (a: number, b: number, c: number) => number;
     readonly canvisteditor_rename_anchor: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_rename_anchor_prefix: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly canvisteditor_replace_all_occurrences: (a: number, b: number, c: number) => number;
