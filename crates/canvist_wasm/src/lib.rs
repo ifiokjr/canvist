@@ -405,6 +405,20 @@ pub struct CanvistEditor {
 	annotations: Vec<(usize, usize, String, String)>,
 	/// Recent search terms (newest first, max 20).
 	search_history: Vec<String>,
+	/// Whether to show the minimap.
+	show_minimap: bool,
+	/// Minimap width in pixels.
+	minimap_width: f32,
+	/// Whether to show sticky scroll (top context line).
+	sticky_scroll: bool,
+	/// Cursor style: 0=line, 1=block, 2=underline.
+	cursor_style: u8,
+	/// Cursor width in pixels (for line style).
+	cursor_width: f32,
+	/// Cursor colour override (r, g, b, a). None = use theme.
+	cursor_color: Option<(u8, u8, u8, u8)>,
+	/// Previous text snapshot for diff.
+	diff_snapshot: String,
 }
 
 /// Colour theme for the editor canvas.
@@ -538,6 +552,13 @@ impl CanvistEditor {
 			event_log_max: 50,
 			annotations: Vec::new(),
 			search_history: Vec::new(),
+			show_minimap: false,
+			minimap_width: 60.0,
+			sticky_scroll: false,
+			cursor_style: 0,
+			cursor_width: 2.0,
+			cursor_color: None,
+			diff_snapshot: String::new(),
 		})
 	}
 
@@ -4035,6 +4056,155 @@ impl CanvistEditor {
 		(last - first) + 1
 	}
 
+	// ── Minimap ──────────────────────────────────────────────────────
+
+	/// Toggle the minimap sidebar.
+	#[wasm_bindgen]
+	pub fn set_show_minimap(&mut self, enabled: bool) {
+		self.show_minimap = enabled;
+	}
+
+	/// Whether the minimap is shown.
+	#[wasm_bindgen]
+	pub fn show_minimap(&self) -> bool {
+		self.show_minimap
+	}
+
+	/// Set the minimap width in pixels (default 60).
+	#[wasm_bindgen]
+	pub fn set_minimap_width(&mut self, w: f32) {
+		self.minimap_width = w.clamp(30.0, 200.0);
+	}
+
+	/// Get the minimap width.
+	#[wasm_bindgen]
+	pub fn minimap_width(&self) -> f32 {
+		self.minimap_width
+	}
+
+	// ── Sticky scroll ────────────────────────────────────────────────
+
+	/// Toggle sticky scroll — shows the first line of the document at
+	/// the top when scrolled past it.
+	#[wasm_bindgen]
+	pub fn set_sticky_scroll(&mut self, enabled: bool) {
+		self.sticky_scroll = enabled;
+	}
+
+	/// Whether sticky scroll is enabled.
+	#[wasm_bindgen]
+	pub fn sticky_scroll(&self) -> bool {
+		self.sticky_scroll
+	}
+
+	// ── Rename all occurrences ───────────────────────────────────────
+
+	/// Rename all occurrences of the word under cursor to `new_name`.
+	///
+	/// Uses whole-word matching. Returns the number of replacements.
+	#[wasm_bindgen]
+	pub fn rename_all(&mut self, new_name: &str) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let word = self.word_at_cursor();
+		if word.is_empty() || word == new_name {
+			return 0;
+		}
+		let offsets = self.find_all_whole_word(&word);
+		if offsets.is_empty() {
+			return 0;
+		}
+		let count = offsets.len() / 2;
+		// Process from end to start so offsets stay valid.
+		let mut i = offsets.len();
+		while i >= 2 {
+			i -= 2;
+			let start = offsets[i];
+			let end = offsets[i + 1];
+			self.delete_range(start, end);
+			self.insert_text_at(start, new_name);
+		}
+		count
+	}
+
+	// ── Cursor style ─────────────────────────────────────────────────
+
+	/// Set cursor style: 0=line (default), 1=block, 2=underline.
+	#[wasm_bindgen]
+	pub fn set_cursor_style(&mut self, style: u8) {
+		self.cursor_style = style.min(2);
+	}
+
+	/// Get cursor style (0=line, 1=block, 2=underline).
+	#[wasm_bindgen]
+	pub fn cursor_style(&self) -> u8 {
+		self.cursor_style
+	}
+
+	/// Set cursor width in pixels (line style only, default 2.0).
+	#[wasm_bindgen]
+	pub fn set_cursor_width(&mut self, w: f32) {
+		self.cursor_width = w.clamp(1.0, 8.0);
+	}
+
+	/// Get cursor width.
+	#[wasm_bindgen]
+	pub fn cursor_width_px(&self) -> f32 {
+		self.cursor_width
+	}
+
+	/// Set cursor colour override. Pass 0,0,0,0 to reset to theme default.
+	#[wasm_bindgen]
+	pub fn set_cursor_color(&mut self, r: u8, g: u8, b: u8, a: u8) {
+		if a == 0 {
+			self.cursor_color = None;
+		} else {
+			self.cursor_color = Some((r, g, b, a));
+		}
+	}
+
+	// ── Snapshot diff ────────────────────────────────────────────────
+
+	/// Take a snapshot of the current text for later diff.
+	#[wasm_bindgen]
+	pub fn take_snapshot(&mut self) {
+		self.diff_snapshot = self.runtime.document().plain_text().to_string();
+	}
+
+	/// Compare current text against the last snapshot.
+	///
+	/// Returns a list of changed line numbers (0-based) as a flat array.
+	/// A line is "changed" if it differs from the snapshot.
+	#[wasm_bindgen]
+	pub fn diff_from_snapshot(&self) -> Vec<usize> {
+		let current = self.runtime.document().plain_text();
+		let snap_lines: Vec<&str> = self.diff_snapshot.split('\n').collect();
+		let curr_lines: Vec<&str> = current.split('\n').collect();
+		let max_len = snap_lines.len().max(curr_lines.len());
+		let mut changed = Vec::new();
+		for i in 0..max_len {
+			let snap = snap_lines.get(i).copied().unwrap_or("");
+			let curr = curr_lines.get(i).copied().unwrap_or("");
+			if snap != curr {
+				changed.push(i);
+			}
+		}
+		changed
+	}
+
+	/// Whether a snapshot has been taken.
+	#[wasm_bindgen]
+	pub fn has_snapshot(&self) -> bool {
+		!self.diff_snapshot.is_empty()
+	}
+
+	/// Clear the saved snapshot.
+	#[wasm_bindgen]
+	pub fn clear_snapshot(&mut self) {
+		self.diff_snapshot.clear();
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -6068,6 +6238,10 @@ impl CanvistEditor {
 		// 530 ms timer to produce the classic blinking effect.
 		if self.caret_visible {
 			let caret_offset = selection.end().offset();
+			let actual_caret_color = match self.cursor_color {
+				Some((r, g, b, a)) => Color::new(r, g, b, a),
+				None => caret_color,
+			};
 
 			let (caret_para_idx, caret_line_idx) =
 				find_para_and_line_for_offset(&paragraphs, caret_offset);
@@ -6086,15 +6260,101 @@ impl CanvistEditor {
 					let caret_y = lc.padding_y + para.y_offset + caret_line.y - sy;
 					let caret_height = caret_line.height;
 
-					renderer.draw_line(
-						caret_x,
-						caret_y,
-						caret_x,
-						caret_y + caret_height,
-						caret_color,
+					match self.cursor_style {
+						1 => {
+							// Block cursor — filled rectangle one character wide.
+							let char_w = renderer.measure_text("M", &lc.default_style);
+							renderer.fill_rect(
+								Rect::new(caret_x, caret_y, char_w, caret_height),
+								Color::new(
+									actual_caret_color.r,
+									actual_caret_color.g,
+									actual_caret_color.b,
+									100,
+								),
+							);
+						}
+						2 => {
+							// Underline cursor — horizontal line at bottom.
+							let char_w = renderer.measure_text("M", &lc.default_style);
+							renderer.fill_rect(
+								Rect::new(caret_x, caret_y + caret_height - 2.0, char_w, 2.0),
+								actual_caret_color,
+							);
+						}
+						_ => {
+							// Line cursor (default) — vertical line.
+							renderer.fill_rect(
+								Rect::new(caret_x, caret_y, self.cursor_width, caret_height),
+								actual_caret_color,
+							);
+						}
+					}
+				}
+			}
+		}
+
+		// ── Sticky scroll ────────────────────────────────────────────────
+		if self.sticky_scroll && self.scroll_y > 0.0 {
+			let plain = self.runtime.document().plain_text();
+			if let Some(first_line) = plain.split('\n').next() {
+				if !first_line.is_empty() {
+					// Draw sticky bar background.
+					let bar_h = 20.0 * self.zoom;
+					renderer.fill_rect(Rect::new(0.0, 0.0, width, bar_h), theme.gutter_bg);
+					renderer.draw_line(0.0, bar_h, width, bar_h, theme.gutter_border);
+					let sticky_style = Style::new()
+						.font_size(11.0 * self.zoom)
+						.color(
+							theme.gutter_text.r,
+							theme.gutter_text.g,
+							theme.gutter_text.b,
+							theme.gutter_text.a,
+						)
+						.font_family("Inter, system-ui, sans-serif");
+					renderer.draw_text(content_x_origin + 4.0, 2.0, first_line, &sticky_style);
+				}
+			}
+		}
+
+		// ── Minimap ──────────────────────────────────────────────────────
+		if self.show_minimap {
+			let mm_w = self.minimap_width;
+			let mm_x = width - mm_w;
+
+			// Background.
+			let mm_bg = Color::new(theme.gutter_bg.r, theme.gutter_bg.g, theme.gutter_bg.b, 220);
+			renderer.fill_rect(Rect::new(mm_x, 0.0, mm_w, height), mm_bg);
+			renderer.draw_line(mm_x, 0.0, mm_x, height, theme.gutter_border);
+
+			// Render each line as a thin coloured strip.
+			let plain = self.runtime.document().plain_text();
+			let lines: Vec<&str> = plain.split('\n').collect();
+			let total_lines = lines.len().max(1);
+			let line_h = (height / total_lines as f32).min(3.0).max(0.5);
+			let text_color = Color::new(theme.text.r, theme.text.g, theme.text.b, 80);
+
+			for (i, line) in lines.iter().enumerate() {
+				let y = i as f32 * line_h;
+				if y > height {
+					break;
+				}
+				let line_w = (line.len() as f32 / 80.0).min(1.0) * (mm_w - 4.0);
+				if line_w > 0.0 {
+					renderer.fill_rect(
+						Rect::new(mm_x + 2.0, y, line_w, line_h.max(1.0)),
+						text_color,
 					);
 				}
 			}
+
+			// Viewport indicator.
+			let frac = self.scroll_fraction();
+			let ratio = self.scroll_ratio();
+			let vp_y = frac * (height - height * ratio);
+			let vp_h = (height * ratio).max(10.0);
+			let vp_color = Color::new(theme.selection.r, theme.selection.g, theme.selection.b, 60);
+			renderer.fill_rect(Rect::new(mm_x, vp_y, mm_w, vp_h), vp_color);
 		}
 
 		// ── Scroll indicator ─────────────────────────────────────────────

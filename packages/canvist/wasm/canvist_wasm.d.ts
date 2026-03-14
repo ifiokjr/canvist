@@ -150,6 +150,10 @@ export class CanvistEditor {
      */
     clear_line_decorations(): void;
     /**
+     * Clear the saved snapshot.
+     */
+    clear_snapshot(): void;
+    /**
      * Perform a clipboard cut: delete the current selection.
      *
      * The caller is expected to have already read `get_selected_text()` and
@@ -260,6 +264,14 @@ export class CanvistEditor {
      */
     cursor_line(): number;
     /**
+     * Get cursor style (0=line, 1=block, 2=underline).
+     */
+    cursor_style(): number;
+    /**
+     * Get cursor width.
+     */
+    cursor_width_px(): number;
+    /**
      * Cut the current line (remove it and return its text).
      * This is the "cut line when nothing is selected" behavior.
      */
@@ -286,6 +298,13 @@ export class CanvistEditor {
      * Delete the word to the right of the cursor (Ctrl+Delete).
      */
     delete_word_right(): void;
+    /**
+     * Compare current text against the last snapshot.
+     *
+     * Returns a list of changed line numbers (0-based) as a flat array.
+     * A line is "changed" if it differs from the snapshot.
+     */
+    diff_from_snapshot(): Uint32Array;
     /**
      * Duplicate the current line (or selected lines) below.
      */
@@ -408,6 +427,10 @@ export class CanvistEditor {
      * the end of the document.
      */
     go_to_line(line_number: number): void;
+    /**
+     * Whether a snapshot has been taken.
+     */
+    has_snapshot(): boolean;
     /**
      * Whether the current-line highlight is enabled.
      */
@@ -588,6 +611,10 @@ export class CanvistEditor {
      */
     measure_text_width(text: string): number;
     /**
+     * Get the minimap width.
+     */
+    minimap_width(): number;
+    /**
      * Move cursor one character left.
      */
     move_cursor_left(extend: boolean): void;
@@ -762,6 +789,12 @@ export class CanvistEditor {
      * Remove the ruler at the given column.
      */
     remove_ruler(column: number): void;
+    /**
+     * Rename all occurrences of the word under cursor to `new_name`.
+     *
+     * Uses whole-word matching. Returns the number of replacements.
+     */
+    rename_all(new_name: string): number;
     /**
      * Request a re-render of the document to the canvas.
      *
@@ -975,6 +1008,18 @@ export class CanvistEditor {
      */
     set_comment_prefix(prefix: string): void;
     /**
+     * Set cursor colour override. Pass 0,0,0,0 to reset to theme default.
+     */
+    set_cursor_color(r: number, g: number, b: number, a: number): void;
+    /**
+     * Set cursor style: 0=line (default), 1=block, 2=underline.
+     */
+    set_cursor_style(style: number): void;
+    /**
+     * Set cursor width in pixels (line style only, default 2.0).
+     */
+    set_cursor_width(w: number): void;
+    /**
      * Set the maximum number of event log entries.
      */
     set_event_log_max(max: number): void;
@@ -1019,6 +1064,10 @@ export class CanvistEditor {
      * to stay within the limit.
      */
     set_max_length(max: number): void;
+    /**
+     * Set the minimap width in pixels (default 60).
+     */
+    set_minimap_width(w: number): void;
     /**
      * Set the current wall-clock time (milliseconds since epoch) for the
      * undo coalescing timer.
@@ -1066,6 +1115,10 @@ export class CanvistEditor {
      */
     set_show_line_numbers(show: boolean): void;
     /**
+     * Toggle the minimap sidebar.
+     */
+    set_show_minimap(enabled: boolean): void;
+    /**
      * Toggle the visual whitespace indicator.
      *
      * When enabled, the renderer draws `·` for spaces and `→` for tabs.
@@ -1090,6 +1143,11 @@ export class CanvistEditor {
      * Enable or disable soft tabs (spaces instead of `\t`).
      */
     set_soft_tabs(enabled: boolean): void;
+    /**
+     * Toggle sticky scroll — shows the first line of the document at
+     * the top when scrolled past it.
+     */
+    set_sticky_scroll(enabled: boolean): void;
     /**
      * Set the tab display/insert size (1–8). Default: 4.
      */
@@ -1126,6 +1184,10 @@ export class CanvistEditor {
      */
     show_line_numbers(): boolean;
     /**
+     * Whether the minimap is shown.
+     */
+    show_minimap(): boolean;
+    /**
      * Whether whitespace visualization is enabled.
      */
     show_whitespace(): boolean;
@@ -1160,6 +1222,10 @@ export class CanvistEditor {
      */
     spaces_to_tabs(): number;
     /**
+     * Whether sticky scroll is enabled.
+     */
+    sticky_scroll(): boolean;
+    /**
      * Get the current tab size.
      */
     tab_size(): number;
@@ -1169,6 +1235,10 @@ export class CanvistEditor {
      * Returns the number of tabs replaced.
      */
     tabs_to_spaces(): number;
+    /**
+     * Take a snapshot of the current text for later diff.
+     */
+    take_snapshot(): void;
     /**
      * Fast content fingerprint (FNV-1a 64-bit hash as hex string).
      *
@@ -1390,6 +1460,7 @@ export interface InitOutput {
     readonly canvisteditor_clear_annotations: (a: number) => void;
     readonly canvisteditor_clear_bookmarks: (a: number) => void;
     readonly canvisteditor_clear_line_decorations: (a: number) => void;
+    readonly canvisteditor_clear_snapshot: (a: number) => void;
     readonly canvisteditor_clipboard_cut: (a: number) => void;
     readonly canvisteditor_clipboard_paste: (a: number, b: number, c: number) => void;
     readonly canvisteditor_clipboard_ring_clear: (a: number) => void;
@@ -1411,11 +1482,14 @@ export interface InitOutput {
     readonly canvisteditor_cursor_history_forward: (a: number) => number;
     readonly canvisteditor_cursor_history_length: (a: number) => number;
     readonly canvisteditor_cursor_line: (a: number) => [number, number, number];
+    readonly canvisteditor_cursor_style: (a: number) => number;
+    readonly canvisteditor_cursor_width_px: (a: number) => number;
     readonly canvisteditor_cut_line: (a: number) => [number, number];
     readonly canvisteditor_delete_line: (a: number) => void;
     readonly canvisteditor_delete_range: (a: number, b: number, c: number) => void;
     readonly canvisteditor_delete_word_left: (a: number) => void;
     readonly canvisteditor_delete_word_right: (a: number) => void;
+    readonly canvisteditor_diff_from_snapshot: (a: number) => [number, number];
     readonly canvisteditor_duplicate_line: (a: number) => void;
     readonly canvisteditor_ensure_final_newline: (a: number) => number;
     readonly canvisteditor_event_log_clear: (a: number) => void;
@@ -1438,6 +1512,7 @@ export interface InitOutput {
     readonly canvisteditor_go_to_document_end: (a: number) => void;
     readonly canvisteditor_go_to_document_start: (a: number) => void;
     readonly canvisteditor_go_to_line: (a: number, b: number) => void;
+    readonly canvisteditor_has_snapshot: (a: number) => number;
     readonly canvisteditor_highlight_current_line: (a: number) => number;
     readonly canvisteditor_highlight_matching_brackets: (a: number) => number;
     readonly canvisteditor_highlight_occurrences: (a: number) => number;
@@ -1468,6 +1543,7 @@ export interface InitOutput {
     readonly canvisteditor_mark_saved: (a: number) => void;
     readonly canvisteditor_max_length: (a: number) => number;
     readonly canvisteditor_measure_char_width: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_minimap_width: (a: number) => number;
     readonly canvisteditor_move_cursor_left: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_right: (a: number, b: number) => void;
     readonly canvisteditor_move_cursor_to: (a: number, b: number, c: number) => void;
@@ -1503,6 +1579,7 @@ export interface InitOutput {
     readonly canvisteditor_remove_highlight_color: (a: number) => void;
     readonly canvisteditor_remove_line_decorations: (a: number, b: number) => void;
     readonly canvisteditor_remove_ruler: (a: number, b: number) => void;
+    readonly canvisteditor_rename_all: (a: number, b: number, c: number) => number;
     readonly canvisteditor_render: (a: number) => [number, number];
     readonly canvisteditor_replace_all: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly canvisteditor_replace_all_occurrences: (a: number, b: number, c: number) => number;
@@ -1542,6 +1619,9 @@ export interface InitOutput {
     readonly canvisteditor_set_coalesce_timeout: (a: number, b: number) => void;
     readonly canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_set_comment_prefix: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_cursor_color: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly canvisteditor_set_cursor_style: (a: number, b: number) => void;
+    readonly canvisteditor_set_cursor_width: (a: number, b: number) => void;
     readonly canvisteditor_set_event_log_max: (a: number, b: number) => void;
     readonly canvisteditor_set_focused: (a: number, b: number) => void;
     readonly canvisteditor_set_font_size: (a: number, b: number) => void;
@@ -1551,6 +1631,7 @@ export interface InitOutput {
     readonly canvisteditor_set_highlight_occurrences: (a: number, b: number) => void;
     readonly canvisteditor_set_line_range: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly canvisteditor_set_max_length: (a: number, b: number) => void;
+    readonly canvisteditor_set_minimap_width: (a: number, b: number) => void;
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_overwrite_mode: (a: number, b: number) => void;
     readonly canvisteditor_set_placeholder: (a: number, b: number, c: number) => void;
@@ -1560,10 +1641,12 @@ export interface InitOutput {
     readonly canvisteditor_set_selection: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_show_indent_guides: (a: number, b: number) => void;
     readonly canvisteditor_set_show_line_numbers: (a: number, b: number) => void;
+    readonly canvisteditor_set_show_minimap: (a: number, b: number) => void;
     readonly canvisteditor_set_show_whitespace: (a: number, b: number) => void;
     readonly canvisteditor_set_show_wrap_indicators: (a: number, b: number) => void;
     readonly canvisteditor_set_size: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_soft_tabs: (a: number, b: number) => void;
+    readonly canvisteditor_set_sticky_scroll: (a: number, b: number) => void;
     readonly canvisteditor_set_tab_size: (a: number, b: number) => void;
     readonly canvisteditor_set_theme_dark: (a: number) => void;
     readonly canvisteditor_set_theme_light: (a: number) => void;
@@ -1572,6 +1655,7 @@ export interface InitOutput {
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
     readonly canvisteditor_show_indent_guides: (a: number) => number;
     readonly canvisteditor_show_line_numbers: (a: number) => number;
+    readonly canvisteditor_show_minimap: (a: number) => number;
     readonly canvisteditor_show_whitespace: (a: number) => number;
     readonly canvisteditor_show_wrap_indicators: (a: number) => number;
     readonly canvisteditor_smart_backspace: (a: number) => number;
@@ -1579,8 +1663,10 @@ export interface InitOutput {
     readonly canvisteditor_sort_lines_asc: (a: number) => void;
     readonly canvisteditor_sort_lines_desc: (a: number) => void;
     readonly canvisteditor_spaces_to_tabs: (a: number) => number;
+    readonly canvisteditor_sticky_scroll: (a: number) => number;
     readonly canvisteditor_tab_size: (a: number) => number;
     readonly canvisteditor_tabs_to_spaces: (a: number) => number;
+    readonly canvisteditor_take_snapshot: (a: number) => void;
     readonly canvisteditor_text_hash: (a: number) => [number, number];
     readonly canvisteditor_theme_name: (a: number) => [number, number];
     readonly canvisteditor_to_html: (a: number) => [number, number];

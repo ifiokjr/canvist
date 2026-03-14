@@ -285,6 +285,12 @@ export class CanvistEditor {
         wasm.canvisteditor_clear_line_decorations(this.__wbg_ptr);
     }
     /**
+     * Clear the saved snapshot.
+     */
+    clear_snapshot() {
+        wasm.canvisteditor_clear_snapshot(this.__wbg_ptr);
+    }
+    /**
      * Perform a clipboard cut: delete the current selection.
      *
      * The caller is expected to have already read `get_selected_text()` and
@@ -517,6 +523,22 @@ export class CanvistEditor {
         return ret[0] >>> 0;
     }
     /**
+     * Get cursor style (0=line, 1=block, 2=underline).
+     * @returns {number}
+     */
+    cursor_style() {
+        const ret = wasm.canvisteditor_cursor_style(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Get cursor width.
+     * @returns {number}
+     */
+    cursor_width_px() {
+        const ret = wasm.canvisteditor_cursor_width_px(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * Cut the current line (remove it and return its text).
      * This is the "cut line when nothing is selected" behavior.
      * @returns {string}
@@ -564,6 +586,19 @@ export class CanvistEditor {
      */
     delete_word_right() {
         wasm.canvisteditor_delete_word_right(this.__wbg_ptr);
+    }
+    /**
+     * Compare current text against the last snapshot.
+     *
+     * Returns a list of changed line numbers (0-based) as a flat array.
+     * A line is "changed" if it differs from the snapshot.
+     * @returns {Uint32Array}
+     */
+    diff_from_snapshot() {
+        const ret = wasm.canvisteditor_diff_from_snapshot(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Duplicate the current line (or selected lines) below.
@@ -835,6 +870,14 @@ export class CanvistEditor {
      */
     go_to_line(line_number) {
         wasm.canvisteditor_go_to_line(this.__wbg_ptr, line_number);
+    }
+    /**
+     * Whether a snapshot has been taken.
+     * @returns {boolean}
+     */
+    has_snapshot() {
+        const ret = wasm.canvisteditor_has_snapshot(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Whether the current-line highlight is enabled.
@@ -1164,6 +1207,14 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Get the minimap width.
+     * @returns {number}
+     */
+    minimap_width() {
+        const ret = wasm.canvisteditor_minimap_width(this.__wbg_ptr);
+        return ret;
+    }
+    /**
      * Move cursor one character left.
      * @param {boolean} extend
      */
@@ -1488,6 +1539,19 @@ export class CanvistEditor {
      */
     remove_ruler(column) {
         wasm.canvisteditor_remove_ruler(this.__wbg_ptr, column);
+    }
+    /**
+     * Rename all occurrences of the word under cursor to `new_name`.
+     *
+     * Uses whole-word matching. Returns the number of replacements.
+     * @param {string} new_name
+     * @returns {number}
+     */
+    rename_all(new_name) {
+        const ptr0 = passStringToWasm0(new_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_rename_all(this.__wbg_ptr, ptr0, len0);
+        return ret >>> 0;
     }
     /**
      * Request a re-render of the document to the canvas.
@@ -1883,6 +1947,30 @@ export class CanvistEditor {
         wasm.canvisteditor_set_comment_prefix(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Set cursor colour override. Pass 0,0,0,0 to reset to theme default.
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @param {number} a
+     */
+    set_cursor_color(r, g, b, a) {
+        wasm.canvisteditor_set_cursor_color(this.__wbg_ptr, r, g, b, a);
+    }
+    /**
+     * Set cursor style: 0=line (default), 1=block, 2=underline.
+     * @param {number} style
+     */
+    set_cursor_style(style) {
+        wasm.canvisteditor_set_cursor_style(this.__wbg_ptr, style);
+    }
+    /**
+     * Set cursor width in pixels (line style only, default 2.0).
+     * @param {number} w
+     */
+    set_cursor_width(w) {
+        wasm.canvisteditor_set_cursor_width(this.__wbg_ptr, w);
+    }
+    /**
      * Set the maximum number of event log entries.
      * @param {number} max
      */
@@ -1960,6 +2048,13 @@ export class CanvistEditor {
      */
     set_max_length(max) {
         wasm.canvisteditor_set_max_length(this.__wbg_ptr, max);
+    }
+    /**
+     * Set the minimap width in pixels (default 60).
+     * @param {number} w
+     */
+    set_minimap_width(w) {
+        wasm.canvisteditor_set_minimap_width(this.__wbg_ptr, w);
     }
     /**
      * Set the current wall-clock time (milliseconds since epoch) for the
@@ -2040,6 +2135,13 @@ export class CanvistEditor {
         wasm.canvisteditor_set_show_line_numbers(this.__wbg_ptr, show);
     }
     /**
+     * Toggle the minimap sidebar.
+     * @param {boolean} enabled
+     */
+    set_show_minimap(enabled) {
+        wasm.canvisteditor_set_show_minimap(this.__wbg_ptr, enabled);
+    }
+    /**
      * Toggle the visual whitespace indicator.
      *
      * When enabled, the renderer draws `·` for spaces and `→` for tabs.
@@ -2076,6 +2178,14 @@ export class CanvistEditor {
      */
     set_soft_tabs(enabled) {
         wasm.canvisteditor_set_soft_tabs(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Toggle sticky scroll — shows the first line of the document at
+     * the top when scrolled past it.
+     * @param {boolean} enabled
+     */
+    set_sticky_scroll(enabled) {
+        wasm.canvisteditor_set_sticky_scroll(this.__wbg_ptr, enabled);
     }
     /**
      * Set the tab display/insert size (1–8). Default: 4.
@@ -2139,6 +2249,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether the minimap is shown.
+     * @returns {boolean}
+     */
+    show_minimap() {
+        const ret = wasm.canvisteditor_show_minimap(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Whether whitespace visualization is enabled.
      * @returns {boolean}
      */
@@ -2197,6 +2315,14 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Whether sticky scroll is enabled.
+     * @returns {boolean}
+     */
+    sticky_scroll() {
+        const ret = wasm.canvisteditor_sticky_scroll(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Get the current tab size.
      * @returns {number}
      */
@@ -2213,6 +2339,12 @@ export class CanvistEditor {
     tabs_to_spaces() {
         const ret = wasm.canvisteditor_tabs_to_spaces(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Take a snapshot of the current text for later diff.
+     */
+    take_snapshot() {
+        wasm.canvisteditor_take_snapshot(this.__wbg_ptr);
     }
     /**
      * Fast content fingerprint (FNV-1a 64-bit hash as hex string).
