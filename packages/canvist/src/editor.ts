@@ -2241,6 +2241,50 @@ export async function createEditor(
 			exportCanvasDataUrl() {
 				return ref.export_canvas_data_url();
 			},
+			// ── Command palette ─────────────────────────
+			commandList() {
+				return Array.from(ref.command_list());
+			},
+			searchCommands(query: string) {
+				return Array.from(ref.search_commands(query));
+			},
+			// ── Text diffing ────────────────────────────
+			diffTexts(a: string, b: string) {
+				return Array.from(wasm.CanvistEditor.diff_texts(a, b));
+			},
+			// ── Bidi info ───────────────────────────────
+			get containsRtl() {
+				return ref.contains_rtl();
+			},
+			get containsNonAscii() {
+				return ref.contains_non_ascii();
+			},
+			// ── Selection to lines ──────────────────────
+			selectionLineRange() {
+				return Array.from(ref.selection_line_range());
+			},
+			selectLines(startLine: number, endLine: number) {
+				ref.select_lines(startLine, endLine);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Whitespace normalization ────────────────
+			normalizeLineEndings() {
+				syncTime();
+				const n = ref.normalize_line_endings();
+				renderFrame();
+				return n;
+			},
+			normalizeIndentation() {
+				syncTime();
+				const n = ref.normalize_indentation();
+				renderFrame();
+				return n;
+			},
+			// ── Document outline ────────────────────────
+			documentOutline() {
+				return Array.from(ref.document_outline());
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));

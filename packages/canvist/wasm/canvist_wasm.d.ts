@@ -237,6 +237,13 @@ export class CanvistEditor {
      */
     coalesce_timeout(): number;
     /**
+     * Return all available editor commands as a flat array:
+     * [name, keybinding, name, keybinding, ...].
+     *
+     * Useful for building a command palette UI.
+     */
+    command_list(): string[];
+    /**
      * Get the current line comment prefix.
      */
     comment_prefix(): string;
@@ -247,6 +254,16 @@ export class CanvistEditor {
      * with the prefix at the cursor. Sorted alphabetically, deduplicated.
      */
     completions(max_results: number): string[];
+    /**
+     * Whether the document contains any non-ASCII characters.
+     */
+    contains_non_ascii(): boolean;
+    /**
+     * Whether the document contains any RTL (right-to-left) characters.
+     *
+     * Detects Arabic, Hebrew, and other RTL scripts.
+     */
+    contains_rtl(): boolean;
     /**
      * Compute the total content height in logical pixels.
      *
@@ -352,6 +369,20 @@ export class CanvistEditor {
      * A line is "changed" if it differs from the snapshot.
      */
     diff_from_snapshot(): Uint32Array;
+    /**
+     * Compare two texts line by line.
+     *
+     * Returns flat array: [kind, lineNumber, text, ...] where kind is
+     * "added", "removed", or "changed".
+     */
+    static diff_texts(a: string, b: string): string[];
+    /**
+     * Build a document outline from indentation levels.
+     *
+     * Returns flat array: [indent, lineNumber, text, ...] for non-empty
+     * lines. The indent value can be used to build a tree structure.
+     */
+    document_outline(): string[];
     /**
      * Duplicate the current line (or selected lines) below.
      */
@@ -892,6 +923,20 @@ export class CanvistEditor {
      */
     next_bookmark(): boolean;
     /**
+     * Normalize all indentation to the current tab style.
+     *
+     * If soft_tabs is true, converts tabs to spaces (tab_size).
+     * If soft_tabs is false, converts leading spaces to tabs.
+     * Returns number of lines modified.
+     */
+    normalize_indentation(): number;
+    /**
+     * Normalize line endings to LF (remove \r).
+     *
+     * Returns the number of \r characters removed.
+     */
+    normalize_line_endings(): number;
+    /**
      * Return all occurrence offsets of the selected text as a flat array
      * `[start0, end0, start1, end1, ...]`.
      */
@@ -1123,6 +1168,13 @@ export class CanvistEditor {
      */
     scroll_y(): number;
     /**
+     * Search commands by query string.
+     *
+     * Returns matching commands as [name, keybinding, ...].
+     * Case-insensitive substring match on command name.
+     */
+    search_commands(query: string): string[];
+    /**
      * Clear search history.
      */
     search_history_clear(): void;
@@ -1161,6 +1213,10 @@ export class CanvistEditor {
      * Repeated calls extend the selection by one line each time.
      */
     select_line(): void;
+    /**
+     * Select an entire range of lines (0-based, inclusive).
+     */
+    select_lines(start_line: number, end_line: number): void;
     /**
      * Select from cursor to document end (Ctrl+Shift+End).
      */
@@ -1209,6 +1265,12 @@ export class CanvistEditor {
      * Length of the current selection in characters.
      */
     selection_length(): number;
+    /**
+     * Get the line numbers covered by the current selection.
+     *
+     * Returns [startLine, endLine] (0-based, inclusive).
+     */
+    selection_line_range(): Uint32Array;
     /**
      * Get selection start offset.
      */
@@ -1803,8 +1865,11 @@ export interface InitOutput {
     readonly canvisteditor_clipboard_ring_paste: (a: number, b: number) => void;
     readonly canvisteditor_clipboard_ring_push: (a: number, b: number, c: number) => void;
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
+    readonly canvisteditor_command_list: (a: number) => [number, number];
     readonly canvisteditor_comment_prefix: (a: number) => [number, number];
     readonly canvisteditor_completions: (a: number, b: number) => [number, number];
+    readonly canvisteditor_contains_non_ascii: (a: number) => number;
+    readonly canvisteditor_contains_rtl: (a: number) => number;
     readonly canvisteditor_content_height: (a: number) => [number, number, number];
     readonly canvisteditor_contract_selection: (a: number) => void;
     readonly canvisteditor_create: (a: number, b: number) => [number, number, number];
@@ -1825,6 +1890,8 @@ export interface InitOutput {
     readonly canvisteditor_delete_word_right: (a: number) => void;
     readonly canvisteditor_detect_links: (a: number) => number;
     readonly canvisteditor_diff_from_snapshot: (a: number) => [number, number];
+    readonly canvisteditor_diff_texts: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_document_outline: (a: number) => [number, number];
     readonly canvisteditor_duplicate_line: (a: number) => void;
     readonly canvisteditor_editor_version: (a: number) => [number, number];
     readonly canvisteditor_ensure_final_newline: (a: number) => number;
@@ -1926,6 +1993,8 @@ export interface InitOutput {
     readonly canvisteditor_move_to_prev_paragraph: (a: number) => void;
     readonly canvisteditor_multi_cursor_insert: (a: number, b: number, c: number) => number;
     readonly canvisteditor_next_bookmark: (a: number) => number;
+    readonly canvisteditor_normalize_indentation: (a: number) => number;
+    readonly canvisteditor_normalize_line_endings: (a: number) => number;
     readonly canvisteditor_occurrence_offsets: (a: number) => [number, number];
     readonly canvisteditor_offset_above: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_offset_below: (a: number, b: number) => [number, number, number];
@@ -1972,6 +2041,7 @@ export interface InitOutput {
     readonly canvisteditor_scroll_to_line: (a: number, b: number) => void;
     readonly canvisteditor_scroll_to_selection: (a: number) => void;
     readonly canvisteditor_scroll_y: (a: number) => number;
+    readonly canvisteditor_search_commands: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_search_history_clear: (a: number) => void;
     readonly canvisteditor_search_history_get: (a: number, b: number) => [number, number];
     readonly canvisteditor_search_history_length: (a: number) => number;
@@ -1980,6 +2050,7 @@ export interface InitOutput {
     readonly canvisteditor_select_all_occurrences: (a: number) => number;
     readonly canvisteditor_select_between_brackets: (a: number) => number;
     readonly canvisteditor_select_line: (a: number) => void;
+    readonly canvisteditor_select_lines: (a: number, b: number, c: number) => void;
     readonly canvisteditor_select_to_document_end: (a: number) => void;
     readonly canvisteditor_select_to_document_start: (a: number) => void;
     readonly canvisteditor_select_word_at: (a: number, b: number) => void;
@@ -1990,6 +2061,7 @@ export interface InitOutput {
     readonly canvisteditor_selection_end: (a: number) => number;
     readonly canvisteditor_selection_is_collapsed: (a: number) => number;
     readonly canvisteditor_selection_length: (a: number) => number;
+    readonly canvisteditor_selection_line_range: (a: number) => [number, number];
     readonly canvisteditor_sentence_count: (a: number) => number;
     readonly canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_auto_surround: (a: number, b: number) => void;
