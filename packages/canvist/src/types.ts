@@ -1066,6 +1066,61 @@ export interface CanvistEditor {
 	/** Tokenize document: [kind, text, kind, text, ...]. */
 	tokenize(): string[];
 
+	// ── Link detection ──────────────────────────────────────────────
+
+	/** Toggle URL link detection. */
+	setDetectLinks(enabled: boolean): void;
+
+	/** Whether link detection is enabled. */
+	readonly detectLinks: boolean;
+
+	/** Find all URLs: [start, end, start, end, ...]. */
+	findLinks(): number[];
+
+	/** Get URL text at offset, or empty string. */
+	linkAtOffset(offset: number): string;
+
+	// ── Line folding ────────────────────────────────────────────────
+
+	/** Fold a range of lines (0-based, inclusive). */
+	foldLines(startLine: number, endLine: number): void;
+
+	/** Unfold a specific range. */
+	unfoldLines(startLine: number, endLine: number): void;
+
+	/** Unfold all ranges. */
+	unfoldAll(): void;
+
+	/** Number of fold regions. */
+	readonly foldCount: number;
+
+	/** Whether a line is hidden inside a fold. */
+	isLineFolded(line: number): boolean;
+
+	/** Toggle fold at line (indent-based auto-detection). */
+	toggleFoldAt(line: number): void;
+
+	/** All folded ranges: [start, end, ...]. */
+	foldedRanges(): number[];
+
+	// ── Gutter click ────────────────────────────────────────────────
+
+	/** Get line number at Y coordinate (-1 if outside). */
+	lineAtY(y: number): number;
+
+	// ── Configuration presets ───────────────────────────────────────
+
+	/** Apply preset: "code", "prose", or "minimal". */
+	applyPreset(name: string): void;
+
+	// ── Content statistics ──────────────────────────────────────────
+
+	/** Estimated reading time in seconds. */
+	readonly readingTimeSeconds: number;
+
+	/** Flesch reading ease score (0–100). */
+	readonly fleschReadingEase: number;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

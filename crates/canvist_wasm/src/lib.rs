@@ -430,6 +430,10 @@ pub struct CanvistEditor {
 	show_find_highlights: bool,
 	/// Current find highlight needle.
 	find_highlight_needle: String,
+	/// Folded line ranges: each (start_line, end_line) inclusive, 0-based.
+	folded_ranges: Vec<(usize, usize)>,
+	/// Whether link detection is enabled.
+	detect_links: bool,
 }
 
 /// Colour theme for the editor canvas.
@@ -575,6 +579,8 @@ impl CanvistEditor {
 			saved_macros: std::collections::HashMap::new(),
 			show_find_highlights: false,
 			find_highlight_needle: String::new(),
+			folded_ranges: Vec::new(),
+			detect_links: false,
 		})
 	}
 
@@ -4539,6 +4545,302 @@ impl CanvistEditor {
 			}
 		}
 		tokens
+	}
+
+	// ── Link detection ───────────────────────────────────────────────
+
+	/// Enable or disable URL link detection.
+	#[wasm_bindgen]
+	pub fn set_detect_links(&mut self, enabled: bool) {
+		self.detect_links = enabled;
+	}
+
+	/// Whether link detection is enabled.
+	#[wasm_bindgen]
+	pub fn detect_links(&self) -> bool {
+		self.detect_links
+	}
+
+	/// Find all URLs in the document.
+	///
+	/// Returns flat array: [start, end, start, end, ...] of char offsets.
+	#[wasm_bindgen]
+	pub fn find_links(&self) -> Vec<usize> {
+		let plain = self.runtime.document().plain_text();
+		let mut results = Vec::new();
+		let prefixes = ["https://", "http://", "ftp://"];
+
+		for prefix in &prefixes {
+			let mut search_from = 0;
+			while let Some(pos) = plain[search_from..].find(prefix) {
+				let abs = search_from + pos;
+				let char_start = plain[..abs].chars().count();
+				// Find end of URL — stop at whitespace, >, ), ], or end.
+				let url_bytes = &plain[abs..];
+				let end_byte = url_bytes
+					.find(|c: char| c.is_whitespace() || c == '>' || c == ')' || c == ']')
+					.unwrap_or(url_bytes.len());
+				let char_end = char_start + plain[abs..abs + end_byte].chars().count();
+				results.push(char_start);
+				results.push(char_end);
+				search_from = abs + end_byte;
+			}
+		}
+		results.sort_by_key(|&x| x);
+		results
+	}
+
+	/// Get the URL text at a character offset, if any.
+	///
+	/// Returns empty string if offset is not inside a URL.
+	#[wasm_bindgen]
+	pub fn link_at_offset(&self, offset: usize) -> String {
+		let links = self.find_links();
+		let mut i = 0;
+		while i + 1 < links.len() {
+			if offset >= links[i] && offset < links[i + 1] {
+				let plain = self.runtime.document().plain_text();
+				let chars: Vec<char> = plain.chars().collect();
+				return chars[links[i]..links[i + 1]].iter().collect();
+			}
+			i += 2;
+		}
+		String::new()
+	}
+
+	// ── Line folding ─────────────────────────────────────────────────
+
+	/// Fold (collapse) a range of lines (0-based, inclusive).
+	///
+	/// The first line remains visible; subsequent lines are hidden.
+	#[wasm_bindgen]
+	pub fn fold_lines(&mut self, start_line: usize, end_line: usize) {
+		if start_line >= end_line {
+			return;
+		}
+		// Don't add duplicate ranges.
+		if !self
+			.folded_ranges
+			.iter()
+			.any(|&(s, e)| s == start_line && e == end_line)
+		{
+			self.folded_ranges.push((start_line, end_line));
+		}
+	}
+
+	/// Unfold a specific range.
+	#[wasm_bindgen]
+	pub fn unfold_lines(&mut self, start_line: usize, end_line: usize) {
+		self.folded_ranges
+			.retain(|&(s, e)| s != start_line || e != end_line);
+	}
+
+	/// Unfold all ranges.
+	#[wasm_bindgen]
+	pub fn unfold_all(&mut self) {
+		self.folded_ranges.clear();
+	}
+
+	/// Number of active fold regions.
+	#[wasm_bindgen]
+	pub fn fold_count(&self) -> usize {
+		self.folded_ranges.len()
+	}
+
+	/// Whether a specific line is inside a folded (hidden) region.
+	///
+	/// Returns true for lines that are hidden — NOT the first line of
+	/// a fold which remains visible.
+	#[wasm_bindgen]
+	pub fn is_line_folded(&self, line: usize) -> bool {
+		self.folded_ranges
+			.iter()
+			.any(|&(s, e)| line > s && line <= e)
+	}
+
+	/// Toggle fold at a line. If the line starts a fold, unfold it.
+	/// Otherwise, try to fold from this line using indentation.
+	#[wasm_bindgen]
+	pub fn toggle_fold_at(&mut self, line: usize) {
+		// Check if this line starts an existing fold.
+		if let Some(pos) = self.folded_ranges.iter().position(|&(s, _)| s == line) {
+			self.folded_ranges.remove(pos);
+			return;
+		}
+		// Auto-detect fold range using indentation.
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		if line >= lines.len() {
+			return;
+		}
+		let base_indent = lines[line]
+			.chars()
+			.take_while(|c| c.is_whitespace())
+			.count();
+		let mut end = line;
+		for i in (line + 1)..lines.len() {
+			let l = lines[i];
+			if l.trim().is_empty() {
+				end = i;
+				continue;
+			}
+			let indent = l.chars().take_while(|c| c.is_whitespace()).count();
+			if indent > base_indent {
+				end = i;
+			} else {
+				break;
+			}
+		}
+		if end > line {
+			self.fold_lines(line, end);
+		}
+	}
+
+	/// Get all folded ranges as flat array: [start0, end0, start1, end1, ...].
+	#[wasm_bindgen]
+	pub fn folded_ranges(&self) -> Vec<usize> {
+		let mut result = Vec::with_capacity(self.folded_ranges.len() * 2);
+		for &(s, e) in &self.folded_ranges {
+			result.push(s);
+			result.push(e);
+		}
+		result
+	}
+
+	// ── Gutter click ─────────────────────────────────────────────────
+
+	/// Determine which line number a Y-coordinate in the gutter maps to.
+	///
+	/// Returns the 0-based line number, or -1 if outside content.
+	#[wasm_bindgen]
+	pub fn line_at_y(&self, y: f32) -> i32 {
+		let plain = self.runtime.document().plain_text();
+		let line_count = if plain.is_empty() {
+			1
+		} else {
+			plain.split('\n').count()
+		};
+		let ch = self.content_height().unwrap_or(self.height);
+		if ch <= 0.0 || line_count == 0 {
+			return -1;
+		}
+		let line_height = ch / line_count as f32;
+		let adjusted_y = y + self.scroll_y;
+		let line = (adjusted_y / line_height) as i32;
+		if line < 0 || line >= line_count as i32 {
+			-1
+		} else {
+			line
+		}
+	}
+
+	// ── Configuration presets ────────────────────────────────────────
+
+	/// Apply a named configuration preset.
+	///
+	/// - `"code"`: line numbers, indent guides, whitespace, bracket
+	///   highlight, occurrence highlight, auto-close brackets, soft tabs
+	/// - `"prose"`: word wrap, no line numbers, no whitespace, no
+	///   indent guides, placeholder
+	/// - `"minimal"`: minimal chrome, no gutter, no highlights
+	#[wasm_bindgen]
+	pub fn apply_preset(&mut self, name: &str) {
+		match name {
+			"code" => {
+				self.show_line_numbers = true;
+				self.show_indent_guides = true;
+				self.show_whitespace = true;
+				self.highlight_matching_brackets = true;
+				self.highlight_occurrences = true;
+				self.auto_close_brackets = true;
+				self.auto_surround = true;
+				self.soft_tabs = true;
+				self.tab_size = 4;
+				self.word_wrap = false;
+				self.show_wrap_indicators = true;
+			}
+			"prose" => {
+				self.show_line_numbers = false;
+				self.show_indent_guides = false;
+				self.show_whitespace = false;
+				self.highlight_matching_brackets = false;
+				self.highlight_occurrences = false;
+				self.auto_close_brackets = false;
+				self.auto_surround = false;
+				self.word_wrap = true;
+				self.show_wrap_indicators = false;
+				if self.placeholder.is_empty() {
+					self.placeholder = "Start writing…".to_string();
+				}
+			}
+			"minimal" => {
+				self.show_line_numbers = false;
+				self.show_indent_guides = false;
+				self.show_whitespace = false;
+				self.highlight_matching_brackets = false;
+				self.highlight_occurrences = false;
+				self.highlight_current_line = false;
+				self.auto_close_brackets = false;
+				self.auto_surround = false;
+				self.show_minimap = false;
+				self.sticky_scroll = false;
+				self.show_wrap_indicators = false;
+			}
+			_ => {}
+		}
+	}
+
+	// ── Content statistics ───────────────────────────────────────────
+
+	/// Estimated reading time in seconds (assumes 250 words/minute).
+	#[wasm_bindgen]
+	pub fn reading_time_seconds(&self) -> f32 {
+		let plain = self.runtime.document().plain_text();
+		let word_count = plain.split_whitespace().count();
+		(word_count as f32 / 250.0) * 60.0
+	}
+
+	/// Flesch reading ease score (0–100, higher = easier).
+	///
+	/// Simplified: uses average words per sentence and average
+	/// syllables per word.
+	#[wasm_bindgen]
+	pub fn flesch_reading_ease(&self) -> f32 {
+		let plain = self.runtime.document().plain_text();
+		let words: Vec<&str> = plain.split_whitespace().collect();
+		if words.is_empty() {
+			return 0.0;
+		}
+		let word_count = words.len() as f32;
+
+		// Count sentences (split on . ! ?).
+		let sentence_count = plain
+			.chars()
+			.filter(|&c| c == '.' || c == '!' || c == '?')
+			.count()
+			.max(1) as f32;
+
+		// Count syllables (simplified: count vowel groups).
+		let total_syllables: usize = words
+			.iter()
+			.map(|w| {
+				let lower = w.to_lowercase();
+				let mut count = 0usize;
+				let mut prev_vowel = false;
+				for ch in lower.chars() {
+					let is_vowel = "aeiouy".contains(ch);
+					if is_vowel && !prev_vowel {
+						count += 1;
+					}
+					prev_vowel = is_vowel;
+				}
+				count.max(1)
+			})
+			.sum();
+
+		let avg_sentence_len = word_count / sentence_count;
+		let avg_syllables = total_syllables as f32 / word_count;
+		(206.835 - 1.015 * avg_sentence_len - 84.6 * avg_syllables).clamp(0.0, 100.0)
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any

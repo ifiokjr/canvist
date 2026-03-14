@@ -2051,6 +2051,62 @@ export async function createEditor(
 			tokenize() {
 				return Array.from(ref.tokenize());
 			},
+			// ── Link detection ──────────────────────────
+			setDetectLinks(enabled: boolean) {
+				ref.set_detect_links(enabled);
+				renderFrame();
+			},
+			get detectLinks() {
+				return ref.detect_links();
+			},
+			findLinks() {
+				return Array.from(ref.find_links());
+			},
+			linkAtOffset(offset: number) {
+				return ref.link_at_offset(offset);
+			},
+			// ── Line folding ────────────────────────────
+			foldLines(startLine: number, endLine: number) {
+				ref.fold_lines(startLine, endLine);
+				renderFrame();
+			},
+			unfoldLines(startLine: number, endLine: number) {
+				ref.unfold_lines(startLine, endLine);
+				renderFrame();
+			},
+			unfoldAll() {
+				ref.unfold_all();
+				renderFrame();
+			},
+			get foldCount() {
+				return ref.fold_count();
+			},
+			isLineFolded(line: number) {
+				return ref.is_line_folded(line);
+			},
+			toggleFoldAt(line: number) {
+				ref.toggle_fold_at(line);
+				renderFrame();
+			},
+			foldedRanges() {
+				return Array.from(ref.folded_ranges());
+			},
+			// ── Gutter click ────────────────────────────
+			lineAtY(y: number) {
+				return ref.line_at_y(y);
+			},
+			// ── Configuration presets ───────────────────
+			applyPreset(name: string) {
+				ref.apply_preset(name);
+				renderFrame();
+			},
+			// ── Content statistics ──────────────────────
+			get readingTimeSeconds() {
+				return ref.reading_time_seconds();
+			},
+			get fleschReadingEase() {
+				return ref.flesch_reading_ease();
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));

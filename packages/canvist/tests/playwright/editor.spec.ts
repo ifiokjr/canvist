@@ -5420,4 +5420,224 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Link detection ──────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] find_links detects URLs`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Visit https://example.com for info");
+						const links = Array.from(ed.find_links());
+						const urlText = ed.link_at_offset(8);
+						return { links, urlText };
+					});
+					assertEquals(result.links.length, 2);
+					assertEquals(result.urlText, "https://example.com");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line folding ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] fold and unfold lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("line0\n  line1\n  line2\nline3");
+						ed.fold_lines(0, 2);
+						const count1 = ed.fold_count();
+						const hidden1 = ed.is_line_folded(1);
+						const visible0 = ed.is_line_folded(0);
+						const ranges = Array.from(ed.folded_ranges());
+						ed.unfold_all();
+						const count2 = ed.fold_count();
+						return { count1, hidden1, visible0, ranges, count2 };
+					});
+					assertEquals(result.count1, 1);
+					assertEquals(result.hidden1, true);
+					assertEquals(result.visible0, false); // first line stays visible
+					assertEquals(result.ranges[0], 0);
+					assertEquals(result.ranges[1], 2);
+					assertEquals(result.count2, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Toggle fold at (indent-based) ───────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] toggle_fold_at auto-detects from indent`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("def foo:\n  a = 1\n  b = 2\nend");
+						ed.toggle_fold_at(0); // fold from line 0
+						const folded = ed.fold_count();
+						const hidden = ed.is_line_folded(1);
+						ed.toggle_fold_at(0); // unfold
+						const unfolded = ed.fold_count();
+						return { folded, hidden, unfolded };
+					});
+					assertEquals(result.folded, 1);
+					assertEquals(result.hidden, true);
+					assertEquals(result.unfolded, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Gutter click ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line_at_y returns valid line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("line0\nline1\nline2");
+						const lineAt0 = ed.line_at_y(5);
+						return { lineAt0 };
+					});
+					assertEquals(result.lineAt0, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Configuration presets ───────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] apply_preset configures editor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.apply_preset("code");
+						const codeLineNums = ed.show_line_numbers();
+						const codeWrap = ed.word_wrap();
+						ed.apply_preset("prose");
+						const proseLineNums = ed.show_line_numbers();
+						const proseWrap = ed.word_wrap();
+						ed.apply_preset("minimal");
+						const minLineNums = ed.show_line_numbers();
+						return {
+							codeLineNums,
+							codeWrap,
+							proseLineNums,
+							proseWrap,
+							minLineNums,
+						};
+					});
+					assertEquals(result.codeLineNums, true);
+					assertEquals(result.codeWrap, false);
+					assertEquals(result.proseLineNums, false);
+					assertEquals(result.proseWrap, true);
+					assertEquals(result.minLineNums, false);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Content statistics ──────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] reading time and flesch score`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("The cat sat on the mat. The dog ran in the park.");
+						const rt = ed.reading_time_seconds();
+						const flesch = ed.flesch_reading_ease();
+						return { rt, flesch };
+					});
+					assert(result.rt > 0, `reading time should be > 0, got ${result.rt}`);
+					assert(
+						result.flesch > 0,
+						`flesch score should be > 0, got ${result.flesch}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
