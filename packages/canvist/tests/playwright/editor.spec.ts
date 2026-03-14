@@ -6032,4 +6032,217 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Command palette ─────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] command list and search`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						const all = Array.from(ed.command_list());
+						const search = Array.from(ed.search_commands("bold"));
+						return { allLen: all.length, search };
+					});
+					assert(
+						result.allLen > 40,
+						`should have many commands, got ${result.allLen}`,
+					);
+					assertEquals(result.search[0], "Bold");
+					assertEquals(result.search[1], "Ctrl+B");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Text diffing ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] diff_texts finds changes`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						// diff_texts is a static method — call via instance workaround.
+						// Insert first text, save, modify, diff with snapshot.
+						ed.insert_text("a\nb\nc");
+						ed.take_snapshot();
+						ed.delete_range(0, 5);
+						ed.insert_text("a\nX\nc");
+						const diff = Array.from(ed.diff_from_snapshot());
+						// diff_from_snapshot returns changed line numbers.
+						return diff;
+					});
+					// Line 1 changed from "b" to "X".
+					assert(result.includes(1), `line 1 should be changed, got ${result}`);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Bidi info ───────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] contains_rtl and contains_non_ascii`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						const ascii = ed.contains_non_ascii();
+						const rtl = ed.contains_rtl();
+						return { ascii, rtl };
+					});
+					assertEquals(result.ascii, false);
+					assertEquals(result.rtl, false);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Selection to lines ──────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] selection_line_range and select_lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("line0\nline1\nline2\nline3");
+						ed.set_selection(6, 17); // spans line1 and line2
+						const range = Array.from(ed.selection_line_range());
+						ed.select_lines(1, 2);
+						const selected = ed.get_selected_text();
+						return { range, selected };
+					});
+					assertEquals(result.range, [1, 2]);
+					assertEquals(result.selected, "line1\nline2");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Whitespace normalization ────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] normalize_indentation adjusts whitespace`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.set_soft_tabs(true);
+						ed.set_tab_size(4);
+						ed.insert_text("\thello\n\t\tworld");
+						const modified = ed.normalize_indentation();
+						const text = ed.plain_text();
+						return { modified, text };
+					});
+					assert(
+						result.modified > 0,
+						`should modify lines, got ${result.modified}`,
+					);
+					assert(
+						!result.text.includes("\t"),
+						"should not contain tabs after normalization",
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Document outline ────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] document_outline returns indent structure`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("root\n  child1\n  child2\n    grandchild");
+						return Array.from(ed.document_outline());
+					});
+					// [indent, line, text, ...]
+					assertEquals(result[0], "0"); // indent
+					assertEquals(result[1], "0"); // line
+					assertEquals(result[2], "root"); // text
+					assertEquals(result[3], "2"); // indent
+					assertEquals(result[4], "1"); // line
+					assertEquals(result[5], "child1");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

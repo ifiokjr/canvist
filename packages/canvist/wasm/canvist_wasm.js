@@ -441,6 +441,19 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Return all available editor commands as a flat array:
+     * [name, keybinding, name, keybinding, ...].
+     *
+     * Useful for building a command palette UI.
+     * @returns {string[]}
+     */
+    command_list() {
+        const ret = wasm.canvisteditor_command_list(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Get the current line comment prefix.
      * @returns {string}
      */
@@ -469,6 +482,24 @@ export class CanvistEditor {
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Whether the document contains any non-ASCII characters.
+     * @returns {boolean}
+     */
+    contains_non_ascii() {
+        const ret = wasm.canvisteditor_contains_non_ascii(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Whether the document contains any RTL (right-to-left) characters.
+     *
+     * Detects Arabic, Hebrew, and other RTL scripts.
+     * @returns {boolean}
+     */
+    contains_rtl() {
+        const ret = wasm.canvisteditor_contains_rtl(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Compute the total content height in logical pixels.
@@ -677,6 +708,38 @@ export class CanvistEditor {
     diff_from_snapshot() {
         const ret = wasm.canvisteditor_diff_from_snapshot(this.__wbg_ptr);
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Compare two texts line by line.
+     *
+     * Returns flat array: [kind, lineNumber, text, ...] where kind is
+     * "added", "removed", or "changed".
+     * @param {string} a
+     * @param {string} b
+     * @returns {string[]}
+     */
+    static diff_texts(a, b) {
+        const ptr0 = passStringToWasm0(a, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(b, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_diff_texts(ptr0, len0, ptr1, len1);
+        var v3 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v3;
+    }
+    /**
+     * Build a document outline from indentation levels.
+     *
+     * Returns flat array: [indent, lineNumber, text, ...] for non-empty
+     * lines. The indent value can be used to build a tree structure.
+     * @returns {string[]}
+     */
+    document_outline() {
+        const ret = wasm.canvisteditor_document_outline(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
     }
@@ -1792,6 +1855,28 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Normalize all indentation to the current tab style.
+     *
+     * If soft_tabs is true, converts tabs to spaces (tab_size).
+     * If soft_tabs is false, converts leading spaces to tabs.
+     * Returns number of lines modified.
+     * @returns {number}
+     */
+    normalize_indentation() {
+        const ret = wasm.canvisteditor_normalize_indentation(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Normalize line endings to LF (remove \r).
+     *
+     * Returns the number of \r characters removed.
+     * @returns {number}
+     */
+    normalize_line_endings() {
+        const ret = wasm.canvisteditor_normalize_line_endings(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Return all occurrence offsets of the selected text as a flat array
      * `[start0, end0, start1, end1, ...]`.
      * @returns {Uint32Array}
@@ -2252,6 +2337,22 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Search commands by query string.
+     *
+     * Returns matching commands as [name, keybinding, ...].
+     * Case-insensitive substring match on command name.
+     * @param {string} query
+     * @returns {string[]}
+     */
+    search_commands(query) {
+        const ptr0 = passStringToWasm0(query, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_search_commands(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
      * Clear search history.
      */
     search_history_clear() {
@@ -2325,6 +2426,14 @@ export class CanvistEditor {
      */
     select_line() {
         wasm.canvisteditor_select_line(this.__wbg_ptr);
+    }
+    /**
+     * Select an entire range of lines (0-based, inclusive).
+     * @param {number} start_line
+     * @param {number} end_line
+     */
+    select_lines(start_line, end_line) {
+        wasm.canvisteditor_select_lines(this.__wbg_ptr, start_line, end_line);
     }
     /**
      * Select from cursor to document end (Ctrl+Shift+End).
@@ -2408,6 +2517,18 @@ export class CanvistEditor {
     selection_length() {
         const ret = wasm.canvisteditor_selection_length(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Get the line numbers covered by the current selection.
+     *
+     * Returns [startLine, endLine] (0-based, inclusive).
+     * @returns {Uint32Array}
+     */
+    selection_line_range() {
+        const ret = wasm.canvisteditor_selection_line_range(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Get selection start offset.

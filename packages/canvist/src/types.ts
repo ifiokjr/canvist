@@ -1239,6 +1239,48 @@ export interface CanvistEditor {
 	/** Export canvas as PNG data URL. */
 	exportCanvasDataUrl(): string;
 
+	// ── Command palette ─────────────────────────────────────────────
+
+	/** All commands: [name, keybinding, ...]. */
+	commandList(): string[];
+
+	/** Search commands by query. */
+	searchCommands(query: string): string[];
+
+	// ── Text diffing ────────────────────────────────────────────────
+
+	/** Compare two texts: [kind, lineNumber, text, ...]. */
+	diffTexts(a: string, b: string): string[];
+
+	// ── Bidi info ───────────────────────────────────────────────────
+
+	/** Whether text contains RTL characters. */
+	readonly containsRtl: boolean;
+
+	/** Whether text contains non-ASCII characters. */
+	readonly containsNonAscii: boolean;
+
+	// ── Selection to lines ──────────────────────────────────────────
+
+	/** Lines covered by selection: [startLine, endLine]. */
+	selectionLineRange(): number[];
+
+	/** Select entire line range (inclusive). */
+	selectLines(startLine: number, endLine: number): void;
+
+	// ── Whitespace normalization ────────────────────────────────────
+
+	/** Remove \\r characters. Returns count removed. */
+	normalizeLineEndings(): number;
+
+	/** Normalize indentation to current tab style. Returns lines modified. */
+	normalizeIndentation(): number;
+
+	// ── Document outline ────────────────────────────────────────────
+
+	/** Outline: [indent, lineNumber, text, ...]. */
+	documentOutline(): string[];
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

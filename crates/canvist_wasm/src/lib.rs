@@ -5358,6 +5358,257 @@ impl CanvistEditor {
 		canvas.to_data_url().ok().unwrap_or_default()
 	}
 
+	// ── Command palette ──────────────────────────────────────────────
+
+	/// Return all available editor commands as a flat array:
+	/// [name, keybinding, name, keybinding, ...].
+	///
+	/// Useful for building a command palette UI.
+	#[wasm_bindgen]
+	pub fn command_list(&self) -> Vec<String> {
+		let commands = [
+			("Bold", "Ctrl+B"),
+			("Italic", "Ctrl+I"),
+			("Underline", "Ctrl+U"),
+			("Strikethrough", "Ctrl+Shift+S"),
+			("Undo", "Ctrl+Z"),
+			("Redo", "Ctrl+Shift+Z"),
+			("Select All", "Ctrl+A"),
+			("Cut", "Ctrl+X"),
+			("Copy", "Ctrl+C"),
+			("Paste", "Ctrl+V"),
+			("Find", "Ctrl+F"),
+			("Replace", "Ctrl+H"),
+			("Duplicate Line", "Ctrl+Shift+D"),
+			("Delete Line", "Ctrl+Shift+K"),
+			("Move Line Up", "Alt+Up"),
+			("Move Line Down", "Alt+Down"),
+			("Toggle Comment", "Ctrl+/"),
+			("Indent", "Tab"),
+			("Outdent", "Shift+Tab"),
+			("Go To Line", "Ctrl+G"),
+			("Toggle Word Wrap", "Alt+Z"),
+			("Transform Upper Case", "Ctrl+Shift+U"),
+			("Transform Lower Case", "Ctrl+Shift+L"),
+			("Join Lines", "Ctrl+J"),
+			("Sort Lines", "Ctrl+Shift+P"),
+			("Select Line", "Ctrl+L"),
+			("Expand Selection", "Ctrl+Shift+E"),
+			("Contract Selection", "Ctrl+Shift+W"),
+			("Transpose Chars", "Ctrl+T"),
+			("Go To Matching Bracket", "Ctrl+Shift+\\"),
+			("Toggle Bookmark", "Ctrl+F2"),
+			("Next Bookmark", "F2"),
+			("Previous Bookmark", "Shift+F2"),
+			("Delete Word Left", "Ctrl+Backspace"),
+			("Delete Word Right", "Ctrl+Delete"),
+			("Cursor History Back", "Ctrl+Alt+Left"),
+			("Cursor History Forward", "Ctrl+Alt+Right"),
+			("Open Line Below", "Ctrl+Enter"),
+			("Open Line Above", "Ctrl+Shift+Enter"),
+			("Select Between Brackets", "Ctrl+Shift+M"),
+			("Document Start", "Ctrl+Home"),
+			("Document End", "Ctrl+End"),
+			("Center Line", "Ctrl+Shift+."),
+			("Toggle Overwrite", "Insert"),
+		];
+		let mut result = Vec::with_capacity(commands.len() * 2);
+		for (name, key) in &commands {
+			result.push(name.to_string());
+			result.push(key.to_string());
+		}
+		result
+	}
+
+	/// Search commands by query string.
+	///
+	/// Returns matching commands as [name, keybinding, ...].
+	/// Case-insensitive substring match on command name.
+	#[wasm_bindgen]
+	pub fn search_commands(&self, query: &str) -> Vec<String> {
+		if query.is_empty() {
+			return self.command_list();
+		}
+		let all = self.command_list();
+		let q = query.to_lowercase();
+		let mut result = Vec::new();
+		let mut i = 0;
+		while i + 1 < all.len() {
+			if all[i].to_lowercase().contains(&q) {
+				result.push(all[i].clone());
+				result.push(all[i + 1].clone());
+			}
+			i += 2;
+		}
+		result
+	}
+
+	// ── Text diffing ─────────────────────────────────────────────────
+
+	/// Compare two texts line by line.
+	///
+	/// Returns flat array: [kind, lineNumber, text, ...] where kind is
+	/// "added", "removed", or "changed".
+	#[wasm_bindgen]
+	pub fn diff_texts(a: &str, b: &str) -> Vec<String> {
+		let lines_a: Vec<&str> = a.split('\n').collect();
+		let lines_b: Vec<&str> = b.split('\n').collect();
+		let max = lines_a.len().max(lines_b.len());
+		let mut result = Vec::new();
+		for i in 0..max {
+			let la = lines_a.get(i).copied();
+			let lb = lines_b.get(i).copied();
+			match (la, lb) {
+				(Some(a_line), Some(b_line)) if a_line != b_line => {
+					result.push("changed".to_string());
+					result.push(i.to_string());
+					result.push(b_line.to_string());
+				}
+				(Some(_), None) => {
+					result.push("removed".to_string());
+					result.push(i.to_string());
+					result.push(la.unwrap_or("").to_string());
+				}
+				(None, Some(b_line)) => {
+					result.push("added".to_string());
+					result.push(i.to_string());
+					result.push(b_line.to_string());
+				}
+				_ => {} // same — no diff entry
+			}
+		}
+		result
+	}
+
+	// ── Bidi text info ───────────────────────────────────────────────
+
+	/// Whether the document contains any RTL (right-to-left) characters.
+	///
+	/// Detects Arabic, Hebrew, and other RTL scripts.
+	#[wasm_bindgen]
+	pub fn contains_rtl(&self) -> bool {
+		let plain = self.runtime.document().plain_text();
+		plain.chars().any(|c| {
+			let code = c as u32;
+			// Arabic: 0x0600–0x06FF, Hebrew: 0x0590–0x05FF,
+			// Arabic Supplement: 0x0750–0x077F, Arabic Extended: 0x08A0–0x08FF
+			(0x0590..=0x05FF).contains(&code)
+				|| (0x0600..=0x06FF).contains(&code)
+				|| (0x0750..=0x077F).contains(&code)
+				|| (0x08A0..=0x08FF).contains(&code)
+				|| (0xFB50..=0xFDFF).contains(&code)
+				|| (0xFE70..=0xFEFF).contains(&code)
+		})
+	}
+
+	/// Whether the document contains any non-ASCII characters.
+	#[wasm_bindgen]
+	pub fn contains_non_ascii(&self) -> bool {
+		let plain = self.runtime.document().plain_text();
+		plain.chars().any(|c| !c.is_ascii())
+	}
+
+	// ── Selection to lines ───────────────────────────────────────────
+
+	/// Get the line numbers covered by the current selection.
+	///
+	/// Returns [startLine, endLine] (0-based, inclusive).
+	#[wasm_bindgen]
+	pub fn selection_line_range(&self) -> Vec<usize> {
+		let sel = self.runtime.selection();
+		let start = sel.start().offset();
+		let end = sel.end().offset();
+		let plain = self.runtime.document().plain_text();
+
+		let start_line = plain.chars().take(start).filter(|&c| c == '\n').count();
+		let end_line = plain.chars().take(end).filter(|&c| c == '\n').count();
+		vec![start_line, end_line]
+	}
+
+	/// Select an entire range of lines (0-based, inclusive).
+	#[wasm_bindgen]
+	pub fn select_lines(&mut self, start_line: usize, end_line: usize) {
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		let s = start_line.min(lines.len().saturating_sub(1));
+		let e = end_line.min(lines.len().saturating_sub(1));
+
+		let mut char_start = 0usize;
+		for i in 0..s {
+			char_start += lines[i].chars().count() + 1;
+		}
+		let mut char_end = char_start;
+		for i in s..=e {
+			char_end += lines[i].chars().count();
+			if i < e {
+				char_end += 1;
+			}
+		}
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(char_start), Position::new(char_end)),
+		});
+	}
+
+	// ── Whitespace normalization ─────────────────────────────────────
+
+	/// Normalize line endings to LF (remove \r).
+	///
+	/// Returns the number of \r characters removed.
+	#[wasm_bindgen]
+	pub fn normalize_line_endings(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let cr_count = plain.chars().filter(|&c| c == '\r').count();
+		if cr_count > 0 {
+			let normalized = plain.replace('\r', "");
+			self.runtime.document_mut().set_plain_text(&normalized);
+			self.is_modified = true;
+		}
+		cr_count
+	}
+
+	/// Normalize all indentation to the current tab style.
+	///
+	/// If soft_tabs is true, converts tabs to spaces (tab_size).
+	/// If soft_tabs is false, converts leading spaces to tabs.
+	/// Returns number of lines modified.
+	#[wasm_bindgen]
+	pub fn normalize_indentation(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		if self.soft_tabs {
+			self.tabs_to_spaces()
+		} else {
+			self.spaces_to_tabs()
+		}
+	}
+
+	// ── Document outline ─────────────────────────────────────────────
+
+	/// Build a document outline from indentation levels.
+	///
+	/// Returns flat array: [indent, lineNumber, text, ...] for non-empty
+	/// lines. The indent value can be used to build a tree structure.
+	#[wasm_bindgen]
+	pub fn document_outline(&self) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let mut result = Vec::new();
+		for (i, line) in plain.split('\n').enumerate() {
+			let trimmed = line.trim();
+			if trimmed.is_empty() {
+				continue;
+			}
+			let indent = line.chars().take_while(|c| c.is_whitespace()).count();
+			result.push(indent.to_string());
+			result.push(i.to_string());
+			result.push(trimmed.to_string());
+		}
+		result
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
