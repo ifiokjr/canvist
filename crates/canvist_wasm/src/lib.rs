@@ -377,6 +377,8 @@ pub struct CanvistEditor {
 	cursor_history: Vec<usize>,
 	/// Index into cursor_history for forward navigation (-1 means at tip).
 	cursor_history_index: i32,
+	/// Column rulers — vertical guide lines at these column numbers.
+	rulers: Vec<usize>,
 }
 
 /// Colour theme for the editor canvas.
@@ -496,6 +498,7 @@ impl CanvistEditor {
 			overwrite_mode: false,
 			cursor_history: Vec::new(),
 			cursor_history_index: -1,
+			rulers: Vec::new(),
 		})
 	}
 
@@ -2846,6 +2849,274 @@ impl CanvistEditor {
 		}
 	}
 
+	// ── Column ruler ─────────────────────────────────────────────────
+
+	/// Set column ruler positions (e.g. `[80, 120]`).
+	///
+	/// Pass an empty array to remove all rulers. Rulers are drawn as
+	/// thin vertical lines at the specified column offsets.
+	#[wasm_bindgen]
+	pub fn set_rulers(&mut self, columns: &[usize]) {
+		self.rulers = columns.to_vec();
+	}
+
+	/// Get the current ruler columns as a flat array.
+	#[wasm_bindgen]
+	pub fn rulers(&self) -> Vec<usize> {
+		self.rulers.clone()
+	}
+
+	/// Add a single ruler at the given column.
+	#[wasm_bindgen]
+	pub fn add_ruler(&mut self, column: usize) {
+		if !self.rulers.contains(&column) {
+			self.rulers.push(column);
+			self.rulers.sort_unstable();
+		}
+	}
+
+	/// Remove the ruler at the given column.
+	#[wasm_bindgen]
+	pub fn remove_ruler(&mut self, column: usize) {
+		self.rulers.retain(|&c| c != column);
+	}
+
+	// ── Ensure final newline ─────────────────────────────────────────
+
+	/// Ensure the document ends with a newline character.
+	///
+	/// Returns `true` if a newline was added.
+	#[wasm_bindgen]
+	pub fn ensure_final_newline(&mut self) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		let plain = self.runtime.document().plain_text();
+		if plain.is_empty() || plain.ends_with('\n') {
+			return false;
+		}
+		let len = plain.chars().count();
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(len), "\n".to_string()));
+		true
+	}
+
+	// ── Replace all occurrences of selection ─────────────────────────
+
+	/// Replace all occurrences of the selected text with `replacement`.
+	///
+	/// Returns the number of replacements made. Processes from end to
+	/// start so offsets remain valid.
+	#[wasm_bindgen]
+	pub fn replace_all_occurrences(&mut self, replacement: &str) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let sel = self.runtime.selection();
+		if sel.is_collapsed() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let start = sel.start().offset().min(chars.len());
+		let end = sel.end().offset().min(chars.len());
+		let needle: String = chars[start..end].iter().collect();
+		if needle.is_empty() {
+			return 0;
+		}
+		let needle_len = needle.chars().count();
+		let replacement_len = replacement.chars().count();
+
+		// Collect all match positions.
+		let mut matches: Vec<usize> = Vec::new();
+		let mut search_from = 0;
+		while let Some(byte_pos) = plain[search_from..].find(&needle) {
+			let abs_byte = search_from + byte_pos;
+			let char_pos = plain[..abs_byte].chars().count();
+			matches.push(char_pos);
+			search_from = abs_byte + needle.len();
+		}
+
+		// Replace from end to start.
+		for &pos in matches.iter().rev() {
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::range(Position::new(pos), Position::new(pos + needle_len)),
+			});
+			let _ = self
+				.runtime
+				.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+			if !replacement.is_empty() {
+				self.runtime.apply_operation(Operation::insert(
+					Position::new(pos),
+					replacement.to_string(),
+				));
+			}
+		}
+
+		let count = matches.len();
+		if count > 0 {
+			// Place cursor at the end of the first replacement.
+			let first = matches[0];
+			let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+				selection: Selection::collapsed(Position::new(first + replacement_len)),
+			});
+		}
+		count
+	}
+
+	// ── Reverse lines ────────────────────────────────────────────────
+
+	/// Reverse the order of selected lines.
+	#[wasm_bindgen]
+	pub fn reverse_lines(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let chars: Vec<char> = plain.chars().collect();
+		let sel = self.runtime.selection();
+		let sel_start = sel.start().offset().min(chars.len());
+		let sel_end = sel.end().offset().min(chars.len());
+
+		// Expand to full lines.
+		let mut start = sel_start;
+		while start > 0 && chars[start - 1] != '\n' {
+			start -= 1;
+		}
+		let mut end = sel_end;
+		while end < chars.len() && chars[end] != '\n' {
+			end += 1;
+		}
+
+		let block: String = chars[start..end].iter().collect();
+		let mut lines: Vec<&str> = block.split('\n').collect();
+		lines.reverse();
+		let reversed = lines.join("\n");
+		let reversed_len = reversed.chars().count();
+
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(end)),
+		});
+		let _ = self
+			.runtime
+			.handle_event(EditorEvent::TextDeleteBackward { count: 1 });
+		self.runtime
+			.apply_operation(Operation::insert(Position::new(start), reversed));
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(start + reversed_len)),
+		});
+	}
+
+	// ── Encode / decode selection ────────────────────────────────────
+
+	/// Base64-encode the selected text, replacing the selection.
+	#[wasm_bindgen]
+	pub fn base64_encode_selection(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.transform_selection(|s| {
+			use base64::Engine;
+			base64::engine::general_purpose::STANDARD.encode(s.as_bytes())
+		});
+	}
+
+	/// Base64-decode the selected text, replacing the selection.
+	///
+	/// If the selected text is not valid base64, the selection is unchanged.
+	#[wasm_bindgen]
+	pub fn base64_decode_selection(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.transform_selection(|s| {
+			use base64::Engine;
+			match base64::engine::general_purpose::STANDARD.decode(s.as_bytes()) {
+				Ok(bytes) => String::from_utf8(bytes).unwrap_or_else(|_| s.to_string()),
+				Err(_) => s.to_string(),
+			}
+		});
+	}
+
+	/// URL-encode the selected text, replacing the selection.
+	#[wasm_bindgen]
+	pub fn url_encode_selection(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.transform_selection(|s| {
+			s.chars()
+				.map(|c| {
+					if c.is_ascii_alphanumeric() || "-_.~".contains(c) {
+						c.to_string()
+					} else {
+						let mut buf = [0u8; 4];
+						let bytes = c.encode_utf8(&mut buf);
+						bytes
+							.bytes()
+							.map(|b| format!("%{b:02X}"))
+							.collect::<String>()
+					}
+				})
+				.collect()
+		});
+	}
+
+	/// URL-decode the selected text, replacing the selection.
+	#[wasm_bindgen]
+	pub fn url_decode_selection(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.transform_selection(|s| {
+			let mut result = String::new();
+			let bytes = s.as_bytes();
+			let mut i = 0;
+			let mut raw: Vec<u8> = Vec::new();
+			while i < bytes.len() {
+				if bytes[i] == b'%' && i + 2 < bytes.len() {
+					if let Ok(val) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+						raw.push(val);
+						i += 3;
+						continue;
+					}
+				}
+				// Flush any accumulated raw bytes.
+				if !raw.is_empty() {
+					result.push_str(&String::from_utf8(raw.clone()).unwrap_or_default());
+					raw.clear();
+				}
+				result.push(bytes[i] as char);
+				i += 1;
+			}
+			if !raw.is_empty() {
+				result.push_str(&String::from_utf8(raw).unwrap_or_default());
+			}
+			result
+		});
+	}
+
+	// ── Toggle case ──────────────────────────────────────────────────
+
+	/// Swap the case of each character in the selection (a↔A).
+	#[wasm_bindgen]
+	pub fn transform_toggle_case(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		self.transform_selection(|s| {
+			s.chars()
+				.map(|c| {
+					if c.is_uppercase() {
+						c.to_lowercase().collect::<String>()
+					} else {
+						c.to_uppercase().collect::<String>()
+					}
+				})
+				.collect()
+		});
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -4567,6 +4838,21 @@ impl CanvistEditor {
 						x += slice_width;
 					}
 				}
+			}
+		}
+
+		// ── Column rulers ────────────────────────────────────────────────
+		if !self.rulers.is_empty() {
+			let ruler_color = Color::new(
+				theme.gutter_text.r,
+				theme.gutter_text.g,
+				theme.gutter_text.b,
+				40,
+			);
+			let char_w = lc.default_style.font_size.unwrap_or(16.0) * 0.6;
+			for &col in &self.rulers {
+				let x = lc.padding_x + content_x_origin + char_w * col as f32;
+				renderer.fill_rect(Rect::new(x, 0.0, 1.0, height), ruler_color);
 			}
 		}
 

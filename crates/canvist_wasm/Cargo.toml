@@ -18,6 +18,7 @@ description = "WebAssembly + Canvas2D rendering backend for the canvist canvas e
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+base64 = "0.22"
 canvist_core = { workspace = true }
 canvist_render = { workspace = true }
 js-sys = { workspace = true }

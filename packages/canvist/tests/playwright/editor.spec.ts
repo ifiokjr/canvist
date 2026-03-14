@@ -4007,4 +4007,202 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Column ruler ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] rulers can be set and queried`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.add_ruler(80);
+						ed.add_ruler(120);
+						const rulers = Array.from(ed.rulers());
+						ed.remove_ruler(80);
+						const after = Array.from(ed.rulers());
+						return { rulers, after };
+					});
+					assertEquals(result.rulers, [80, 120]);
+					assertEquals(result.after, [120]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Ensure final newline ────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] ensure_final_newline adds trailing newline`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello");
+						const added1 = ed.ensure_final_newline();
+						const text1 = ed.plain_text();
+						const added2 = ed.ensure_final_newline();
+						return { added1, text1, added2 };
+					});
+					assertEquals(result.added1, true);
+					assertEquals(result.text1, "hello\n");
+					assertEquals(result.added2, false); // already has newline
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Replace all occurrences ─────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] replace_all_occurrences replaces throughout doc`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("foo bar foo baz foo");
+						ed.set_selection(0, 3); // select "foo"
+						const count = ed.replace_all_occurrences("qux");
+						return { text: ed.plain_text(), count };
+					});
+					assertEquals(result.text, "qux bar qux baz qux");
+					assertEquals(result.count, 3);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Reverse lines ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] reverse_lines reverses selected lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa\nbbb\nccc");
+						ed.select_all();
+						ed.reverse_lines();
+						return ed.plain_text();
+					});
+					assertEquals(result, "ccc\nbbb\naaa");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Base64 encode / decode ──────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] base64 encode and decode selection`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						ed.select_all();
+						ed.base64_encode_selection();
+						const encoded = ed.plain_text();
+						ed.select_all();
+						ed.base64_decode_selection();
+						const decoded = ed.plain_text();
+						return { encoded, decoded };
+					});
+					assertEquals(result.encoded, "SGVsbG8gV29ybGQ=");
+					assertEquals(result.decoded, "Hello World");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Toggle case ─────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] transform_toggle_case swaps character case`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						ed.select_all();
+						ed.transform_toggle_case();
+						return ed.plain_text();
+					});
+					assertEquals(result, "hELLO wORLD");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
