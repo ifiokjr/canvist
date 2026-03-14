@@ -6245,4 +6245,209 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Collaborative cursors ───────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] collab cursors add, update, remove`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						ed.add_collab_cursor(3, "Alice", 255, 0, 0);
+						ed.add_collab_cursor(7, "Bob", 0, 0, 255);
+						const count1 = ed.collab_cursor_count();
+						ed.update_collab_cursor("Alice", 5);
+						const list = Array.from(ed.collab_cursor_list());
+						ed.remove_collab_cursor("Bob");
+						const count2 = ed.collab_cursor_count();
+						ed.clear_collab_cursors();
+						const count3 = ed.collab_cursor_count();
+						return { count1, list, count2, count3 };
+					});
+					assertEquals(result.count1, 2);
+					assertEquals(result.list[0], "5"); // Alice updated to 5
+					assertEquals(result.list[1], "Alice");
+					assertEquals(result.count2, 1);
+					assertEquals(result.count3, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line ending detection ───────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] detect and convert line endings`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("line1\nline2\nline3");
+						const ending = ed.detect_line_ending();
+						return { ending };
+					});
+					assertEquals(result.ending, "lf");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── File type detection ─────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] detect_file_type guesses correctly`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("const foo = () => {\n  return 42;\n}");
+						const ft = ed.detect_file_type();
+						return ft;
+					});
+					assertEquals(result, "javascript");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Emmet expansion ─────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] expand_emmet creates HTML tag`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("div.container");
+						const ok = ed.expand_emmet();
+						return { ok, text: ed.plain_text() };
+					});
+					assertEquals(result.ok, true);
+					assertEquals(result.text, '<div class="container"></div>');
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Selection history ───────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] selection history push, back, forward`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						ed.set_selection(0, 0);
+						ed.push_selection_history();
+						ed.set_selection(5, 5);
+						ed.push_selection_history();
+						ed.set_selection(11, 11);
+						ed.push_selection_history();
+						const len = ed.selection_history_length();
+						const back = ed.selection_history_back();
+						const pos = ed.selection_end();
+						const fwd = ed.selection_history_forward();
+						const pos2 = ed.selection_end();
+						return { len, back, pos, fwd, pos2 };
+					});
+					assertEquals(result.len, 3);
+					assertEquals(result.back, true);
+					assertEquals(result.pos, 5); // went back to 5
+					assertEquals(result.fwd, true);
+					assertEquals(result.pos2, 11); // went forward to 11
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Focus API ───────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] is_focused returns boolean`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						return typeof ed.is_focused() === "boolean";
+					});
+					assertEquals(result, true);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

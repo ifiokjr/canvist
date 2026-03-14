@@ -42,6 +42,21 @@ export class CanvistEditor {
         wasm.canvisteditor_add_annotation(this.__wbg_ptr, start, end, ptr0, len0, ptr1, len1);
     }
     /**
+     * Add a collaborative cursor (another user's position).
+     *
+     * Each cursor has an offset, display name, and RGB colour.
+     * @param {number} offset
+     * @param {string} name
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     */
+    add_collab_cursor(offset, name, r, g, b) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_add_collab_cursor(this.__wbg_ptr, offset, ptr0, len0, r, g, b);
+    }
+    /**
      * Add an extra cursor at a character offset.
      *
      * Extra cursors are rendered alongside the primary cursor.
@@ -345,6 +360,12 @@ export class CanvistEditor {
         wasm.canvisteditor_clear_bookmarks(this.__wbg_ptr);
     }
     /**
+     * Clear all collaborative cursors.
+     */
+    clear_collab_cursors() {
+        wasm.canvisteditor_clear_collab_cursors(this.__wbg_ptr);
+    }
+    /**
      * Clear all extra cursors.
      */
     clear_cursors() {
@@ -441,6 +462,24 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Number of collaborative cursors.
+     * @returns {number}
+     */
+    collab_cursor_count() {
+        const ret = wasm.canvisteditor_collab_cursor_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Get all collaborative cursors as [offset, name, r, g, b, ...].
+     * @returns {string[]}
+     */
+    collab_cursor_list() {
+        const ret = wasm.canvisteditor_collab_cursor_list(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Return all available editor commands as a flat array:
      * [name, keybinding, name, keybinding, ...].
      *
@@ -522,6 +561,24 @@ export class CanvistEditor {
      */
     contract_selection() {
         wasm.canvisteditor_contract_selection(this.__wbg_ptr);
+    }
+    /**
+     * Convert all line endings to CRLF.
+     *
+     * Returns the number of conversions made.
+     * @returns {number}
+     */
+    convert_to_crlf() {
+        const ret = wasm.canvisteditor_convert_to_crlf(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Convert all line endings to LF.
+     * @returns {number}
+     */
+    convert_to_lf() {
+        const ret = wasm.canvisteditor_convert_to_lf(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Create a new editor attached to the canvas element with the given ID.
@@ -691,6 +748,43 @@ export class CanvistEditor {
         wasm.canvisteditor_delete_word_right(this.__wbg_ptr);
     }
     /**
+     * Guess the file type from content.
+     *
+     * Returns a string like "javascript", "python", "html", "css",
+     * "json", "markdown", "xml", "rust", "text".
+     * @returns {string}
+     */
+    detect_file_type() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_detect_file_type(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Detect the dominant line ending style.
+     *
+     * Returns "lf", "crlf", or "mixed".
+     * @returns {string}
+     */
+    detect_line_ending() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_detect_line_ending(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Whether link detection is enabled.
      * @returns {boolean}
      */
@@ -814,6 +908,23 @@ export class CanvistEditor {
     event_log_length() {
         const ret = wasm.canvisteditor_event_log_length(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Expand an Emmet-style abbreviation at the cursor.
+     *
+     * Supports simple patterns:
+     * - `tag` → `<tag></tag>`
+     * - `tag.class` → `<tag class="class"></tag>`
+     * - `tag#id` → `<tag id="id"></tag>`
+     * - `tag*n` → `<tag></tag>` repeated n times
+     * - `lorem` → placeholder lorem ipsum text
+     *
+     * Returns true if an expansion was performed.
+     * @returns {boolean}
+     */
+    expand_emmet() {
+        const ret = wasm.canvisteditor_expand_emmet(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Expand selection intelligently: word → quoted → bracketed → line → all.
@@ -1433,6 +1544,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether the editor is currently focused.
+     * @returns {boolean}
+     */
+    is_focused() {
+        const ret = wasm.canvisteditor_is_focused(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Check if the current selection is all italic.
      * @returns {boolean}
      */
@@ -2035,6 +2154,12 @@ export class CanvistEditor {
         wasm.canvisteditor_push_cursor_history(this.__wbg_ptr);
     }
     /**
+     * Push the current selection onto the selection history stack.
+     */
+    push_selection_history() {
+        wasm.canvisteditor_push_selection_history(this.__wbg_ptr);
+    }
+    /**
      * Queue a key down event and process resulting operations.
      * @param {string} key
      */
@@ -2111,6 +2236,15 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_remove_annotations_by_kind(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Remove a collaborative cursor by name.
+     * @param {string} name
+     */
+    remove_collab_cursor(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_remove_collab_cursor(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Remove an extra cursor at a specific offset.
@@ -2500,6 +2634,30 @@ export class CanvistEditor {
      */
     selection_end() {
         const ret = wasm.canvisteditor_selection_end(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Go back in selection history.
+     * @returns {boolean}
+     */
+    selection_history_back() {
+        const ret = wasm.canvisteditor_selection_history_back(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Go forward in selection history.
+     * @returns {boolean}
+     */
+    selection_history_forward() {
+        const ret = wasm.canvisteditor_selection_history_forward(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Selection history length.
+     * @returns {number}
+     */
+    selection_history_length() {
+        const ret = wasm.canvisteditor_selection_history_length(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
@@ -3384,6 +3542,16 @@ export class CanvistEditor {
     unique_word_count() {
         const ret = wasm.canvisteditor_unique_word_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Update a collaborative cursor's position.
+     * @param {string} name
+     * @param {number} offset
+     */
+    update_collab_cursor(name, offset) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_update_collab_cursor(this.__wbg_ptr, ptr0, len0, offset);
     }
     /**
      * URL-decode the selected text, replacing the selection.

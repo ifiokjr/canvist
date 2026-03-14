@@ -440,6 +440,12 @@ pub struct CanvistEditor {
 	token_colors: std::collections::HashMap<String, (u8, u8, u8, u8)>,
 	/// Extra cursor offsets for multi-cursor editing.
 	extra_cursors: Vec<usize>,
+	/// Collaborative cursors: (offset, name, r, g, b).
+	collab_cursors: Vec<(usize, String, u8, u8, u8)>,
+	/// Selection history stack for undo/redo selections.
+	selection_history: Vec<(usize, usize)>,
+	/// Selection history index (-1 = current).
+	selection_history_index: i32,
 }
 
 /// Colour theme for the editor canvas.
@@ -590,6 +596,9 @@ impl CanvistEditor {
 			syntax_highlight: false,
 			token_colors: std::collections::HashMap::new(),
 			extra_cursors: Vec::new(),
+			collab_cursors: Vec::new(),
+			selection_history: Vec::new(),
+			selection_history_index: -1,
 		})
 	}
 
@@ -5609,6 +5618,320 @@ impl CanvistEditor {
 		result
 	}
 
+	// ── Collaborative cursors ────────────────────────────────────────
+
+	/// Add a collaborative cursor (another user's position).
+	///
+	/// Each cursor has an offset, display name, and RGB colour.
+	#[wasm_bindgen]
+	pub fn add_collab_cursor(&mut self, offset: usize, name: &str, r: u8, g: u8, b: u8) {
+		// Remove existing cursor with same name.
+		self.collab_cursors.retain(|(_, n, ..)| n != name);
+		self.collab_cursors
+			.push((offset, name.to_string(), r, g, b));
+	}
+
+	/// Update a collaborative cursor's position.
+	#[wasm_bindgen]
+	pub fn update_collab_cursor(&mut self, name: &str, offset: usize) {
+		for cursor in &mut self.collab_cursors {
+			if cursor.1 == name {
+				cursor.0 = offset;
+				return;
+			}
+		}
+	}
+
+	/// Remove a collaborative cursor by name.
+	#[wasm_bindgen]
+	pub fn remove_collab_cursor(&mut self, name: &str) {
+		self.collab_cursors.retain(|(_, n, ..)| n != name);
+	}
+
+	/// Clear all collaborative cursors.
+	#[wasm_bindgen]
+	pub fn clear_collab_cursors(&mut self) {
+		self.collab_cursors.clear();
+	}
+
+	/// Number of collaborative cursors.
+	#[wasm_bindgen]
+	pub fn collab_cursor_count(&self) -> usize {
+		self.collab_cursors.len()
+	}
+
+	/// Get all collaborative cursors as [offset, name, r, g, b, ...].
+	#[wasm_bindgen]
+	pub fn collab_cursor_list(&self) -> Vec<String> {
+		let mut result = Vec::with_capacity(self.collab_cursors.len() * 5);
+		for (offset, name, r, g, b) in &self.collab_cursors {
+			result.push(offset.to_string());
+			result.push(name.clone());
+			result.push(r.to_string());
+			result.push(g.to_string());
+			result.push(b.to_string());
+		}
+		result
+	}
+
+	// ── Line ending detection ────────────────────────────────────────
+
+	/// Detect the dominant line ending style.
+	///
+	/// Returns "lf", "crlf", or "mixed".
+	#[wasm_bindgen]
+	pub fn detect_line_ending(&self) -> String {
+		let plain = self.runtime.document().plain_text();
+		let crlf_count = plain.matches("\r\n").count();
+		let lf_only = plain.matches('\n').count() - crlf_count;
+		if crlf_count > 0 && lf_only > 0 {
+			"mixed".to_string()
+		} else if crlf_count > 0 {
+			"crlf".to_string()
+		} else {
+			"lf".to_string()
+		}
+	}
+
+	/// Convert all line endings to CRLF.
+	///
+	/// Returns the number of conversions made.
+	#[wasm_bindgen]
+	pub fn convert_to_crlf(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		// First normalize to LF, then convert to CRLF.
+		let normalized = plain.replace("\r\n", "\n").replace('\r', "\n");
+		let lf_count = normalized.matches('\n').count();
+		let crlf = normalized.replace('\n', "\r\n");
+		self.runtime.document_mut().set_plain_text(&crlf);
+		self.is_modified = true;
+		lf_count
+	}
+
+	/// Convert all line endings to LF.
+	#[wasm_bindgen]
+	pub fn convert_to_lf(&mut self) -> usize {
+		if !self.is_writable() {
+			return 0;
+		}
+		let plain = self.runtime.document().plain_text();
+		let cr_count = plain.matches('\r').count();
+		if cr_count > 0 {
+			let normalized = plain.replace("\r\n", "\n").replace('\r', "\n");
+			self.runtime.document_mut().set_plain_text(&normalized);
+			self.is_modified = true;
+		}
+		cr_count
+	}
+
+	// ── File type heuristic ──────────────────────────────────────────
+
+	/// Guess the file type from content.
+	///
+	/// Returns a string like "javascript", "python", "html", "css",
+	/// "json", "markdown", "xml", "rust", "text".
+	#[wasm_bindgen]
+	pub fn detect_file_type(&self) -> String {
+		let plain = self.runtime.document().plain_text();
+		let first_line = plain.lines().next().unwrap_or("");
+		let lower = plain.to_lowercase();
+
+		if first_line.starts_with("<!doctype html")
+			|| first_line.starts_with("<html")
+			|| lower.contains("</div>")
+		{
+			return "html".to_string();
+		}
+		if first_line.starts_with("{")
+			&& (lower.contains("\"name\"") || lower.contains("\"version\""))
+		{
+			return "json".to_string();
+		}
+		if first_line.starts_with("<?xml") || first_line.starts_with("<svg") {
+			return "xml".to_string();
+		}
+		if lower.contains("def ") && lower.contains("import ") {
+			return "python".to_string();
+		}
+		if lower.contains("function ") || lower.contains("const ") || lower.contains("=> {") {
+			return "javascript".to_string();
+		}
+		if lower.contains("fn ")
+			&& lower.contains("let ")
+			&& (lower.contains("pub ") || lower.contains("use "))
+		{
+			return "rust".to_string();
+		}
+		if lower.contains("color:") || lower.contains("font-size:") || lower.contains("margin:") {
+			return "css".to_string();
+		}
+		if first_line.starts_with('#') || lower.contains("**") || lower.contains("```") {
+			return "markdown".to_string();
+		}
+		"text".to_string()
+	}
+
+	// ── Emmet expansion ──────────────────────────────────────────────
+
+	/// Expand an Emmet-style abbreviation at the cursor.
+	///
+	/// Supports simple patterns:
+	/// - `tag` → `<tag></tag>`
+	/// - `tag.class` → `<tag class="class"></tag>`
+	/// - `tag#id` → `<tag id="id"></tag>`
+	/// - `tag*n` → `<tag></tag>` repeated n times
+	/// - `lorem` → placeholder lorem ipsum text
+	///
+	/// Returns true if an expansion was performed.
+	#[wasm_bindgen]
+	pub fn expand_emmet(&mut self) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		let plain = self.runtime.document().plain_text();
+		let offset = self.runtime.selection().end().offset();
+		let chars: Vec<char> = plain.chars().collect();
+
+		// Walk backwards to find the abbreviation.
+		let mut start = offset;
+		while start > 0
+			&& (chars[start - 1].is_alphanumeric()
+				|| chars[start - 1] == '.'
+				|| chars[start - 1] == '#'
+				|| chars[start - 1] == '*')
+		{
+			start -= 1;
+		}
+		if start == offset {
+			return false;
+		}
+		let abbrev: String = chars[start..offset].iter().collect();
+
+		// Handle "lorem".
+		if abbrev == "lorem" {
+			let lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
+			self.delete_range(start, offset);
+			self.insert_text_at(start, lorem);
+			return true;
+		}
+
+		// Parse tag.class#id*count.
+		let (tag_part, count) = if let Some(pos) = abbrev.find('*') {
+			let n = abbrev[pos + 1..].parse::<usize>().unwrap_or(1);
+			(&abbrev[..pos], n)
+		} else {
+			(abbrev.as_str(), 1usize)
+		};
+
+		let (tag, class, id) = {
+			let mut tag = tag_part;
+			let mut class = "";
+			let mut id = "";
+			if let Some(pos) = tag_part.find('.') {
+				class = &tag_part[pos + 1..];
+				tag = &tag_part[..pos];
+			}
+			if let Some(pos) = tag.find('#') {
+				id = &tag[pos + 1..];
+				tag = &tag[..pos];
+			}
+			(tag, class, id)
+		};
+
+		if tag.is_empty() {
+			return false;
+		}
+
+		let mut attrs = String::new();
+		if !id.is_empty() {
+			attrs.push_str(&format!(" id=\"{id}\""));
+		}
+		if !class.is_empty() {
+			attrs.push_str(&format!(" class=\"{class}\""));
+		}
+
+		let element = format!("<{tag}{attrs}></{tag}>");
+		let expanded = (0..count)
+			.map(|_| element.as_str())
+			.collect::<Vec<&str>>()
+			.join("\n");
+
+		self.delete_range(start, offset);
+		self.insert_text_at(start, &expanded);
+		true
+	}
+
+	// ── Selection history ────────────────────────────────────────────
+
+	/// Push the current selection onto the selection history stack.
+	#[wasm_bindgen]
+	pub fn push_selection_history(&mut self) {
+		let start = self.runtime.selection().start().offset();
+		let end = self.runtime.selection().end().offset();
+		// Don't push duplicates.
+		if self.selection_history.last() == Some(&(start, end)) {
+			return;
+		}
+		// Truncate forward history if we're not at the end.
+		if self.selection_history_index >= 0
+			&& (self.selection_history_index as usize)
+				< self.selection_history.len().saturating_sub(1)
+		{
+			self.selection_history
+				.truncate(self.selection_history_index as usize + 1);
+		}
+		self.selection_history.push((start, end));
+		if self.selection_history.len() > 50 {
+			self.selection_history.remove(0);
+		}
+		self.selection_history_index = self.selection_history.len() as i32 - 1;
+	}
+
+	/// Go back in selection history.
+	#[wasm_bindgen]
+	pub fn selection_history_back(&mut self) -> bool {
+		if self.selection_history_index <= 0 {
+			return false;
+		}
+		self.selection_history_index -= 1;
+		let (start, end) = self.selection_history[self.selection_history_index as usize];
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(end)),
+		});
+		true
+	}
+
+	/// Go forward in selection history.
+	#[wasm_bindgen]
+	pub fn selection_history_forward(&mut self) -> bool {
+		if self.selection_history_index >= self.selection_history.len() as i32 - 1 {
+			return false;
+		}
+		self.selection_history_index += 1;
+		let (start, end) = self.selection_history[self.selection_history_index as usize];
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(start), Position::new(end)),
+		});
+		true
+	}
+
+	/// Selection history length.
+	#[wasm_bindgen]
+	pub fn selection_history_length(&self) -> usize {
+		self.selection_history.len()
+	}
+
+	// ── Editor focus API ─────────────────────────────────────────────
+
+	/// Whether the editor is currently focused.
+	#[wasm_bindgen]
+	pub fn is_focused(&self) -> bool {
+		self.focused
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -7722,6 +8045,39 @@ impl CanvistEditor {
 							);
 						}
 					}
+				}
+			}
+		}
+
+		// ── Collaborative cursors ────────────────────────────────────────
+		for (offset, name, cr, cg, cb) in &self.collab_cursors {
+			let (pi, li) = find_para_and_line_for_offset(&paragraphs, *offset);
+			if let Some(para) = paragraphs.get(pi) {
+				if let Some(line) = para.layout.lines.get(li) {
+					let local = offset.saturating_sub(para.global_char_start);
+					let cx = (lc.padding_x + content_x_origin)
+						+ line.x_offset + x_offset_in_para_line(
+						&renderer,
+						para,
+						line.start_offset,
+						local,
+					);
+					let cy = lc.padding_y + para.y_offset + line.y - sy;
+					let collab_color = Color::new(*cr, *cg, *cb, 220);
+					// Draw cursor line.
+					renderer.fill_rect(Rect::new(cx, cy, 2.0, line.height), collab_color);
+					// Draw name label above cursor.
+					let label_style = Style::new()
+						.font_size(9.0 * self.zoom)
+						.color(*cr, *cg, *cb, 255)
+						.font_family("Inter, system-ui, sans-serif");
+					let label_w = renderer.measure_text(name, &label_style) + 6.0;
+					renderer.fill_rect(Rect::new(cx, cy - 14.0, label_w, 14.0), collab_color);
+					let label_text_style = Style::new()
+						.font_size(9.0 * self.zoom)
+						.color(255, 255, 255, 255)
+						.font_family("Inter, system-ui, sans-serif");
+					renderer.draw_text(cx + 3.0, cy - 13.0, name, &label_text_style);
 				}
 			}
 		}
