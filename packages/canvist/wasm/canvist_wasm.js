@@ -145,6 +145,31 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Anchor names set exactly at a given offset.
+     * @param {number} offset
+     * @returns {string[]}
+     */
+    anchors_at_offset(offset) {
+        const ret = wasm.canvisteditor_anchors_at_offset(this.__wbg_ptr, offset);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Anchors inside an inclusive character-offset range.
+     *
+     * Returns `[name, offset, ...]` sorted by offset then name.
+     * @param {number} start_offset
+     * @param {number} end_offset
+     * @returns {string[]}
+     */
+    anchors_in_range(start_offset, end_offset) {
+        const ret = wasm.canvisteditor_anchors_in_range(this.__wbg_ptr, start_offset, end_offset);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Number of active annotations.
      * @returns {number}
      */
@@ -1976,6 +2001,18 @@ export class CanvistEditor {
         }
     }
     /**
+     * Compare two line hashes for equality.
+     *
+     * Returns `false` if either line is out of range.
+     * @param {number} a
+     * @param {number} b
+     * @returns {boolean}
+     */
+    line_hash_equals(a, b) {
+        const ret = wasm.canvisteditor_line_hash_equals(this.__wbg_ptr, a, b);
+        return ret !== 0;
+    }
+    /**
      * Return all line hashes as flat array: [line, hash, ...].
      * @returns {string[]}
      */
@@ -1984,6 +2021,17 @@ export class CanvistEditor {
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Whether a line participates in a duplicate-content set.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {boolean}
+     */
+    line_is_duplicate(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_line_is_duplicate(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        return ret !== 0;
     }
     /**
      * Count lines containing `needle`.
@@ -3928,6 +3976,21 @@ export class CanvistEditor {
         wasm.canvisteditor_set_zoom(this.__wbg_ptr, level);
     }
     /**
+     * Shift a named anchor by a signed delta.
+     *
+     * The resulting offset is clamped to the current document bounds.
+     * Returns `false` when the anchor does not exist.
+     * @param {string} name
+     * @param {number} delta
+     * @returns {boolean}
+     */
+    shift_anchor(name, delta) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_shift_anchor(this.__wbg_ptr, ptr0, len0, delta);
+        return ret !== 0;
+    }
+    /**
      * Whether find highlights are active.
      * @returns {boolean}
      */
@@ -4480,6 +4543,36 @@ export class CanvistEditor {
      */
     unique_word_count() {
         const ret = wasm.canvisteditor_unique_word_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Remove `prefix` from each line in range when present.
+     *
+     * Returns number of lines changed.
+     * @param {number} start_line
+     * @param {number} end_line
+     * @param {string} prefix
+     * @returns {number}
+     */
+    unprefix_lines(start_line, end_line, prefix) {
+        const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_unprefix_lines(this.__wbg_ptr, start_line, end_line, ptr0, len0);
+        return ret >>> 0;
+    }
+    /**
+     * Remove `suffix` from each line in range when present.
+     *
+     * Returns number of lines changed.
+     * @param {number} start_line
+     * @param {number} end_line
+     * @param {string} suffix
+     * @returns {number}
+     */
+    unsuffix_lines(start_line, end_line, suffix) {
+        const ptr0 = passStringToWasm0(suffix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_unsuffix_lines(this.__wbg_ptr, start_line, end_line, ptr0, len0);
         return ret >>> 0;
     }
     /**

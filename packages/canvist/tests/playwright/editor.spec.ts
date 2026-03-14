@@ -67,9 +67,13 @@ async function launchBrowser(
 
 // Helper: wait for the WASM editor to be ready
 async function waitForEditor(page: any) {
-	await page.waitForFunction("window.__canvistEditor !== null", null, {
-		timeout: 15000,
-	});
+	await page.waitForFunction(
+		"window.__canvistEditor != null && typeof window.__canvistEditor.plain_text === 'function'",
+		null,
+		{
+			timeout: 15000,
+		},
+	);
 }
 
 // Helper: type into the hidden textarea the editor uses
@@ -7369,6 +7373,145 @@ for (const browserName of BROWSERS) {
 					});
 					assertEquals(result.count, 1);
 					assertEquals(result.text, "alpha\n- [ ] todo item\nbeta");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Extended anchor utilities ───────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchors at offset, anchors in range, shift anchor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghij");
+						ed.set_anchor("start", 0);
+						ed.set_anchor("midA", 5);
+						ed.set_anchor("midB", 5);
+						ed.set_anchor("end", 10);
+						const at5 = Array.from(ed.anchors_at_offset(5));
+						const inRange = Array.from(ed.anchors_in_range(4, 10));
+						const shifted = ed.shift_anchor("start", 3);
+						const startAfterShift = ed.anchor_offset("start");
+						const shiftedClamp = ed.shift_anchor("start", -100);
+						const startAfterClamp = ed.anchor_offset("start");
+						const missing = ed.shift_anchor("missing", 1);
+						return {
+							at5,
+							inRange,
+							shifted,
+							startAfterShift,
+							shiftedClamp,
+							startAfterClamp,
+							missing,
+						};
+					});
+					assertEquals(result.at5, ["midA", "midB"]);
+					assertEquals(result.inRange, ["midA", "5", "midB", "5", "end", "10"]);
+					assertEquals(result.shifted, true);
+					assertEquals(result.startAfterShift, 3);
+					assertEquals(result.shiftedClamp, true);
+					assertEquals(result.startAfterClamp, 0);
+					assertEquals(result.missing, false);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line prefix/suffix removal utilities ────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] unprefix and unsuffix lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("> alpha !\n> beta !\ngamma !");
+						const removedPrefix = ed.unprefix_lines(0, 2, "> ");
+						const removedSuffix = ed.unsuffix_lines(0, 2, " !");
+						const removedPrefixNone = ed.unprefix_lines(0, 2, "# ");
+						return {
+							removedPrefix,
+							removedSuffix,
+							removedPrefixNone,
+							text: ed.plain_text(),
+						};
+					});
+					assertEquals(result.removedPrefix, 2);
+					assertEquals(result.removedSuffix, 3);
+					assertEquals(result.removedPrefixNone, 0);
+					assertEquals(result.text, "alpha\nbeta\ngamma");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line fingerprint predicates ─────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line hash equals and line is duplicate`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("alpha\nbeta\nalpha \nBETA\nsolo");
+						return {
+							eq00: ed.line_hash_equals(0, 0),
+							eq01: ed.line_hash_equals(0, 1),
+							eqOut: ed.line_hash_equals(0, 99),
+							dup0Loose: ed.line_is_duplicate(0, false, true),
+							dup1Loose: ed.line_is_duplicate(1, false, true),
+							dup1Strict: ed.line_is_duplicate(1, true, false),
+							dup3Strict: ed.line_is_duplicate(3, true, false),
+							dupSolo: ed.line_is_duplicate(4, false, true),
+						};
+					});
+					assertEquals(result.eq00, true);
+					assertEquals(result.eq01, false);
+					assertEquals(result.eqOut, false);
+					assertEquals(result.dup0Loose, true);
+					assertEquals(result.dup1Loose, true);
+					assertEquals(result.dup1Strict, false);
+					assertEquals(result.dup3Strict, false);
+					assertEquals(result.dupSolo, false);
 				} finally {
 					await browser.close();
 				}

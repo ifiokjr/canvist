@@ -2527,6 +2527,15 @@ export async function createEditor(
 			nearestAnchorAfter(offset: number) {
 				return Array.from(ref.nearest_anchor_after(offset));
 			},
+			anchorsAtOffset(offset: number) {
+				return Array.from(ref.anchors_at_offset(offset));
+			},
+			anchorsInRange(startOffset: number, endOffset: number) {
+				return Array.from(ref.anchors_in_range(startOffset, endOffset));
+			},
+			shiftAnchor(name: string, delta: number) {
+				return ref.shift_anchor(name, delta);
+			},
 			// ── Tasks / TODO scanner ────────────────────
 			scanTasks() {
 				return Array.from(ref.scan_tasks());
@@ -2730,6 +2739,20 @@ export async function createEditor(
 				renderFrame();
 				return n;
 			},
+			unprefixLines(startLine: number, endLine: number, prefix: string) {
+				syncTime();
+				const n = ref.unprefix_lines(startLine, endLine, prefix);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			unsuffixLines(startLine: number, endLine: number, suffix: string) {
+				syncTime();
+				const n = ref.unsuffix_lines(startLine, endLine, suffix);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
 			numberLines(
 				startLine: number,
 				endLine: number,
@@ -2761,6 +2784,16 @@ export async function createEditor(
 			},
 			lineHashes() {
 				return Array.from(ref.line_hashes());
+			},
+			lineHashEquals(a: number, b: number) {
+				return ref.line_hash_equals(a, b);
+			},
+			lineIsDuplicate(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_is_duplicate(line, caseSensitive, ignoreWhitespace);
 			},
 			duplicateLineNumbers(caseSensitive = false, ignoreWhitespace = false) {
 				return Array.from(
