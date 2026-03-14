@@ -19,6 +19,12 @@ export class CanvistEditor {
      */
     add_annotation(start: number, end: number, kind: string, message: string): void;
     /**
+     * Add a collaborative cursor (another user's position).
+     *
+     * Each cursor has an offset, display name, and RGB colour.
+     */
+    add_collab_cursor(offset: number, name: string, r: number, g: number, b: number): void;
+    /**
      * Add an extra cursor at a character offset.
      *
      * Extra cursors are rendered alongside the primary cursor.
@@ -185,6 +191,10 @@ export class CanvistEditor {
      */
     clear_bookmarks(): void;
     /**
+     * Clear all collaborative cursors.
+     */
+    clear_collab_cursors(): void;
+    /**
      * Clear all extra cursors.
      */
     clear_cursors(): void;
@@ -237,6 +247,14 @@ export class CanvistEditor {
      */
     coalesce_timeout(): number;
     /**
+     * Number of collaborative cursors.
+     */
+    collab_cursor_count(): number;
+    /**
+     * Get all collaborative cursors as [offset, name, r, g, b, ...].
+     */
+    collab_cursor_list(): string[];
+    /**
      * Return all available editor commands as a flat array:
      * [name, keybinding, name, keybinding, ...].
      *
@@ -277,6 +295,16 @@ export class CanvistEditor {
      * Shrinks: all → line → bracket → quote → word → collapsed.
      */
     contract_selection(): void;
+    /**
+     * Convert all line endings to CRLF.
+     *
+     * Returns the number of conversions made.
+     */
+    convert_to_crlf(): number;
+    /**
+     * Convert all line endings to LF.
+     */
+    convert_to_lf(): number;
     /**
      * Create a new editor attached to the canvas element with the given ID.
      *
@@ -359,6 +387,19 @@ export class CanvistEditor {
      */
     delete_word_right(): void;
     /**
+     * Guess the file type from content.
+     *
+     * Returns a string like "javascript", "python", "html", "css",
+     * "json", "markdown", "xml", "rust", "text".
+     */
+    detect_file_type(): string;
+    /**
+     * Detect the dominant line ending style.
+     *
+     * Returns "lf", "crlf", or "mixed".
+     */
+    detect_line_ending(): string;
+    /**
      * Whether link detection is enabled.
      */
     detect_links(): boolean;
@@ -416,6 +457,19 @@ export class CanvistEditor {
      * Number of entries in the event log.
      */
     event_log_length(): number;
+    /**
+     * Expand an Emmet-style abbreviation at the cursor.
+     *
+     * Supports simple patterns:
+     * - `tag` → `<tag></tag>`
+     * - `tag.class` → `<tag class="class"></tag>`
+     * - `tag#id` → `<tag id="id"></tag>`
+     * - `tag*n` → `<tag></tag>` repeated n times
+     * - `lorem` → placeholder lorem ipsum text
+     *
+     * Returns true if an expansion was performed.
+     */
+    expand_emmet(): boolean;
     /**
      * Expand selection intelligently: word → quoted → bracketed → line → all.
      *
@@ -706,6 +760,10 @@ export class CanvistEditor {
      * Check if the current selection is all bold.
      */
     is_bold(): boolean;
+    /**
+     * Whether the editor is currently focused.
+     */
+    is_focused(): boolean;
     /**
      * Check if the current selection is all italic.
      */
@@ -1017,6 +1075,10 @@ export class CanvistEditor {
      */
     push_cursor_history(): void;
     /**
+     * Push the current selection onto the selection history stack.
+     */
+    push_selection_history(): void;
+    /**
      * Queue a key down event and process resulting operations.
      */
     queue_key_down(key: string): void;
@@ -1053,6 +1115,10 @@ export class CanvistEditor {
      * Remove all annotations matching a kind (e.g. "error").
      */
     remove_annotations_by_kind(kind: string): void;
+    /**
+     * Remove a collaborative cursor by name.
+     */
+    remove_collab_cursor(name: string): void;
     /**
      * Remove an extra cursor at a specific offset.
      */
@@ -1257,6 +1323,18 @@ export class CanvistEditor {
      * Get selection end offset.
      */
     selection_end(): number;
+    /**
+     * Go back in selection history.
+     */
+    selection_history_back(): boolean;
+    /**
+     * Go forward in selection history.
+     */
+    selection_history_forward(): boolean;
+    /**
+     * Selection history length.
+     */
+    selection_history_length(): number;
     /**
      * Whether the selection is collapsed (no text selected).
      */
@@ -1752,6 +1830,10 @@ export class CanvistEditor {
      */
     unique_word_count(): number;
     /**
+     * Update a collaborative cursor's position.
+     */
+    update_collab_cursor(name: string, offset: number): void;
+    /**
      * URL-decode the selected text, replacing the selection.
      */
     url_decode_selection(): void;
@@ -1825,6 +1907,7 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_canvisteditor_free: (a: number, b: number) => void;
     readonly canvisteditor_add_annotation: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly canvisteditor_add_collab_cursor: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly canvisteditor_add_cursor: (a: number, b: number) => void;
     readonly canvisteditor_add_line_decoration: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
     readonly canvisteditor_add_ruler: (a: number, b: number) => void;
@@ -1854,6 +1937,7 @@ export interface InitOutput {
     readonly canvisteditor_char_counts: (a: number) => [number, number];
     readonly canvisteditor_clear_annotations: (a: number) => void;
     readonly canvisteditor_clear_bookmarks: (a: number) => void;
+    readonly canvisteditor_clear_collab_cursors: (a: number) => void;
     readonly canvisteditor_clear_cursors: (a: number) => void;
     readonly canvisteditor_clear_line_decorations: (a: number) => void;
     readonly canvisteditor_clear_snapshot: (a: number) => void;
@@ -1865,6 +1949,8 @@ export interface InitOutput {
     readonly canvisteditor_clipboard_ring_paste: (a: number, b: number) => void;
     readonly canvisteditor_clipboard_ring_push: (a: number, b: number, c: number) => void;
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
+    readonly canvisteditor_collab_cursor_count: (a: number) => number;
+    readonly canvisteditor_collab_cursor_list: (a: number) => [number, number];
     readonly canvisteditor_command_list: (a: number) => [number, number];
     readonly canvisteditor_comment_prefix: (a: number) => [number, number];
     readonly canvisteditor_completions: (a: number, b: number) => [number, number];
@@ -1872,6 +1958,8 @@ export interface InitOutput {
     readonly canvisteditor_contains_rtl: (a: number) => number;
     readonly canvisteditor_content_height: (a: number) => [number, number, number];
     readonly canvisteditor_contract_selection: (a: number) => void;
+    readonly canvisteditor_convert_to_crlf: (a: number) => number;
+    readonly canvisteditor_convert_to_lf: (a: number) => number;
     readonly canvisteditor_create: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_current_column: (a: number) => number;
     readonly canvisteditor_current_line_number: (a: number) => number;
@@ -1888,6 +1976,8 @@ export interface InitOutput {
     readonly canvisteditor_delete_range: (a: number, b: number, c: number) => void;
     readonly canvisteditor_delete_word_left: (a: number) => void;
     readonly canvisteditor_delete_word_right: (a: number) => void;
+    readonly canvisteditor_detect_file_type: (a: number) => [number, number];
+    readonly canvisteditor_detect_line_ending: (a: number) => [number, number];
     readonly canvisteditor_detect_links: (a: number) => number;
     readonly canvisteditor_diff_from_snapshot: (a: number) => [number, number];
     readonly canvisteditor_diff_texts: (a: number, b: number, c: number, d: number) => [number, number];
@@ -1898,6 +1988,7 @@ export interface InitOutput {
     readonly canvisteditor_event_log_clear: (a: number) => void;
     readonly canvisteditor_event_log_get: (a: number, b: number) => [number, number];
     readonly canvisteditor_event_log_length: (a: number) => number;
+    readonly canvisteditor_expand_emmet: (a: number) => number;
     readonly canvisteditor_expand_selection: (a: number) => void;
     readonly canvisteditor_export_canvas_data_url: (a: number) => [number, number];
     readonly canvisteditor_extra_cursor_count: (a: number) => number;
@@ -2010,6 +2101,7 @@ export interface InitOutput {
     readonly canvisteditor_prev_bookmark: (a: number) => number;
     readonly canvisteditor_process_events: (a: number) => void;
     readonly canvisteditor_push_cursor_history: (a: number) => void;
+    readonly canvisteditor_push_selection_history: (a: number) => void;
     readonly canvisteditor_queue_key_down: (a: number, b: number, c: number) => void;
     readonly canvisteditor_queue_key_down_with_modifiers: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly canvisteditor_queue_text_input: (a: number, b: number, c: number) => void;
@@ -2018,6 +2110,7 @@ export interface InitOutput {
     readonly canvisteditor_redo: (a: number) => number;
     readonly canvisteditor_remaining_capacity: (a: number) => number;
     readonly canvisteditor_remove_annotations_by_kind: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_remove_collab_cursor: (a: number, b: number, c: number) => void;
     readonly canvisteditor_remove_cursor: (a: number, b: number) => void;
     readonly canvisteditor_remove_duplicate_lines: (a: number) => number;
     readonly canvisteditor_remove_highlight_color: (a: number) => void;
@@ -2059,6 +2152,9 @@ export interface InitOutput {
     readonly canvisteditor_selection_anchor: (a: number) => number;
     readonly canvisteditor_selection_changed: (a: number) => number;
     readonly canvisteditor_selection_end: (a: number) => number;
+    readonly canvisteditor_selection_history_back: (a: number) => number;
+    readonly canvisteditor_selection_history_forward: (a: number) => number;
+    readonly canvisteditor_selection_history_length: (a: number) => number;
     readonly canvisteditor_selection_is_collapsed: (a: number) => number;
     readonly canvisteditor_selection_length: (a: number) => number;
     readonly canvisteditor_selection_line_range: (a: number) => [number, number];
@@ -2152,6 +2248,7 @@ export interface InitOutput {
     readonly canvisteditor_unfold_all: (a: number) => void;
     readonly canvisteditor_unfold_lines: (a: number, b: number, c: number) => void;
     readonly canvisteditor_unique_word_count: (a: number) => number;
+    readonly canvisteditor_update_collab_cursor: (a: number, b: number, c: number, d: number) => void;
     readonly canvisteditor_url_decode_selection: (a: number) => void;
     readonly canvisteditor_url_encode_selection: (a: number) => void;
     readonly canvisteditor_viewport_height: (a: number) => number;
@@ -2167,6 +2264,7 @@ export interface InitOutput {
     readonly canvisteditor_zoom_in: (a: number) => void;
     readonly canvisteditor_zoom_out: (a: number) => void;
     readonly canvisteditor_zoom_reset: (a: number) => void;
+    readonly canvisteditor_is_focused: (a: number) => number;
     readonly canvisteditor_end_batch: (a: number) => void;
     readonly canvisteditor_selection_start: (a: number) => number;
     readonly canvisteditor_measure_text_width: (a: number, b: number, c: number) => number;

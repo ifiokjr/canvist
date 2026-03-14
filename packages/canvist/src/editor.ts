@@ -2285,6 +2285,86 @@ export async function createEditor(
 			documentOutline() {
 				return Array.from(ref.document_outline());
 			},
+			// ── Collaborative cursors ───────────────────
+			addCollabCursor(
+				offset: number,
+				name: string,
+				r: number,
+				g: number,
+				b: number,
+			) {
+				ref.add_collab_cursor(offset, name, r, g, b);
+				renderFrame();
+			},
+			updateCollabCursor(name: string, offset: number) {
+				ref.update_collab_cursor(name, offset);
+				renderFrame();
+			},
+			removeCollabCursor(name: string) {
+				ref.remove_collab_cursor(name);
+				renderFrame();
+			},
+			clearCollabCursors() {
+				ref.clear_collab_cursors();
+				renderFrame();
+			},
+			get collabCursorCount() {
+				return ref.collab_cursor_count();
+			},
+			collabCursorList() {
+				return Array.from(ref.collab_cursor_list());
+			},
+			// ── Line ending ─────────────────────────────
+			detectLineEnding() {
+				return ref.detect_line_ending();
+			},
+			convertToCrlf() {
+				syncTime();
+				const n = ref.convert_to_crlf();
+				renderFrame();
+				return n;
+			},
+			convertToLf() {
+				syncTime();
+				const n = ref.convert_to_lf();
+				renderFrame();
+				return n;
+			},
+			// ── File type ───────────────────────────────
+			detectFileType() {
+				return ref.detect_file_type();
+			},
+			// ── Emmet ───────────────────────────────────
+			expandEmmet() {
+				syncTime();
+				const ok = ref.expand_emmet();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			// ── Selection history ───────────────────────
+			pushSelectionHistory() {
+				ref.push_selection_history();
+			},
+			selectionHistoryBack() {
+				const ok = ref.selection_history_back();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			selectionHistoryForward() {
+				const ok = ref.selection_history_forward();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			get selectionHistoryLength() {
+				return ref.selection_history_length();
+			},
+			// ── Focus ───────────────────────────────────
+			get isFocused() {
+				return ref.is_focused();
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));

@@ -1281,6 +1281,72 @@ export interface CanvistEditor {
 	/** Outline: [indent, lineNumber, text, ...]. */
 	documentOutline(): string[];
 
+	// ── Collaborative cursors ───────────────────────────────────────
+
+	/** Add a collaborator cursor with name and colour. */
+	addCollabCursor(
+		offset: number,
+		name: string,
+		r: number,
+		g: number,
+		b: number,
+	): void;
+
+	/** Update a collaborator cursor position. */
+	updateCollabCursor(name: string, offset: number): void;
+
+	/** Remove a collaborator cursor. */
+	removeCollabCursor(name: string): void;
+
+	/** Clear all collaborator cursors. */
+	clearCollabCursors(): void;
+
+	/** Number of collaborator cursors. */
+	readonly collabCursorCount: number;
+
+	/** All cursors: [offset, name, r, g, b, ...]. */
+	collabCursorList(): string[];
+
+	// ── Line ending ─────────────────────────────────────────────────
+
+	/** Detect line ending style: "lf", "crlf", or "mixed". */
+	detectLineEnding(): string;
+
+	/** Convert all endings to CRLF. Returns count. */
+	convertToCrlf(): number;
+
+	/** Convert all endings to LF. Returns count. */
+	convertToLf(): number;
+
+	// ── File type ───────────────────────────────────────────────────
+
+	/** Guess file type from content. */
+	detectFileType(): string;
+
+	// ── Emmet ───────────────────────────────────────────────────────
+
+	/** Expand Emmet abbreviation at cursor. Returns true if expanded. */
+	expandEmmet(): boolean;
+
+	// ── Selection history ───────────────────────────────────────────
+
+	/** Push current selection onto history. */
+	pushSelectionHistory(): void;
+
+	/** Go back in selection history. */
+	selectionHistoryBack(): boolean;
+
+	/** Go forward in selection history. */
+	selectionHistoryForward(): boolean;
+
+	/** Selection history length. */
+	readonly selectionHistoryLength: number;
+
+	// ── Focus ───────────────────────────────────────────────────────
+
+	/** Whether the editor is focused. */
+	readonly isFocused: boolean;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }
