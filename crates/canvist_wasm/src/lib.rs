@@ -419,6 +419,17 @@ pub struct CanvistEditor {
 	cursor_color: Option<(u8, u8, u8, u8)>,
 	/// Previous text snapshot for diff.
 	diff_snapshot: String,
+	/// Whether macro recording is active.
+	macro_recording: bool,
+	/// Recorded macro steps: each is a (kind, data) tuple.
+	/// kind: "insert" | "delete" | "select"
+	macro_steps: Vec<(String, String)>,
+	/// Saved macros by name.
+	saved_macros: std::collections::HashMap<String, Vec<(String, String)>>,
+	/// Whether to highlight all find matches visually.
+	show_find_highlights: bool,
+	/// Current find highlight needle.
+	find_highlight_needle: String,
 }
 
 /// Colour theme for the editor canvas.
@@ -559,6 +570,11 @@ impl CanvistEditor {
 			cursor_width: 2.0,
 			cursor_color: None,
 			diff_snapshot: String::new(),
+			macro_recording: false,
+			macro_steps: Vec::new(),
+			saved_macros: std::collections::HashMap::new(),
+			show_find_highlights: false,
+			find_highlight_needle: String::new(),
 		})
 	}
 
@@ -4205,6 +4221,326 @@ impl CanvistEditor {
 		self.diff_snapshot.clear();
 	}
 
+	// ── Macro recording ──────────────────────────────────────────────
+
+	/// Start recording a macro.
+	#[wasm_bindgen]
+	pub fn macro_start_recording(&mut self) {
+		self.macro_recording = true;
+		self.macro_steps.clear();
+	}
+
+	/// Stop recording and return the number of steps recorded.
+	#[wasm_bindgen]
+	pub fn macro_stop_recording(&mut self) -> usize {
+		self.macro_recording = false;
+		self.macro_steps.len()
+	}
+
+	/// Whether macro recording is active.
+	#[wasm_bindgen]
+	pub fn macro_is_recording(&self) -> bool {
+		self.macro_recording
+	}
+
+	/// Record a macro step manually.
+	///
+	/// `kind`: "insert", "delete", "select"
+	/// `data`: for insert = text; for delete = "start,end";
+	///         for select = "start,end"
+	#[wasm_bindgen]
+	pub fn macro_record_step(&mut self, kind: &str, data: &str) {
+		if self.macro_recording {
+			self.macro_steps.push((kind.to_string(), data.to_string()));
+		}
+	}
+
+	/// Number of steps in the current macro recording.
+	#[wasm_bindgen]
+	pub fn macro_step_count(&self) -> usize {
+		self.macro_steps.len()
+	}
+
+	/// Replay the recorded macro once.
+	#[wasm_bindgen]
+	pub fn macro_replay(&mut self) {
+		if !self.is_writable() {
+			return;
+		}
+		let steps = self.macro_steps.clone();
+		for (kind, data) in &steps {
+			match kind.as_str() {
+				"insert" => {
+					let offset = self.runtime.selection().end().offset();
+					self.insert_text_at(offset, data);
+				}
+				"delete" => {
+					let parts: Vec<&str> = data.split(',').collect();
+					if parts.len() == 2 {
+						if let (Ok(s), Ok(e)) =
+							(parts[0].parse::<usize>(), parts[1].parse::<usize>())
+						{
+							self.delete_range(s, e);
+						}
+					}
+				}
+				"select" => {
+					let parts: Vec<&str> = data.split(',').collect();
+					if parts.len() == 2 {
+						if let (Ok(s), Ok(e)) =
+							(parts[0].parse::<usize>(), parts[1].parse::<usize>())
+						{
+							let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+								selection: Selection::range(Position::new(s), Position::new(e)),
+							});
+						}
+					}
+				}
+				_ => {}
+			}
+		}
+		self.is_modified = true;
+	}
+
+	/// Save the current recorded macro under a name.
+	#[wasm_bindgen]
+	pub fn macro_save(&mut self, name: &str) {
+		self.saved_macros
+			.insert(name.to_string(), self.macro_steps.clone());
+	}
+
+	/// Replay a saved macro by name. Returns false if not found.
+	#[wasm_bindgen]
+	pub fn macro_replay_saved(&mut self, name: &str) -> bool {
+		if !self.is_writable() {
+			return false;
+		}
+		if let Some(steps) = self.saved_macros.get(name).cloned() {
+			let old = std::mem::replace(&mut self.macro_steps, steps);
+			self.macro_replay();
+			self.macro_steps = old;
+			true
+		} else {
+			false
+		}
+	}
+
+	/// List saved macro names.
+	#[wasm_bindgen]
+	pub fn macro_list_saved(&self) -> Vec<String> {
+		let mut names: Vec<String> = self.saved_macros.keys().cloned().collect();
+		names.sort();
+		names
+	}
+
+	/// Delete a saved macro.
+	#[wasm_bindgen]
+	pub fn macro_delete_saved(&mut self, name: &str) {
+		self.saved_macros.remove(name);
+	}
+
+	// ── Find match highlights ────────────────────────────────────────
+
+	/// Set the needle for visual find highlights.
+	///
+	/// All occurrences are highlighted with a translucent overlay.
+	/// Pass empty string to clear highlights.
+	#[wasm_bindgen]
+	pub fn set_find_highlights(&mut self, needle: &str) {
+		self.find_highlight_needle = needle.to_string();
+		self.show_find_highlights = !needle.is_empty();
+	}
+
+	/// Get the current find highlight needle.
+	#[wasm_bindgen]
+	pub fn find_highlight_needle(&self) -> String {
+		self.find_highlight_needle.clone()
+	}
+
+	/// Whether find highlights are active.
+	#[wasm_bindgen]
+	pub fn show_find_highlights(&self) -> bool {
+		self.show_find_highlights
+	}
+
+	// ── Column/block selection ───────────────────────────────────────
+
+	/// Get text from a rectangular block selection.
+	///
+	/// Returns lines from `start_line` to `end_line` (inclusive),
+	/// each trimmed to columns `start_col` to `end_col` (char-based).
+	#[wasm_bindgen]
+	pub fn get_block_selection(
+		&self,
+		start_line: usize,
+		end_line: usize,
+		start_col: usize,
+		end_col: usize,
+	) -> String {
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		let mut result = Vec::new();
+		let s = start_line.min(lines.len());
+		let e = end_line.min(lines.len().saturating_sub(1));
+		for i in s..=e {
+			let chars: Vec<char> = lines[i].chars().collect();
+			let sc = start_col.min(chars.len());
+			let ec = end_col.min(chars.len());
+			if sc <= ec {
+				result.push(chars[sc..ec].iter().collect::<String>());
+			} else {
+				result.push(String::new());
+			}
+		}
+		result.join("\n")
+	}
+
+	/// Replace text in a rectangular block.
+	///
+	/// Each line of `text` replaces the corresponding column range.
+	#[wasm_bindgen]
+	pub fn set_block_selection(
+		&mut self,
+		start_line: usize,
+		end_line: usize,
+		start_col: usize,
+		end_col: usize,
+		text: &str,
+	) {
+		if !self.is_writable() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let lines: Vec<&str> = plain.split('\n').collect();
+		let new_lines: Vec<&str> = text.split('\n').collect();
+		let s = start_line.min(lines.len());
+		let e = end_line.min(lines.len().saturating_sub(1));
+
+		// Build new document from bottom to top.
+		let mut rebuilt: Vec<String> = lines.iter().map(|l| l.to_string()).collect();
+		let range_indices: Vec<usize> = (s..=e).collect();
+		for (idx, &i) in range_indices.iter().enumerate().rev() {
+			let chars: Vec<char> = rebuilt[i].chars().collect();
+			let sc = start_col.min(chars.len());
+			let ec = end_col.min(chars.len());
+			let before: String = chars[..sc].iter().collect();
+			let after: String = chars[ec..].iter().collect();
+			let replacement = new_lines.get(idx).copied().unwrap_or("");
+			rebuilt[i] = format!("{before}{replacement}{after}");
+		}
+
+		let new_text = rebuilt.join("\n");
+		self.runtime.document_mut().set_plain_text(&new_text);
+		self.is_modified = true;
+	}
+
+	// ── Smart paste ──────────────────────────────────────────────────
+
+	/// Paste text with auto-adjusted indentation.
+	///
+	/// Detects the indentation level at the cursor and adjusts the
+	/// pasted text to match.
+	#[wasm_bindgen]
+	pub fn paste_with_indent(&mut self, text: &str) {
+		if !self.is_writable() || text.is_empty() {
+			return;
+		}
+		let plain = self.runtime.document().plain_text();
+		let offset = self.runtime.selection().end().offset();
+
+		// Find the current line's indentation.
+		let before: String = plain.chars().take(offset).collect();
+		let current_line = before.rsplit('\n').next().unwrap_or("");
+		let target_indent: String = current_line
+			.chars()
+			.take_while(|c| c.is_whitespace())
+			.collect();
+
+		// Find the minimum indentation of the pasted text.
+		let paste_lines: Vec<&str> = text.split('\n').collect();
+		let min_indent = paste_lines
+			.iter()
+			.filter(|l| !l.trim().is_empty())
+			.map(|l| l.chars().take_while(|c| c.is_whitespace()).count())
+			.min()
+			.unwrap_or(0);
+
+		// Re-indent each line.
+		let mut result = Vec::new();
+		for (i, line) in paste_lines.iter().enumerate() {
+			if i == 0 {
+				// First line goes at cursor position (no re-indent).
+				result.push(line.to_string());
+			} else if line.trim().is_empty() {
+				result.push(String::new());
+			} else {
+				let line_indent = line.chars().take_while(|c| c.is_whitespace()).count();
+				let stripped = &line[line
+					.chars()
+					.take_while(|c| c.is_whitespace())
+					.map(|c| c.len_utf8())
+					.sum::<usize>()..];
+				let extra = line_indent.saturating_sub(min_indent);
+				let new_indent = format!("{}{}", target_indent, " ".repeat(extra));
+				result.push(format!("{new_indent}{stripped}"));
+			}
+		}
+		let adjusted = result.join("\n");
+		let len = adjusted.chars().count();
+		self.insert_text_at(offset, &adjusted);
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(offset + len)),
+		});
+	}
+
+	// ── Tokenize ─────────────────────────────────────────────────────
+
+	/// Simple tokenization of the document text.
+	///
+	/// Returns alternating [kind, text, kind, text, ...] where kind is
+	/// one of: "word", "number", "whitespace", "punctuation", "newline".
+	#[wasm_bindgen]
+	pub fn tokenize(&self) -> Vec<String> {
+		let plain = self.runtime.document().plain_text();
+		let mut tokens = Vec::new();
+		let chars: Vec<char> = plain.chars().collect();
+		let mut i = 0;
+		while i < chars.len() {
+			let ch = chars[i];
+			if ch == '\n' {
+				tokens.push("newline".to_string());
+				tokens.push("\n".to_string());
+				i += 1;
+			} else if ch.is_whitespace() {
+				let start = i;
+				while i < chars.len() && chars[i].is_whitespace() && chars[i] != '\n' {
+					i += 1;
+				}
+				tokens.push("whitespace".to_string());
+				tokens.push(chars[start..i].iter().collect());
+			} else if ch.is_alphabetic() || ch == '_' {
+				let start = i;
+				while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_') {
+					i += 1;
+				}
+				tokens.push("word".to_string());
+				tokens.push(chars[start..i].iter().collect());
+			} else if ch.is_ascii_digit() {
+				let start = i;
+				while i < chars.len() && (chars[i].is_ascii_digit() || chars[i] == '.') {
+					i += 1;
+				}
+				tokens.push("number".to_string());
+				tokens.push(chars[start..i].iter().collect());
+			} else {
+				tokens.push("punctuation".to_string());
+				tokens.push(ch.to_string());
+				i += 1;
+			}
+		}
+		tokens
+	}
+
 	/// Returns `true` if the editor is writable. Use at the top of any
 	/// method that modifies the document.
 	fn is_writable(&self) -> bool {
@@ -6167,6 +6503,34 @@ impl CanvistEditor {
 					}
 					i += 2;
 				}
+			}
+		}
+
+		// ── Find match highlights ────────────────────────────────────────
+		if self.show_find_highlights && !self.find_highlight_needle.is_empty() {
+			let hl_color = Color::new(255, 200, 0, 60);
+			let needle_copy = self.find_highlight_needle.clone();
+			let offsets = self.find_all(&needle_copy, false);
+			let mut fi = 0;
+			while fi + 1 < offsets.len() {
+				let hl_start = offsets[fi];
+				let hl_end = offsets[fi + 1];
+				if let Some(sr) =
+					Self::char_rect(hl_start, &paragraphs, &lc, content_x_origin, sy, &renderer)
+				{
+					if let Some(er) = Self::char_rect(
+						(hl_end).saturating_sub(1).max(hl_start),
+						&paragraphs,
+						&lc,
+						content_x_origin,
+						sy,
+						&renderer,
+					) {
+						let w = (er.x + er.width) - sr.x;
+						renderer.fill_rect(Rect::new(sr.x, sr.y, w, sr.height), hl_color);
+					}
+				}
+				fi += 2;
 			}
 		}
 

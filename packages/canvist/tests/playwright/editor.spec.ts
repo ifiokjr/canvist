@@ -5237,4 +5237,187 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Macro recording ─────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] macro record, save, replay`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.macro_start_recording();
+						const recording = ed.macro_is_recording();
+						ed.macro_record_step("insert", "Hello");
+						ed.macro_record_step("insert", " World");
+						const steps = ed.macro_stop_recording();
+						ed.macro_save("greet");
+						const names = Array.from(ed.macro_list_saved());
+						// Replay saved macro.
+						ed.macro_replay_saved("greet");
+						const text = ed.plain_text();
+						return { recording, steps, names, text };
+					});
+					assertEquals(result.recording, true);
+					assertEquals(result.steps, 2);
+					assert(result.names.includes("greet"), "should have saved macro");
+					assertEquals(result.text, "Hello World");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Find match highlights ───────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] find highlights toggle`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hello world hello");
+						ed.set_find_highlights("hello");
+						const needle = ed.find_highlight_needle();
+						const active = ed.show_find_highlights();
+						ed.set_find_highlights("");
+						const cleared = ed.show_find_highlights();
+						return { needle, active, cleared };
+					});
+					assertEquals(result.needle, "hello");
+					assertEquals(result.active, true);
+					assertEquals(result.cleared, false);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Block selection ─────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] block selection get and set`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("ABCDE\nFGHIJ\nKLMNO");
+						// Get block: lines 0-1, cols 1-3.
+						const block = ed.get_block_selection(0, 1, 1, 3);
+						return block;
+					});
+					assertEquals(result, "BC\nGH");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Smart paste ─────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] paste_with_indent adjusts indentation`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("    "); // 4 spaces indent
+						ed.paste_with_indent("line1\n  line2\n  line3");
+						return ed.plain_text();
+					});
+					// First line at cursor, subsequent re-indented to 4 spaces.
+					assert(
+						result.includes("line1"),
+						`should contain line1, got: ${result}`,
+					);
+					assert(
+						result.includes("line2"),
+						`should contain line2, got: ${result}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Tokenize ────────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] tokenize returns kind-text pairs`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("hi 42!");
+						return Array.from(ed.tokenize());
+					});
+					// "hi" → word, " " → whitespace, "42" → number, "!" → punctuation
+					assertEquals(result[0], "word");
+					assertEquals(result[1], "hi");
+					assertEquals(result[2], "whitespace");
+					assertEquals(result[3], " ");
+					assertEquals(result[4], "number");
+					assertEquals(result[5], "42");
+					assertEquals(result[6], "punctuation");
+					assertEquals(result[7], "!");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

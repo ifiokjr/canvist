@@ -994,6 +994,78 @@ export interface CanvistEditor {
 	/** Clear the snapshot. */
 	clearSnapshot(): void;
 
+	// ── Macro recording ─────────────────────────────────────────────
+
+	/** Start recording a macro. */
+	macroStartRecording(): void;
+
+	/** Stop recording. Returns number of steps. */
+	macroStopRecording(): number;
+
+	/** Whether recording is active. */
+	readonly macroIsRecording: boolean;
+
+	/** Record a step manually (kind: insert/delete/select). */
+	macroRecordStep(kind: string, data: string): void;
+
+	/** Number of recorded steps. */
+	readonly macroStepCount: number;
+
+	/** Replay the recorded macro. */
+	macroReplay(): void;
+
+	/** Save the recorded macro under a name. */
+	macroSave(name: string): void;
+
+	/** Replay a saved macro by name. Returns false if not found. */
+	macroReplaySaved(name: string): boolean;
+
+	/** List saved macro names. */
+	macroListSaved(): string[];
+
+	/** Delete a saved macro. */
+	macroDeleteSaved(name: string): void;
+
+	// ── Find match highlights ───────────────────────────────────────
+
+	/** Set needle for visual find highlights. Empty = clear. */
+	setFindHighlights(needle: string): void;
+
+	/** Current find highlight needle. */
+	readonly findHighlightNeedle: string;
+
+	/** Whether find highlights are active. */
+	readonly showFindHighlights: boolean;
+
+	// ── Column/block selection ───────────────────────────────────────
+
+	/** Get text from a rectangular block. */
+	getBlockSelection(
+		startLine: number,
+		endLine: number,
+		startCol: number,
+		endCol: number,
+	): string;
+
+	/** Replace text in a rectangular block. */
+	setBlockSelection(
+		startLine: number,
+		endLine: number,
+		startCol: number,
+		endCol: number,
+		text: string,
+	): void;
+
+	// ── Smart paste ─────────────────────────────────────────────────
+
+	/** Paste with auto-adjusted indentation. */
+	pasteWithIndent(text: string): void;
+
+	// ── Tokenize ────────────────────────────────────────────────────
+
+	/** Tokenize document: [kind, text, kind, text, ...]. */
+	tokenize(): string[];
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }
