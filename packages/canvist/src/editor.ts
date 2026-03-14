@@ -1791,6 +1791,48 @@ export async function createEditor(
 			selectionChanged() {
 				return ref.selection_changed();
 			},
+			// ── Wrap indicators ─────────────────────────
+			get showWrapIndicators() {
+				return ref.show_wrap_indicators();
+			},
+			setShowWrapIndicators(enabled: boolean) {
+				ref.set_show_wrap_indicators(enabled);
+				renderFrame();
+			},
+			// ── Selection anchor ────────────────────────
+			get selectionAnchor() {
+				return ref.selection_anchor();
+			},
+			get selectionIsCollapsed() {
+				return ref.selection_is_collapsed();
+			},
+			get selectionLength() {
+				return ref.selection_length();
+			},
+			// ── Character counts ────────────────────────
+			charCounts() {
+				return Array.from(ref.char_counts());
+			},
+			// ── Text hash ───────────────────────────────
+			textHash() {
+				return ref.text_hash();
+			},
+			// ── Event log ───────────────────────────────
+			logEvent(event: string) {
+				ref.log_event(event);
+			},
+			eventLogGet(index: number) {
+				return ref.event_log_get(index);
+			},
+			get eventLogLength() {
+				return ref.event_log_length();
+			},
+			eventLogClear() {
+				ref.event_log_clear();
+			},
+			setEventLogMax(max: number) {
+				ref.set_event_log_max(max);
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));

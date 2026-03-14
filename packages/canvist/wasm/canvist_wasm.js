@@ -217,6 +217,18 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Count characters by type: [letters, digits, spaces, punctuation, other].
+     *
+     * Returns a 5-element array.
+     * @returns {Uint32Array}
+     */
+    char_counts() {
+        const ret = wasm.canvisteditor_char_counts(this.__wbg_ptr);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Remove all bookmarks.
      */
     clear_bookmarks() {
@@ -519,6 +531,37 @@ export class CanvistEditor {
     ensure_final_newline() {
         const ret = wasm.canvisteditor_ensure_final_newline(this.__wbg_ptr);
         return ret !== 0;
+    }
+    /**
+     * Clear the event log.
+     */
+    event_log_clear() {
+        wasm.canvisteditor_event_log_clear(this.__wbg_ptr);
+    }
+    /**
+     * Get event log entry at index (0 = newest).
+     * @param {number} index
+     * @returns {string}
+     */
+    event_log_get(index) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_event_log_get(this.__wbg_ptr, index);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Number of entries in the event log.
+     * @returns {number}
+     */
+    event_log_length() {
+        const ret = wasm.canvisteditor_event_log_length(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
      * Expand selection intelligently: word → quoted → bracketed → line → all.
@@ -931,6 +974,18 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0] >>> 0;
+    }
+    /**
+     * Log an editor event. Newest entries are at index 0.
+     *
+     * The log is capped at `event_log_max` (default 50).
+     * Call from JS to record significant actions.
+     * @param {string} event
+     */
+    log_event(event) {
+        const ptr0 = passStringToWasm0(event, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_log_event(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Mark the document as modified.
@@ -1504,6 +1559,18 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Get the selection anchor (start) offset.
+     *
+     * When selecting left-to-right, anchor < focus (end).
+     * When selecting right-to-left, anchor > focus.
+     * When collapsed, anchor == focus.
+     * @returns {number}
+     */
+    selection_anchor() {
+        const ret = wasm.canvisteditor_selection_anchor(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Check if the selection has changed since the last call to this
      * method.
      *
@@ -1521,6 +1588,22 @@ export class CanvistEditor {
      */
     selection_end() {
         const ret = wasm.canvisteditor_selection_end(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Whether the selection is collapsed (no text selected).
+     * @returns {boolean}
+     */
+    selection_is_collapsed() {
+        const ret = wasm.canvisteditor_selection_is_collapsed(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Length of the current selection in characters.
+     * @returns {number}
+     */
+    selection_length() {
+        const ret = wasm.canvisteditor_selection_length(this.__wbg_ptr);
         return ret >>> 0;
     }
     /**
@@ -1599,6 +1682,13 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_set_comment_prefix(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Set the maximum number of event log entries.
+     * @param {number} max
+     */
+    set_event_log_max(max) {
+        wasm.canvisteditor_set_event_log_max(this.__wbg_ptr, max);
     }
     /**
      * Set whether the editor has focus.
@@ -1749,6 +1839,16 @@ export class CanvistEditor {
         wasm.canvisteditor_set_show_whitespace(this.__wbg_ptr, show);
     }
     /**
+     * Enable/disable wrap continuation indicators in the gutter.
+     *
+     * When enabled, wrapped continuation lines show a `↪` glyph in
+     * the gutter to distinguish them from real line breaks.
+     * @param {boolean} enabled
+     */
+    set_show_wrap_indicators(enabled) {
+        wasm.canvisteditor_set_show_wrap_indicators(this.__wbg_ptr, enabled);
+    }
+    /**
      * Set the logical (CSS) dimensions of the editor canvas.
      *
      * Call this after changing the canvas's CSS size so layout wrapping
@@ -1837,6 +1937,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether wrap indicators are shown.
+     * @returns {boolean}
+     */
+    show_wrap_indicators() {
+        const ret = wasm.canvisteditor_show_wrap_indicators(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * If the cursor is between a matching bracket pair (e.g. `(|)`),
      * delete both characters. Otherwise, behave like normal backspace.
      *
@@ -1895,6 +2003,25 @@ export class CanvistEditor {
     tabs_to_spaces() {
         const ret = wasm.canvisteditor_tabs_to_spaces(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Fast content fingerprint (FNV-1a 64-bit hash as hex string).
+     *
+     * Useful for external change detection: compare hashes to check
+     * if content has changed without comparing full text.
+     * @returns {string}
+     */
+    text_hash() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_text_hash(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Return `"dark"` or `"light"` depending on the active theme.
