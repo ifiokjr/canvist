@@ -330,11 +330,12 @@ export async function createEditor(
 		const selected = inner.get_selected_text();
 		if (selected && e.clipboardData) {
 			e.clipboardData.setData("text/plain", selected);
+			inner.clipboard_ring_push(selected);
 		} else if (e.clipboardData) {
-			// No selection → copy current line (VS Code behavior).
 			const lineText = inner.current_line_text();
 			if (lineText) {
 				e.clipboardData.setData("text/plain", lineText);
+				inner.clipboard_ring_push(lineText);
 			}
 		}
 	});
@@ -344,16 +345,17 @@ export async function createEditor(
 		const selected = inner.get_selected_text();
 		if (selected && e.clipboardData) {
 			e.clipboardData.setData("text/plain", selected);
+			inner.clipboard_ring_push(selected);
 			syncTime();
 			inner.clipboard_cut();
 			cursorOffset = inner.selection_start();
 			renderFrame();
 		} else if (e.clipboardData) {
-			// No selection → cut current line (VS Code behavior).
 			syncTime();
 			const lineText = inner.cut_line();
 			if (lineText) {
 				e.clipboardData.setData("text/plain", lineText);
+				inner.clipboard_ring_push(lineText);
 			}
 			cursorOffset = inner.selection_end();
 			renderFrame();
@@ -1666,6 +1668,79 @@ export async function createEditor(
 			scrollToSelection() {
 				ref.scroll_to_selection();
 				renderFrame();
+			},
+			// ── Line decorations ────────────────────────
+			addLineDecoration(
+				line: number,
+				r: number,
+				g: number,
+				b: number,
+				a: number,
+			) {
+				ref.add_line_decoration(line, r, g, b, a);
+				renderFrame();
+			},
+			removeLineDecorations(line: number) {
+				ref.remove_line_decorations(line);
+				renderFrame();
+			},
+			clearLineDecorations() {
+				ref.clear_line_decorations();
+				renderFrame();
+			},
+			get lineDecorationCount() {
+				return ref.line_decoration_count();
+			},
+			// ── Modified state ──────────────────────────
+			get isModified() {
+				return ref.is_modified();
+			},
+			markSaved() {
+				ref.mark_saved();
+			},
+			markModified() {
+				ref.mark_modified();
+			},
+			// ── Clipboard ring ──────────────────────────
+			clipboardRingPush(text: string) {
+				ref.clipboard_ring_push(text);
+			},
+			clipboardRingGet(index: number) {
+				return ref.clipboard_ring_get(index);
+			},
+			get clipboardRingLength() {
+				return ref.clipboard_ring_length();
+			},
+			clipboardRingClear() {
+				ref.clipboard_ring_clear();
+			},
+			clipboardRingPaste(index: number) {
+				syncTime();
+				ref.clipboard_ring_paste(index);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Word frequency ──────────────────────────
+			wordFrequency(topN: number) {
+				return Array.from(ref.word_frequency(topN));
+			},
+			// ── Highlight occurrences ───────────────────
+			get highlightOccurrences() {
+				return ref.highlight_occurrences();
+			},
+			setHighlightOccurrences(enabled: boolean) {
+				ref.set_highlight_occurrences(enabled);
+				renderFrame();
+			},
+			wordAtCursor() {
+				return ref.word_at_cursor();
+			},
+			// ── Text measurement ────────────────────────
+			measureTextWidth(text: string) {
+				return ref.measure_text_width(text);
+			},
+			measureCharWidth(ch: string) {
+				return ref.measure_char_width(ch);
 			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {

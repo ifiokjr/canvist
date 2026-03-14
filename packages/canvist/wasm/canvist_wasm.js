@@ -25,6 +25,20 @@ export class CanvistEditor {
         wasm.__wbg_canvisteditor_free(ptr, 0);
     }
     /**
+     * Add a coloured background decoration to a line (0-based).
+     *
+     * Multiple decorations can be added to the same line. The colours
+     * are blended in order.
+     * @param {number} line
+     * @param {number} r
+     * @param {number} g
+     * @param {number} b
+     * @param {number} a
+     */
+    add_line_decoration(line, r, g, b, a) {
+        wasm.canvisteditor_add_line_decoration(this.__wbg_ptr, line, r, g, b, a);
+    }
+    /**
      * Add a single ruler at the given column.
      * @param {number} column
      */
@@ -197,6 +211,12 @@ export class CanvistEditor {
         wasm.canvisteditor_clear_bookmarks(this.__wbg_ptr);
     }
     /**
+     * Remove all line decorations.
+     */
+    clear_line_decorations() {
+        wasm.canvisteditor_clear_line_decorations(this.__wbg_ptr);
+    }
+    /**
      * Perform a clipboard cut: delete the current selection.
      *
      * The caller is expected to have already read `get_selected_text()` and
@@ -213,6 +233,58 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_clipboard_paste(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Clear the clipboard ring.
+     */
+    clipboard_ring_clear() {
+        wasm.canvisteditor_clipboard_ring_clear(this.__wbg_ptr);
+    }
+    /**
+     * Get the clipboard ring entry at `index` (0 = most recent).
+     *
+     * Returns empty string if index is out of range.
+     * @param {number} index
+     * @returns {string}
+     */
+    clipboard_ring_get(index) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_clipboard_ring_get(this.__wbg_ptr, index);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Number of entries in the clipboard ring.
+     * @returns {number}
+     */
+    clipboard_ring_length() {
+        const ret = wasm.canvisteditor_clipboard_ring_length(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Paste the clipboard ring entry at `index` at the cursor.
+     * @param {number} index
+     */
+    clipboard_ring_paste(index) {
+        wasm.canvisteditor_clipboard_ring_paste(this.__wbg_ptr, index);
+    }
+    /**
+     * Push a text entry into the clipboard ring.
+     *
+     * The ring holds the most recent `clipboard_ring_max` entries
+     * (default 10). Newest entry is at index 0.
+     * @param {string} text
+     */
+    clipboard_ring_push(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_clipboard_ring_push(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Return the current undo-coalescing timeout in milliseconds.
@@ -585,6 +657,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether occurrence highlighting is enabled.
+     * @returns {boolean}
+     */
+    highlight_occurrences() {
+        const ret = wasm.canvisteditor_highlight_occurrences(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Hit-test a screen-space point to determine the character offset at that
      * position.
      *
@@ -719,6 +799,14 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether the document has been modified since last save.
+     * @returns {boolean}
+     */
+    is_modified() {
+        const ret = wasm.canvisteditor_is_modified(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
      * Check if the current selection is all underline.
      * @returns {boolean}
      */
@@ -746,6 +834,14 @@ export class CanvistEditor {
         return ret[0] >>> 0;
     }
     /**
+     * Number of active line decorations.
+     * @returns {number}
+     */
+    line_decoration_count() {
+        const ret = wasm.canvisteditor_line_decoration_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Return the end offset of the visual line containing `offset`.
      * @param {number} offset
      * @returns {number}
@@ -771,6 +867,47 @@ export class CanvistEditor {
             throw takeFromExternrefTable0(ret[1]);
         }
         return ret[0] >>> 0;
+    }
+    /**
+     * Mark the document as modified.
+     *
+     * Called automatically by mutating operations. You can also call
+     * it manually to force the dirty state.
+     */
+    mark_modified() {
+        wasm.canvisteditor_mark_modified(this.__wbg_ptr);
+    }
+    /**
+     * Mark the document as saved (clears the modified flag).
+     */
+    mark_saved() {
+        wasm.canvisteditor_mark_saved(this.__wbg_ptr);
+    }
+    /**
+     * Measure the pixel width of a single character using the default
+     * style.
+     * @param {string} ch
+     * @returns {number}
+     */
+    measure_char_width(ch) {
+        const ptr0 = passStringToWasm0(ch, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_measure_char_width(this.__wbg_ptr, ptr0, len0);
+        return ret;
+    }
+    /**
+     * Measure the pixel width of a string using the default style.
+     *
+     * Useful for external layout calculations. Returns 0.0 if the
+     * canvas context is not available.
+     * @param {string} text
+     * @returns {number}
+     */
+    measure_text_width(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_measure_text_width(this.__wbg_ptr, ptr0, len0);
+        return ret;
     }
     /**
      * Move cursor one character left.
@@ -1048,6 +1185,13 @@ export class CanvistEditor {
      */
     remove_highlight_color() {
         wasm.canvisteditor_remove_highlight_color(this.__wbg_ptr);
+    }
+    /**
+     * Remove all decorations from a specific line.
+     * @param {number} line
+     */
+    remove_line_decorations(line) {
+        wasm.canvisteditor_remove_line_decorations(this.__wbg_ptr, line);
     }
     /**
      * Remove the ruler at the given column.
@@ -1360,6 +1504,14 @@ export class CanvistEditor {
      */
     set_highlight_matching_brackets(enabled) {
         wasm.canvisteditor_set_highlight_matching_brackets(this.__wbg_ptr, enabled);
+    }
+    /**
+     * Enable or disable highlighting all occurrences of the word under
+     * the cursor.
+     * @param {boolean} enabled
+     */
+    set_highlight_occurrences(enabled) {
+        wasm.canvisteditor_set_highlight_occurrences(this.__wbg_ptr, enabled);
     }
     /**
      * Set the current wall-clock time (milliseconds since epoch) for the
@@ -1815,6 +1967,24 @@ export class CanvistEditor {
         wasm.canvisteditor_url_encode_selection(this.__wbg_ptr);
     }
     /**
+     * Get the word under (or adjacent to) the cursor.
+     *
+     * Returns empty string if the cursor is not on a word.
+     * @returns {string}
+     */
+    word_at_cursor() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_word_at_cursor(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Find the previous word boundary from a character offset.
      * @param {number} offset
      * @returns {number}
@@ -1839,6 +2009,18 @@ export class CanvistEditor {
     word_count() {
         const ret = wasm.canvisteditor_word_count(this.__wbg_ptr);
         return ret >>> 0;
+    }
+    /**
+     * Return the top N most frequent words as alternating
+     * `[word, count, word, count, ...]` strings.
+     * @param {number} top_n
+     * @returns {string[]}
+     */
+    word_frequency(top_n) {
+        const ret = wasm.canvisteditor_word_frequency(this.__wbg_ptr, top_n);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Whether word wrapping is enabled.
@@ -2045,9 +2227,28 @@ function getArrayF32FromWasm0(ptr, len) {
     return getFloat32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
 }
 
+function getArrayJsValueFromWasm0(ptr, len) {
+    ptr = ptr >>> 0;
+    const mem = getDataViewMemory0();
+    const result = [];
+    for (let i = ptr; i < ptr + 4 * len; i += 4) {
+        result.push(wasm.__wbindgen_externrefs.get(mem.getUint32(i, true)));
+    }
+    wasm.__externref_drop_slice(ptr, len);
+    return result;
+}
+
 function getArrayU32FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint32ArrayMemory0().subarray(ptr / 4, ptr / 4 + len);
+}
+
+let cachedDataViewMemory0 = null;
+function getDataViewMemory0() {
+    if (cachedDataViewMemory0 === null || cachedDataViewMemory0.buffer.detached === true || (cachedDataViewMemory0.buffer.detached === undefined && cachedDataViewMemory0.buffer !== wasm.memory.buffer)) {
+        cachedDataViewMemory0 = new DataView(wasm.memory.buffer);
+    }
+    return cachedDataViewMemory0;
 }
 
 let cachedFloat32ArrayMemory0 = null;
@@ -2182,6 +2383,7 @@ let wasmModule, wasm;
 function __wbg_finalize_init(instance, module) {
     wasm = instance.exports;
     wasmModule = module;
+    cachedDataViewMemory0 = null;
     cachedFloat32ArrayMemory0 = null;
     cachedUint32ArrayMemory0 = null;
     cachedUint8ArrayMemory0 = null;
