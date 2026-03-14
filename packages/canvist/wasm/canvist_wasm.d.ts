@@ -366,6 +366,10 @@ export class CanvistEditor {
      */
     find_all_whole_word(needle: string): Uint32Array;
     /**
+     * Get the current find highlight needle.
+     */
+    find_highlight_needle(): string;
+    /**
      * Find the offset of the bracket matching the one at `offset`.
      *
      * Returns `None` (via -1 in WASM) if the char at `offset` is not a
@@ -400,6 +404,13 @@ export class CanvistEditor {
      * Get annotations as flat array: [start, end, kind, message, ...].
      */
     get_annotations(): string[];
+    /**
+     * Get text from a rectangular block selection.
+     *
+     * Returns lines from `start_line` to `end_line` (inclusive),
+     * each trimmed to columns `start_col` to `end_col` (char-based).
+     */
+    get_block_selection(start_line: number, end_line: number, start_col: number, end_col: number): string;
     /**
      * Get text of a single line (0-based).
      */
@@ -584,6 +595,50 @@ export class CanvistEditor {
      */
     log_event(event: string): void;
     /**
+     * Delete a saved macro.
+     */
+    macro_delete_saved(name: string): void;
+    /**
+     * Whether macro recording is active.
+     */
+    macro_is_recording(): boolean;
+    /**
+     * List saved macro names.
+     */
+    macro_list_saved(): string[];
+    /**
+     * Record a macro step manually.
+     *
+     * `kind`: "insert", "delete", "select"
+     * `data`: for insert = text; for delete = "start,end";
+     *         for select = "start,end"
+     */
+    macro_record_step(kind: string, data: string): void;
+    /**
+     * Replay the recorded macro once.
+     */
+    macro_replay(): void;
+    /**
+     * Replay a saved macro by name. Returns false if not found.
+     */
+    macro_replay_saved(name: string): boolean;
+    /**
+     * Save the current recorded macro under a name.
+     */
+    macro_save(name: string): void;
+    /**
+     * Start recording a macro.
+     */
+    macro_start_recording(): void;
+    /**
+     * Number of steps in the current macro recording.
+     */
+    macro_step_count(): number;
+    /**
+     * Stop recording and return the number of steps recorded.
+     */
+    macro_stop_recording(): number;
+    /**
      * Mark the document as modified.
      *
      * Called automatically by mutating operations. You can also call
@@ -711,6 +766,13 @@ export class CanvistEditor {
      * and inserts the parsed content with formatting preserved.
      */
     paste_html(html: string): void;
+    /**
+     * Paste text with auto-adjusted indentation.
+     *
+     * Detects the indentation level at the cursor and adjusts the
+     * pasted text to match.
+     */
+    paste_with_indent(text: string): void;
     /**
      * Get the current placeholder text.
      */
@@ -976,6 +1038,12 @@ export class CanvistEditor {
      */
     set_auto_surround(enabled: boolean): void;
     /**
+     * Replace text in a rectangular block.
+     *
+     * Each line of `text` replaces the corresponding column range.
+     */
+    set_block_selection(start_line: number, end_line: number, start_col: number, end_col: number, text: string): void;
+    /**
      * Set whether the caret (text cursor) is visible.
      *
      * Called by the JS blink controller on a 530 ms interval to toggle the
@@ -1023,6 +1091,13 @@ export class CanvistEditor {
      * Set the maximum number of event log entries.
      */
     set_event_log_max(max: number): void;
+    /**
+     * Set the needle for visual find highlights.
+     *
+     * All occurrences are highlighted with a translucent overlay.
+     * Pass empty string to clear highlights.
+     */
+    set_find_highlights(needle: string): void;
     /**
      * Set whether the editor has focus.
      *
@@ -1176,6 +1251,10 @@ export class CanvistEditor {
      */
     set_zoom(level: number): void;
     /**
+     * Whether find highlights are active.
+     */
+    show_find_highlights(): boolean;
+    /**
      * Whether indent guides are enabled.
      */
     show_indent_guides(): boolean;
@@ -1320,6 +1399,13 @@ export class CanvistEditor {
      * selection.
      */
     toggle_underline(): void;
+    /**
+     * Simple tokenization of the document text.
+     *
+     * Returns alternating [kind, text, kind, text, ...] where kind is
+     * one of: "word", "number", "whitespace", "punctuation", "newline".
+     */
+    tokenize(): string[];
     /**
      * Convert selected text to lowercase.
      */
@@ -1499,6 +1585,7 @@ export interface InitOutput {
     readonly canvisteditor_find_all: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_find_all_regex: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_find_all_whole_word: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_find_highlight_needle: (a: number) => [number, number];
     readonly canvisteditor_find_matching_bracket: (a: number, b: number) => number;
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
@@ -1506,6 +1593,7 @@ export interface InitOutput {
     readonly canvisteditor_focused: (a: number) => number;
     readonly canvisteditor_from_html: (a: number, b: number, c: number) => void;
     readonly canvisteditor_get_annotations: (a: number) => [number, number];
+    readonly canvisteditor_get_block_selection: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_get_line: (a: number, b: number) => [number, number];
     readonly canvisteditor_get_line_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_get_selected_text: (a: number) => [number, number];
@@ -1539,6 +1627,16 @@ export interface InitOutput {
     readonly canvisteditor_line_end_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_log_event: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_macro_delete_saved: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_macro_is_recording: (a: number) => number;
+    readonly canvisteditor_macro_list_saved: (a: number) => [number, number];
+    readonly canvisteditor_macro_record_step: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly canvisteditor_macro_replay: (a: number) => void;
+    readonly canvisteditor_macro_replay_saved: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_macro_save: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_macro_start_recording: (a: number) => void;
+    readonly canvisteditor_macro_step_count: (a: number) => number;
+    readonly canvisteditor_macro_stop_recording: (a: number) => number;
     readonly canvisteditor_mark_modified: (a: number) => void;
     readonly canvisteditor_mark_saved: (a: number) => void;
     readonly canvisteditor_max_length: (a: number) => number;
@@ -1563,6 +1661,7 @@ export interface InitOutput {
     readonly canvisteditor_overwrite_mode: (a: number) => number;
     readonly canvisteditor_paragraph_count: (a: number) => number;
     readonly canvisteditor_paste_html: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_paste_with_indent: (a: number, b: number, c: number) => void;
     readonly canvisteditor_placeholder: (a: number) => [number, number];
     readonly canvisteditor_plain_text: (a: number) => [number, number];
     readonly canvisteditor_prev_bookmark: (a: number) => number;
@@ -1615,6 +1714,7 @@ export interface InitOutput {
     readonly canvisteditor_selection_length: (a: number) => number;
     readonly canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_auto_surround: (a: number, b: number) => void;
+    readonly canvisteditor_set_block_selection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly canvisteditor_set_caret_visible: (a: number, b: number) => void;
     readonly canvisteditor_set_coalesce_timeout: (a: number, b: number) => void;
     readonly canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -1623,6 +1723,7 @@ export interface InitOutput {
     readonly canvisteditor_set_cursor_style: (a: number, b: number) => void;
     readonly canvisteditor_set_cursor_width: (a: number, b: number) => void;
     readonly canvisteditor_set_event_log_max: (a: number, b: number) => void;
+    readonly canvisteditor_set_find_highlights: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_focused: (a: number, b: number) => void;
     readonly canvisteditor_set_font_size: (a: number, b: number) => void;
     readonly canvisteditor_set_highlight_color: (a: number, b: number, c: number, d: number, e: number) => void;
@@ -1653,6 +1754,7 @@ export interface InitOutput {
     readonly canvisteditor_set_title: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_word_wrap: (a: number, b: number) => void;
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
+    readonly canvisteditor_show_find_highlights: (a: number) => number;
     readonly canvisteditor_show_indent_guides: (a: number) => number;
     readonly canvisteditor_show_line_numbers: (a: number) => number;
     readonly canvisteditor_show_minimap: (a: number) => number;
@@ -1681,6 +1783,7 @@ export interface InitOutput {
     readonly canvisteditor_toggle_overwrite_mode: (a: number) => void;
     readonly canvisteditor_toggle_strikethrough: (a: number) => void;
     readonly canvisteditor_toggle_underline: (a: number) => void;
+    readonly canvisteditor_tokenize: (a: number) => [number, number];
     readonly canvisteditor_transform_lowercase: (a: number) => void;
     readonly canvisteditor_transform_title_case: (a: number) => void;
     readonly canvisteditor_transform_toggle_case: (a: number) => void;

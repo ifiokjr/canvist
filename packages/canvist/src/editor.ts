@@ -1975,6 +1975,82 @@ export async function createEditor(
 			clearSnapshot() {
 				ref.clear_snapshot();
 			},
+			// ── Macro recording ─────────────────────────
+			macroStartRecording() {
+				ref.macro_start_recording();
+			},
+			macroStopRecording() {
+				return ref.macro_stop_recording();
+			},
+			get macroIsRecording() {
+				return ref.macro_is_recording();
+			},
+			macroRecordStep(kind: string, data: string) {
+				ref.macro_record_step(kind, data);
+			},
+			get macroStepCount() {
+				return ref.macro_step_count();
+			},
+			macroReplay() {
+				syncTime();
+				ref.macro_replay();
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			macroSave(name: string) {
+				ref.macro_save(name);
+			},
+			macroReplaySaved(name: string) {
+				syncTime();
+				const ok = ref.macro_replay_saved(name);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			macroListSaved() {
+				return Array.from(ref.macro_list_saved());
+			},
+			macroDeleteSaved(name: string) {
+				ref.macro_delete_saved(name);
+			},
+			// ── Find match highlights ───────────────────
+			setFindHighlights(needle: string) {
+				ref.set_find_highlights(needle);
+				renderFrame();
+			},
+			get findHighlightNeedle() {
+				return ref.find_highlight_needle();
+			},
+			get showFindHighlights() {
+				return ref.show_find_highlights();
+			},
+			// ── Column/block selection ──────────────────
+			getBlockSelection(sl: number, el: number, sc: number, ec: number) {
+				return ref.get_block_selection(sl, el, sc, ec);
+			},
+			setBlockSelection(
+				sl: number,
+				el: number,
+				sc: number,
+				ec: number,
+				text: string,
+			) {
+				syncTime();
+				ref.set_block_selection(sl, el, sc, ec, text);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Smart paste ─────────────────────────────
+			pasteWithIndent(text: string) {
+				syncTime();
+				ref.paste_with_indent(text);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Tokenize ────────────────────────────────
+			tokenize() {
+				return Array.from(ref.tokenize());
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));

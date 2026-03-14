@@ -718,6 +718,22 @@ export class CanvistEditor {
         return v2;
     }
     /**
+     * Get the current find highlight needle.
+     * @returns {string}
+     */
+    find_highlight_needle() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_find_highlight_needle(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Find the offset of the bracket matching the one at `offset`.
      *
      * Returns `None` (via -1 in WASM) if the char at `offset` is not a
@@ -797,6 +813,29 @@ export class CanvistEditor {
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Get text from a rectangular block selection.
+     *
+     * Returns lines from `start_line` to `end_line` (inclusive),
+     * each trimmed to columns `start_col` to `end_col` (char-based).
+     * @param {number} start_line
+     * @param {number} end_line
+     * @param {number} start_col
+     * @param {number} end_col
+     * @returns {string}
+     */
+    get_block_selection(start_line, end_line, start_col, end_col) {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_get_block_selection(this.__wbg_ptr, start_line, end_line, start_col, end_col);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
     }
     /**
      * Get text of a single line (0-based).
@@ -1158,6 +1197,97 @@ export class CanvistEditor {
         wasm.canvisteditor_log_event(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Delete a saved macro.
+     * @param {string} name
+     */
+    macro_delete_saved(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_macro_delete_saved(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Whether macro recording is active.
+     * @returns {boolean}
+     */
+    macro_is_recording() {
+        const ret = wasm.canvisteditor_macro_is_recording(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * List saved macro names.
+     * @returns {string[]}
+     */
+    macro_list_saved() {
+        const ret = wasm.canvisteditor_macro_list_saved(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Record a macro step manually.
+     *
+     * `kind`: "insert", "delete", "select"
+     * `data`: for insert = text; for delete = "start,end";
+     *         for select = "start,end"
+     * @param {string} kind
+     * @param {string} data
+     */
+    macro_record_step(kind, data) {
+        const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(data, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_macro_record_step(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+    }
+    /**
+     * Replay the recorded macro once.
+     */
+    macro_replay() {
+        wasm.canvisteditor_macro_replay(this.__wbg_ptr);
+    }
+    /**
+     * Replay a saved macro by name. Returns false if not found.
+     * @param {string} name
+     * @returns {boolean}
+     */
+    macro_replay_saved(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_macro_replay_saved(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
+     * Save the current recorded macro under a name.
+     * @param {string} name
+     */
+    macro_save(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_macro_save(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Start recording a macro.
+     */
+    macro_start_recording() {
+        wasm.canvisteditor_macro_start_recording(this.__wbg_ptr);
+    }
+    /**
+     * Number of steps in the current macro recording.
+     * @returns {number}
+     */
+    macro_step_count() {
+        const ret = wasm.canvisteditor_macro_step_count(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
+     * Stop recording and return the number of steps recorded.
+     * @returns {number}
+     */
+    macro_stop_recording() {
+        const ret = wasm.canvisteditor_macro_stop_recording(this.__wbg_ptr);
+        return ret >>> 0;
+    }
+    /**
      * Mark the document as modified.
      *
      * Called automatically by mutating operations. You can also call
@@ -1380,6 +1510,18 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(html, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_paste_html(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Paste text with auto-adjusted indentation.
+     *
+     * Detects the indentation level at the cursor and adjusts the
+     * pasted text to match.
+     * @param {string} text
+     */
+    paste_with_indent(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_paste_with_indent(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Get the current placeholder text.
@@ -1898,6 +2040,21 @@ export class CanvistEditor {
         wasm.canvisteditor_set_auto_surround(this.__wbg_ptr, enabled);
     }
     /**
+     * Replace text in a rectangular block.
+     *
+     * Each line of `text` replaces the corresponding column range.
+     * @param {number} start_line
+     * @param {number} end_line
+     * @param {number} start_col
+     * @param {number} end_col
+     * @param {string} text
+     */
+    set_block_selection(start_line, end_line, start_col, end_col, text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_block_selection(this.__wbg_ptr, start_line, end_line, start_col, end_col, ptr0, len0);
+    }
+    /**
      * Set whether the caret (text cursor) is visible.
      *
      * Called by the JS blink controller on a 530 ms interval to toggle the
@@ -1976,6 +2133,18 @@ export class CanvistEditor {
      */
     set_event_log_max(max) {
         wasm.canvisteditor_set_event_log_max(this.__wbg_ptr, max);
+    }
+    /**
+     * Set the needle for visual find highlights.
+     *
+     * All occurrences are highlighted with a translucent overlay.
+     * Pass empty string to clear highlights.
+     * @param {string} needle
+     */
+    set_find_highlights(needle) {
+        const ptr0 = passStringToWasm0(needle, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_find_highlights(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Set whether the editor has focus.
@@ -2231,6 +2400,14 @@ export class CanvistEditor {
      */
     set_zoom(level) {
         wasm.canvisteditor_set_zoom(this.__wbg_ptr, level);
+    }
+    /**
+     * Whether find highlights are active.
+     * @returns {boolean}
+     */
+    show_find_highlights() {
+        const ret = wasm.canvisteditor_show_find_highlights(this.__wbg_ptr);
+        return ret !== 0;
     }
     /**
      * Whether indent guides are enabled.
@@ -2512,6 +2689,19 @@ export class CanvistEditor {
      */
     toggle_underline() {
         wasm.canvisteditor_toggle_underline(this.__wbg_ptr);
+    }
+    /**
+     * Simple tokenization of the document text.
+     *
+     * Returns alternating [kind, text, kind, text, ...] where kind is
+     * one of: "word", "number", "whitespace", "punctuation", "newline".
+     * @returns {string[]}
+     */
+    tokenize() {
+        const ret = wasm.canvisteditor_tokenize(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Convert selected text to lowercase.
