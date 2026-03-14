@@ -1193,6 +1193,52 @@ export interface CanvistEditor {
 	/** Feature categories as comma-separated string. */
 	featureCategories(): string;
 
+	// ── Multi-cursor ────────────────────────────────────────────────
+
+	/** Add an extra cursor at offset. */
+	addCursor(offset: number): void;
+
+	/** Remove extra cursor at offset. */
+	removeCursor(offset: number): void;
+
+	/** Clear all extra cursors. */
+	clearCursors(): void;
+
+	/** Number of extra cursors. */
+	readonly extraCursorCount: number;
+
+	/** All extra cursor offsets. */
+	extraCursorOffsets(): number[];
+
+	/** Insert text at all cursors. Returns number of insertions. */
+	multiCursorInsert(text: string): number;
+
+	// ── Breadcrumbs ─────────────────────────────────────────────────
+
+	/** Document breadcrumbs: [lineNumber, text, ...]. */
+	breadcrumbs(): string[];
+
+	/** Navigate to a breadcrumb line and scroll to it. */
+	goToBreadcrumb(line: number): void;
+
+	// ── Indent level ────────────────────────────────────────────────
+
+	/** Indent level at cursor position. */
+	readonly indentLevelAtCursor: number;
+
+	/** Indent level of a specific line. */
+	indentLevelOfLine(line: number): number;
+
+	// ── Patch ───────────────────────────────────────────────────────
+
+	/** Apply a patch: ["insert","offset","text","delete","start","end",...]. */
+	applyPatch(operations: string[]): void;
+
+	// ── Canvas export ───────────────────────────────────────────────
+
+	/** Export canvas as PNG data URL. */
+	exportCanvasDataUrl(): string;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

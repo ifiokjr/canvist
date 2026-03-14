@@ -5861,4 +5861,175 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Multi-cursor ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] multi-cursor add, remove, insert`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("aaa bbb ccc");
+						ed.add_cursor(4);
+						ed.add_cursor(8);
+						const count = ed.extra_cursor_count();
+						const offsets = Array.from(ed.extra_cursor_offsets());
+						ed.clear_cursors();
+						const afterClear = ed.extra_cursor_count();
+						return { count, offsets, afterClear };
+					});
+					assertEquals(result.count, 2);
+					assertEquals(result.offsets, [4, 8]);
+					assertEquals(result.afterClear, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Breadcrumbs ─────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] breadcrumbs detects headers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("# Heading\nsome text\n// Comment\nmore text");
+						const crumbs = Array.from(ed.breadcrumbs());
+						return crumbs;
+					});
+					// Should find "# Heading" at line 0 and "// Comment" at line 2.
+					assertEquals(result[0], "0");
+					assertEquals(result[1], "# Heading");
+					assertEquals(result[2], "2");
+					assertEquals(result[3], "// Comment");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Indent level ────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] indent level at cursor and line`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("no indent\n  two spaces\n    four spaces");
+						ed.set_selection(15, 15); // inside "two spaces"
+						const atCursor = ed.indent_level_at_cursor();
+						const line0 = ed.indent_level_of_line(0);
+						const line1 = ed.indent_level_of_line(1);
+						const line2 = ed.indent_level_of_line(2);
+						return { atCursor, line0, line1, line2 };
+					});
+					assertEquals(result.atCursor, 2);
+					assertEquals(result.line0, 0);
+					assertEquals(result.line1, 2);
+					assertEquals(result.line2, 4);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Patch ───────────────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] apply_patch inserts and deletes`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello World");
+						// Delete "World" (6-11), insert "Rust" at 6.
+						ed.apply_patch(["delete", "6", "11", "insert", "6", "Rust"]);
+						return ed.plain_text();
+					});
+					assertEquals(result, "Hello Rust");
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Canvas export ───────────────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] export_canvas_data_url returns PNG data`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("Hello");
+						return ed.export_canvas_data_url();
+					});
+					assert(
+						result.startsWith("data:image/png"),
+						`should be PNG data URL, got: ${result.substring(0, 30)}`,
+					);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

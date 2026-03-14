@@ -2188,6 +2188,59 @@ export async function createEditor(
 			featureCategories() {
 				return ref.feature_categories();
 			},
+			// ── Multi-cursor ────────────────────────────
+			addCursor(offset: number) {
+				ref.add_cursor(offset);
+				renderFrame();
+			},
+			removeCursor(offset: number) {
+				ref.remove_cursor(offset);
+				renderFrame();
+			},
+			clearCursors() {
+				ref.clear_cursors();
+				renderFrame();
+			},
+			get extraCursorCount() {
+				return ref.extra_cursor_count();
+			},
+			extraCursorOffsets() {
+				return Array.from(ref.extra_cursor_offsets());
+			},
+			multiCursorInsert(text: string) {
+				syncTime();
+				const n = ref.multi_cursor_insert(text);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return n;
+			},
+			// ── Breadcrumbs ─────────────────────────────
+			breadcrumbs() {
+				return Array.from(ref.breadcrumbs());
+			},
+			goToBreadcrumb(line: number) {
+				ref.go_to_breadcrumb(line);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Indent level ────────────────────────────
+			get indentLevelAtCursor() {
+				return ref.indent_level_at_cursor();
+			},
+			indentLevelOfLine(line: number) {
+				return ref.indent_level_of_line(line);
+			},
+			// ── Patch ───────────────────────────────────
+			applyPatch(operations: string[]) {
+				syncTime();
+				ref.apply_patch(operations);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+			},
+			// ── Canvas export ───────────────────────────
+			exportCanvasDataUrl() {
+				return ref.export_canvas_data_url();
+			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
 				ref.set_rulers(new Uint32Array(columns));
