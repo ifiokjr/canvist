@@ -2625,6 +2625,20 @@ export async function createEditor(
 			removeAnchorsInOffsetWindow(centerOffset: number, radius: number) {
 				return ref.remove_anchors_in_offset_window(centerOffset, radius);
 			},
+			anchorNamesByProximityToOffset(offset: number, limit = 10) {
+				return Array.from(
+					ref.anchor_names_by_proximity_to_offset(offset, limit),
+				);
+			},
+			closestAnchorToOffset(offset: number) {
+				return Array.from(ref.closest_anchor_to_offset(offset));
+			},
+			anchorDistanceFromOffset(name: string, offset: number) {
+				return ref.anchor_distance_from_offset(name, offset);
+			},
+			anchorDistanceBetween(firstName: string, secondName: string) {
+				return ref.anchor_distance_between(firstName, secondName);
+			},
 			anchorNamesBeforeAnchor(name: string, inclusive = true) {
 				return Array.from(ref.anchor_names_before_anchor(name, inclusive));
 			},
@@ -3207,6 +3221,58 @@ export async function createEditor(
 						minCount,
 						maxCount,
 					),
+				);
+			},
+			lineOccurrenceAverageGroupSizeInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_average_group_size_in_count_range(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+					maxCount,
+				);
+			},
+			lineOccurrenceMinGroupSizeInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_min_group_size_in_count_range(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+					maxCount,
+				);
+			},
+			lineOccurrenceMaxGroupSizeInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_max_group_size_in_count_range(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+					maxCount,
+				);
+			},
+			lineOccurrenceLineRatioInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_line_ratio_in_count_range(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+					maxCount,
 				);
 			},
 			lineOccurrenceHistogram(

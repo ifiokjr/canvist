@@ -7193,6 +7193,77 @@ impl CanvistEditor {
 		removed
 	}
 
+	/// Anchor names sorted by proximity to `offset`.
+	///
+	/// Sort order is distance ascending, then anchor offset ascending,
+	/// then anchor name ascending. Returns at most `limit` names.
+	#[wasm_bindgen]
+	pub fn anchor_names_by_proximity_to_offset(&self, offset: usize, limit: usize) -> Vec<String> {
+		if limit == 0 {
+			return Vec::new();
+		}
+		let mut pairs: Vec<(usize, usize, String)> = self
+			.anchors
+			.iter()
+			.map(|(name, pos)| (pos.abs_diff(offset), *pos, name.clone()))
+			.collect();
+		pairs.sort_by(|a, b| {
+			a.0.cmp(&b.0)
+				.then_with(|| a.1.cmp(&b.1))
+				.then_with(|| a.2.cmp(&b.2))
+		});
+		pairs
+			.into_iter()
+			.take(limit)
+			.map(|(_, _, name)| name)
+			.collect()
+	}
+
+	/// Closest anchor to `offset` as `[name, offset, distance]`.
+	///
+	/// Returns empty when there are no anchors. Ties are resolved by lower
+	/// anchor offset then anchor name.
+	#[wasm_bindgen]
+	pub fn closest_anchor_to_offset(&self, offset: usize) -> Vec<String> {
+		let Some((distance, anchor_offset, name)) = self
+			.anchors
+			.iter()
+			.map(|(name, pos)| (pos.abs_diff(offset), *pos, name.clone()))
+			.min_by(|a, b| {
+				a.0.cmp(&b.0)
+					.then_with(|| a.1.cmp(&b.1))
+					.then_with(|| a.2.cmp(&b.2))
+			})
+		else {
+			return Vec::new();
+		};
+		vec![name, anchor_offset.to_string(), distance.to_string()]
+	}
+
+	/// Distance from a named anchor to an offset.
+	///
+	/// Returns -1 when the anchor does not exist.
+	#[wasm_bindgen]
+	pub fn anchor_distance_from_offset(&self, name: &str, offset: usize) -> i32 {
+		self.anchors.get(name).map_or(-1, |anchor_offset| {
+			anchor_offset.abs_diff(offset).min(i32::MAX as usize) as i32
+		})
+	}
+
+	/// Distance between two named anchors.
+	///
+	/// Returns -1 when either anchor does not exist.
+	#[wasm_bindgen]
+	pub fn anchor_distance_between(&self, first_name: &str, second_name: &str) -> i32 {
+		let Some(first_offset) = self.anchors.get(first_name) else {
+			return -1;
+		};
+		let Some(second_offset) = self.anchors.get(second_name) else {
+			return -1;
+		};
+		first_offset.abs_diff(*second_offset).min(i32::MAX as usize) as i32
+	}
+
 	/// Anchor names before a named anchor offset.
 	///
 	/// When `inclusive` is false, only anchors strictly before are returned.
@@ -9162,6 +9233,101 @@ impl CanvistEditor {
 		}
 		out.sort_unstable();
 		out
+	}
+
+	/// Average group size constrained to an inclusive occurrence-count range.
+	#[wasm_bindgen]
+	pub fn line_occurrence_average_group_size_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> f64 {
+		let lower = min_count.max(1);
+		if max_count < lower {
+			return 0.0;
+		}
+		let mut group_count = 0usize;
+		let mut total_size = 0usize;
+		for lines in self.line_groups(case_sensitive, ignore_whitespace).values() {
+			let count = lines.len();
+			if count >= lower && count <= max_count {
+				group_count += 1;
+				total_size += count;
+			}
+		}
+		if group_count == 0 {
+			return 0.0;
+		}
+		total_size as f64 / group_count as f64
+	}
+
+	/// Minimum group size constrained to an inclusive occurrence-count range.
+	///
+	/// Returns 0 when there are no groups in range.
+	#[wasm_bindgen]
+	pub fn line_occurrence_min_group_size_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> usize {
+		let lower = min_count.max(1);
+		if max_count < lower {
+			return 0;
+		}
+		self.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.map(Vec::len)
+			.filter(|count| *count >= lower && *count <= max_count)
+			.min()
+			.unwrap_or(0)
+	}
+
+	/// Maximum group size constrained to an inclusive occurrence-count range.
+	///
+	/// Returns 0 when there are no groups in range.
+	#[wasm_bindgen]
+	pub fn line_occurrence_max_group_size_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> usize {
+		let lower = min_count.max(1);
+		if max_count < lower {
+			return 0;
+		}
+		self.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.map(Vec::len)
+			.filter(|count| *count >= lower && *count <= max_count)
+			.max()
+			.unwrap_or(0)
+	}
+
+	/// Ratio of lines belonging to groups in an inclusive occurrence-count range.
+	#[wasm_bindgen]
+	pub fn line_occurrence_line_ratio_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> f64 {
+		let total = self.runtime.document().plain_text().split('\n').count();
+		if total == 0 {
+			return 0.0;
+		}
+		self.line_occurrence_line_count_in_count_range(
+			case_sensitive,
+			ignore_whitespace,
+			min_count,
+			max_count,
+		) as f64 / total as f64
 	}
 
 	/// Line-occurrence histogram as `[occurrence_count, group_count, ...]`.

@@ -77,6 +77,18 @@ export class CanvistEditor {
      */
     anchor_count_in_offset_window(center_offset: number, radius: number): number;
     /**
+     * Distance between two named anchors.
+     *
+     * Returns -1 when either anchor does not exist.
+     */
+    anchor_distance_between(first_name: string, second_name: string): number;
+    /**
+     * Distance from a named anchor to an offset.
+     *
+     * Returns -1 when the anchor does not exist.
+     */
+    anchor_distance_from_offset(name: string, offset: number): number;
+    /**
      * Anchor entries as flat `[name, offset, ...]`, sorted by name.
      */
     anchor_entries(): string[];
@@ -127,6 +139,13 @@ export class CanvistEditor {
      * Anchor names sorted by offset then name.
      */
     anchor_names_by_offset(): string[];
+    /**
+     * Anchor names sorted by proximity to `offset`.
+     *
+     * Sort order is distance ascending, then anchor offset ascending,
+     * then anchor name ascending. Returns at most `limit` names.
+     */
+    anchor_names_by_proximity_to_offset(offset: number, limit: number): string[];
     /**
      * Anchor names whose offsets are within `radius` of `center_offset`.
      *
@@ -402,6 +421,13 @@ export class CanvistEditor {
      * (default 10). Newest entry is at index 0.
      */
     clipboard_ring_push(text: string): void;
+    /**
+     * Closest anchor to `offset` as `[name, offset, distance]`.
+     *
+     * Returns empty when there are no anchors. Ties are resolved by lower
+     * anchor offset then anchor name.
+     */
+    closest_anchor_to_offset(offset: number): string[];
     /**
      * Return the current undo-coalescing timeout in milliseconds.
      */
@@ -1192,6 +1218,10 @@ export class CanvistEditor {
      */
     line_is_unique_by_content(line: number, case_sensitive: boolean, ignore_whitespace: boolean): boolean;
     /**
+     * Average group size constrained to an inclusive occurrence-count range.
+     */
+    line_occurrence_average_group_size_in_count_range(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number, max_count: number): number;
+    /**
      * Count lines containing `needle`.
      */
     line_occurrence_count(needle: string, case_sensitive: boolean): number;
@@ -1236,6 +1266,10 @@ export class CanvistEditor {
      */
     line_occurrence_line_count_in_count_range(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number, max_count: number): number;
     /**
+     * Ratio of lines belonging to groups in an inclusive occurrence-count range.
+     */
+    line_occurrence_line_ratio_in_count_range(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number, max_count: number): number;
+    /**
      * All line numbers that share content with the provided line.
      *
      * Returns sorted line numbers including the provided line itself.
@@ -1258,6 +1292,18 @@ export class CanvistEditor {
      * All line numbers belonging to groups with at least `min_count` occurrences.
      */
     line_occurrence_lines_with_min_count(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number): Uint32Array;
+    /**
+     * Maximum group size constrained to an inclusive occurrence-count range.
+     *
+     * Returns 0 when there are no groups in range.
+     */
+    line_occurrence_max_group_size_in_count_range(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number, max_count: number): number;
+    /**
+     * Minimum group size constrained to an inclusive occurrence-count range.
+     *
+     * Returns 0 when there are no groups in range.
+     */
+    line_occurrence_min_group_size_in_count_range(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number, max_count: number): number;
     /**
      * Rank for the occurrence group containing `line`, or -1.
      *
@@ -2811,6 +2857,8 @@ export interface InitOutput {
     readonly canvisteditor_anchor_count_before_offset: (a: number, b: number, c: number) => number;
     readonly canvisteditor_anchor_count_between: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly canvisteditor_anchor_count_in_offset_window: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_anchor_distance_between: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_anchor_distance_from_offset: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_anchor_entries: (a: number) => [number, number];
     readonly canvisteditor_anchor_exists: (a: number, b: number, c: number) => number;
     readonly canvisteditor_anchor_names: (a: number) => [number, number];
@@ -2820,6 +2868,7 @@ export interface InitOutput {
     readonly canvisteditor_anchor_names_before_offset: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchor_names_between: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly canvisteditor_anchor_names_by_offset: (a: number) => [number, number];
+    readonly canvisteditor_anchor_names_by_proximity_to_offset: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchor_names_in_offset_window: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchor_names_in_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchor_names_with_prefix: (a: number, b: number, c: number) => [number, number];
@@ -2873,6 +2922,7 @@ export interface InitOutput {
     readonly canvisteditor_clipboard_ring_length: (a: number) => number;
     readonly canvisteditor_clipboard_ring_paste: (a: number, b: number) => void;
     readonly canvisteditor_clipboard_ring_push: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_closest_anchor_to_offset: (a: number, b: number) => [number, number];
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
     readonly canvisteditor_collab_cursor_count: (a: number) => number;
     readonly canvisteditor_collab_cursor_list: (a: number) => [number, number];
@@ -3022,6 +3072,7 @@ export interface InitOutput {
     readonly canvisteditor_line_hashes_in_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_line_is_duplicate: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_is_unique_by_content: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_line_occurrence_average_group_size_in_count_range: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_line_occurrence_count: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_count_for_line: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_group_count: (a: number, b: number, c: number, d: number) => number;
@@ -3031,11 +3082,14 @@ export interface InitOutput {
     readonly canvisteditor_line_occurrence_histogram: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_histogram_in_count_range: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_line_occurrence_line_count_in_count_range: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_line_occurrence_line_ratio_in_count_range: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_line_occurrence_lines_for_line: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_lines_in_count_range: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_line_occurrence_lines_with_count: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_lines_with_max_count: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_lines_with_min_count: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_line_occurrence_max_group_size_in_count_range: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_line_occurrence_min_group_size_in_count_range: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_line_occurrence_rank_for_line: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_line_occurrence_rankings: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_rankings_in_count_range: (a: number, b: number, c: number, d: number, e: number) => [number, number];
