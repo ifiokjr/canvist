@@ -1534,6 +1534,38 @@ export interface CanvistEditor {
 	/** Anchor names after offset (or at offset when inclusive=true). */
 	anchorNamesAfterOffset(offset: number, inclusive?: boolean): string[];
 
+	/** Offset span for two anchor names as [start, end]. */
+	anchorSpanOffsets(startName: string, endName: string): number[];
+
+	/** Anchor names between two anchor names. */
+	anchorNamesBetween(
+		startName: string,
+		endName: string,
+		inclusive?: boolean,
+	): string[];
+
+	/** Count anchors between two anchor names. */
+	anchorCountBetween(
+		startName: string,
+		endName: string,
+		inclusive?: boolean,
+	): number;
+
+	/** Shift anchors between two anchor names by delta. */
+	shiftAnchorsBetween(
+		startName: string,
+		endName: string,
+		delta: number,
+		inclusive?: boolean,
+	): number;
+
+	/** Remove anchors between two anchor names. */
+	removeAnchorsBetween(
+		startName: string,
+		endName: string,
+		inclusive?: boolean,
+	): number;
+
 	/** Anchor offsets in inclusive range, sorted ascending. */
 	anchorOffsetsInRange(startOffset: number, endOffset: number): number[];
 
@@ -1895,6 +1927,32 @@ export interface CanvistEditor {
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
 	): number;
+
+	/** Number of line-content groups with size at least minCount. */
+	lineOccurrenceGroupCount(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+		minCount?: number,
+	): number;
+
+	/** Ranked groups as [line, count, ...] sorted by count desc. */
+	lineOccurrenceRankings(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+		minCount?: number,
+	): number[];
+
+	/** Largest line-occurrence count across all groups. */
+	mostCommonLineOccurrenceCount(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Line numbers in the most common line-content group. */
+	mostCommonLineOccurrenceLines(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
 
 	/** Whether the provided line is unique by content matching. */
 	lineIsUniqueByContent(

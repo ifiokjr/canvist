@@ -113,6 +113,21 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Count anchors between two named anchors.
+     * @param {string} start_name
+     * @param {string} end_name
+     * @param {boolean} inclusive
+     * @returns {number}
+     */
+    anchor_count_between(start_name, end_name, inclusive) {
+        const ptr0 = passStringToWasm0(start_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(end_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_count_between(this.__wbg_ptr, ptr0, len0, ptr1, len1, inclusive);
+        return ret >>> 0;
+    }
+    /**
      * Anchor entries as flat `[name, offset, ...]`, sorted by name.
      * @returns {string[]}
      */
@@ -174,6 +189,26 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Anchor names between two named anchors.
+     *
+     * Uses normalized min/max offsets of the provided anchor names.
+     * Returns empty when either anchor name is missing.
+     * @param {string} start_name
+     * @param {string} end_name
+     * @param {boolean} inclusive
+     * @returns {string[]}
+     */
+    anchor_names_between(start_name, end_name, inclusive) {
+        const ptr0 = passStringToWasm0(start_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(end_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_names_between(this.__wbg_ptr, ptr0, len0, ptr1, len1, inclusive);
+        var v3 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v3;
+    }
+    /**
      * Anchor names sorted by offset then name.
      * @returns {string[]}
      */
@@ -232,6 +267,24 @@ export class CanvistEditor {
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Offset span for two named anchors as `[start, end]`.
+     *
+     * Returns empty when either anchor name is missing.
+     * @param {string} start_name
+     * @param {string} end_name
+     * @returns {Uint32Array}
+     */
+    anchor_span_offsets(start_name, end_name) {
+        const ptr0 = passStringToWasm0(start_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(end_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_span_offsets(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        var v3 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v3;
     }
     /**
      * Anchor names set exactly at a given offset.
@@ -2424,6 +2477,17 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Number of line-content groups with size at least `min_count`.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @returns {number}
+     */
+    line_occurrence_group_count(case_sensitive, ignore_whitespace, min_count) {
+        const ret = wasm.canvisteditor_line_occurrence_group_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count);
+        return ret >>> 0;
+    }
+    /**
      * All line numbers that share content with the provided line.
      *
      * Returns sorted line numbers including the provided line itself.
@@ -2435,6 +2499,22 @@ export class CanvistEditor {
      */
     line_occurrence_lines_for_line(line, case_sensitive, ignore_whitespace) {
         const ret = wasm.canvisteditor_line_occurrence_lines_for_line(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Ranked line-occurrence groups as flat `[line, count, ...]`.
+     *
+     * `line` is the first line number for each group. Results are sorted by
+     * count descending, then representative line ascending.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @returns {Uint32Array}
+     */
+    line_occurrence_rankings(case_sensitive, ignore_whitespace, min_count) {
+        const ret = wasm.canvisteditor_line_occurrence_rankings(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count);
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
@@ -2813,6 +2893,30 @@ export class CanvistEditor {
     minimap_width() {
         const ret = wasm.canvisteditor_minimap_width(this.__wbg_ptr);
         return ret;
+    }
+    /**
+     * Largest line-occurrence count across all line-content groups.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    most_common_line_occurrence_count(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_most_common_line_occurrence_count(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        return ret >>> 0;
+    }
+    /**
+     * Line numbers in the most common line-content group.
+     *
+     * Ties are broken by lowest first line, then lexicographic line list.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {Uint32Array}
+     */
+    most_common_line_occurrence_lines(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_most_common_line_occurrence_lines(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Move an anchor to the current cursor position.
@@ -3361,6 +3465,23 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_remove_anchor(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Remove anchors between two named anchors.
+     *
+     * Returns number removed.
+     * @param {string} start_name
+     * @param {string} end_name
+     * @param {boolean} inclusive
+     * @returns {number}
+     */
+    remove_anchors_between(start_name, end_name, inclusive) {
+        const ptr0 = passStringToWasm0(start_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(end_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_remove_anchors_between(this.__wbg_ptr, ptr0, len0, ptr1, len1, inclusive);
+        return ret >>> 0;
     }
     /**
      * Remove anchors whose offsets are inside an inclusive range.
@@ -4514,6 +4635,24 @@ export class CanvistEditor {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_shift_anchor(this.__wbg_ptr, ptr0, len0, delta);
         return ret !== 0;
+    }
+    /**
+     * Shift anchors between two named anchors by a signed delta.
+     *
+     * Offsets are clamped to document bounds. Returns number shifted.
+     * @param {string} start_name
+     * @param {string} end_name
+     * @param {number} delta
+     * @param {boolean} inclusive
+     * @returns {number}
+     */
+    shift_anchors_between(start_name, end_name, delta, inclusive) {
+        const ptr0 = passStringToWasm0(start_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(end_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_shift_anchors_between(this.__wbg_ptr, ptr0, len0, ptr1, len1, delta, inclusive);
+        return ret >>> 0;
     }
     /**
      * Shift all anchors in an inclusive range by signed delta.
