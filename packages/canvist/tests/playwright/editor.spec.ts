@@ -8815,4 +8815,192 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor offset-boundary mutations and counts ─────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor offset-boundary counters and removals`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghijklmnop");
+						ed.set_anchor("a0", 1);
+						ed.set_anchor("a1", 4);
+						ed.set_anchor("a2", 4);
+						ed.set_anchor("a3", 8);
+						ed.set_anchor("a4", 12);
+
+						const countBeforeExclusive = ed.anchor_count_before_offset(
+							4,
+							false,
+						);
+						const countBeforeInclusive = ed.anchor_count_before_offset(4, true);
+						const countAfterExclusive = ed.anchor_count_after_offset(4, false);
+						const countAfterInclusive = ed.anchor_count_after_offset(4, true);
+						const shiftedBefore = ed.shift_anchors_before_offset(4, 2, false);
+						const shiftedAfter = ed.shift_anchors_after_offset(8, -3, true);
+						const namesAfterShift = Array.from(ed.anchor_names_by_offset());
+						const entriesAfterShift = Array.from(ed.anchor_entries());
+						const removedBefore = ed.remove_anchors_before_offset(4, false);
+						const removedAfter = ed.remove_anchors_after_offset(5, true);
+						const remainingNames = Array.from(ed.anchor_names_by_offset());
+						const removeBeforeNone = ed.remove_anchors_before_offset(0, false);
+						const removeAfterNone = ed.remove_anchors_after_offset(100, false);
+
+						return {
+							countBeforeExclusive,
+							countBeforeInclusive,
+							countAfterExclusive,
+							countAfterInclusive,
+							shiftedBefore,
+							shiftedAfter,
+							namesAfterShift,
+							entriesAfterShift,
+							removedBefore,
+							removedAfter,
+							remainingNames,
+							removeBeforeNone,
+							removeAfterNone,
+						};
+					});
+
+					assertEquals(result.countBeforeExclusive, 1);
+					assertEquals(result.countBeforeInclusive, 3);
+					assertEquals(result.countAfterExclusive, 2);
+					assertEquals(result.countAfterInclusive, 4);
+					assertEquals(result.shiftedBefore, 1);
+					assertEquals(result.shiftedAfter, 2);
+					assertEquals(result.namesAfterShift, ["a0", "a1", "a2", "a3", "a4"]);
+					assertEquals(result.entriesAfterShift, [
+						"a0",
+						"3",
+						"a1",
+						"4",
+						"a2",
+						"4",
+						"a3",
+						"5",
+						"a4",
+						"9",
+					]);
+					assertEquals(result.removedBefore, 1);
+					assertEquals(result.removedAfter, 2);
+					assertEquals(result.remainingNames, ["a1", "a2"]);
+					assertEquals(result.removeBeforeNone, 0);
+					assertEquals(result.removeAfterNone, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line occurrence count-range helpers ─────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line occurrence count-range helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text(
+							"red\nblue\nred\ngreen\nBLUE\nblue\nblue\nsolo\nred",
+						);
+
+						const strict = {
+							groupCount3: ed.line_occurrence_group_count_with_count(
+								true,
+								false,
+								3,
+							),
+							groupCount1: ed.line_occurrence_group_count_with_count(
+								true,
+								false,
+								1,
+							),
+							groupCount0: ed.line_occurrence_group_count_with_count(
+								true,
+								false,
+								0,
+							),
+							rankings2to3: Array.from(
+								ed.line_occurrence_rankings_in_count_range(true, false, 2, 3),
+							),
+							rankings4to5: Array.from(
+								ed.line_occurrence_rankings_in_count_range(true, false, 4, 5),
+							),
+							linesMin3: Array.from(
+								ed.line_occurrence_lines_with_min_count(true, false, 3),
+							),
+							linesMin4: Array.from(
+								ed.line_occurrence_lines_with_min_count(true, false, 4),
+							),
+							linesMax1: Array.from(
+								ed.line_occurrence_lines_with_max_count(true, false, 1),
+							),
+							linesMax0: Array.from(
+								ed.line_occurrence_lines_with_max_count(true, false, 0),
+							),
+						};
+						const loose = {
+							rankings2to4: Array.from(
+								ed.line_occurrence_rankings_in_count_range(false, false, 2, 4),
+							),
+							linesMax3: Array.from(
+								ed.line_occurrence_lines_with_max_count(false, false, 3),
+							),
+							linesMin4: Array.from(
+								ed.line_occurrence_lines_with_min_count(false, false, 4),
+							),
+							groupCount4: ed.line_occurrence_group_count_with_count(
+								false,
+								false,
+								4,
+							),
+						};
+
+						return { strict, loose };
+					});
+
+					assertEquals(result.strict.groupCount3, 2);
+					assertEquals(result.strict.groupCount1, 3);
+					assertEquals(result.strict.groupCount0, 0);
+					assertEquals(result.strict.rankings2to3, [0, 3, 1, 3]);
+					assertEquals(result.strict.rankings4to5, []);
+					assertEquals(result.strict.linesMin3, [0, 1, 2, 5, 6, 8]);
+					assertEquals(result.strict.linesMin4, []);
+					assertEquals(result.strict.linesMax1, [3, 4, 7]);
+					assertEquals(result.strict.linesMax0, []);
+
+					assertEquals(result.loose.rankings2to4, [1, 4, 0, 3]);
+					assertEquals(result.loose.linesMax3, [0, 2, 3, 7, 8]);
+					assertEquals(result.loose.linesMin4, [1, 4, 5, 6]);
+					assertEquals(result.loose.groupCount4, 1);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

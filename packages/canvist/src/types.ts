@@ -1534,6 +1534,32 @@ export interface CanvistEditor {
 	/** Anchor names after offset (or at offset when inclusive=true). */
 	anchorNamesAfterOffset(offset: number, inclusive?: boolean): string[];
 
+	/** Count anchors before offset (or at offset when inclusive=true). */
+	anchorCountBeforeOffset(offset: number, inclusive?: boolean): number;
+
+	/** Count anchors after offset (or at offset when inclusive=true). */
+	anchorCountAfterOffset(offset: number, inclusive?: boolean): number;
+
+	/** Shift anchors before offset by delta. */
+	shiftAnchorsBeforeOffset(
+		offset: number,
+		delta: number,
+		inclusive?: boolean,
+	): number;
+
+	/** Shift anchors after offset by delta. */
+	shiftAnchorsAfterOffset(
+		offset: number,
+		delta: number,
+		inclusive?: boolean,
+	): number;
+
+	/** Remove anchors before offset. */
+	removeAnchorsBeforeOffset(offset: number, inclusive?: boolean): number;
+
+	/** Remove anchors after offset. */
+	removeAnchorsAfterOffset(offset: number, inclusive?: boolean): number;
+
 	/** Anchor names before the named anchor's offset. */
 	anchorNamesBeforeAnchor(name: string, inclusive?: boolean): string[];
 
@@ -1961,11 +1987,26 @@ export interface CanvistEditor {
 		minCount?: number,
 	): number;
 
+	/** Number of line-content groups with occurrence size exactly count. */
+	lineOccurrenceGroupCountWithCount(
+		count: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
 	/** Ranked groups as [line, count, ...] sorted by count desc. */
 	lineOccurrenceRankings(
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
 		minCount?: number,
+	): number[];
+
+	/** Ranked groups constrained to inclusive count range. */
+	lineOccurrenceRankingsInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
 	): number[];
 
 	/** Histogram rows as [occurrenceCount, groupCount, ...]. */
@@ -1978,6 +2019,20 @@ export interface CanvistEditor {
 	/** Lines belonging to groups whose occurrence size equals count. */
 	lineOccurrenceLinesWithCount(
 		count: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
+
+	/** Lines belonging to groups with occurrence size at least minCount. */
+	lineOccurrenceLinesWithMinCount(
+		minCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
+
+	/** Lines belonging to groups with occurrence size at most maxCount. */
+	lineOccurrenceLinesWithMaxCount(
+		maxCount: number,
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
 	): number[];

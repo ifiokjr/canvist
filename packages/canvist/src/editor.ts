@@ -2581,6 +2581,32 @@ export async function createEditor(
 			anchorNamesAfterOffset(offset: number, inclusive = true) {
 				return Array.from(ref.anchor_names_after_offset(offset, inclusive));
 			},
+			anchorCountBeforeOffset(offset: number, inclusive = true) {
+				return ref.anchor_count_before_offset(offset, inclusive);
+			},
+			anchorCountAfterOffset(offset: number, inclusive = true) {
+				return ref.anchor_count_after_offset(offset, inclusive);
+			},
+			shiftAnchorsBeforeOffset(
+				offset: number,
+				delta: number,
+				inclusive = true,
+			) {
+				return ref.shift_anchors_before_offset(offset, delta, inclusive);
+			},
+			shiftAnchorsAfterOffset(
+				offset: number,
+				delta: number,
+				inclusive = true,
+			) {
+				return ref.shift_anchors_after_offset(offset, delta, inclusive);
+			},
+			removeAnchorsBeforeOffset(offset: number, inclusive = true) {
+				return ref.remove_anchors_before_offset(offset, inclusive);
+			},
+			removeAnchorsAfterOffset(offset: number, inclusive = true) {
+				return ref.remove_anchors_after_offset(offset, inclusive);
+			},
 			anchorNamesBeforeAnchor(name: string, inclusive = true) {
 				return Array.from(ref.anchor_names_before_anchor(name, inclusive));
 			},
@@ -3085,6 +3111,17 @@ export async function createEditor(
 					minCount,
 				);
 			},
+			lineOccurrenceGroupCountWithCount(
+				count: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_group_count_with_count(
+					caseSensitive,
+					ignoreWhitespace,
+					count,
+				);
+			},
 			lineOccurrenceRankings(
 				caseSensitive = false,
 				ignoreWhitespace = false,
@@ -3095,6 +3132,21 @@ export async function createEditor(
 						caseSensitive,
 						ignoreWhitespace,
 						minCount,
+					),
+				);
+			},
+			lineOccurrenceRankingsInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.line_occurrence_rankings_in_count_range(
+						caseSensitive,
+						ignoreWhitespace,
+						minCount,
+						maxCount,
 					),
 				);
 			},
@@ -3121,6 +3173,32 @@ export async function createEditor(
 						caseSensitive,
 						ignoreWhitespace,
 						count,
+					),
+				);
+			},
+			lineOccurrenceLinesWithMinCount(
+				minCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.line_occurrence_lines_with_min_count(
+						caseSensitive,
+						ignoreWhitespace,
+						minCount,
+					),
+				);
+			},
+			lineOccurrenceLinesWithMaxCount(
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.line_occurrence_lines_with_max_count(
+						caseSensitive,
+						ignoreWhitespace,
+						maxCount,
 					),
 				);
 			},

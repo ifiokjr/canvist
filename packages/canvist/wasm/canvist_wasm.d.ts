@@ -57,9 +57,17 @@ export class CanvistEditor {
      */
     anchor_count_after_anchor(name: string, inclusive: boolean): number;
     /**
+     * Count anchors after an offset.
+     */
+    anchor_count_after_offset(offset: number, inclusive: boolean): number;
+    /**
      * Count anchors before a named anchor offset.
      */
     anchor_count_before_anchor(name: string, inclusive: boolean): number;
+    /**
+     * Count anchors before an offset.
+     */
+    anchor_count_before_offset(offset: number, inclusive: boolean): number;
     /**
      * Count anchors between two named anchors.
      */
@@ -1185,6 +1193,10 @@ export class CanvistEditor {
      */
     line_occurrence_group_count(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number): number;
     /**
+     * Number of line-content groups with an occurrence size exactly `count`.
+     */
+    line_occurrence_group_count_with_count(case_sensitive: boolean, ignore_whitespace: boolean, count: number): number;
+    /**
      * Group lines for the ranked occurrence group at `rank`.
      *
      * Groups are ranked by occurrence count descending, then first line
@@ -1209,6 +1221,14 @@ export class CanvistEditor {
      */
     line_occurrence_lines_with_count(case_sensitive: boolean, ignore_whitespace: boolean, count: number): Uint32Array;
     /**
+     * All line numbers belonging to groups with at most `max_count` occurrences.
+     */
+    line_occurrence_lines_with_max_count(case_sensitive: boolean, ignore_whitespace: boolean, max_count: number): Uint32Array;
+    /**
+     * All line numbers belonging to groups with at least `min_count` occurrences.
+     */
+    line_occurrence_lines_with_min_count(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number): Uint32Array;
+    /**
      * Rank for the occurrence group containing `line`, or -1.
      *
      * Rank uses the same ordering as `line_occurrence_rankings`.
@@ -1221,6 +1241,12 @@ export class CanvistEditor {
      * count descending, then representative line ascending.
      */
     line_occurrence_rankings(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number): Uint32Array;
+    /**
+     * Ranked line-occurrence groups constrained to an inclusive count range.
+     *
+     * Returns flat `[line, count, ...]`, preserving ranking order.
+     */
+    line_occurrence_rankings_in_count_range(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number, max_count: number): Uint32Array;
     /**
      * Ratio of line-occurrence count to total lines for the provided line.
      */
@@ -1671,6 +1697,18 @@ export class CanvistEditor {
      * Remove a named anchor.
      */
     remove_anchor(name: string): void;
+    /**
+     * Remove anchors after an offset.
+     *
+     * Returns number removed.
+     */
+    remove_anchors_after_offset(offset: number, inclusive: boolean): number;
+    /**
+     * Remove anchors before an offset.
+     *
+     * Returns number removed.
+     */
+    remove_anchors_before_offset(offset: number, inclusive: boolean): number;
     /**
      * Remove anchors between two named anchors.
      *
@@ -2294,11 +2332,23 @@ export class CanvistEditor {
      */
     shift_anchors_after_anchor(name: string, delta: number, inclusive: boolean): number;
     /**
+     * Shift anchors after an offset by a signed delta.
+     *
+     * Offsets are clamped to document bounds. Returns number shifted.
+     */
+    shift_anchors_after_offset(offset: number, delta: number, inclusive: boolean): number;
+    /**
      * Shift anchors before a named anchor offset by a signed delta.
      *
      * Offsets are clamped to document bounds. Returns number shifted.
      */
     shift_anchors_before_anchor(name: string, delta: number, inclusive: boolean): number;
+    /**
+     * Shift anchors before an offset by a signed delta.
+     *
+     * Offsets are clamped to document bounds. Returns number shifted.
+     */
+    shift_anchors_before_offset(offset: number, delta: number, inclusive: boolean): number;
     /**
      * Shift anchors between two named anchors by a signed delta.
      *
@@ -2712,7 +2762,9 @@ export interface InitOutput {
     readonly canvisteditor_add_ruler: (a: number, b: number) => void;
     readonly canvisteditor_anchor_count: (a: number) => number;
     readonly canvisteditor_anchor_count_after_anchor: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_anchor_count_after_offset: (a: number, b: number, c: number) => number;
     readonly canvisteditor_anchor_count_before_anchor: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_anchor_count_before_offset: (a: number, b: number, c: number) => number;
     readonly canvisteditor_anchor_count_between: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly canvisteditor_anchor_entries: (a: number) => [number, number];
     readonly canvisteditor_anchor_exists: (a: number, b: number, c: number) => number;
@@ -2927,12 +2979,16 @@ export interface InitOutput {
     readonly canvisteditor_line_occurrence_count: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_count_for_line: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_group_count: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_line_occurrence_group_count_with_count: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_group_lines_at_rank: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_line_occurrence_histogram: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_lines_for_line: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_lines_with_count: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_line_occurrence_lines_with_max_count: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_line_occurrence_lines_with_min_count: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_rank_for_line: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_line_occurrence_rankings: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_line_occurrence_rankings_in_count_range: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_line_occurrence_ratio_for_line: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrences: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
@@ -3023,6 +3079,8 @@ export interface InitOutput {
     readonly canvisteditor_redo: (a: number) => number;
     readonly canvisteditor_remaining_capacity: (a: number) => number;
     readonly canvisteditor_remove_anchor: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_remove_anchors_after_offset: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_remove_anchors_before_offset: (a: number, b: number, c: number) => number;
     readonly canvisteditor_remove_anchors_between: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly canvisteditor_remove_anchors_in_range: (a: number, b: number, c: number) => number;
     readonly canvisteditor_remove_anchors_with_prefix: (a: number, b: number, c: number) => number;
@@ -3142,7 +3200,9 @@ export interface InitOutput {
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
     readonly canvisteditor_shift_anchor: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_shift_anchors_after_anchor: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_shift_anchors_after_offset: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_shift_anchors_before_anchor: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_shift_anchors_before_offset: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_shift_anchors_between: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
     readonly canvisteditor_shift_anchors_in_range: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_show_find_highlights: (a: number) => number;
