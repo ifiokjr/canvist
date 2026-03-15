@@ -1560,6 +1560,22 @@ export interface CanvistEditor {
 	/** Remove anchors after offset. */
 	removeAnchorsAfterOffset(offset: number, inclusive?: boolean): number;
 
+	/** Anchor names whose offsets are within radius of centerOffset. */
+	anchorNamesInOffsetWindow(centerOffset: number, radius: number): string[];
+
+	/** Count anchors whose offsets are within radius of centerOffset. */
+	anchorCountInOffsetWindow(centerOffset: number, radius: number): number;
+
+	/** Shift anchors whose offsets are within radius of centerOffset. */
+	shiftAnchorsInOffsetWindow(
+		centerOffset: number,
+		radius: number,
+		delta: number,
+	): number;
+
+	/** Remove anchors whose offsets are within radius of centerOffset. */
+	removeAnchorsInOffsetWindow(centerOffset: number, radius: number): number;
+
 	/** Anchor names before the named anchor's offset. */
 	anchorNamesBeforeAnchor(name: string, inclusive?: boolean): string[];
 
@@ -2009,11 +2025,43 @@ export interface CanvistEditor {
 		ignoreWhitespace?: boolean,
 	): number[];
 
+	/** Number of groups constrained to inclusive count range. */
+	lineOccurrenceGroupCountInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Number of lines that belong to groups in an inclusive count range. */
+	lineOccurrenceLineCountInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Lines belonging to groups constrained to inclusive count range. */
+	lineOccurrenceLinesInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
+
 	/** Histogram rows as [occurrenceCount, groupCount, ...]. */
 	lineOccurrenceHistogram(
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
 		minCount?: number,
+	): number[];
+
+	/** Histogram rows constrained to inclusive count range. */
+	lineOccurrenceHistogramInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
 	): number[];
 
 	/** Lines belonging to groups whose occurrence size equals count. */

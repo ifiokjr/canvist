@@ -2607,6 +2607,24 @@ export async function createEditor(
 			removeAnchorsAfterOffset(offset: number, inclusive = true) {
 				return ref.remove_anchors_after_offset(offset, inclusive);
 			},
+			anchorNamesInOffsetWindow(centerOffset: number, radius: number) {
+				return Array.from(
+					ref.anchor_names_in_offset_window(centerOffset, radius),
+				);
+			},
+			anchorCountInOffsetWindow(centerOffset: number, radius: number) {
+				return ref.anchor_count_in_offset_window(centerOffset, radius);
+			},
+			shiftAnchorsInOffsetWindow(
+				centerOffset: number,
+				radius: number,
+				delta: number,
+			) {
+				return ref.shift_anchors_in_offset_window(centerOffset, radius, delta);
+			},
+			removeAnchorsInOffsetWindow(centerOffset: number, radius: number) {
+				return ref.remove_anchors_in_offset_window(centerOffset, radius);
+			},
 			anchorNamesBeforeAnchor(name: string, inclusive = true) {
 				return Array.from(ref.anchor_names_before_anchor(name, inclusive));
 			},
@@ -3150,6 +3168,47 @@ export async function createEditor(
 					),
 				);
 			},
+			lineOccurrenceGroupCountInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_group_count_in_count_range(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+					maxCount,
+				);
+			},
+			lineOccurrenceLineCountInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_line_count_in_count_range(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+					maxCount,
+				);
+			},
+			lineOccurrenceLinesInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.line_occurrence_lines_in_count_range(
+						caseSensitive,
+						ignoreWhitespace,
+						minCount,
+						maxCount,
+					),
+				);
+			},
 			lineOccurrenceHistogram(
 				caseSensitive = false,
 				ignoreWhitespace = false,
@@ -3160,6 +3219,21 @@ export async function createEditor(
 						caseSensitive,
 						ignoreWhitespace,
 						minCount,
+					),
+				);
+			},
+			lineOccurrenceHistogramInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.line_occurrence_histogram_in_count_range(
+						caseSensitive,
+						ignoreWhitespace,
+						minCount,
+						maxCount,
 					),
 				);
 			},

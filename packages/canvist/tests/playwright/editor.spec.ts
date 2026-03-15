@@ -9003,4 +9003,216 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor offset-window helpers ────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor offset-window helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghijklmnop");
+						ed.set_anchor("a0", 0);
+						ed.set_anchor("a1", 2);
+						ed.set_anchor("a2", 5);
+						ed.set_anchor("a3", 8);
+						ed.set_anchor("a4", 9);
+						ed.set_anchor("a5", 14);
+
+						const namesRadius1 = Array.from(
+							ed.anchor_names_in_offset_window(8, 1),
+						);
+						const namesRadius3 = Array.from(
+							ed.anchor_names_in_offset_window(8, 3),
+						);
+						const countRadius3 = ed.anchor_count_in_offset_window(8, 3);
+						const shiftedRadius3 = ed.shift_anchors_in_offset_window(8, 3, -2);
+						const entriesAfterShift = Array.from(ed.anchor_entries());
+						const removedRadius1 = ed.remove_anchors_in_offset_window(6, 1);
+						const namesAfterRemove = Array.from(ed.anchor_names_by_offset());
+						const removeNone = ed.remove_anchors_in_offset_window(50, 2);
+						const shiftedClamp = ed.shift_anchors_in_offset_window(0, 0, -10);
+						const a0Offset = ed.anchor_offset("a0");
+
+						return {
+							namesRadius1,
+							namesRadius3,
+							countRadius3,
+							shiftedRadius3,
+							entriesAfterShift,
+							removedRadius1,
+							namesAfterRemove,
+							removeNone,
+							shiftedClamp,
+							a0Offset,
+						};
+					});
+
+					assertEquals(result.namesRadius1, ["a3", "a4"]);
+					assertEquals(result.namesRadius3, ["a2", "a3", "a4"]);
+					assertEquals(result.countRadius3, 3);
+					assertEquals(result.shiftedRadius3, 3);
+					assertEquals(result.entriesAfterShift, [
+						"a0",
+						"0",
+						"a1",
+						"2",
+						"a2",
+						"3",
+						"a3",
+						"6",
+						"a4",
+						"7",
+						"a5",
+						"14",
+					]);
+					assertEquals(result.removedRadius1, 2);
+					assertEquals(result.namesAfterRemove, ["a0", "a1", "a2", "a5"]);
+					assertEquals(result.removeNone, 0);
+					assertEquals(result.shiftedClamp, 1);
+					assertEquals(result.a0Offset, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line occurrence range summary helpers ───────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line occurrence range summary helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text(
+							"red\nblue\nred\ngreen\nBLUE\nblue\nblue\nsolo\nred",
+						);
+
+						const strict = {
+							groups2to3: ed.line_occurrence_group_count_in_count_range(
+								true,
+								false,
+								2,
+								3,
+							),
+							lines2to3: ed.line_occurrence_line_count_in_count_range(
+								true,
+								false,
+								2,
+								3,
+							),
+							lineNos2to3: Array.from(
+								ed.line_occurrence_lines_in_count_range(true, false, 2, 3),
+							),
+							histogram2to3: Array.from(
+								ed.line_occurrence_histogram_in_count_range(true, false, 2, 3),
+							),
+							groups4to3: ed.line_occurrence_group_count_in_count_range(
+								true,
+								false,
+								4,
+								3,
+							),
+							lines4to3: ed.line_occurrence_line_count_in_count_range(
+								true,
+								false,
+								4,
+								3,
+							),
+							lineNos4to3: Array.from(
+								ed.line_occurrence_lines_in_count_range(true, false, 4, 3),
+							),
+							histogram4to3: Array.from(
+								ed.line_occurrence_histogram_in_count_range(true, false, 4, 3),
+							),
+						};
+
+						const loose = {
+							groups2to4: ed.line_occurrence_group_count_in_count_range(
+								false,
+								false,
+								2,
+								4,
+							),
+							lines2to4: ed.line_occurrence_line_count_in_count_range(
+								false,
+								false,
+								2,
+								4,
+							),
+							lineNos2to4: Array.from(
+								ed.line_occurrence_lines_in_count_range(false, false, 2, 4),
+							),
+							histogram2to4: Array.from(
+								ed.line_occurrence_histogram_in_count_range(false, false, 2, 4),
+							),
+							groups4to4: ed.line_occurrence_group_count_in_count_range(
+								false,
+								false,
+								4,
+								4,
+							),
+							lines4to4: ed.line_occurrence_line_count_in_count_range(
+								false,
+								false,
+								4,
+								4,
+							),
+							lineNos4to4: Array.from(
+								ed.line_occurrence_lines_in_count_range(false, false, 4, 4),
+							),
+							histogram4to4: Array.from(
+								ed.line_occurrence_histogram_in_count_range(false, false, 4, 4),
+							),
+						};
+
+						return { strict, loose };
+					});
+
+					assertEquals(result.strict.groups2to3, 2);
+					assertEquals(result.strict.lines2to3, 6);
+					assertEquals(result.strict.lineNos2to3, [0, 1, 2, 5, 6, 8]);
+					assertEquals(result.strict.histogram2to3, [3, 2]);
+					assertEquals(result.strict.groups4to3, 0);
+					assertEquals(result.strict.lines4to3, 0);
+					assertEquals(result.strict.lineNos4to3, []);
+					assertEquals(result.strict.histogram4to3, []);
+
+					assertEquals(result.loose.groups2to4, 2);
+					assertEquals(result.loose.lines2to4, 7);
+					assertEquals(result.loose.lineNos2to4, [0, 1, 2, 4, 5, 6, 8]);
+					assertEquals(result.loose.histogram2to4, [4, 1, 3, 1]);
+					assertEquals(result.loose.groups4to4, 1);
+					assertEquals(result.loose.lines4to4, 4);
+					assertEquals(result.loose.lineNos4to4, [1, 4, 5, 6]);
+					assertEquals(result.loose.histogram4to4, [4, 1]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
