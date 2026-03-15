@@ -144,6 +144,36 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Anchor names at or after `offset`.
+     *
+     * When `inclusive` is false, only names strictly after are returned.
+     * Output is sorted by offset then name.
+     * @param {number} offset
+     * @param {boolean} inclusive
+     * @returns {string[]}
+     */
+    anchor_names_after_offset(offset, inclusive) {
+        const ret = wasm.canvisteditor_anchor_names_after_offset(this.__wbg_ptr, offset, inclusive);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Anchor names at or before `offset`.
+     *
+     * When `inclusive` is false, only names strictly before are returned.
+     * Output is sorted by offset then name.
+     * @param {number} offset
+     * @param {boolean} inclusive
+     * @returns {string[]}
+     */
+    anchor_names_before_offset(offset, inclusive) {
+        const ret = wasm.canvisteditor_anchor_names_before_offset(this.__wbg_ptr, offset, inclusive);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Anchor names sorted by offset then name.
      * @returns {string[]}
      */
@@ -1122,6 +1152,55 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * First line of duplicate group for the provided line, or -1.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    duplicate_group_first_line_for_line(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_group_first_line_for_line(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        return ret;
+    }
+    /**
+     * Last line of duplicate group for the provided line, or -1.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    duplicate_group_last_line_for_line(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_group_last_line_for_line(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        return ret;
+    }
+    /**
+     * Duplicate group lines for the provided line.
+     *
+     * Returns sorted line numbers in the same duplicate group, or empty
+     * when `line` is unique or out of range.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {Uint32Array}
+     */
+    duplicate_group_lines_for_line(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_group_lines_for_line(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Duplicate group size for the provided line.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    duplicate_group_size_for_line(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_group_size_for_line(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        return ret >>> 0;
+    }
+    /**
      * Duplicate group sizes sorted descending.
      * @param {boolean} case_sensitive
      * @param {boolean} ignore_whitespace
@@ -1462,6 +1541,18 @@ export class CanvistEditor {
         var v2 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v2;
+    }
+    /**
+     * Earliest anchor entry as `[name, offset]`.
+     *
+     * Ties are resolved by anchor name.
+     * @returns {string[]}
+     */
+    first_anchor_entry() {
+        const ret = wasm.canvisteditor_first_anchor_entry(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * First duplicate line number, or -1 when no duplicates.
@@ -2059,6 +2150,18 @@ export class CanvistEditor {
     largest_duplicate_group_size(case_sensitive, ignore_whitespace) {
         const ret = wasm.canvisteditor_largest_duplicate_group_size(this.__wbg_ptr, case_sensitive, ignore_whitespace);
         return ret >>> 0;
+    }
+    /**
+     * Latest anchor entry as `[name, offset]`.
+     *
+     * Ties are resolved by anchor name.
+     * @returns {string[]}
+     */
+    last_anchor_entry() {
+        const ret = wasm.canvisteditor_last_anchor_entry(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Last duplicate line number, or -1 when no duplicates.

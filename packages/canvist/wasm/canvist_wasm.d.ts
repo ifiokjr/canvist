@@ -65,6 +65,20 @@ export class CanvistEditor {
      */
     anchor_names(): string[];
     /**
+     * Anchor names at or after `offset`.
+     *
+     * When `inclusive` is false, only names strictly after are returned.
+     * Output is sorted by offset then name.
+     */
+    anchor_names_after_offset(offset: number, inclusive: boolean): string[];
+    /**
+     * Anchor names at or before `offset`.
+     *
+     * When `inclusive` is false, only names strictly before are returned.
+     * Output is sorted by offset then name.
+     */
+    anchor_names_before_offset(offset: number, inclusive: boolean): string[];
+    /**
      * Anchor names sorted by offset then name.
      */
     anchor_names_by_offset(): string[];
@@ -552,6 +566,25 @@ export class CanvistEditor {
      */
     duplicate_group_count(case_sensitive: boolean, ignore_whitespace: boolean): number;
     /**
+     * First line of duplicate group for the provided line, or -1.
+     */
+    duplicate_group_first_line_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean): number;
+    /**
+     * Last line of duplicate group for the provided line, or -1.
+     */
+    duplicate_group_last_line_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean): number;
+    /**
+     * Duplicate group lines for the provided line.
+     *
+     * Returns sorted line numbers in the same duplicate group, or empty
+     * when `line` is unique or out of range.
+     */
+    duplicate_group_lines_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean): Uint32Array;
+    /**
+     * Duplicate group size for the provided line.
+     */
+    duplicate_group_size_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean): number;
+    /**
      * Duplicate group sizes sorted descending.
      */
     duplicate_group_sizes(case_sensitive: boolean, ignore_whitespace: boolean): Uint32Array;
@@ -703,6 +736,12 @@ export class CanvistEditor {
      * Find the previous occurrence before `from_offset`.
      */
     find_prev(needle: string, from_offset: number, case_sensitive: boolean): Uint32Array;
+    /**
+     * Earliest anchor entry as `[name, offset]`.
+     *
+     * Ties are resolved by anchor name.
+     */
+    first_anchor_entry(): string[];
     /**
      * First duplicate line number, or -1 when no duplicates.
      */
@@ -992,6 +1031,12 @@ export class CanvistEditor {
      * Largest duplicate-content group size.
      */
     largest_duplicate_group_size(case_sensitive: boolean, ignore_whitespace: boolean): number;
+    /**
+     * Latest anchor entry as `[name, offset]`.
+     *
+     * Ties are resolved by anchor name.
+     */
+    last_anchor_entry(): string[];
     /**
      * Last duplicate line number, or -1 when no duplicates.
      */
@@ -2511,6 +2556,8 @@ export interface InitOutput {
     readonly canvisteditor_anchor_entries: (a: number) => [number, number];
     readonly canvisteditor_anchor_exists: (a: number, b: number, c: number) => number;
     readonly canvisteditor_anchor_names: (a: number) => [number, number];
+    readonly canvisteditor_anchor_names_after_offset: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_anchor_names_before_offset: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchor_names_by_offset: (a: number) => [number, number];
     readonly canvisteditor_anchor_names_in_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchor_names_with_prefix: (a: number, b: number, c: number) => [number, number];
@@ -2605,6 +2652,10 @@ export interface InitOutput {
     readonly canvisteditor_diff_texts: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_document_outline: (a: number) => [number, number];
     readonly canvisteditor_duplicate_group_count: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_duplicate_group_first_line_for_line: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_duplicate_group_last_line_for_line: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_duplicate_group_lines_for_line: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_duplicate_group_size_for_line: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_duplicate_group_sizes: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_duplicate_line: (a: number) => void;
     readonly canvisteditor_duplicate_line_count: (a: number, b: number, c: number) => number;
@@ -2631,6 +2682,7 @@ export interface InitOutput {
     readonly canvisteditor_find_matching_bracket: (a: number, b: number) => number;
     readonly canvisteditor_find_next: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_find_prev: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly canvisteditor_first_anchor_entry: (a: number) => [number, number];
     readonly canvisteditor_first_duplicate_line: (a: number, b: number, c: number) => number;
     readonly canvisteditor_first_visible_line: (a: number) => number;
     readonly canvisteditor_flesch_reading_ease: (a: number) => number;
@@ -2685,6 +2737,7 @@ export interface InitOutput {
     readonly canvisteditor_keybinding_overrides_list: (a: number) => [number, number];
     readonly canvisteditor_largest_duplicate_group_lines: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_largest_duplicate_group_size: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_last_anchor_entry: (a: number) => [number, number];
     readonly canvisteditor_last_duplicate_line: (a: number, b: number, c: number) => number;
     readonly canvisteditor_last_selection_end: (a: number) => number;
     readonly canvisteditor_last_visible_line: (a: number) => number;
