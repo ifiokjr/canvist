@@ -7831,4 +7831,137 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor insert/shift batch helpers ──────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor conditional insert and bulk shifting`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("0123456789");
+						ed.set_anchor("z", 9);
+						ed.set_anchor("a", 1);
+						ed.set_anchor("m", 5);
+						const insertedExisting = ed.set_anchor_if_absent("a", 3);
+						const insertedNew = ed.set_anchor_if_absent("b", 3);
+						const byOffsetBefore = Array.from(ed.anchor_names_by_offset());
+						const offsetsInRange = Array.from(ed.anchor_offsets_in_range(2, 8));
+						const shifted = ed.shift_anchors_in_range(3, 9, -2);
+						const byOffsetAfter = Array.from(ed.anchor_names_by_offset());
+						const entriesAfter = Array.from(ed.anchor_entries());
+						return {
+							insertedExisting,
+							insertedNew,
+							byOffsetBefore,
+							offsetsInRange,
+							shifted,
+							byOffsetAfter,
+							entriesAfter,
+						};
+					});
+
+					assertEquals(result.insertedExisting, false);
+					assertEquals(result.insertedNew, true);
+					assertEquals(result.byOffsetBefore, ["a", "b", "m", "z"]);
+					assertEquals(result.offsetsInRange, [3, 5]);
+					assertEquals(result.shifted, 3);
+					assertEquals(result.byOffsetAfter, ["a", "b", "m", "z"]);
+					assertEquals(result.entriesAfter, [
+						"a",
+						"1",
+						"b",
+						"1",
+						"m",
+						"3",
+						"z",
+						"7",
+					]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Duplicate group analytics ──────────────────────────────────
+
+	Deno.test({
+		name:
+			`[${browserName}] duplicate group count, sizes, and largest group lines`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("x\nx\nx\na\na\nb\nB\nb\nsolo");
+						const loose = {
+							count: ed.duplicate_group_count(false, false),
+							largestSize: ed.largest_duplicate_group_size(false, false),
+							largestLines: Array.from(
+								ed.largest_duplicate_group_lines(false, false),
+							),
+							sizes: Array.from(ed.duplicate_group_sizes(false, false)),
+						};
+						const strict = {
+							count: ed.duplicate_group_count(true, false),
+							largestSize: ed.largest_duplicate_group_size(true, false),
+							largestLines: Array.from(
+								ed.largest_duplicate_group_lines(true, false),
+							),
+							sizes: Array.from(ed.duplicate_group_sizes(true, false)),
+						};
+
+						ed.delete_range(0, ed.char_count());
+						ed.insert_text("alpha\nbeta\ngamma");
+						const none = {
+							count: ed.duplicate_group_count(false, false),
+							largestSize: ed.largest_duplicate_group_size(false, false),
+							largestLines: Array.from(
+								ed.largest_duplicate_group_lines(false, false),
+							),
+							sizes: Array.from(ed.duplicate_group_sizes(false, false)),
+						};
+
+						return { loose, strict, none };
+					});
+
+					assertEquals(result.loose.count, 3);
+					assertEquals(result.loose.largestSize, 3);
+					assertEquals(result.loose.largestLines, [0, 1, 2]);
+					assertEquals(result.loose.sizes, [3, 3, 2]);
+					assertEquals(result.strict.count, 3);
+					assertEquals(result.strict.largestSize, 3);
+					assertEquals(result.strict.largestLines, [0, 1, 2]);
+					assertEquals(result.strict.sizes, [3, 2, 2]);
+					assertEquals(result.none.count, 0);
+					assertEquals(result.none.largestSize, 0);
+					assertEquals(result.none.largestLines, []);
+					assertEquals(result.none.sizes, []);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

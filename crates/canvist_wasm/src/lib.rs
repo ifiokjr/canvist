@@ -6615,6 +6615,19 @@ impl CanvistEditor {
 		self.anchors.insert(name.to_string(), offset.min(max));
 	}
 
+	/// Set a named anchor only if it does not already exist.
+	///
+	/// Returns `true` when inserted.
+	#[wasm_bindgen]
+	pub fn set_anchor_if_absent(&mut self, name: &str, offset: usize) -> bool {
+		if self.anchors.contains_key(name) {
+			return false;
+		}
+		let max = self.runtime.document().char_count();
+		self.anchors.insert(name.to_string(), offset.min(max));
+		true
+	}
+
 	/// Get a named anchor offset, or -1 if not found.
 	#[wasm_bindgen]
 	pub fn anchor_offset(&self, name: &str) -> i32 {
@@ -6794,6 +6807,64 @@ impl CanvistEditor {
 			}
 		}
 		out
+	}
+
+	/// Anchor names sorted by offset then name.
+	#[wasm_bindgen]
+	pub fn anchor_names_by_offset(&self) -> Vec<String> {
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.map(|(name, offset)| (*offset, name.clone()))
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		pairs.into_iter().map(|(_, name)| name).collect()
+	}
+
+	/// Anchor offsets inside an inclusive range, sorted ascending.
+	#[wasm_bindgen]
+	pub fn anchor_offsets_in_range(&self, start_offset: usize, end_offset: usize) -> Vec<usize> {
+		let (start, end) = if start_offset <= end_offset {
+			(start_offset, end_offset)
+		} else {
+			(end_offset, start_offset)
+		};
+
+		let mut out: Vec<usize> = self
+			.anchors
+			.values()
+			.copied()
+			.filter(|offset| *offset >= start && *offset <= end)
+			.collect();
+		out.sort_unstable();
+		out
+	}
+
+	/// Shift all anchors in an inclusive range by signed delta.
+	///
+	/// Offsets are clamped to document bounds. Returns number shifted.
+	#[wasm_bindgen]
+	pub fn shift_anchors_in_range(
+		&mut self,
+		start_offset: usize,
+		end_offset: usize,
+		delta: i32,
+	) -> usize {
+		let (start, end) = if start_offset <= end_offset {
+			(start_offset, end_offset)
+		} else {
+			(end_offset, start_offset)
+		};
+		let max = self.runtime.document().char_count() as i64;
+		let mut shifted = 0usize;
+		for offset in self.anchors.values_mut() {
+			if *offset >= start && *offset <= end {
+				let next = ((*offset as i64) + i64::from(delta)).clamp(0, max) as usize;
+				*offset = next;
+				shifted += 1;
+			}
+		}
+		shifted
 	}
 
 	/// Remove anchors whose names start with prefix.
@@ -8192,6 +8263,72 @@ impl CanvistEditor {
 			.last()
 			.copied()
 			.map_or(-1, |n| n as i32)
+	}
+
+	/// Number of duplicate-content groups.
+	#[wasm_bindgen]
+	pub fn duplicate_group_count(&self, case_sensitive: bool, ignore_whitespace: bool) -> usize {
+		self.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.filter(|lines| lines.len() > 1)
+			.count()
+	}
+
+	/// Largest duplicate-content group size.
+	#[wasm_bindgen]
+	pub fn largest_duplicate_group_size(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> usize {
+		self.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.filter_map(|lines| (lines.len() > 1).then_some(lines.len()))
+			.max()
+			.unwrap_or(0)
+	}
+
+	/// Line numbers in the largest duplicate-content group.
+	///
+	/// Ties are broken by lowest first line, then lexicographic line list.
+	#[wasm_bindgen]
+	pub fn largest_duplicate_group_lines(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> Vec<usize> {
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut candidates: Vec<Vec<usize>> = groups
+			.values()
+			.filter(|lines| lines.len() > 1)
+			.cloned()
+			.collect();
+		for lines in &mut candidates {
+			lines.sort_unstable();
+		}
+		candidates.sort_by(|a, b| {
+			b.len()
+				.cmp(&a.len())
+				.then_with(|| a[0].cmp(&b[0]))
+				.then_with(|| a.cmp(b))
+		});
+		candidates.into_iter().next().unwrap_or_default()
+	}
+
+	/// Duplicate group sizes sorted descending.
+	#[wasm_bindgen]
+	pub fn duplicate_group_sizes(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> Vec<usize> {
+		let mut out: Vec<usize> = self
+			.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.filter_map(|lines| (lines.len() > 1).then_some(lines.len()))
+			.collect();
+		out.sort_unstable_by(|a, b| b.cmp(a));
+		out
 	}
 
 	/// Ratio of duplicate lines to total lines.

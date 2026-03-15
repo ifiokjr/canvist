@@ -65,6 +65,10 @@ export class CanvistEditor {
      */
     anchor_names(): string[];
     /**
+     * Anchor names sorted by offset then name.
+     */
+    anchor_names_by_offset(): string[];
+    /**
      * Anchor names inside an inclusive character-offset range.
      *
      * Sorted by offset then name.
@@ -78,6 +82,10 @@ export class CanvistEditor {
      * Get a named anchor offset, or -1 if not found.
      */
     anchor_offset(name: string): number;
+    /**
+     * Anchor offsets inside an inclusive range, sorted ascending.
+     */
+    anchor_offsets_in_range(start_offset: number, end_offset: number): Uint32Array;
     /**
      * Anchor names set exactly at a given offset.
      */
@@ -540,6 +548,14 @@ export class CanvistEditor {
      */
     document_outline(): string[];
     /**
+     * Number of duplicate-content groups.
+     */
+    duplicate_group_count(case_sensitive: boolean, ignore_whitespace: boolean): number;
+    /**
+     * Duplicate group sizes sorted descending.
+     */
+    duplicate_group_sizes(case_sensitive: boolean, ignore_whitespace: boolean): Uint32Array;
+    /**
      * Duplicate the current line (or selected lines) below.
      */
     duplicate_line(): void;
@@ -966,6 +982,16 @@ export class CanvistEditor {
      * Get all keybinding overrides as [shortcut, command, ...].
      */
     keybinding_overrides_list(): string[];
+    /**
+     * Line numbers in the largest duplicate-content group.
+     *
+     * Ties are broken by lowest first line, then lexicographic line list.
+     */
+    largest_duplicate_group_lines(case_sensitive: boolean, ignore_whitespace: boolean): Uint32Array;
+    /**
+     * Largest duplicate-content group size.
+     */
+    largest_duplicate_group_size(case_sensitive: boolean, ignore_whitespace: boolean): number;
     /**
      * Last duplicate line number, or -1 when no duplicates.
      */
@@ -1804,6 +1830,12 @@ export class CanvistEditor {
      */
     set_anchor(name: string, offset: number): void;
     /**
+     * Set a named anchor only if it does not already exist.
+     *
+     * Returns `true` when inserted.
+     */
+    set_anchor_if_absent(name: string, offset: number): boolean;
+    /**
      * Toggle bracket auto-closing.
      *
      * When enabled, typing `(`, `[`, `{`, `"`, or `'` automatically
@@ -2070,6 +2102,12 @@ export class CanvistEditor {
      * Returns `false` when the anchor does not exist.
      */
     shift_anchor(name: string, delta: number): boolean;
+    /**
+     * Shift all anchors in an inclusive range by signed delta.
+     *
+     * Offsets are clamped to document bounds. Returns number shifted.
+     */
+    shift_anchors_in_range(start_offset: number, end_offset: number, delta: number): number;
     /**
      * Whether find highlights are active.
      */
@@ -2473,9 +2511,11 @@ export interface InitOutput {
     readonly canvisteditor_anchor_entries: (a: number) => [number, number];
     readonly canvisteditor_anchor_exists: (a: number, b: number, c: number) => number;
     readonly canvisteditor_anchor_names: (a: number) => [number, number];
+    readonly canvisteditor_anchor_names_by_offset: (a: number) => [number, number];
     readonly canvisteditor_anchor_names_in_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchor_names_with_prefix: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchor_offset: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_anchor_offsets_in_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchors_at_offset: (a: number, b: number) => [number, number];
     readonly canvisteditor_anchors_in_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_annotation_count: (a: number) => number;
@@ -2564,6 +2604,8 @@ export interface InitOutput {
     readonly canvisteditor_diff_from_snapshot: (a: number) => [number, number];
     readonly canvisteditor_diff_texts: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_document_outline: (a: number) => [number, number];
+    readonly canvisteditor_duplicate_group_count: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_duplicate_group_sizes: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_duplicate_line: (a: number) => void;
     readonly canvisteditor_duplicate_line_count: (a: number, b: number, c: number) => number;
     readonly canvisteditor_duplicate_line_numbers: (a: number, b: number, c: number) => [number, number];
@@ -2641,6 +2683,8 @@ export interface InitOutput {
     readonly canvisteditor_join_lines: (a: number) => void;
     readonly canvisteditor_keybinding_override_count: (a: number) => number;
     readonly canvisteditor_keybinding_overrides_list: (a: number) => [number, number];
+    readonly canvisteditor_largest_duplicate_group_lines: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_largest_duplicate_group_size: (a: number, b: number, c: number) => number;
     readonly canvisteditor_last_duplicate_line: (a: number, b: number, c: number) => number;
     readonly canvisteditor_last_selection_end: (a: number) => number;
     readonly canvisteditor_last_visible_line: (a: number) => number;
@@ -2811,6 +2855,7 @@ export interface InitOutput {
     readonly canvisteditor_selection_profile_names: (a: number) => [number, number];
     readonly canvisteditor_sentence_count: (a: number) => number;
     readonly canvisteditor_set_anchor: (a: number, b: number, c: number, d: number) => void;
+    readonly canvisteditor_set_anchor_if_absent: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_auto_surround: (a: number, b: number) => void;
     readonly canvisteditor_set_block_selection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
@@ -2859,6 +2904,7 @@ export interface InitOutput {
     readonly canvisteditor_set_word_wrap: (a: number, b: number) => void;
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
     readonly canvisteditor_shift_anchor: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_shift_anchors_in_range: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_show_find_highlights: (a: number) => number;
     readonly canvisteditor_show_indent_guides: (a: number) => number;
     readonly canvisteditor_show_line_numbers: (a: number) => number;
