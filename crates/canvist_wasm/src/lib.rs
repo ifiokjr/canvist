@@ -6848,6 +6848,82 @@ impl CanvistEditor {
 		renamed
 	}
 
+	/// Anchor names that start with a prefix, sorted by name.
+	#[wasm_bindgen]
+	pub fn anchor_names_with_prefix(&self, prefix: &str) -> Vec<String> {
+		let mut out: Vec<String> = self
+			.anchors
+			.keys()
+			.filter(|name| prefix.is_empty() || name.starts_with(prefix))
+			.cloned()
+			.collect();
+		out.sort_unstable();
+		out
+	}
+
+	/// Anchor names inside an inclusive character-offset range.
+	///
+	/// Sorted by offset then name.
+	#[wasm_bindgen]
+	pub fn anchor_names_in_range(&self, start_offset: usize, end_offset: usize) -> Vec<String> {
+		let (start, end) = if start_offset <= end_offset {
+			(start_offset, end_offset)
+		} else {
+			(end_offset, start_offset)
+		};
+
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(*pos >= start && *pos <= end).then_some((*pos, name.clone()))
+			})
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		pairs.into_iter().map(|(_, name)| name).collect()
+	}
+
+	/// Remove anchors whose offsets are inside an inclusive range.
+	///
+	/// Returns number removed.
+	#[wasm_bindgen]
+	pub fn remove_anchors_in_range(&mut self, start_offset: usize, end_offset: usize) -> usize {
+		let (start, end) = if start_offset <= end_offset {
+			(start_offset, end_offset)
+		} else {
+			(end_offset, start_offset)
+		};
+
+		let keys: Vec<String> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| (*pos >= start && *pos <= end).then_some(name.clone()))
+			.collect();
+		let removed = keys.len();
+		for key in keys {
+			self.anchors.remove(&key);
+		}
+		removed
+	}
+
+	/// Move an anchor to the current cursor position.
+	///
+	/// Returns false when the anchor does not exist.
+	#[wasm_bindgen]
+	pub fn move_anchor_to_cursor(&mut self, name: &str) -> bool {
+		let cursor = self
+			.runtime
+			.selection()
+			.end()
+			.offset()
+			.min(self.runtime.document().char_count());
+		let Some(offset) = self.anchors.get_mut(name) else {
+			return false;
+		};
+		*offset = cursor;
+		true
+	}
+
 	// ── Tasks / TODO scanner ────────────────────────────────────────
 
 	/// Scan the document for task-style lines.
@@ -7847,6 +7923,18 @@ impl CanvistEditor {
 		out
 	}
 
+	/// Count lines whose text starts with prefix.
+	#[wasm_bindgen]
+	pub fn count_lines_with_prefix(&self, prefix: &str, case_sensitive: bool) -> usize {
+		self.lines_with_prefix(prefix, case_sensitive).len()
+	}
+
+	/// Count lines whose text ends with suffix.
+	#[wasm_bindgen]
+	pub fn count_lines_with_suffix(&self, suffix: &str, case_sensitive: bool) -> usize {
+		self.lines_with_suffix(suffix, case_sensitive).len()
+	}
+
 	/// Number a line range with `N. ` prefix.
 	///
 	/// Returns number of lines changed.
@@ -8047,6 +8135,81 @@ impl CanvistEditor {
 		case_sensitive: bool,
 		ignore_whitespace: bool,
 	) -> Vec<usize> {
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut out = Vec::new();
+		for lines in groups.values() {
+			if lines.len() > 1 {
+				out.extend(lines.iter().copied());
+			}
+		}
+		out.sort_unstable();
+		out
+	}
+
+	/// Line numbers that are unique by content matching.
+	///
+	/// Returns sorted 0-based line numbers.
+	#[wasm_bindgen]
+	pub fn unique_line_numbers(&self, case_sensitive: bool, ignore_whitespace: bool) -> Vec<usize> {
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut out = Vec::new();
+		for lines in groups.values() {
+			if lines.len() == 1 {
+				out.push(lines[0]);
+			}
+		}
+		out.sort_unstable();
+		out
+	}
+
+	/// Number of lines that belong to duplicate-content groups.
+	#[wasm_bindgen]
+	pub fn duplicate_line_count(&self, case_sensitive: bool, ignore_whitespace: bool) -> usize {
+		self.duplicate_line_numbers(case_sensitive, ignore_whitespace)
+			.len()
+	}
+
+	/// Number of lines that are unique by content matching.
+	#[wasm_bindgen]
+	pub fn unique_line_count(&self, case_sensitive: bool, ignore_whitespace: bool) -> usize {
+		self.unique_line_numbers(case_sensitive, ignore_whitespace)
+			.len()
+	}
+
+	/// First duplicate line number, or -1 when no duplicates.
+	#[wasm_bindgen]
+	pub fn first_duplicate_line(&self, case_sensitive: bool, ignore_whitespace: bool) -> i32 {
+		self.duplicate_line_numbers(case_sensitive, ignore_whitespace)
+			.first()
+			.copied()
+			.map_or(-1, |n| n as i32)
+	}
+
+	/// Last duplicate line number, or -1 when no duplicates.
+	#[wasm_bindgen]
+	pub fn last_duplicate_line(&self, case_sensitive: bool, ignore_whitespace: bool) -> i32 {
+		self.duplicate_line_numbers(case_sensitive, ignore_whitespace)
+			.last()
+			.copied()
+			.map_or(-1, |n| n as i32)
+	}
+
+	/// Ratio of duplicate lines to total lines.
+	#[wasm_bindgen]
+	pub fn duplicate_line_ratio(&self, case_sensitive: bool, ignore_whitespace: bool) -> f64 {
+		let total = self.runtime.document().plain_text().split('\n').count();
+		if total == 0 {
+			return 0.0;
+		}
+		self.duplicate_line_count(case_sensitive, ignore_whitespace) as f64 / total as f64
+	}
+
+	/// Build normalized line-content groups used by duplicate/unique helpers.
+	fn line_groups(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> std::collections::HashMap<String, Vec<usize>> {
 		let plain = self.runtime.document().plain_text();
 		let mut groups: std::collections::HashMap<String, Vec<usize>> =
 			std::collections::HashMap::new();
@@ -8061,31 +8224,7 @@ impl CanvistEditor {
 			}
 			groups.entry(key).or_default().push(i);
 		}
-		let mut out = Vec::new();
-		for lines in groups.values() {
-			if lines.len() > 1 {
-				out.extend(lines.iter().copied());
-			}
-		}
-		out.sort_unstable();
-		out
-	}
-
-	/// Number of lines that belong to duplicate-content groups.
-	#[wasm_bindgen]
-	pub fn duplicate_line_count(&self, case_sensitive: bool, ignore_whitespace: bool) -> usize {
-		self.duplicate_line_numbers(case_sensitive, ignore_whitespace)
-			.len()
-	}
-
-	/// Ratio of duplicate lines to total lines.
-	#[wasm_bindgen]
-	pub fn duplicate_line_ratio(&self, case_sensitive: bool, ignore_whitespace: bool) -> f64 {
-		let total = self.runtime.document().plain_text().split('\n').count();
-		if total == 0 {
-			return 0.0;
-		}
-		self.duplicate_line_count(case_sensitive, ignore_whitespace) as f64 / total as f64
+		groups
 	}
 
 	/// Returns `true` if the editor is writable. Use at the top of any

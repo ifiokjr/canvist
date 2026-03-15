@@ -144,6 +144,33 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Anchor names inside an inclusive character-offset range.
+     *
+     * Sorted by offset then name.
+     * @param {number} start_offset
+     * @param {number} end_offset
+     * @returns {string[]}
+     */
+    anchor_names_in_range(start_offset, end_offset) {
+        const ret = wasm.canvisteditor_anchor_names_in_range(this.__wbg_ptr, start_offset, end_offset);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Anchor names that start with a prefix, sorted by name.
+     * @param {string} prefix
+     * @returns {string[]}
+     */
+    anchor_names_with_prefix(prefix) {
+        const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_names_with_prefix(this.__wbg_ptr, ptr0, len0);
+        var v2 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
+    }
+    /**
      * Get a named anchor offset, or -1 if not found.
      * @param {string} name
      * @returns {number}
@@ -764,6 +791,30 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Count lines whose text starts with prefix.
+     * @param {string} prefix
+     * @param {boolean} case_sensitive
+     * @returns {number}
+     */
+    count_lines_with_prefix(prefix, case_sensitive) {
+        const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_count_lines_with_prefix(this.__wbg_ptr, ptr0, len0, case_sensitive);
+        return ret >>> 0;
+    }
+    /**
+     * Count lines whose text ends with suffix.
+     * @param {string} suffix
+     * @param {boolean} case_sensitive
+     * @returns {number}
+     */
+    count_lines_with_suffix(suffix, case_sensitive) {
+        const ptr0 = passStringToWasm0(suffix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_count_lines_with_suffix(this.__wbg_ptr, ptr0, len0, case_sensitive);
+        return ret >>> 0;
+    }
+    /**
      * Create a new editor attached to the canvas element with the given ID.
      *
      * # Errors
@@ -1369,6 +1420,16 @@ export class CanvistEditor {
         return v2;
     }
     /**
+     * First duplicate line number, or -1 when no duplicates.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    first_duplicate_line(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_first_duplicate_line(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        return ret;
+    }
+    /**
      * Get the first visible line number (0-based).
      * @returns {number}
      */
@@ -1932,6 +1993,16 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Last duplicate line number, or -1 when no duplicates.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    last_duplicate_line(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_last_duplicate_line(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        return ret;
+    }
+    /**
      * Get the last recorded selection end offset (from `selection_changed`).
      * @returns {number}
      */
@@ -2478,6 +2549,19 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Move an anchor to the current cursor position.
+     *
+     * Returns false when the anchor does not exist.
+     * @param {string} name
+     * @returns {boolean}
+     */
+    move_anchor_to_cursor(name) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_move_anchor_to_cursor(this.__wbg_ptr, ptr0, len0);
+        return ret !== 0;
+    }
+    /**
      * Move cursor one character left.
      * @param {boolean} extend
      */
@@ -2987,6 +3071,18 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_remove_anchor(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Remove anchors whose offsets are inside an inclusive range.
+     *
+     * Returns number removed.
+     * @param {number} start_offset
+     * @param {number} end_offset
+     * @returns {number}
+     */
+    remove_anchors_in_range(start_offset, end_offset) {
+        const ret = wasm.canvisteditor_remove_anchors_in_range(this.__wbg_ptr, start_offset, end_offset);
+        return ret >>> 0;
     }
     /**
      * Remove anchors whose names start with prefix.
@@ -4661,6 +4757,30 @@ export class CanvistEditor {
      */
     unfold_lines(start_line, end_line) {
         wasm.canvisteditor_unfold_lines(this.__wbg_ptr, start_line, end_line);
+    }
+    /**
+     * Number of lines that are unique by content matching.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    unique_line_count(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_unique_line_count(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        return ret >>> 0;
+    }
+    /**
+     * Line numbers that are unique by content matching.
+     *
+     * Returns sorted 0-based line numbers.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {Uint32Array}
+     */
+    unique_line_numbers(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_unique_line_numbers(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Count of unique words (case-insensitive).

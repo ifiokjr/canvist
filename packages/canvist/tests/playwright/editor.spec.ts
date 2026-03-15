@@ -7680,4 +7680,155 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor range filtering / cursor move helpers ───────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor range filtering and move to cursor`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("0123456789");
+						ed.set_anchor("sec.a", 2);
+						ed.set_anchor("sec.b", 5);
+						ed.set_anchor("tmp.a", 7);
+						ed.set_anchor("tmp.b", 9);
+						const pref = Array.from(ed.anchor_names_with_prefix("sec."));
+						const prefEmpty = Array.from(ed.anchor_names_with_prefix(""));
+						const ranged = Array.from(ed.anchor_names_in_range(4, 8));
+						ed.move_cursor_to(6);
+						const moved = ed.move_anchor_to_cursor("sec.a");
+						const missingMove = ed.move_anchor_to_cursor("missing");
+						const secAOffset = ed.anchor_offset("sec.a");
+						const removed = ed.remove_anchors_in_range(6, 10);
+						const remaining = Array.from(ed.anchor_names());
+						return {
+							pref,
+							prefEmpty,
+							ranged,
+							moved,
+							missingMove,
+							secAOffset,
+							removed,
+							remaining,
+						};
+					});
+
+					assertEquals(result.pref, ["sec.a", "sec.b"]);
+					assertEquals(result.prefEmpty, ["sec.a", "sec.b", "tmp.a", "tmp.b"]);
+					assertEquals(result.ranged, ["sec.b", "tmp.a"]);
+					assertEquals(result.moved, true);
+					assertEquals(result.missingMove, false);
+					assertEquals(result.secAOffset, 6);
+					assertEquals(result.removed, 3);
+					assertEquals(result.remaining, ["sec.b"]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Prefix/suffix count helpers ────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line prefix and suffix count helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("foo\nFoO!\nbar!\nfoo!");
+						return {
+							prefixCi: ed.count_lines_with_prefix("foo", false),
+							prefixCs: ed.count_lines_with_prefix("foo", true),
+							suffixBang: ed.count_lines_with_suffix("!", false),
+							suffixCs: ed.count_lines_with_suffix("o!", true),
+							emptyPrefix: ed.count_lines_with_prefix("", false),
+							emptySuffix: ed.count_lines_with_suffix("", false),
+						};
+					});
+
+					assertEquals(result.prefixCi, 3);
+					assertEquals(result.prefixCs, 2);
+					assertEquals(result.suffixBang, 3);
+					assertEquals(result.suffixCs, 1);
+					assertEquals(result.emptyPrefix, 0);
+					assertEquals(result.emptySuffix, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Unique line helpers + duplicate span metrics ───────────────
+
+	Deno.test({
+		name: `[${browserName}] unique lines and duplicate span helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("A\nB\na \nB\nC\nc\nsolo");
+						return {
+							dupLoose: Array.from(ed.duplicate_line_numbers(false, true)),
+							uniqueLoose: Array.from(ed.unique_line_numbers(false, true)),
+							uniqueCountLoose: ed.unique_line_count(false, true),
+							firstDupLoose: ed.first_duplicate_line(false, true),
+							lastDupLoose: ed.last_duplicate_line(false, true),
+							dupStrict: Array.from(ed.duplicate_line_numbers(true, false)),
+							uniqueStrict: Array.from(ed.unique_line_numbers(true, false)),
+							uniqueCountStrict: ed.unique_line_count(true, false),
+							firstDupStrict: ed.first_duplicate_line(true, false),
+							lastDupStrict: ed.last_duplicate_line(true, false),
+						};
+					});
+
+					assertEquals(result.dupLoose, [0, 1, 2, 3, 4, 5]);
+					assertEquals(result.uniqueLoose, [6]);
+					assertEquals(result.uniqueCountLoose, 1);
+					assertEquals(result.firstDupLoose, 0);
+					assertEquals(result.lastDupLoose, 5);
+					assertEquals(result.dupStrict, [1, 3]);
+					assertEquals(result.uniqueStrict, [0, 2, 4, 5, 6]);
+					assertEquals(result.uniqueCountStrict, 5);
+					assertEquals(result.firstDupStrict, 1);
+					assertEquals(result.lastDupStrict, 3);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
