@@ -1504,6 +1504,22 @@ export interface CanvistEditor {
 	/** Rename anchors with a shared prefix. */
 	renameAnchorPrefix(oldPrefix: string, newPrefix: string): number;
 
+	/** Set anchor only when absent. Returns true if inserted. */
+	setAnchorIfAbsent(name: string, offset: number): boolean;
+
+	/** Anchor names sorted by offset then name. */
+	anchorNamesByOffset(): string[];
+
+	/** Anchor offsets in inclusive range, sorted ascending. */
+	anchorOffsetsInRange(startOffset: number, endOffset: number): number[];
+
+	/** Shift all anchors in inclusive range by delta; returns count shifted. */
+	shiftAnchorsInRange(
+		startOffset: number,
+		endOffset: number,
+		delta: number,
+	): number;
+
 	/** Anchor names matching a prefix (sorted). */
 	anchorNamesWithPrefix(prefix: string): string[];
 
@@ -1782,6 +1798,30 @@ export interface CanvistEditor {
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
 	): number;
+
+	/** Number of duplicate-content groups. */
+	duplicateGroupCount(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Largest duplicate-content group size. */
+	largestDuplicateGroupSize(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Line numbers in the largest duplicate-content group. */
+	largestDuplicateGroupLines(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
+
+	/** Duplicate group sizes sorted descending. */
+	duplicateGroupSizes(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
 
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;

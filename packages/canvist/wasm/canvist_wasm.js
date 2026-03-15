@@ -144,6 +144,16 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Anchor names sorted by offset then name.
+     * @returns {string[]}
+     */
+    anchor_names_by_offset() {
+        const ret = wasm.canvisteditor_anchor_names_by_offset(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Anchor names inside an inclusive character-offset range.
      *
      * Sorted by offset then name.
@@ -180,6 +190,18 @@ export class CanvistEditor {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_anchor_offset(this.__wbg_ptr, ptr0, len0);
         return ret;
+    }
+    /**
+     * Anchor offsets inside an inclusive range, sorted ascending.
+     * @param {number} start_offset
+     * @param {number} end_offset
+     * @returns {Uint32Array}
+     */
+    anchor_offsets_in_range(start_offset, end_offset) {
+        const ret = wasm.canvisteditor_anchor_offsets_in_range(this.__wbg_ptr, start_offset, end_offset);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Anchor names set exactly at a given offset.
@@ -1090,6 +1112,28 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Number of duplicate-content groups.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    duplicate_group_count(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_group_count(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        return ret >>> 0;
+    }
+    /**
+     * Duplicate group sizes sorted descending.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {Uint32Array}
+     */
+    duplicate_group_sizes(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_group_sizes(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Duplicate the current line (or selected lines) below.
      */
     duplicate_line() {
@@ -1991,6 +2035,30 @@ export class CanvistEditor {
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Line numbers in the largest duplicate-content group.
+     *
+     * Ties are broken by lowest first line, then lexicographic line list.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {Uint32Array}
+     */
+    largest_duplicate_group_lines(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_largest_duplicate_group_lines(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Largest duplicate-content group size.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    largest_duplicate_group_size(case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_largest_duplicate_group_size(this.__wbg_ptr, case_sensitive, ignore_whitespace);
+        return ret >>> 0;
     }
     /**
      * Last duplicate line number, or -1 when no duplicates.
@@ -3750,6 +3818,20 @@ export class CanvistEditor {
         wasm.canvisteditor_set_anchor(this.__wbg_ptr, ptr0, len0, offset);
     }
     /**
+     * Set a named anchor only if it does not already exist.
+     *
+     * Returns `true` when inserted.
+     * @param {string} name
+     * @param {number} offset
+     * @returns {boolean}
+     */
+    set_anchor_if_absent(name, offset) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_set_anchor_if_absent(this.__wbg_ptr, ptr0, len0, offset);
+        return ret !== 0;
+    }
+    /**
      * Toggle bracket auto-closing.
      *
      * When enabled, typing `(`, `[`, `{`, `"`, or `'` automatically
@@ -4210,6 +4292,19 @@ export class CanvistEditor {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_shift_anchor(this.__wbg_ptr, ptr0, len0, delta);
         return ret !== 0;
+    }
+    /**
+     * Shift all anchors in an inclusive range by signed delta.
+     *
+     * Offsets are clamped to document bounds. Returns number shifted.
+     * @param {number} start_offset
+     * @param {number} end_offset
+     * @param {number} delta
+     * @returns {number}
+     */
+    shift_anchors_in_range(start_offset, end_offset, delta) {
+        const ret = wasm.canvisteditor_shift_anchors_in_range(this.__wbg_ptr, start_offset, end_offset, delta);
+        return ret >>> 0;
     }
     /**
      * Whether find highlights are active.
