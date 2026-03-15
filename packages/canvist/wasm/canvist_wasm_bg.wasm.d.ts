@@ -9,11 +9,15 @@ export const canvisteditor_add_line_decoration: (a: number, b: number, c: number
 export const canvisteditor_add_marker: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
 export const canvisteditor_add_ruler: (a: number, b: number) => void;
 export const canvisteditor_anchor_count: (a: number) => number;
+export const canvisteditor_anchor_count_after_anchor: (a: number, b: number, c: number, d: number) => number;
+export const canvisteditor_anchor_count_before_anchor: (a: number, b: number, c: number, d: number) => number;
 export const canvisteditor_anchor_count_between: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
 export const canvisteditor_anchor_entries: (a: number) => [number, number];
 export const canvisteditor_anchor_exists: (a: number, b: number, c: number) => number;
 export const canvisteditor_anchor_names: (a: number) => [number, number];
+export const canvisteditor_anchor_names_after_anchor: (a: number, b: number, c: number, d: number) => [number, number];
 export const canvisteditor_anchor_names_after_offset: (a: number, b: number, c: number) => [number, number];
+export const canvisteditor_anchor_names_before_anchor: (a: number, b: number, c: number, d: number) => [number, number];
 export const canvisteditor_anchor_names_before_offset: (a: number, b: number, c: number) => [number, number];
 export const canvisteditor_anchor_names_between: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
 export const canvisteditor_anchor_names_by_offset: (a: number) => [number, number];
@@ -221,7 +225,11 @@ export const canvisteditor_line_is_unique_by_content: (a: number, b: number, c: 
 export const canvisteditor_line_occurrence_count: (a: number, b: number, c: number, d: number) => number;
 export const canvisteditor_line_occurrence_count_for_line: (a: number, b: number, c: number, d: number) => number;
 export const canvisteditor_line_occurrence_group_count: (a: number, b: number, c: number, d: number) => number;
+export const canvisteditor_line_occurrence_group_lines_at_rank: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+export const canvisteditor_line_occurrence_histogram: (a: number, b: number, c: number, d: number) => [number, number];
 export const canvisteditor_line_occurrence_lines_for_line: (a: number, b: number, c: number, d: number) => [number, number];
+export const canvisteditor_line_occurrence_lines_with_count: (a: number, b: number, c: number, d: number) => [number, number];
+export const canvisteditor_line_occurrence_rank_for_line: (a: number, b: number, c: number, d: number, e: number) => number;
 export const canvisteditor_line_occurrence_rankings: (a: number, b: number, c: number, d: number) => [number, number];
 export const canvisteditor_line_occurrence_ratio_for_line: (a: number, b: number, c: number, d: number) => number;
 export const canvisteditor_line_occurrences: (a: number, b: number, c: number, d: number) => [number, number];
@@ -431,6 +439,8 @@ export const canvisteditor_set_token_color: (a: number, b: number, c: number, d:
 export const canvisteditor_set_word_wrap: (a: number, b: number) => void;
 export const canvisteditor_set_zoom: (a: number, b: number) => void;
 export const canvisteditor_shift_anchor: (a: number, b: number, c: number, d: number) => number;
+export const canvisteditor_shift_anchors_after_anchor: (a: number, b: number, c: number, d: number, e: number) => number;
+export const canvisteditor_shift_anchors_before_anchor: (a: number, b: number, c: number, d: number, e: number) => number;
 export const canvisteditor_shift_anchors_between: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
 export const canvisteditor_shift_anchors_in_range: (a: number, b: number, c: number, d: number) => number;
 export const canvisteditor_show_find_highlights: (a: number) => number;

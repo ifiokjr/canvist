@@ -8586,4 +8586,233 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor named-boundary helpers ───────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor named-boundary filters and shifts`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghijklmnop");
+						ed.set_anchor("a0", 1);
+						ed.set_anchor("a1", 4);
+						ed.set_anchor("a2", 4);
+						ed.set_anchor("a3", 8);
+						ed.set_anchor("a4", 12);
+
+						const beforeExclusive = Array.from(
+							ed.anchor_names_before_anchor("a2", false),
+						);
+						const beforeInclusive = Array.from(
+							ed.anchor_names_before_anchor("a2", true),
+						);
+						const afterExclusive = Array.from(
+							ed.anchor_names_after_anchor("a2", false),
+						);
+						const afterInclusive = Array.from(
+							ed.anchor_names_after_anchor("a2", true),
+						);
+						const countBeforeExclusive = ed.anchor_count_before_anchor(
+							"a2",
+							false,
+						);
+						const countBeforeInclusive = ed.anchor_count_before_anchor(
+							"a2",
+							true,
+						);
+						const countAfterExclusive = ed.anchor_count_after_anchor(
+							"a2",
+							false,
+						);
+						const countAfterInclusive = ed.anchor_count_after_anchor(
+							"a2",
+							true,
+						);
+						const shiftedBefore = ed.shift_anchors_before_anchor(
+							"a2",
+							2,
+							false,
+						);
+						const shiftedAfter = ed.shift_anchors_after_anchor("a2", -3, true);
+						const namesByOffset = Array.from(ed.anchor_names_by_offset());
+						const entries = Array.from(ed.anchor_entries());
+						const missingBefore = Array.from(
+							ed.anchor_names_before_anchor("missing", true),
+						);
+						const missingAfter = Array.from(
+							ed.anchor_names_after_anchor("missing", true),
+						);
+						const missingShiftBefore = ed.shift_anchors_before_anchor(
+							"missing",
+							1,
+							true,
+						);
+						const missingShiftAfter = ed.shift_anchors_after_anchor(
+							"missing",
+							1,
+							true,
+						);
+
+						return {
+							beforeExclusive,
+							beforeInclusive,
+							afterExclusive,
+							afterInclusive,
+							countBeforeExclusive,
+							countBeforeInclusive,
+							countAfterExclusive,
+							countAfterInclusive,
+							shiftedBefore,
+							shiftedAfter,
+							namesByOffset,
+							entries,
+							missingBefore,
+							missingAfter,
+							missingShiftBefore,
+							missingShiftAfter,
+						};
+					});
+
+					assertEquals(result.beforeExclusive, ["a0"]);
+					assertEquals(result.beforeInclusive, ["a0", "a1", "a2"]);
+					assertEquals(result.afterExclusive, ["a3", "a4"]);
+					assertEquals(result.afterInclusive, ["a1", "a2", "a3", "a4"]);
+					assertEquals(result.countBeforeExclusive, 1);
+					assertEquals(result.countBeforeInclusive, 3);
+					assertEquals(result.countAfterExclusive, 2);
+					assertEquals(result.countAfterInclusive, 4);
+					assertEquals(result.shiftedBefore, 1);
+					assertEquals(result.shiftedAfter, 4);
+					assertEquals(result.namesByOffset, ["a1", "a2", "a0", "a3", "a4"]);
+					assertEquals(result.entries, [
+						"a0",
+						"3",
+						"a1",
+						"1",
+						"a2",
+						"1",
+						"a3",
+						"5",
+						"a4",
+						"9",
+					]);
+					assertEquals(result.missingBefore, []);
+					assertEquals(result.missingAfter, []);
+					assertEquals(result.missingShiftBefore, 0);
+					assertEquals(result.missingShiftAfter, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line occurrence histograms and ranking helpers ──────────────
+
+	Deno.test({
+		name: `[${browserName}] line occurrence histogram and rank helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text(
+							"red\nblue\nred\ngreen\nBLUE\nblue\nblue\nsolo\nred",
+						);
+
+						const strict = {
+							histogram1: Array.from(
+								ed.line_occurrence_histogram(true, false, 1),
+							),
+							histogram2: Array.from(
+								ed.line_occurrence_histogram(true, false, 2),
+							),
+							linesCount3: Array.from(
+								ed.line_occurrence_lines_with_count(true, false, 3),
+							),
+							linesCount1: Array.from(
+								ed.line_occurrence_lines_with_count(true, false, 1),
+							),
+							linesCount0: Array.from(
+								ed.line_occurrence_lines_with_count(true, false, 0),
+							),
+							rankBlue: ed.line_occurrence_rank_for_line(5, true, false, 1),
+							rankBlueMin4: ed.line_occurrence_rank_for_line(5, true, false, 4),
+							rankUpper: ed.line_occurrence_rank_for_line(4, true, false, 1),
+							rankMissing: ed.line_occurrence_rank_for_line(40, true, false, 1),
+							groupRank0: Array.from(
+								ed.line_occurrence_group_lines_at_rank(true, false, 0, 1),
+							),
+							groupRank1: Array.from(
+								ed.line_occurrence_group_lines_at_rank(true, false, 1, 1),
+							),
+							groupRank2Min2: Array.from(
+								ed.line_occurrence_group_lines_at_rank(true, false, 2, 2),
+							),
+						};
+						const loose = {
+							histogram2: Array.from(
+								ed.line_occurrence_histogram(false, false, 2),
+							),
+							linesCount4: Array.from(
+								ed.line_occurrence_lines_with_count(false, false, 4),
+							),
+							rankBlueCaps: ed.line_occurrence_rank_for_line(
+								4,
+								false,
+								false,
+								1,
+							),
+							groupRank0: Array.from(
+								ed.line_occurrence_group_lines_at_rank(false, false, 0, 1),
+							),
+						};
+
+						return { strict, loose };
+					});
+
+					assertEquals(result.strict.histogram1, [3, 2, 1, 3]);
+					assertEquals(result.strict.histogram2, [3, 2]);
+					assertEquals(result.strict.linesCount3, [0, 1, 2, 5, 6, 8]);
+					assertEquals(result.strict.linesCount1, [3, 4, 7]);
+					assertEquals(result.strict.linesCount0, []);
+					assertEquals(result.strict.rankBlue, 1);
+					assertEquals(result.strict.rankBlueMin4, -1);
+					assertEquals(result.strict.rankUpper, 3);
+					assertEquals(result.strict.rankMissing, -1);
+					assertEquals(result.strict.groupRank0, [0, 2, 8]);
+					assertEquals(result.strict.groupRank1, [1, 5, 6]);
+					assertEquals(result.strict.groupRank2Min2, []);
+
+					assertEquals(result.loose.histogram2, [4, 1, 3, 1]);
+					assertEquals(result.loose.linesCount4, [1, 4, 5, 6]);
+					assertEquals(result.loose.rankBlueCaps, 0);
+					assertEquals(result.loose.groupRank0, [1, 4, 5, 6]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

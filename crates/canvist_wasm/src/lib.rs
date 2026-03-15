@@ -7004,6 +7004,97 @@ impl CanvistEditor {
 		pairs.into_iter().map(|(_, name)| name).collect()
 	}
 
+	/// Anchor names before a named anchor offset.
+	///
+	/// When `inclusive` is false, only anchors strictly before are returned.
+	/// Returns empty when the named anchor does not exist.
+	#[wasm_bindgen]
+	pub fn anchor_names_before_anchor(&self, name: &str, inclusive: bool) -> Vec<String> {
+		let Some(offset) = self.anchors.get(name).copied() else {
+			return Vec::new();
+		};
+		self.anchor_names_before_offset(offset, inclusive)
+	}
+
+	/// Anchor names after a named anchor offset.
+	///
+	/// When `inclusive` is false, only anchors strictly after are returned.
+	/// Returns empty when the named anchor does not exist.
+	#[wasm_bindgen]
+	pub fn anchor_names_after_anchor(&self, name: &str, inclusive: bool) -> Vec<String> {
+		let Some(offset) = self.anchors.get(name).copied() else {
+			return Vec::new();
+		};
+		self.anchor_names_after_offset(offset, inclusive)
+	}
+
+	/// Count anchors before a named anchor offset.
+	#[wasm_bindgen]
+	pub fn anchor_count_before_anchor(&self, name: &str, inclusive: bool) -> usize {
+		self.anchor_names_before_anchor(name, inclusive).len()
+	}
+
+	/// Count anchors after a named anchor offset.
+	#[wasm_bindgen]
+	pub fn anchor_count_after_anchor(&self, name: &str, inclusive: bool) -> usize {
+		self.anchor_names_after_anchor(name, inclusive).len()
+	}
+
+	/// Shift anchors before a named anchor offset by a signed delta.
+	///
+	/// Offsets are clamped to document bounds. Returns number shifted.
+	#[wasm_bindgen]
+	pub fn shift_anchors_before_anchor(
+		&mut self,
+		name: &str,
+		delta: i32,
+		inclusive: bool,
+	) -> usize {
+		let Some(boundary) = self.anchors.get(name).copied() else {
+			return 0;
+		};
+		let max = self.runtime.document().char_count() as i64;
+		let mut shifted = 0usize;
+		for offset in self.anchors.values_mut() {
+			let in_range = if inclusive {
+				*offset <= boundary
+			} else {
+				*offset < boundary
+			};
+			if in_range {
+				let next = ((*offset as i64) + i64::from(delta)).clamp(0, max) as usize;
+				*offset = next;
+				shifted += 1;
+			}
+		}
+		shifted
+	}
+
+	/// Shift anchors after a named anchor offset by a signed delta.
+	///
+	/// Offsets are clamped to document bounds. Returns number shifted.
+	#[wasm_bindgen]
+	pub fn shift_anchors_after_anchor(&mut self, name: &str, delta: i32, inclusive: bool) -> usize {
+		let Some(boundary) = self.anchors.get(name).copied() else {
+			return 0;
+		};
+		let max = self.runtime.document().char_count() as i64;
+		let mut shifted = 0usize;
+		for offset in self.anchors.values_mut() {
+			let in_range = if inclusive {
+				*offset >= boundary
+			} else {
+				*offset > boundary
+			};
+			if in_range {
+				let next = ((*offset as i64) + i64::from(delta)).clamp(0, max) as usize;
+				*offset = next;
+				shifted += 1;
+			}
+		}
+		shifted
+	}
+
 	/// Offset span for two named anchors as `[start, end]`.
 	///
 	/// Returns empty when either anchor name is missing.
@@ -8746,11 +8837,8 @@ impl CanvistEditor {
 		ignore_whitespace: bool,
 		min_count: usize,
 	) -> usize {
-		let threshold = min_count.max(1);
-		self.line_groups(case_sensitive, ignore_whitespace)
-			.values()
-			.filter(|lines| lines.len() >= threshold)
-			.count()
+		self.ranked_line_occurrence_groups(case_sensitive, ignore_whitespace, min_count)
+			.len()
 	}
 
 	/// Ranked line-occurrence groups as flat `[line, count, ...]`.
@@ -8764,20 +8852,115 @@ impl CanvistEditor {
 		ignore_whitespace: bool,
 		min_count: usize,
 	) -> Vec<usize> {
-		let threshold = min_count.max(1);
-		let groups = self.line_groups(case_sensitive, ignore_whitespace);
-		let mut rows: Vec<(usize, usize)> = groups
-			.values()
-			.filter_map(|lines| (lines.len() >= threshold).then_some((lines[0], lines.len())))
-			.collect();
-		rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-
-		let mut out = Vec::with_capacity(rows.len() * 2);
-		for (line, count) in rows {
-			out.push(line);
-			out.push(count);
+		let groups =
+			self.ranked_line_occurrence_groups(case_sensitive, ignore_whitespace, min_count);
+		let mut out = Vec::with_capacity(groups.len() * 2);
+		for lines in groups {
+			out.push(lines[0]);
+			out.push(lines.len());
 		}
 		out
+	}
+
+	/// Line-occurrence histogram as `[occurrence_count, group_count, ...]`.
+	///
+	/// Rows are sorted by occurrence count descending.
+	#[wasm_bindgen]
+	pub fn line_occurrence_histogram(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+	) -> Vec<usize> {
+		let threshold = min_count.max(1);
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut buckets: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+		for lines in groups.values() {
+			let size = lines.len();
+			if size >= threshold {
+				*buckets.entry(size).or_default() += 1;
+			}
+		}
+		let mut rows: Vec<(usize, usize)> = buckets.into_iter().collect();
+		rows.sort_by(|a, b| b.0.cmp(&a.0));
+
+		let mut out = Vec::with_capacity(rows.len() * 2);
+		for (occurrence_count, group_count) in rows {
+			out.push(occurrence_count);
+			out.push(group_count);
+		}
+		out
+	}
+
+	/// All line numbers belonging to groups with exactly `count` occurrences.
+	#[wasm_bindgen]
+	pub fn line_occurrence_lines_with_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		count: usize,
+	) -> Vec<usize> {
+		if count == 0 {
+			return Vec::new();
+		}
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut out = Vec::new();
+		for lines in groups.values() {
+			if lines.len() == count {
+				out.extend(lines.iter().copied());
+			}
+		}
+		out.sort_unstable();
+		out
+	}
+
+	/// Group lines for the ranked occurrence group at `rank`.
+	///
+	/// Groups are ranked by occurrence count descending, then first line
+	/// ascending, then lexicographic line list.
+	#[wasm_bindgen]
+	pub fn line_occurrence_group_lines_at_rank(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		rank: usize,
+		min_count: usize,
+	) -> Vec<usize> {
+		self.ranked_line_occurrence_groups(case_sensitive, ignore_whitespace, min_count)
+			.into_iter()
+			.nth(rank)
+			.unwrap_or_default()
+	}
+
+	/// Rank for the occurrence group containing `line`, or -1.
+	///
+	/// Rank uses the same ordering as `line_occurrence_rankings`.
+	#[wasm_bindgen]
+	pub fn line_occurrence_rank_for_line(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+	) -> i32 {
+		let Some(key) = self.normalized_line_key_for_index(line, case_sensitive, ignore_whitespace)
+		else {
+			return -1;
+		};
+		let threshold = min_count.max(1);
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let Some(lines) = groups.get(&key) else {
+			return -1;
+		};
+		if lines.len() < threshold {
+			return -1;
+		}
+		let mut target = lines.clone();
+		target.sort_unstable();
+		self.ranked_line_occurrence_groups(case_sensitive, ignore_whitespace, min_count)
+			.iter()
+			.position(|candidate| *candidate == target)
+			.map_or(-1, |idx| idx as i32)
 	}
 
 	/// Largest line-occurrence count across all line-content groups.
@@ -8803,18 +8986,10 @@ impl CanvistEditor {
 		case_sensitive: bool,
 		ignore_whitespace: bool,
 	) -> Vec<usize> {
-		let groups = self.line_groups(case_sensitive, ignore_whitespace);
-		let mut candidates: Vec<Vec<usize>> = groups.values().cloned().collect();
-		for lines in &mut candidates {
-			lines.sort_unstable();
-		}
-		candidates.sort_by(|a, b| {
-			b.len()
-				.cmp(&a.len())
-				.then_with(|| a[0].cmp(&b[0]))
-				.then_with(|| a.cmp(b))
-		});
-		candidates.into_iter().next().unwrap_or_default()
+		self.ranked_line_occurrence_groups(case_sensitive, ignore_whitespace, 1)
+			.into_iter()
+			.next()
+			.unwrap_or_default()
 	}
 
 	/// Whether the provided line is unique by content matching.
@@ -8876,6 +9051,35 @@ impl CanvistEditor {
 		} else {
 			Some((end, start))
 		}
+	}
+
+	/// Ranked line-occurrence groups.
+	///
+	/// Sort order: occurrence count descending, first line ascending,
+	/// then lexicographic line list.
+	fn ranked_line_occurrence_groups(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+	) -> Vec<Vec<usize>> {
+		let threshold = min_count.max(1);
+		let mut groups: Vec<Vec<usize>> = self
+			.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.filter(|lines| lines.len() >= threshold)
+			.cloned()
+			.collect();
+		for lines in &mut groups {
+			lines.sort_unstable();
+		}
+		groups.sort_by(|a, b| {
+			b.len()
+				.cmp(&a.len())
+				.then_with(|| a[0].cmp(&b[0]))
+				.then_with(|| a.cmp(b))
+		});
+		groups
 	}
 
 	/// Normalized line-content key for a specific line index.

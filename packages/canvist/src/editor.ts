@@ -2581,6 +2581,32 @@ export async function createEditor(
 			anchorNamesAfterOffset(offset: number, inclusive = true) {
 				return Array.from(ref.anchor_names_after_offset(offset, inclusive));
 			},
+			anchorNamesBeforeAnchor(name: string, inclusive = true) {
+				return Array.from(ref.anchor_names_before_anchor(name, inclusive));
+			},
+			anchorNamesAfterAnchor(name: string, inclusive = true) {
+				return Array.from(ref.anchor_names_after_anchor(name, inclusive));
+			},
+			anchorCountBeforeAnchor(name: string, inclusive = true) {
+				return ref.anchor_count_before_anchor(name, inclusive);
+			},
+			anchorCountAfterAnchor(name: string, inclusive = true) {
+				return ref.anchor_count_after_anchor(name, inclusive);
+			},
+			shiftAnchorsBeforeAnchor(
+				name: string,
+				delta: number,
+				inclusive = true,
+			) {
+				return ref.shift_anchors_before_anchor(name, delta, inclusive);
+			},
+			shiftAnchorsAfterAnchor(
+				name: string,
+				delta: number,
+				inclusive = true,
+			) {
+				return ref.shift_anchors_after_anchor(name, delta, inclusive);
+			},
 			anchorSpanOffsets(startName: string, endName: string) {
 				return Array.from(ref.anchor_span_offsets(startName, endName));
 			},
@@ -3070,6 +3096,60 @@ export async function createEditor(
 						ignoreWhitespace,
 						minCount,
 					),
+				);
+			},
+			lineOccurrenceHistogram(
+				caseSensitive = false,
+				ignoreWhitespace = false,
+				minCount = 1,
+			) {
+				return Array.from(
+					ref.line_occurrence_histogram(
+						caseSensitive,
+						ignoreWhitespace,
+						minCount,
+					),
+				);
+			},
+			lineOccurrenceLinesWithCount(
+				count: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.line_occurrence_lines_with_count(
+						caseSensitive,
+						ignoreWhitespace,
+						count,
+					),
+				);
+			},
+			lineOccurrenceGroupLinesAtRank(
+				rank: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+				minCount = 1,
+			) {
+				return Array.from(
+					ref.line_occurrence_group_lines_at_rank(
+						caseSensitive,
+						ignoreWhitespace,
+						rank,
+						minCount,
+					),
+				);
+			},
+			lineOccurrenceRankForLine(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+				minCount = 1,
+			) {
+				return ref.line_occurrence_rank_for_line(
+					line,
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
 				);
 			},
 			mostCommonLineOccurrenceCount(

@@ -53,6 +53,14 @@ export class CanvistEditor {
      */
     anchor_count(): number;
     /**
+     * Count anchors after a named anchor offset.
+     */
+    anchor_count_after_anchor(name: string, inclusive: boolean): number;
+    /**
+     * Count anchors before a named anchor offset.
+     */
+    anchor_count_before_anchor(name: string, inclusive: boolean): number;
+    /**
      * Count anchors between two named anchors.
      */
     anchor_count_between(start_name: string, end_name: string, inclusive: boolean): number;
@@ -69,12 +77,26 @@ export class CanvistEditor {
      */
     anchor_names(): string[];
     /**
+     * Anchor names after a named anchor offset.
+     *
+     * When `inclusive` is false, only anchors strictly after are returned.
+     * Returns empty when the named anchor does not exist.
+     */
+    anchor_names_after_anchor(name: string, inclusive: boolean): string[];
+    /**
      * Anchor names at or after `offset`.
      *
      * When `inclusive` is false, only names strictly after are returned.
      * Output is sorted by offset then name.
      */
     anchor_names_after_offset(offset: number, inclusive: boolean): string[];
+    /**
+     * Anchor names before a named anchor offset.
+     *
+     * When `inclusive` is false, only anchors strictly before are returned.
+     * Returns empty when the named anchor does not exist.
+     */
+    anchor_names_before_anchor(name: string, inclusive: boolean): string[];
     /**
      * Anchor names at or before `offset`.
      *
@@ -1163,12 +1185,35 @@ export class CanvistEditor {
      */
     line_occurrence_group_count(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number): number;
     /**
+     * Group lines for the ranked occurrence group at `rank`.
+     *
+     * Groups are ranked by occurrence count descending, then first line
+     * ascending, then lexicographic line list.
+     */
+    line_occurrence_group_lines_at_rank(case_sensitive: boolean, ignore_whitespace: boolean, rank: number, min_count: number): Uint32Array;
+    /**
+     * Line-occurrence histogram as `[occurrence_count, group_count, ...]`.
+     *
+     * Rows are sorted by occurrence count descending.
+     */
+    line_occurrence_histogram(case_sensitive: boolean, ignore_whitespace: boolean, min_count: number): Uint32Array;
+    /**
      * All line numbers that share content with the provided line.
      *
      * Returns sorted line numbers including the provided line itself.
      * Returns empty for out-of-range lines.
      */
     line_occurrence_lines_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean): Uint32Array;
+    /**
+     * All line numbers belonging to groups with exactly `count` occurrences.
+     */
+    line_occurrence_lines_with_count(case_sensitive: boolean, ignore_whitespace: boolean, count: number): Uint32Array;
+    /**
+     * Rank for the occurrence group containing `line`, or -1.
+     *
+     * Rank uses the same ordering as `line_occurrence_rankings`.
+     */
+    line_occurrence_rank_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean, min_count: number): number;
     /**
      * Ranked line-occurrence groups as flat `[line, count, ...]`.
      *
@@ -2243,6 +2288,18 @@ export class CanvistEditor {
      */
     shift_anchor(name: string, delta: number): boolean;
     /**
+     * Shift anchors after a named anchor offset by a signed delta.
+     *
+     * Offsets are clamped to document bounds. Returns number shifted.
+     */
+    shift_anchors_after_anchor(name: string, delta: number, inclusive: boolean): number;
+    /**
+     * Shift anchors before a named anchor offset by a signed delta.
+     *
+     * Offsets are clamped to document bounds. Returns number shifted.
+     */
+    shift_anchors_before_anchor(name: string, delta: number, inclusive: boolean): number;
+    /**
      * Shift anchors between two named anchors by a signed delta.
      *
      * Offsets are clamped to document bounds. Returns number shifted.
@@ -2654,11 +2711,15 @@ export interface InitOutput {
     readonly canvisteditor_add_marker: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number) => void;
     readonly canvisteditor_add_ruler: (a: number, b: number) => void;
     readonly canvisteditor_anchor_count: (a: number) => number;
+    readonly canvisteditor_anchor_count_after_anchor: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_anchor_count_before_anchor: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_anchor_count_between: (a: number, b: number, c: number, d: number, e: number, f: number) => number;
     readonly canvisteditor_anchor_entries: (a: number) => [number, number];
     readonly canvisteditor_anchor_exists: (a: number, b: number, c: number) => number;
     readonly canvisteditor_anchor_names: (a: number) => [number, number];
+    readonly canvisteditor_anchor_names_after_anchor: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_anchor_names_after_offset: (a: number, b: number, c: number) => [number, number];
+    readonly canvisteditor_anchor_names_before_anchor: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_anchor_names_before_offset: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_anchor_names_between: (a: number, b: number, c: number, d: number, e: number, f: number) => [number, number];
     readonly canvisteditor_anchor_names_by_offset: (a: number) => [number, number];
@@ -2866,7 +2927,11 @@ export interface InitOutput {
     readonly canvisteditor_line_occurrence_count: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_count_for_line: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_group_count: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_line_occurrence_group_lines_at_rank: (a: number, b: number, c: number, d: number, e: number) => [number, number];
+    readonly canvisteditor_line_occurrence_histogram: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_lines_for_line: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_line_occurrence_lines_with_count: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_line_occurrence_rank_for_line: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_line_occurrence_rankings: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_occurrence_ratio_for_line: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrences: (a: number, b: number, c: number, d: number) => [number, number];
@@ -3076,6 +3141,8 @@ export interface InitOutput {
     readonly canvisteditor_set_word_wrap: (a: number, b: number) => void;
     readonly canvisteditor_set_zoom: (a: number, b: number) => void;
     readonly canvisteditor_shift_anchor: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_shift_anchors_after_anchor: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_shift_anchors_before_anchor: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_shift_anchors_between: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => number;
     readonly canvisteditor_shift_anchors_in_range: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_show_find_highlights: (a: number) => number;
