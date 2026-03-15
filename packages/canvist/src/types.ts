@@ -1534,6 +1534,32 @@ export interface CanvistEditor {
 	/** Anchor names after offset (or at offset when inclusive=true). */
 	anchorNamesAfterOffset(offset: number, inclusive?: boolean): string[];
 
+	/** Anchor names before the named anchor's offset. */
+	anchorNamesBeforeAnchor(name: string, inclusive?: boolean): string[];
+
+	/** Anchor names after the named anchor's offset. */
+	anchorNamesAfterAnchor(name: string, inclusive?: boolean): string[];
+
+	/** Count anchors before the named anchor's offset. */
+	anchorCountBeforeAnchor(name: string, inclusive?: boolean): number;
+
+	/** Count anchors after the named anchor's offset. */
+	anchorCountAfterAnchor(name: string, inclusive?: boolean): number;
+
+	/** Shift anchors before the named anchor by delta. */
+	shiftAnchorsBeforeAnchor(
+		name: string,
+		delta: number,
+		inclusive?: boolean,
+	): number;
+
+	/** Shift anchors after the named anchor by delta. */
+	shiftAnchorsAfterAnchor(
+		name: string,
+		delta: number,
+		inclusive?: boolean,
+	): number;
+
 	/** Offset span for two anchor names as [start, end]. */
 	anchorSpanOffsets(startName: string, endName: string): number[];
 
@@ -1941,6 +1967,36 @@ export interface CanvistEditor {
 		ignoreWhitespace?: boolean,
 		minCount?: number,
 	): number[];
+
+	/** Histogram rows as [occurrenceCount, groupCount, ...]. */
+	lineOccurrenceHistogram(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+		minCount?: number,
+	): number[];
+
+	/** Lines belonging to groups whose occurrence size equals count. */
+	lineOccurrenceLinesWithCount(
+		count: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
+
+	/** Group lines at ranked index (0-based), or [] when out of range. */
+	lineOccurrenceGroupLinesAtRank(
+		rank: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+		minCount?: number,
+	): number[];
+
+	/** Rank for the provided line's occurrence group, or -1. */
+	lineOccurrenceRankForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+		minCount?: number,
+	): number;
 
 	/** Largest line-occurrence count across all groups. */
 	mostCommonLineOccurrenceCount(
