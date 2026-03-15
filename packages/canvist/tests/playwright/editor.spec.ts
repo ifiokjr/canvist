@@ -7964,4 +7964,165 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor boundary helpers ────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor boundary entries and offset-side filters`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghij");
+						ed.set_anchor("omega", 9);
+						ed.set_anchor("beta", 4);
+						ed.set_anchor("alpha", 0);
+						ed.set_anchor("gamma", 4);
+
+						const first = Array.from(ed.first_anchor_entry());
+						const last = Array.from(ed.last_anchor_entry());
+						const beforeInclusive = Array.from(
+							ed.anchor_names_before_offset(4, true),
+						);
+						const beforeExclusive = Array.from(
+							ed.anchor_names_before_offset(4, false),
+						);
+						const afterInclusive = Array.from(
+							ed.anchor_names_after_offset(4, true),
+						);
+						const afterExclusive = Array.from(
+							ed.anchor_names_after_offset(4, false),
+						);
+
+						ed.clear_anchors();
+						const firstEmpty = Array.from(ed.first_anchor_entry());
+						const lastEmpty = Array.from(ed.last_anchor_entry());
+
+						return {
+							first,
+							last,
+							beforeInclusive,
+							beforeExclusive,
+							afterInclusive,
+							afterExclusive,
+							firstEmpty,
+							lastEmpty,
+						};
+					});
+
+					assertEquals(result.first, ["alpha", "0"]);
+					assertEquals(result.last, ["omega", "9"]);
+					assertEquals(result.beforeInclusive, ["alpha", "beta", "gamma"]);
+					assertEquals(result.beforeExclusive, ["alpha"]);
+					assertEquals(result.afterInclusive, ["beta", "gamma", "omega"]);
+					assertEquals(result.afterExclusive, ["omega"]);
+					assertEquals(result.firstEmpty, []);
+					assertEquals(result.lastEmpty, []);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Duplicate groups for a specific line ───────────────────────
+
+	Deno.test({
+		name: `[${browserName}] duplicate groups for line helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("apple\nApple\npear\napple\npear \npear\nsolo");
+
+						const appleStrict = {
+							lines: Array.from(
+								ed.duplicate_group_lines_for_line(0, true, false),
+							),
+							size: ed.duplicate_group_size_for_line(0, true, false),
+							first: ed.duplicate_group_first_line_for_line(0, true, false),
+							last: ed.duplicate_group_last_line_for_line(0, true, false),
+						};
+						const appleLoose = {
+							lines: Array.from(
+								ed.duplicate_group_lines_for_line(1, false, false),
+							),
+							size: ed.duplicate_group_size_for_line(1, false, false),
+							first: ed.duplicate_group_first_line_for_line(1, false, false),
+							last: ed.duplicate_group_last_line_for_line(1, false, false),
+						};
+						const pearNormalized = {
+							lines: Array.from(
+								ed.duplicate_group_lines_for_line(4, true, true),
+							),
+							size: ed.duplicate_group_size_for_line(4, true, true),
+							first: ed.duplicate_group_first_line_for_line(4, true, true),
+							last: ed.duplicate_group_last_line_for_line(4, true, true),
+						};
+						const solo = {
+							lines: Array.from(
+								ed.duplicate_group_lines_for_line(6, false, true),
+							),
+							size: ed.duplicate_group_size_for_line(6, false, true),
+							first: ed.duplicate_group_first_line_for_line(6, false, true),
+							last: ed.duplicate_group_last_line_for_line(6, false, true),
+						};
+						const missing = {
+							lines: Array.from(
+								ed.duplicate_group_lines_for_line(99, false, true),
+							),
+							size: ed.duplicate_group_size_for_line(99, false, true),
+							first: ed.duplicate_group_first_line_for_line(99, false, true),
+							last: ed.duplicate_group_last_line_for_line(99, false, true),
+						};
+
+						return { appleStrict, appleLoose, pearNormalized, solo, missing };
+					});
+
+					assertEquals(result.appleStrict.lines, [0, 3]);
+					assertEquals(result.appleStrict.size, 2);
+					assertEquals(result.appleStrict.first, 0);
+					assertEquals(result.appleStrict.last, 3);
+					assertEquals(result.appleLoose.lines, [0, 1, 3]);
+					assertEquals(result.appleLoose.size, 3);
+					assertEquals(result.appleLoose.first, 0);
+					assertEquals(result.appleLoose.last, 3);
+					assertEquals(result.pearNormalized.lines, [2, 4, 5]);
+					assertEquals(result.pearNormalized.size, 3);
+					assertEquals(result.pearNormalized.first, 2);
+					assertEquals(result.pearNormalized.last, 5);
+					assertEquals(result.solo.lines, []);
+					assertEquals(result.solo.size, 0);
+					assertEquals(result.solo.first, -1);
+					assertEquals(result.solo.last, -1);
+					assertEquals(result.missing.lines, []);
+					assertEquals(result.missing.size, 0);
+					assertEquals(result.missing.first, -1);
+					assertEquals(result.missing.last, -1);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

@@ -2551,6 +2551,18 @@ export async function createEditor(
 			anchorNamesByOffset() {
 				return Array.from(ref.anchor_names_by_offset());
 			},
+			firstAnchorEntry() {
+				return Array.from(ref.first_anchor_entry());
+			},
+			lastAnchorEntry() {
+				return Array.from(ref.last_anchor_entry());
+			},
+			anchorNamesBeforeOffset(offset: number, inclusive = true) {
+				return Array.from(ref.anchor_names_before_offset(offset, inclusive));
+			},
+			anchorNamesAfterOffset(offset: number, inclusive = true) {
+				return Array.from(ref.anchor_names_after_offset(offset, inclusive));
+			},
 			anchorOffsetsInRange(startOffset: number, endOffset: number) {
 				return Array.from(ref.anchor_offsets_in_range(startOffset, endOffset));
 			},
@@ -2901,6 +2913,52 @@ export async function createEditor(
 			duplicateGroupSizes(caseSensitive = false, ignoreWhitespace = false) {
 				return Array.from(
 					ref.duplicate_group_sizes(caseSensitive, ignoreWhitespace),
+				);
+			},
+			duplicateGroupLinesForLine(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.duplicate_group_lines_for_line(
+						line,
+						caseSensitive,
+						ignoreWhitespace,
+					),
+				);
+			},
+			duplicateGroupSizeForLine(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.duplicate_group_size_for_line(
+					line,
+					caseSensitive,
+					ignoreWhitespace,
+				);
+			},
+			duplicateGroupFirstLineForLine(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.duplicate_group_first_line_for_line(
+					line,
+					caseSensitive,
+					ignoreWhitespace,
+				);
+			},
+			duplicateGroupLastLineForLine(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.duplicate_group_last_line_for_line(
+					line,
+					caseSensitive,
+					ignoreWhitespace,
 				);
 			},
 			// ── Column ruler ────────────────────────────

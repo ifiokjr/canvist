@@ -6821,6 +6821,86 @@ impl CanvistEditor {
 		pairs.into_iter().map(|(_, name)| name).collect()
 	}
 
+	/// Earliest anchor entry as `[name, offset]`.
+	///
+	/// Ties are resolved by anchor name.
+	#[wasm_bindgen]
+	pub fn first_anchor_entry(&self) -> Vec<String> {
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.map(|(name, offset)| (*offset, name.clone()))
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		if let Some((offset, name)) = pairs.into_iter().next() {
+			vec![name, offset.to_string()]
+		} else {
+			Vec::new()
+		}
+	}
+
+	/// Latest anchor entry as `[name, offset]`.
+	///
+	/// Ties are resolved by anchor name.
+	#[wasm_bindgen]
+	pub fn last_anchor_entry(&self) -> Vec<String> {
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.map(|(name, offset)| (*offset, name.clone()))
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		if let Some((offset, name)) = pairs.into_iter().last() {
+			vec![name, offset.to_string()]
+		} else {
+			Vec::new()
+		}
+	}
+
+	/// Anchor names at or before `offset`.
+	///
+	/// When `inclusive` is false, only names strictly before are returned.
+	/// Output is sorted by offset then name.
+	#[wasm_bindgen]
+	pub fn anchor_names_before_offset(&self, offset: usize, inclusive: bool) -> Vec<String> {
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(if inclusive {
+					*pos <= offset
+				} else {
+					*pos < offset
+				})
+				.then_some((*pos, name.clone()))
+			})
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		pairs.into_iter().map(|(_, name)| name).collect()
+	}
+
+	/// Anchor names at or after `offset`.
+	///
+	/// When `inclusive` is false, only names strictly after are returned.
+	/// Output is sorted by offset then name.
+	#[wasm_bindgen]
+	pub fn anchor_names_after_offset(&self, offset: usize, inclusive: bool) -> Vec<String> {
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(if inclusive {
+					*pos >= offset
+				} else {
+					*pos > offset
+				})
+				.then_some((*pos, name.clone()))
+			})
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		pairs.into_iter().map(|(_, name)| name).collect()
+	}
+
 	/// Anchor offsets inside an inclusive range, sorted ascending.
 	#[wasm_bindgen]
 	pub fn anchor_offsets_in_range(&self, start_offset: usize, end_offset: usize) -> Vec<usize> {
@@ -8329,6 +8409,83 @@ impl CanvistEditor {
 			.collect();
 		out.sort_unstable_by(|a, b| b.cmp(a));
 		out
+	}
+
+	/// Duplicate group lines for the provided line.
+	///
+	/// Returns sorted line numbers in the same duplicate group, or empty
+	/// when `line` is unique or out of range.
+	#[wasm_bindgen]
+	pub fn duplicate_group_lines_for_line(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> Vec<usize> {
+		let plain = self.runtime.document().plain_text();
+		let Some(line_text) = plain.split('\n').nth(line) else {
+			return Vec::new();
+		};
+
+		let mut key = if ignore_whitespace {
+			line_text
+				.split_whitespace()
+				.collect::<Vec<&str>>()
+				.join(" ")
+		} else {
+			line_text.to_string()
+		};
+		if !case_sensitive {
+			key = key.to_lowercase();
+		}
+
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut out = groups.get(&key).cloned().unwrap_or_default();
+		if out.len() <= 1 {
+			return Vec::new();
+		}
+		out.sort_unstable();
+		out
+	}
+
+	/// Duplicate group size for the provided line.
+	#[wasm_bindgen]
+	pub fn duplicate_group_size_for_line(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> usize {
+		self.duplicate_group_lines_for_line(line, case_sensitive, ignore_whitespace)
+			.len()
+	}
+
+	/// First line of duplicate group for the provided line, or -1.
+	#[wasm_bindgen]
+	pub fn duplicate_group_first_line_for_line(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> i32 {
+		self.duplicate_group_lines_for_line(line, case_sensitive, ignore_whitespace)
+			.first()
+			.copied()
+			.map_or(-1, |n| n as i32)
+	}
+
+	/// Last line of duplicate group for the provided line, or -1.
+	#[wasm_bindgen]
+	pub fn duplicate_group_last_line_for_line(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> i32 {
+		self.duplicate_group_lines_for_line(line, case_sensitive, ignore_whitespace)
+			.last()
+			.copied()
+			.map_or(-1, |n| n as i32)
 	}
 
 	/// Ratio of duplicate lines to total lines.

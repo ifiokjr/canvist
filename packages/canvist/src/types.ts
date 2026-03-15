@@ -1510,6 +1510,18 @@ export interface CanvistEditor {
 	/** Anchor names sorted by offset then name. */
 	anchorNamesByOffset(): string[];
 
+	/** Earliest anchor entry as [name, offset]. */
+	firstAnchorEntry(): string[];
+
+	/** Latest anchor entry as [name, offset]. */
+	lastAnchorEntry(): string[];
+
+	/** Anchor names before offset (or at offset when inclusive=true). */
+	anchorNamesBeforeOffset(offset: number, inclusive?: boolean): string[];
+
+	/** Anchor names after offset (or at offset when inclusive=true). */
+	anchorNamesAfterOffset(offset: number, inclusive?: boolean): string[];
+
 	/** Anchor offsets in inclusive range, sorted ascending. */
 	anchorOffsetsInRange(startOffset: number, endOffset: number): number[];
 
@@ -1822,6 +1834,34 @@ export interface CanvistEditor {
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
 	): number[];
+
+	/** Duplicate group lines for a specific line (or [] when unique). */
+	duplicateGroupLinesForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
+
+	/** Duplicate group size for a specific line. */
+	duplicateGroupSizeForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** First line of duplicate group for a specific line, or -1. */
+	duplicateGroupFirstLineForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Last line of duplicate group for a specific line, or -1. */
+	duplicateGroupLastLineForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
 
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
