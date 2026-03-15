@@ -2527,6 +2527,24 @@ export async function createEditor(
 			nearestAnchorAfter(offset: number) {
 				return Array.from(ref.nearest_anchor_after(offset));
 			},
+			nextAnchorAfterCursor() {
+				return Array.from(ref.next_anchor_after_cursor());
+			},
+			prevAnchorBeforeCursor() {
+				return Array.from(ref.prev_anchor_before_cursor());
+			},
+			goToNextAnchor(wrap = true) {
+				const ok = ref.go_to_next_anchor(wrap);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
+			goToPrevAnchor(wrap = true) {
+				const ok = ref.go_to_prev_anchor(wrap);
+				cursorOffset = ref.selection_end();
+				renderFrame();
+				return ok;
+			},
 			anchorsAtOffset(offset: number) {
 				return Array.from(ref.anchors_at_offset(offset));
 			},
@@ -2956,6 +2974,76 @@ export async function createEditor(
 				ignoreWhitespace = false,
 			) {
 				return ref.duplicate_group_last_line_for_line(
+					line,
+					caseSensitive,
+					ignoreWhitespace,
+				);
+			},
+			lineOccurrenceLinesForLine(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.line_occurrence_lines_for_line(
+						line,
+						caseSensitive,
+						ignoreWhitespace,
+					),
+				);
+			},
+			lineOccurrenceCountForLine(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_count_for_line(
+					line,
+					caseSensitive,
+					ignoreWhitespace,
+				);
+			},
+			lineOccurrenceRatioForLine(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_ratio_for_line(
+					line,
+					caseSensitive,
+					ignoreWhitespace,
+				);
+			},
+			lineIsUniqueByContent(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_is_unique_by_content(
+					line,
+					caseSensitive,
+					ignoreWhitespace,
+				);
+			},
+			duplicatePeerLinesForLine(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.duplicate_peer_lines_for_line(
+						line,
+						caseSensitive,
+						ignoreWhitespace,
+					),
+				);
+			},
+			duplicatePeerLineCount(
+				line: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.duplicate_peer_line_count(
 					line,
 					caseSensitive,
 					ignoreWhitespace,
