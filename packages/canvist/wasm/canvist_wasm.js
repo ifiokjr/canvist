@@ -125,6 +125,16 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Count anchors after an offset.
+     * @param {number} offset
+     * @param {boolean} inclusive
+     * @returns {number}
+     */
+    anchor_count_after_offset(offset, inclusive) {
+        const ret = wasm.canvisteditor_anchor_count_after_offset(this.__wbg_ptr, offset, inclusive);
+        return ret >>> 0;
+    }
+    /**
      * Count anchors before a named anchor offset.
      * @param {string} name
      * @param {boolean} inclusive
@@ -134,6 +144,16 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_anchor_count_before_anchor(this.__wbg_ptr, ptr0, len0, inclusive);
+        return ret >>> 0;
+    }
+    /**
+     * Count anchors before an offset.
+     * @param {number} offset
+     * @param {boolean} inclusive
+     * @returns {number}
+     */
+    anchor_count_before_offset(offset, inclusive) {
+        const ret = wasm.canvisteditor_anchor_count_before_offset(this.__wbg_ptr, offset, inclusive);
         return ret >>> 0;
     }
     /**
@@ -2546,6 +2566,17 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Number of line-content groups with an occurrence size exactly `count`.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} count
+     * @returns {number}
+     */
+    line_occurrence_group_count_with_count(case_sensitive, ignore_whitespace, count) {
+        const ret = wasm.canvisteditor_line_occurrence_group_count_with_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, count);
+        return ret >>> 0;
+    }
+    /**
      * Group lines for the ranked occurrence group at `rank`.
      *
      * Groups are ranked by occurrence count descending, then first line
@@ -2607,6 +2638,32 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * All line numbers belonging to groups with at most `max_count` occurrences.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} max_count
+     * @returns {Uint32Array}
+     */
+    line_occurrence_lines_with_max_count(case_sensitive, ignore_whitespace, max_count) {
+        const ret = wasm.canvisteditor_line_occurrence_lines_with_max_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, max_count);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * All line numbers belonging to groups with at least `min_count` occurrences.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @returns {Uint32Array}
+     */
+    line_occurrence_lines_with_min_count(case_sensitive, ignore_whitespace, min_count) {
+        const ret = wasm.canvisteditor_line_occurrence_lines_with_min_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Rank for the occurrence group containing `line`, or -1.
      *
      * Rank uses the same ordering as `line_occurrence_rankings`.
@@ -2632,6 +2689,22 @@ export class CanvistEditor {
      */
     line_occurrence_rankings(case_sensitive, ignore_whitespace, min_count) {
         const ret = wasm.canvisteditor_line_occurrence_rankings(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Ranked line-occurrence groups constrained to an inclusive count range.
+     *
+     * Returns flat `[line, count, ...]`, preserving ranking order.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @param {number} max_count
+     * @returns {Uint32Array}
+     */
+    line_occurrence_rankings_in_count_range(case_sensitive, ignore_whitespace, min_count, max_count) {
+        const ret = wasm.canvisteditor_line_occurrence_rankings_in_count_range(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count, max_count);
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
@@ -3582,6 +3655,30 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_remove_anchor(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Remove anchors after an offset.
+     *
+     * Returns number removed.
+     * @param {number} offset
+     * @param {boolean} inclusive
+     * @returns {number}
+     */
+    remove_anchors_after_offset(offset, inclusive) {
+        const ret = wasm.canvisteditor_remove_anchors_after_offset(this.__wbg_ptr, offset, inclusive);
+        return ret >>> 0;
+    }
+    /**
+     * Remove anchors before an offset.
+     *
+     * Returns number removed.
+     * @param {number} offset
+     * @param {boolean} inclusive
+     * @returns {number}
+     */
+    remove_anchors_before_offset(offset, inclusive) {
+        const ret = wasm.canvisteditor_remove_anchors_before_offset(this.__wbg_ptr, offset, inclusive);
+        return ret >>> 0;
     }
     /**
      * Remove anchors between two named anchors.
@@ -4769,6 +4866,19 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Shift anchors after an offset by a signed delta.
+     *
+     * Offsets are clamped to document bounds. Returns number shifted.
+     * @param {number} offset
+     * @param {number} delta
+     * @param {boolean} inclusive
+     * @returns {number}
+     */
+    shift_anchors_after_offset(offset, delta, inclusive) {
+        const ret = wasm.canvisteditor_shift_anchors_after_offset(this.__wbg_ptr, offset, delta, inclusive);
+        return ret >>> 0;
+    }
+    /**
      * Shift anchors before a named anchor offset by a signed delta.
      *
      * Offsets are clamped to document bounds. Returns number shifted.
@@ -4781,6 +4891,19 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_shift_anchors_before_anchor(this.__wbg_ptr, ptr0, len0, delta, inclusive);
+        return ret >>> 0;
+    }
+    /**
+     * Shift anchors before an offset by a signed delta.
+     *
+     * Offsets are clamped to document bounds. Returns number shifted.
+     * @param {number} offset
+     * @param {number} delta
+     * @param {boolean} inclusive
+     * @returns {number}
+     */
+    shift_anchors_before_offset(offset, delta, inclusive) {
+        const ret = wasm.canvisteditor_shift_anchors_before_offset(this.__wbg_ptr, offset, delta, inclusive);
         return ret >>> 0;
     }
     /**

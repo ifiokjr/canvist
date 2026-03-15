@@ -7004,6 +7004,120 @@ impl CanvistEditor {
 		pairs.into_iter().map(|(_, name)| name).collect()
 	}
 
+	/// Count anchors before an offset.
+	#[wasm_bindgen]
+	pub fn anchor_count_before_offset(&self, offset: usize, inclusive: bool) -> usize {
+		self.anchor_names_before_offset(offset, inclusive).len()
+	}
+
+	/// Count anchors after an offset.
+	#[wasm_bindgen]
+	pub fn anchor_count_after_offset(&self, offset: usize, inclusive: bool) -> usize {
+		self.anchor_names_after_offset(offset, inclusive).len()
+	}
+
+	/// Shift anchors before an offset by a signed delta.
+	///
+	/// Offsets are clamped to document bounds. Returns number shifted.
+	#[wasm_bindgen]
+	pub fn shift_anchors_before_offset(
+		&mut self,
+		offset: usize,
+		delta: i32,
+		inclusive: bool,
+	) -> usize {
+		let max = self.runtime.document().char_count() as i64;
+		let mut shifted = 0usize;
+		for anchor_offset in self.anchors.values_mut() {
+			let in_range = if inclusive {
+				*anchor_offset <= offset
+			} else {
+				*anchor_offset < offset
+			};
+			if in_range {
+				let next = ((*anchor_offset as i64) + i64::from(delta)).clamp(0, max) as usize;
+				*anchor_offset = next;
+				shifted += 1;
+			}
+		}
+		shifted
+	}
+
+	/// Shift anchors after an offset by a signed delta.
+	///
+	/// Offsets are clamped to document bounds. Returns number shifted.
+	#[wasm_bindgen]
+	pub fn shift_anchors_after_offset(
+		&mut self,
+		offset: usize,
+		delta: i32,
+		inclusive: bool,
+	) -> usize {
+		let max = self.runtime.document().char_count() as i64;
+		let mut shifted = 0usize;
+		for anchor_offset in self.anchors.values_mut() {
+			let in_range = if inclusive {
+				*anchor_offset >= offset
+			} else {
+				*anchor_offset > offset
+			};
+			if in_range {
+				let next = ((*anchor_offset as i64) + i64::from(delta)).clamp(0, max) as usize;
+				*anchor_offset = next;
+				shifted += 1;
+			}
+		}
+		shifted
+	}
+
+	/// Remove anchors before an offset.
+	///
+	/// Returns number removed.
+	#[wasm_bindgen]
+	pub fn remove_anchors_before_offset(&mut self, offset: usize, inclusive: bool) -> usize {
+		let keys: Vec<String> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(if inclusive {
+					*pos <= offset
+				} else {
+					*pos < offset
+				})
+				.then_some(name.clone())
+			})
+			.collect();
+		let removed = keys.len();
+		for key in keys {
+			self.anchors.remove(&key);
+		}
+		removed
+	}
+
+	/// Remove anchors after an offset.
+	///
+	/// Returns number removed.
+	#[wasm_bindgen]
+	pub fn remove_anchors_after_offset(&mut self, offset: usize, inclusive: bool) -> usize {
+		let keys: Vec<String> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(if inclusive {
+					*pos >= offset
+				} else {
+					*pos > offset
+				})
+				.then_some(name.clone())
+			})
+			.collect();
+		let removed = keys.len();
+		for key in keys {
+			self.anchors.remove(&key);
+		}
+		removed
+	}
+
 	/// Anchor names before a named anchor offset.
 	///
 	/// When `inclusive` is false, only anchors strictly before are returned.
@@ -8841,6 +8955,23 @@ impl CanvistEditor {
 			.len()
 	}
 
+	/// Number of line-content groups with an occurrence size exactly `count`.
+	#[wasm_bindgen]
+	pub fn line_occurrence_group_count_with_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		count: usize,
+	) -> usize {
+		if count == 0 {
+			return 0;
+		}
+		self.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.filter(|lines| lines.len() == count)
+			.count()
+	}
+
 	/// Ranked line-occurrence groups as flat `[line, count, ...]`.
 	///
 	/// `line` is the first line number for each group. Results are sorted by
@@ -8858,6 +8989,33 @@ impl CanvistEditor {
 		for lines in groups {
 			out.push(lines[0]);
 			out.push(lines.len());
+		}
+		out
+	}
+
+	/// Ranked line-occurrence groups constrained to an inclusive count range.
+	///
+	/// Returns flat `[line, count, ...]`, preserving ranking order.
+	#[wasm_bindgen]
+	pub fn line_occurrence_rankings_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> Vec<usize> {
+		let lower = min_count.max(1);
+		if max_count < lower {
+			return Vec::new();
+		}
+		let groups = self.ranked_line_occurrence_groups(case_sensitive, ignore_whitespace, lower);
+		let mut out = Vec::with_capacity(groups.len() * 2);
+		for lines in groups {
+			let count = lines.len();
+			if count <= max_count {
+				out.push(lines[0]);
+				out.push(count);
+			}
 		}
 		out
 	}
@@ -8907,6 +9065,48 @@ impl CanvistEditor {
 		let mut out = Vec::new();
 		for lines in groups.values() {
 			if lines.len() == count {
+				out.extend(lines.iter().copied());
+			}
+		}
+		out.sort_unstable();
+		out
+	}
+
+	/// All line numbers belonging to groups with at least `min_count` occurrences.
+	#[wasm_bindgen]
+	pub fn line_occurrence_lines_with_min_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+	) -> Vec<usize> {
+		let threshold = min_count.max(1);
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut out = Vec::new();
+		for lines in groups.values() {
+			if lines.len() >= threshold {
+				out.extend(lines.iter().copied());
+			}
+		}
+		out.sort_unstable();
+		out
+	}
+
+	/// All line numbers belonging to groups with at most `max_count` occurrences.
+	#[wasm_bindgen]
+	pub fn line_occurrence_lines_with_max_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		max_count: usize,
+	) -> Vec<usize> {
+		if max_count == 0 {
+			return Vec::new();
+		}
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut out = Vec::new();
+		for lines in groups.values() {
+			if lines.len() <= max_count {
 				out.extend(lines.iter().copied());
 			}
 		}
