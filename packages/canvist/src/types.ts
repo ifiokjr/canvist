@@ -1486,6 +1486,18 @@ export interface CanvistEditor {
 	/** Nearest anchor at/after offset: [name, offset] or empty. */
 	nearestAnchorAfter(offset: number): string[];
 
+	/** Next anchor after current cursor as [name, offset]. */
+	nextAnchorAfterCursor(): string[];
+
+	/** Previous anchor before current cursor as [name, offset]. */
+	prevAnchorBeforeCursor(): string[];
+
+	/** Move cursor to next anchor; optionally wraps to first anchor. */
+	goToNextAnchor(wrap?: boolean): boolean;
+
+	/** Move cursor to previous anchor; optionally wraps to last anchor. */
+	goToPrevAnchor(wrap?: boolean): boolean;
+
 	/** Anchor names exactly at offset (sorted). */
 	anchorsAtOffset(offset: number): string[];
 
@@ -1858,6 +1870,48 @@ export interface CanvistEditor {
 
 	/** Last line of duplicate group for a specific line, or -1. */
 	duplicateGroupLastLineForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** All line numbers sharing content with the provided line. */
+	lineOccurrenceLinesForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
+
+	/** Number of lines sharing content with the provided line. */
+	lineOccurrenceCountForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of line-occurrence count to total lines for provided line. */
+	lineOccurrenceRatioForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Whether the provided line is unique by content matching. */
+	lineIsUniqueByContent(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): boolean;
+
+	/** Peer lines sharing content with provided line (excluding itself). */
+	duplicatePeerLinesForLine(
+		line: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
+
+	/** Number of duplicate peer lines for provided line. */
+	duplicatePeerLineCount(
 		line: number,
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,

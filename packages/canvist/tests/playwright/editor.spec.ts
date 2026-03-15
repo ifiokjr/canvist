@@ -8125,4 +8125,235 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor cursor navigation helpers ────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor cursor navigation helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("0123456789");
+						ed.set_anchor("d", 8);
+						ed.set_anchor("b", 3);
+						ed.set_anchor("c", 3);
+						ed.set_anchor("a", 1);
+
+						ed.go_to_anchor("a");
+						const nextFromA = Array.from(ed.next_anchor_after_cursor());
+						const prevFromA = Array.from(ed.prev_anchor_before_cursor());
+						const movedNext = ed.go_to_next_anchor(false);
+						const cursorAfterMovedNext = ed.selection_end();
+						const nextFromAt3 = Array.from(ed.next_anchor_after_cursor());
+						const prevFromAt3 = Array.from(ed.prev_anchor_before_cursor());
+						const movedPrev = ed.go_to_prev_anchor(false);
+						const cursorAfterMovedPrev = ed.selection_end();
+
+						const prevNoWrapAtStart = ed.go_to_prev_anchor(false);
+						const prevWrapAtStart = ed.go_to_prev_anchor(true);
+						const cursorAfterPrevWrap = ed.selection_end();
+						const nextNoWrapAtEnd = ed.go_to_next_anchor(false);
+						const nextWrapAtEnd = ed.go_to_next_anchor(true);
+						const cursorAfterNextWrap = ed.selection_end();
+
+						ed.clear_anchors();
+						const nextNoAnchors = Array.from(ed.next_anchor_after_cursor());
+						const prevNoAnchors = Array.from(ed.prev_anchor_before_cursor());
+						const moveNextNoAnchors = ed.go_to_next_anchor(true);
+						const movePrevNoAnchors = ed.go_to_prev_anchor(true);
+
+						return {
+							nextFromA,
+							prevFromA,
+							movedNext,
+							cursorAfterMovedNext,
+							nextFromAt3,
+							prevFromAt3,
+							movedPrev,
+							cursorAfterMovedPrev,
+							prevNoWrapAtStart,
+							prevWrapAtStart,
+							cursorAfterPrevWrap,
+							nextNoWrapAtEnd,
+							nextWrapAtEnd,
+							cursorAfterNextWrap,
+							nextNoAnchors,
+							prevNoAnchors,
+							moveNextNoAnchors,
+							movePrevNoAnchors,
+						};
+					});
+
+					assertEquals(result.nextFromA, ["b", "3"]);
+					assertEquals(result.prevFromA, []);
+					assertEquals(result.movedNext, true);
+					assertEquals(result.cursorAfterMovedNext, 3);
+					assertEquals(result.nextFromAt3, ["d", "8"]);
+					assertEquals(result.prevFromAt3, ["a", "1"]);
+					assertEquals(result.movedPrev, true);
+					assertEquals(result.cursorAfterMovedPrev, 1);
+					assertEquals(result.prevNoWrapAtStart, false);
+					assertEquals(result.prevWrapAtStart, true);
+					assertEquals(result.cursorAfterPrevWrap, 8);
+					assertEquals(result.nextNoWrapAtEnd, false);
+					assertEquals(result.nextWrapAtEnd, true);
+					assertEquals(result.cursorAfterNextWrap, 1);
+					assertEquals(result.nextNoAnchors, []);
+					assertEquals(result.prevNoAnchors, []);
+					assertEquals(result.moveNextNoAnchors, false);
+					assertEquals(result.movePrevNoAnchors, false);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Per-line occurrence and duplicate peer helpers ──────────────
+
+	Deno.test({
+		name: `[${browserName}] line occurrence and duplicate peer helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("alpha\nalpha\nbeta\nAlpha\nbeta \nbeta\nsolo");
+
+						const strictAlpha = {
+							lines: Array.from(
+								ed.line_occurrence_lines_for_line(0, true, false),
+							),
+							count: ed.line_occurrence_count_for_line(0, true, false),
+							ratio: ed.line_occurrence_ratio_for_line(0, true, false),
+							unique: ed.line_is_unique_by_content(0, true, false),
+							peers: Array.from(
+								ed.duplicate_peer_lines_for_line(0, true, false),
+							),
+							peerCount: ed.duplicate_peer_line_count(0, true, false),
+						};
+						const looseAlphaFromThree = {
+							lines: Array.from(
+								ed.line_occurrence_lines_for_line(3, false, true),
+							),
+							count: ed.line_occurrence_count_for_line(3, false, true),
+							ratio: ed.line_occurrence_ratio_for_line(3, false, true),
+							unique: ed.line_is_unique_by_content(3, false, true),
+							peers: Array.from(
+								ed.duplicate_peer_lines_for_line(3, false, true),
+							),
+							peerCount: ed.duplicate_peer_line_count(3, false, true),
+						};
+						const strictBeta = {
+							lines: Array.from(
+								ed.line_occurrence_lines_for_line(2, true, false),
+							),
+							count: ed.line_occurrence_count_for_line(2, true, false),
+							unique: ed.line_is_unique_by_content(2, true, false),
+							peers: Array.from(
+								ed.duplicate_peer_lines_for_line(2, true, false),
+							),
+							peerCount: ed.duplicate_peer_line_count(2, true, false),
+						};
+						const strictBetaSpace = {
+							lines: Array.from(
+								ed.line_occurrence_lines_for_line(4, true, false),
+							),
+							count: ed.line_occurrence_count_for_line(4, true, false),
+							ratio: ed.line_occurrence_ratio_for_line(4, true, false),
+							unique: ed.line_is_unique_by_content(4, true, false),
+							peers: Array.from(
+								ed.duplicate_peer_lines_for_line(4, true, false),
+							),
+							peerCount: ed.duplicate_peer_line_count(4, true, false),
+						};
+						const missing = {
+							lines: Array.from(
+								ed.line_occurrence_lines_for_line(99, false, true),
+							),
+							count: ed.line_occurrence_count_for_line(99, false, true),
+							ratio: ed.line_occurrence_ratio_for_line(99, false, true),
+							unique: ed.line_is_unique_by_content(99, false, true),
+							peers: Array.from(
+								ed.duplicate_peer_lines_for_line(99, false, true),
+							),
+							peerCount: ed.duplicate_peer_line_count(99, false, true),
+						};
+
+						return {
+							strictAlpha,
+							looseAlphaFromThree,
+							strictBeta,
+							strictBetaSpace,
+							missing,
+						};
+					});
+
+					assertEquals(result.strictAlpha.lines, [0, 1]);
+					assertEquals(result.strictAlpha.count, 2);
+					assert(
+						result.strictAlpha.ratio > 0.28 && result.strictAlpha.ratio < 0.29,
+					);
+					assertEquals(result.strictAlpha.unique, false);
+					assertEquals(result.strictAlpha.peers, [1]);
+					assertEquals(result.strictAlpha.peerCount, 1);
+
+					assertEquals(result.looseAlphaFromThree.lines, [0, 1, 3]);
+					assertEquals(result.looseAlphaFromThree.count, 3);
+					assert(
+						result.looseAlphaFromThree.ratio > 0.42 &&
+							result.looseAlphaFromThree.ratio < 0.43,
+					);
+					assertEquals(result.looseAlphaFromThree.unique, false);
+					assertEquals(result.looseAlphaFromThree.peers, [0, 1]);
+					assertEquals(result.looseAlphaFromThree.peerCount, 2);
+
+					assertEquals(result.strictBeta.lines, [2, 5]);
+					assertEquals(result.strictBeta.count, 2);
+					assertEquals(result.strictBeta.unique, false);
+					assertEquals(result.strictBeta.peers, [5]);
+					assertEquals(result.strictBeta.peerCount, 1);
+
+					assertEquals(result.strictBetaSpace.lines, [4]);
+					assertEquals(result.strictBetaSpace.count, 1);
+					assert(
+						result.strictBetaSpace.ratio > 0.14 &&
+							result.strictBetaSpace.ratio < 0.15,
+					);
+					assertEquals(result.strictBetaSpace.unique, true);
+					assertEquals(result.strictBetaSpace.peers, []);
+					assertEquals(result.strictBetaSpace.peerCount, 0);
+
+					assertEquals(result.missing.lines, []);
+					assertEquals(result.missing.count, 0);
+					assertEquals(result.missing.ratio, 0);
+					assertEquals(result.missing.unique, false);
+					assertEquals(result.missing.peers, []);
+					assertEquals(result.missing.peerCount, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

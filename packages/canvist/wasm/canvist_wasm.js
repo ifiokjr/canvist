@@ -1266,6 +1266,30 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Number of duplicate peer lines for the provided line.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    duplicate_peer_line_count(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_peer_line_count(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        return ret >>> 0;
+    }
+    /**
+     * Peer lines sharing content with the provided line (excluding itself).
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {Uint32Array}
+     */
+    duplicate_peer_lines_for_line(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_duplicate_peer_lines_for_line(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Editor version string.
      * @returns {string}
      */
@@ -1848,6 +1872,28 @@ export class CanvistEditor {
         wasm.canvisteditor_go_to_line(this.__wbg_ptr, line_number);
     }
     /**
+     * Move cursor to the next anchor after the current cursor.
+     *
+     * When `wrap` is true and no next anchor exists, wraps to first anchor.
+     * @param {boolean} wrap
+     * @returns {boolean}
+     */
+    go_to_next_anchor(wrap) {
+        const ret = wasm.canvisteditor_go_to_next_anchor(this.__wbg_ptr, wrap);
+        return ret !== 0;
+    }
+    /**
+     * Move cursor to the previous anchor before the current cursor.
+     *
+     * When `wrap` is true and no previous anchor exists, wraps to last anchor.
+     * @param {boolean} wrap
+     * @returns {boolean}
+     */
+    go_to_prev_anchor(wrap) {
+        const ret = wasm.canvisteditor_go_to_prev_anchor(this.__wbg_ptr, wrap);
+        return ret !== 0;
+    }
+    /**
      * Whether a snapshot has been taken.
      * @returns {boolean}
      */
@@ -2344,6 +2390,17 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Whether the provided line is unique by content matching.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {boolean}
+     */
+    line_is_unique_by_content(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_line_is_unique_by_content(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        return ret !== 0;
+    }
+    /**
      * Count lines containing `needle`.
      * @param {string} needle
      * @param {boolean} case_sensitive
@@ -2354,6 +2411,44 @@ export class CanvistEditor {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_line_occurrence_count(this.__wbg_ptr, ptr0, len0, case_sensitive);
         return ret >>> 0;
+    }
+    /**
+     * Number of lines sharing content with the provided line.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    line_occurrence_count_for_line(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_line_occurrence_count_for_line(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        return ret >>> 0;
+    }
+    /**
+     * All line numbers that share content with the provided line.
+     *
+     * Returns sorted line numbers including the provided line itself.
+     * Returns empty for out-of-range lines.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {Uint32Array}
+     */
+    line_occurrence_lines_for_line(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_line_occurrence_lines_for_line(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Ratio of line-occurrence count to total lines for the provided line.
+     * @param {number} line
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @returns {number}
+     */
+    line_occurrence_ratio_for_line(line, case_sensitive, ignore_whitespace) {
+        const ret = wasm.canvisteditor_line_occurrence_ratio_for_line(this.__wbg_ptr, line, case_sensitive, ignore_whitespace);
+        return ret;
     }
     /**
      * Return line numbers containing `needle`.
@@ -2860,6 +2955,18 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Next anchor after the current cursor as `[name, offset]`.
+     *
+     * Uses strict `>` comparison against the cursor offset.
+     * @returns {string[]}
+     */
+    next_anchor_after_cursor() {
+        const ret = wasm.canvisteditor_next_anchor_after_cursor(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
      * Jump to the next bookmark after the current line.
      *
      * Wraps around to the first bookmark if past the last one.
@@ -3100,6 +3207,18 @@ export class CanvistEditor {
         const len0 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_prefix_lines(this.__wbg_ptr, start_line, end_line, ptr0, len0);
         return ret >>> 0;
+    }
+    /**
+     * Previous anchor before the current cursor as `[name, offset]`.
+     *
+     * Uses strict `<` comparison against the cursor offset.
+     * @returns {string[]}
+     */
+    prev_anchor_before_cursor() {
+        const ret = wasm.canvisteditor_prev_anchor_before_cursor(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Jump to the previous bookmark before the current line.

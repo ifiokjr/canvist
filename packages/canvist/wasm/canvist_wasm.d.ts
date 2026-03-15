@@ -614,6 +614,14 @@ export class CanvistEditor {
      */
     duplicate_line_ratio(case_sensitive: boolean, ignore_whitespace: boolean): number;
     /**
+     * Number of duplicate peer lines for the provided line.
+     */
+    duplicate_peer_line_count(line: number, case_sensitive: boolean, ignore_whitespace: boolean): number;
+    /**
+     * Peer lines sharing content with the provided line (excluding itself).
+     */
+    duplicate_peer_lines_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean): Uint32Array;
+    /**
      * Editor version string.
      */
     editor_version(): string;
@@ -867,6 +875,18 @@ export class CanvistEditor {
      */
     go_to_line(line_number: number): void;
     /**
+     * Move cursor to the next anchor after the current cursor.
+     *
+     * When `wrap` is true and no next anchor exists, wraps to first anchor.
+     */
+    go_to_next_anchor(wrap: boolean): boolean;
+    /**
+     * Move cursor to the previous anchor before the current cursor.
+     *
+     * When `wrap` is true and no previous anchor exists, wraps to last anchor.
+     */
+    go_to_prev_anchor(wrap: boolean): boolean;
+    /**
      * Whether a snapshot has been taken.
      */
     has_snapshot(): boolean;
@@ -1110,9 +1130,28 @@ export class CanvistEditor {
      */
     line_is_duplicate(line: number, case_sensitive: boolean, ignore_whitespace: boolean): boolean;
     /**
+     * Whether the provided line is unique by content matching.
+     */
+    line_is_unique_by_content(line: number, case_sensitive: boolean, ignore_whitespace: boolean): boolean;
+    /**
      * Count lines containing `needle`.
      */
     line_occurrence_count(needle: string, case_sensitive: boolean): number;
+    /**
+     * Number of lines sharing content with the provided line.
+     */
+    line_occurrence_count_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean): number;
+    /**
+     * All line numbers that share content with the provided line.
+     *
+     * Returns sorted line numbers including the provided line itself.
+     * Returns empty for out-of-range lines.
+     */
+    line_occurrence_lines_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean): Uint32Array;
+    /**
+     * Ratio of line-occurrence count to total lines for the provided line.
+     */
+    line_occurrence_ratio_for_line(line: number, case_sensitive: boolean, ignore_whitespace: boolean): number;
     /**
      * Return line numbers containing `needle`.
      */
@@ -1350,6 +1389,12 @@ export class CanvistEditor {
      */
     nearest_anchor_before(offset: number): string[];
     /**
+     * Next anchor after the current cursor as `[name, offset]`.
+     *
+     * Uses strict `>` comparison against the cursor offset.
+     */
+    next_anchor_after_cursor(): string[];
+    /**
      * Jump to the next bookmark after the current line.
      *
      * Wraps around to the first bookmark if past the last one.
@@ -1465,6 +1510,12 @@ export class CanvistEditor {
      * Returns number of lines changed.
      */
     prefix_lines(start_line: number, end_line: number, prefix: string): number;
+    /**
+     * Previous anchor before the current cursor as `[name, offset]`.
+     *
+     * Uses strict `<` comparison against the cursor offset.
+     */
+    prev_anchor_before_cursor(): string[];
     /**
      * Jump to the previous bookmark before the current line.
      *
@@ -2662,6 +2713,8 @@ export interface InitOutput {
     readonly canvisteditor_duplicate_line_numbers: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_duplicate_line_range: (a: number, b: number, c: number) => number;
     readonly canvisteditor_duplicate_line_ratio: (a: number, b: number, c: number) => number;
+    readonly canvisteditor_duplicate_peer_line_count: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_duplicate_peer_lines_for_line: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_editor_version: (a: number) => [number, number];
     readonly canvisteditor_ensure_final_newline: (a: number) => number;
     readonly canvisteditor_ensure_single_trailing_newline: (a: number) => number;
@@ -2709,6 +2762,8 @@ export interface InitOutput {
     readonly canvisteditor_go_to_document_end: (a: number) => void;
     readonly canvisteditor_go_to_document_start: (a: number) => void;
     readonly canvisteditor_go_to_line: (a: number, b: number) => void;
+    readonly canvisteditor_go_to_next_anchor: (a: number, b: number) => number;
+    readonly canvisteditor_go_to_prev_anchor: (a: number, b: number) => number;
     readonly canvisteditor_has_snapshot: (a: number) => number;
     readonly canvisteditor_highlight_current_line: (a: number) => number;
     readonly canvisteditor_highlight_matching_brackets: (a: number) => number;
@@ -2754,7 +2809,11 @@ export interface InitOutput {
     readonly canvisteditor_line_hashes: (a: number) => [number, number];
     readonly canvisteditor_line_hashes_in_range: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_line_is_duplicate: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_line_is_unique_by_content: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrence_count: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_line_occurrence_count_for_line: (a: number, b: number, c: number, d: number) => number;
+    readonly canvisteditor_line_occurrence_lines_for_line: (a: number, b: number, c: number, d: number) => [number, number];
+    readonly canvisteditor_line_occurrence_ratio_for_line: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_line_occurrences: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_line_start_for_offset: (a: number, b: number) => [number, number, number];
     readonly canvisteditor_lines_with_prefix: (a: number, b: number, c: number, d: number) => [number, number];
@@ -2803,6 +2862,7 @@ export interface InitOutput {
     readonly canvisteditor_named_state_names: (a: number) => [number, number];
     readonly canvisteditor_nearest_anchor_after: (a: number, b: number) => [number, number];
     readonly canvisteditor_nearest_anchor_before: (a: number, b: number) => [number, number];
+    readonly canvisteditor_next_anchor_after_cursor: (a: number) => [number, number];
     readonly canvisteditor_next_bookmark: (a: number) => number;
     readonly canvisteditor_next_line_with: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_next_task_line: (a: number, b: number) => number;
@@ -2825,6 +2885,7 @@ export interface InitOutput {
     readonly canvisteditor_placeholder: (a: number) => [number, number];
     readonly canvisteditor_plain_text: (a: number) => [number, number];
     readonly canvisteditor_prefix_lines: (a: number, b: number, c: number, d: number, e: number) => number;
+    readonly canvisteditor_prev_anchor_before_cursor: (a: number) => [number, number];
     readonly canvisteditor_prev_bookmark: (a: number) => number;
     readonly canvisteditor_prev_line_with: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly canvisteditor_prev_task_line: (a: number, b: number) => number;

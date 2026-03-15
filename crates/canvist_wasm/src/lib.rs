@@ -6739,6 +6739,109 @@ impl CanvistEditor {
 		}
 	}
 
+	/// Next anchor after the current cursor as `[name, offset]`.
+	///
+	/// Uses strict `>` comparison against the cursor offset.
+	#[wasm_bindgen]
+	pub fn next_anchor_after_cursor(&self) -> Vec<String> {
+		let cursor = self.runtime.selection().end().offset();
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| (*pos > cursor).then_some((*pos, name.clone())))
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		if let Some((offset, name)) = pairs.into_iter().next() {
+			vec![name, offset.to_string()]
+		} else {
+			Vec::new()
+		}
+	}
+
+	/// Previous anchor before the current cursor as `[name, offset]`.
+	///
+	/// Uses strict `<` comparison against the cursor offset.
+	#[wasm_bindgen]
+	pub fn prev_anchor_before_cursor(&self) -> Vec<String> {
+		let cursor = self.runtime.selection().end().offset();
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| (*pos < cursor).then_some((*pos, name.clone())))
+			.collect();
+		pairs.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+		if let Some((offset, name)) = pairs.into_iter().next() {
+			vec![name, offset.to_string()]
+		} else {
+			Vec::new()
+		}
+	}
+
+	/// Move cursor to the next anchor after the current cursor.
+	///
+	/// When `wrap` is true and no next anchor exists, wraps to first anchor.
+	#[wasm_bindgen]
+	pub fn go_to_next_anchor(&mut self, wrap: bool) -> bool {
+		let cursor = self.runtime.selection().end().offset();
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.map(|(name, pos)| (*pos, name.clone()))
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		let target = pairs
+			.iter()
+			.find(|(offset, _)| *offset > cursor)
+			.map(|(offset, _)| *offset)
+			.or_else(|| {
+				if wrap {
+					pairs.first().map(|(offset, _)| *offset)
+				} else {
+					None
+				}
+			});
+		let Some(target_offset) = target else {
+			return false;
+		};
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(target_offset)),
+		});
+		true
+	}
+
+	/// Move cursor to the previous anchor before the current cursor.
+	///
+	/// When `wrap` is true and no previous anchor exists, wraps to last anchor.
+	#[wasm_bindgen]
+	pub fn go_to_prev_anchor(&mut self, wrap: bool) -> bool {
+		let cursor = self.runtime.selection().end().offset();
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.map(|(name, pos)| (*pos, name.clone()))
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		let target = pairs
+			.iter()
+			.rev()
+			.find(|(offset, _)| *offset < cursor)
+			.map(|(offset, _)| *offset)
+			.or_else(|| {
+				if wrap {
+					pairs.last().map(|(offset, _)| *offset)
+				} else {
+					None
+				}
+			});
+		let Some(target_offset) = target else {
+			return false;
+		};
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(target_offset)),
+		});
+		true
+	}
+
 	/// Anchor names set exactly at a given offset.
 	#[wasm_bindgen]
 	pub fn anchors_at_offset(&self, offset: usize) -> Vec<String> {
@@ -8422,23 +8525,10 @@ impl CanvistEditor {
 		case_sensitive: bool,
 		ignore_whitespace: bool,
 	) -> Vec<usize> {
-		let plain = self.runtime.document().plain_text();
-		let Some(line_text) = plain.split('\n').nth(line) else {
+		let Some(key) = self.normalized_line_key_for_index(line, case_sensitive, ignore_whitespace)
+		else {
 			return Vec::new();
 		};
-
-		let mut key = if ignore_whitespace {
-			line_text
-				.split_whitespace()
-				.collect::<Vec<&str>>()
-				.join(" ")
-		} else {
-			line_text.to_string()
-		};
-		if !case_sensitive {
-			key = key.to_lowercase();
-		}
-
 		let groups = self.line_groups(case_sensitive, ignore_whitespace);
 		let mut out = groups.get(&key).cloned().unwrap_or_default();
 		if out.len() <= 1 {
@@ -8488,6 +8578,95 @@ impl CanvistEditor {
 			.map_or(-1, |n| n as i32)
 	}
 
+	/// All line numbers that share content with the provided line.
+	///
+	/// Returns sorted line numbers including the provided line itself.
+	/// Returns empty for out-of-range lines.
+	#[wasm_bindgen]
+	pub fn line_occurrence_lines_for_line(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> Vec<usize> {
+		let Some(key) = self.normalized_line_key_for_index(line, case_sensitive, ignore_whitespace)
+		else {
+			return Vec::new();
+		};
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut out = groups.get(&key).cloned().unwrap_or_default();
+		out.sort_unstable();
+		out
+	}
+
+	/// Number of lines sharing content with the provided line.
+	#[wasm_bindgen]
+	pub fn line_occurrence_count_for_line(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> usize {
+		self.line_occurrence_lines_for_line(line, case_sensitive, ignore_whitespace)
+			.len()
+	}
+
+	/// Ratio of line-occurrence count to total lines for the provided line.
+	#[wasm_bindgen]
+	pub fn line_occurrence_ratio_for_line(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> f64 {
+		let total = self.runtime.document().plain_text().split('\n').count();
+		if total == 0 {
+			return 0.0;
+		}
+		self.line_occurrence_count_for_line(line, case_sensitive, ignore_whitespace) as f64
+			/ total as f64
+	}
+
+	/// Whether the provided line is unique by content matching.
+	#[wasm_bindgen]
+	pub fn line_is_unique_by_content(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> bool {
+		self.line_occurrence_count_for_line(line, case_sensitive, ignore_whitespace) == 1
+	}
+
+	/// Peer lines sharing content with the provided line (excluding itself).
+	#[wasm_bindgen]
+	pub fn duplicate_peer_lines_for_line(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> Vec<usize> {
+		let mut lines =
+			self.line_occurrence_lines_for_line(line, case_sensitive, ignore_whitespace);
+		if lines.len() <= 1 {
+			return Vec::new();
+		}
+		lines.retain(|value| *value != line);
+		lines
+	}
+
+	/// Number of duplicate peer lines for the provided line.
+	#[wasm_bindgen]
+	pub fn duplicate_peer_line_count(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> usize {
+		self.duplicate_peer_lines_for_line(line, case_sensitive, ignore_whitespace)
+			.len()
+	}
+
 	/// Ratio of duplicate lines to total lines.
 	#[wasm_bindgen]
 	pub fn duplicate_line_ratio(&self, case_sensitive: bool, ignore_whitespace: bool) -> f64 {
@@ -8496,6 +8675,29 @@ impl CanvistEditor {
 			return 0.0;
 		}
 		self.duplicate_line_count(case_sensitive, ignore_whitespace) as f64 / total as f64
+	}
+
+	/// Normalized line-content key for a specific line index.
+	fn normalized_line_key_for_index(
+		&self,
+		line: usize,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> Option<String> {
+		let plain = self.runtime.document().plain_text();
+		let line_text = plain.split('\n').nth(line)?;
+		let mut key = if ignore_whitespace {
+			line_text
+				.split_whitespace()
+				.collect::<Vec<&str>>()
+				.join(" ")
+		} else {
+			line_text.to_string()
+		};
+		if !case_sensitive {
+			key = key.to_lowercase();
+		}
+		Some(key)
 	}
 
 	/// Build normalized line-content groups used by duplicate/unique helpers.
