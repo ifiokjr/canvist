@@ -182,6 +182,36 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Distance between two named anchors.
+     *
+     * Returns -1 when either anchor does not exist.
+     * @param {string} first_name
+     * @param {string} second_name
+     * @returns {number}
+     */
+    anchor_distance_between(first_name, second_name) {
+        const ptr0 = passStringToWasm0(first_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(second_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_distance_between(this.__wbg_ptr, ptr0, len0, ptr1, len1);
+        return ret;
+    }
+    /**
+     * Distance from a named anchor to an offset.
+     *
+     * Returns -1 when the anchor does not exist.
+     * @param {string} name
+     * @param {number} offset
+     * @returns {number}
+     */
+    anchor_distance_from_offset(name, offset) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_distance_from_offset(this.__wbg_ptr, ptr0, len0, offset);
+        return ret;
+    }
+    /**
      * Anchor entries as flat `[name, offset, ...]`, sorted by name.
      * @returns {string[]}
      */
@@ -302,6 +332,21 @@ export class CanvistEditor {
      */
     anchor_names_by_offset() {
         const ret = wasm.canvisteditor_anchor_names_by_offset(this.__wbg_ptr);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
+    }
+    /**
+     * Anchor names sorted by proximity to `offset`.
+     *
+     * Sort order is distance ascending, then anchor offset ascending,
+     * then anchor name ascending. Returns at most `limit` names.
+     * @param {number} offset
+     * @param {number} limit
+     * @returns {string[]}
+     */
+    anchor_names_by_proximity_to_offset(offset, limit) {
+        const ret = wasm.canvisteditor_anchor_names_by_proximity_to_offset(this.__wbg_ptr, offset, limit);
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
@@ -835,6 +880,20 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_clipboard_ring_push(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Closest anchor to `offset` as `[name, offset, distance]`.
+     *
+     * Returns empty when there are no anchors. Ties are resolved by lower
+     * anchor offset then anchor name.
+     * @param {number} offset
+     * @returns {string[]}
+     */
+    closest_anchor_to_offset(offset) {
+        const ret = wasm.canvisteditor_closest_anchor_to_offset(this.__wbg_ptr, offset);
+        var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v1;
     }
     /**
      * Return the current undo-coalescing timeout in milliseconds.
@@ -2557,6 +2616,18 @@ export class CanvistEditor {
         return ret !== 0;
     }
     /**
+     * Average group size constrained to an inclusive occurrence-count range.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @param {number} max_count
+     * @returns {number}
+     */
+    line_occurrence_average_group_size_in_count_range(case_sensitive, ignore_whitespace, min_count, max_count) {
+        const ret = wasm.canvisteditor_line_occurrence_average_group_size_in_count_range(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count, max_count);
+        return ret;
+    }
+    /**
      * Count lines containing `needle`.
      * @param {string} needle
      * @param {boolean} case_sensitive
@@ -2675,6 +2746,18 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Ratio of lines belonging to groups in an inclusive occurrence-count range.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @param {number} max_count
+     * @returns {number}
+     */
+    line_occurrence_line_ratio_in_count_range(case_sensitive, ignore_whitespace, min_count, max_count) {
+        const ret = wasm.canvisteditor_line_occurrence_line_ratio_in_count_range(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count, max_count);
+        return ret;
+    }
+    /**
      * All line numbers that share content with the provided line.
      *
      * Returns sorted line numbers including the provided line itself.
@@ -2742,6 +2825,34 @@ export class CanvistEditor {
         var v1 = getArrayU32FromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Maximum group size constrained to an inclusive occurrence-count range.
+     *
+     * Returns 0 when there are no groups in range.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @param {number} max_count
+     * @returns {number}
+     */
+    line_occurrence_max_group_size_in_count_range(case_sensitive, ignore_whitespace, min_count, max_count) {
+        const ret = wasm.canvisteditor_line_occurrence_max_group_size_in_count_range(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count, max_count);
+        return ret >>> 0;
+    }
+    /**
+     * Minimum group size constrained to an inclusive occurrence-count range.
+     *
+     * Returns 0 when there are no groups in range.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @param {number} max_count
+     * @returns {number}
+     */
+    line_occurrence_min_group_size_in_count_range(case_sensitive, ignore_whitespace, min_count, max_count) {
+        const ret = wasm.canvisteditor_line_occurrence_min_group_size_in_count_range(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count, max_count);
+        return ret >>> 0;
     }
     /**
      * Rank for the occurrence group containing `line`, or -1.

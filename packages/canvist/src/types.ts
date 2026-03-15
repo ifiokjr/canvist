@@ -1576,6 +1576,18 @@ export interface CanvistEditor {
 	/** Remove anchors whose offsets are within radius of centerOffset. */
 	removeAnchorsInOffsetWindow(centerOffset: number, radius: number): number;
 
+	/** Anchor names sorted by proximity to an offset. */
+	anchorNamesByProximityToOffset(offset: number, limit?: number): string[];
+
+	/** Closest anchor to offset as [name, offset, distance]. */
+	closestAnchorToOffset(offset: number): string[];
+
+	/** Distance from anchor name to offset, or -1 when missing. */
+	anchorDistanceFromOffset(name: string, offset: number): number;
+
+	/** Distance between two anchors, or -1 when either is missing. */
+	anchorDistanceBetween(firstName: string, secondName: string): number;
+
 	/** Anchor names before the named anchor's offset. */
 	anchorNamesBeforeAnchor(name: string, inclusive?: boolean): string[];
 
@@ -2048,6 +2060,38 @@ export interface CanvistEditor {
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
 	): number[];
+
+	/** Average group size constrained to inclusive count range. */
+	lineOccurrenceAverageGroupSizeInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Minimum group size constrained to inclusive count range. */
+	lineOccurrenceMinGroupSizeInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Maximum group size constrained to inclusive count range. */
+	lineOccurrenceMaxGroupSizeInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of lines that belong to groups in an inclusive count range. */
+	lineOccurrenceLineRatioInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
 
 	/** Histogram rows as [occurrenceCount, groupCount, ...]. */
 	lineOccurrenceHistogram(

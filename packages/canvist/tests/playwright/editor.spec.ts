@@ -9215,4 +9215,239 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor proximity helpers ────────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor proximity helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghijklmnopqrstuvwxyz");
+						ed.set_anchor("a0", 1);
+						ed.set_anchor("a1", 4);
+						ed.set_anchor("a2", 6);
+						ed.set_anchor("a3", 10);
+						ed.set_anchor("a4", 15);
+
+						return {
+							nearestThree: Array.from(
+								ed.anchor_names_by_proximity_to_offset(7, 3),
+							),
+							nearestNone: Array.from(
+								ed.anchor_names_by_proximity_to_offset(7, 0),
+							),
+							closest: Array.from(ed.closest_anchor_to_offset(7)),
+							closestTie: Array.from(ed.closest_anchor_to_offset(8)),
+							distanceA3To7: ed.anchor_distance_from_offset("a3", 7),
+							distanceMissingTo7: ed.anchor_distance_from_offset("missing", 7),
+							distanceA1A3: ed.anchor_distance_between("a1", "a3"),
+							distanceMissing: ed.anchor_distance_between("a1", "missing"),
+						};
+					});
+
+					assertEquals(result.nearestThree, ["a2", "a1", "a3"]);
+					assertEquals(result.nearestNone, []);
+					assertEquals(result.closest, ["a2", "6", "1"]);
+					assertEquals(result.closestTie, ["a2", "6", "2"]);
+					assertEquals(result.distanceA3To7, 3);
+					assertEquals(result.distanceMissingTo7, -1);
+					assertEquals(result.distanceA1A3, 6);
+					assertEquals(result.distanceMissing, -1);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line occurrence range aggregate metrics ─────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line occurrence range aggregate metrics`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text(
+							"red\nblue\nred\ngreen\nBLUE\nblue\nblue\nsolo\nred",
+						);
+
+						const strict = {
+							avg2to3: ed.line_occurrence_average_group_size_in_count_range(
+								true,
+								false,
+								2,
+								3,
+							),
+							min2to3: ed.line_occurrence_min_group_size_in_count_range(
+								true,
+								false,
+								2,
+								3,
+							),
+							max2to3: ed.line_occurrence_max_group_size_in_count_range(
+								true,
+								false,
+								2,
+								3,
+							),
+							ratio2to3: ed.line_occurrence_line_ratio_in_count_range(
+								true,
+								false,
+								2,
+								3,
+							),
+							avg1to1: ed.line_occurrence_average_group_size_in_count_range(
+								true,
+								false,
+								1,
+								1,
+							),
+							min1to1: ed.line_occurrence_min_group_size_in_count_range(
+								true,
+								false,
+								1,
+								1,
+							),
+							max1to1: ed.line_occurrence_max_group_size_in_count_range(
+								true,
+								false,
+								1,
+								1,
+							),
+							ratio1to1: ed.line_occurrence_line_ratio_in_count_range(
+								true,
+								false,
+								1,
+								1,
+							),
+							avg4to3: ed.line_occurrence_average_group_size_in_count_range(
+								true,
+								false,
+								4,
+								3,
+							),
+							min4to3: ed.line_occurrence_min_group_size_in_count_range(
+								true,
+								false,
+								4,
+								3,
+							),
+							max4to3: ed.line_occurrence_max_group_size_in_count_range(
+								true,
+								false,
+								4,
+								3,
+							),
+							ratio4to3: ed.line_occurrence_line_ratio_in_count_range(
+								true,
+								false,
+								4,
+								3,
+							),
+						};
+
+						const loose = {
+							avg2to4: ed.line_occurrence_average_group_size_in_count_range(
+								false,
+								false,
+								2,
+								4,
+							),
+							min2to4: ed.line_occurrence_min_group_size_in_count_range(
+								false,
+								false,
+								2,
+								4,
+							),
+							max2to4: ed.line_occurrence_max_group_size_in_count_range(
+								false,
+								false,
+								2,
+								4,
+							),
+							ratio2to4: ed.line_occurrence_line_ratio_in_count_range(
+								false,
+								false,
+								2,
+								4,
+							),
+							avg4to4: ed.line_occurrence_average_group_size_in_count_range(
+								false,
+								false,
+								4,
+								4,
+							),
+							min4to4: ed.line_occurrence_min_group_size_in_count_range(
+								false,
+								false,
+								4,
+								4,
+							),
+							max4to4: ed.line_occurrence_max_group_size_in_count_range(
+								false,
+								false,
+								4,
+								4,
+							),
+							ratio4to4: ed.line_occurrence_line_ratio_in_count_range(
+								false,
+								false,
+								4,
+								4,
+							),
+						};
+
+						return { strict, loose };
+					});
+
+					assertEquals(result.strict.avg2to3, 3);
+					assertEquals(result.strict.min2to3, 3);
+					assertEquals(result.strict.max2to3, 3);
+					assertEquals(result.strict.ratio2to3, 2 / 3);
+					assertEquals(result.strict.avg1to1, 1);
+					assertEquals(result.strict.min1to1, 1);
+					assertEquals(result.strict.max1to1, 1);
+					assertEquals(result.strict.ratio1to1, 1 / 3);
+					assertEquals(result.strict.avg4to3, 0);
+					assertEquals(result.strict.min4to3, 0);
+					assertEquals(result.strict.max4to3, 0);
+					assertEquals(result.strict.ratio4to3, 0);
+
+					assertEquals(result.loose.avg2to4, 3.5);
+					assertEquals(result.loose.min2to4, 3);
+					assertEquals(result.loose.max2to4, 4);
+					assertEquals(result.loose.ratio2to4, 7 / 9);
+					assertEquals(result.loose.avg4to4, 4);
+					assertEquals(result.loose.min4to4, 4);
+					assertEquals(result.loose.max4to4, 4);
+					assertEquals(result.loose.ratio4to4, 4 / 9);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
