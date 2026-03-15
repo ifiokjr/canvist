@@ -1504,6 +1504,18 @@ export interface CanvistEditor {
 	/** Rename anchors with a shared prefix. */
 	renameAnchorPrefix(oldPrefix: string, newPrefix: string): number;
 
+	/** Anchor names matching a prefix (sorted). */
+	anchorNamesWithPrefix(prefix: string): string[];
+
+	/** Anchor names in inclusive range, sorted by offset then name. */
+	anchorNamesInRange(startOffset: number, endOffset: number): string[];
+
+	/** Remove anchors in inclusive offset range. */
+	removeAnchorsInRange(startOffset: number, endOffset: number): number;
+
+	/** Move existing anchor to current cursor offset. */
+	moveAnchorToCursor(name: string): boolean;
+
 	// ── Tasks / TODO scanner ────────────────────────────────────────
 
 	/** Scan tasks: [line, kind, checked, text, ...]. */
@@ -1690,6 +1702,12 @@ export interface CanvistEditor {
 	/** Line numbers that end with suffix. */
 	linesWithSuffix(suffix: string, caseSensitive?: boolean): number[];
 
+	/** Count lines that start with prefix. */
+	countLinesWithPrefix(prefix: string, caseSensitive?: boolean): number;
+
+	/** Count lines that end with suffix. */
+	countLinesWithSuffix(suffix: string, caseSensitive?: boolean): number;
+
 	/** Number each line in range with N. prefix. Returns lines changed. */
 	numberLines(
 		startLine: number,
@@ -1737,6 +1755,30 @@ export interface CanvistEditor {
 
 	/** Ratio of duplicate lines to total lines. */
 	duplicateLineRatio(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Unique (non-duplicate) line numbers by content matching. */
+	uniqueLineNumbers(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number[];
+
+	/** Number of unique (non-duplicate) lines by content matching. */
+	uniqueLineCount(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** First duplicate line number, or -1 when none. */
+	firstDuplicateLine(
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Last duplicate line number, or -1 when none. */
+	lastDuplicateLine(
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
 	): number;

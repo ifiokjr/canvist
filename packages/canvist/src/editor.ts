@@ -2545,6 +2545,18 @@ export async function createEditor(
 			renameAnchorPrefix(oldPrefix: string, newPrefix: string) {
 				return ref.rename_anchor_prefix(oldPrefix, newPrefix);
 			},
+			anchorNamesWithPrefix(prefix: string) {
+				return Array.from(ref.anchor_names_with_prefix(prefix));
+			},
+			anchorNamesInRange(startOffset: number, endOffset: number) {
+				return Array.from(ref.anchor_names_in_range(startOffset, endOffset));
+			},
+			removeAnchorsInRange(startOffset: number, endOffset: number) {
+				return ref.remove_anchors_in_range(startOffset, endOffset);
+			},
+			moveAnchorToCursor(name: string) {
+				return ref.move_anchor_to_cursor(name);
+			},
 			// ── Tasks / TODO scanner ────────────────────
 			scanTasks() {
 				return Array.from(ref.scan_tasks());
@@ -2774,6 +2786,12 @@ export async function createEditor(
 			linesWithSuffix(suffix: string, caseSensitive = false) {
 				return Array.from(ref.lines_with_suffix(suffix, caseSensitive));
 			},
+			countLinesWithPrefix(prefix: string, caseSensitive = false) {
+				return ref.count_lines_with_prefix(prefix, caseSensitive);
+			},
+			countLinesWithSuffix(suffix: string, caseSensitive = false) {
+				return ref.count_lines_with_suffix(suffix, caseSensitive);
+			},
 			numberLines(
 				startLine: number,
 				endLine: number,
@@ -2829,6 +2847,20 @@ export async function createEditor(
 			},
 			duplicateLineRatio(caseSensitive = false, ignoreWhitespace = false) {
 				return ref.duplicate_line_ratio(caseSensitive, ignoreWhitespace);
+			},
+			uniqueLineNumbers(caseSensitive = false, ignoreWhitespace = false) {
+				return Array.from(
+					ref.unique_line_numbers(caseSensitive, ignoreWhitespace),
+				);
+			},
+			uniqueLineCount(caseSensitive = false, ignoreWhitespace = false) {
+				return ref.unique_line_count(caseSensitive, ignoreWhitespace);
+			},
+			firstDuplicateLine(caseSensitive = false, ignoreWhitespace = false) {
+				return ref.first_duplicate_line(caseSensitive, ignoreWhitespace);
+			},
+			lastDuplicateLine(caseSensitive = false, ignoreWhitespace = false) {
+				return ref.last_duplicate_line(caseSensitive, ignoreWhitespace);
 			},
 			// ── Column ruler ────────────────────────────
 			setRulers(columns: number[]) {
