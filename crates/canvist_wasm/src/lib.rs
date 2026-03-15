@@ -7004,6 +7004,117 @@ impl CanvistEditor {
 		pairs.into_iter().map(|(_, name)| name).collect()
 	}
 
+	/// Offset span for two named anchors as `[start, end]`.
+	///
+	/// Returns empty when either anchor name is missing.
+	#[wasm_bindgen]
+	pub fn anchor_span_offsets(&self, start_name: &str, end_name: &str) -> Vec<usize> {
+		let Some((start, end)) = self.anchor_span_from_names(start_name, end_name) else {
+			return Vec::new();
+		};
+		vec![start, end]
+	}
+
+	/// Anchor names between two named anchors.
+	///
+	/// Uses normalized min/max offsets of the provided anchor names.
+	/// Returns empty when either anchor name is missing.
+	#[wasm_bindgen]
+	pub fn anchor_names_between(
+		&self,
+		start_name: &str,
+		end_name: &str,
+		inclusive: bool,
+	) -> Vec<String> {
+		let Some((start, end)) = self.anchor_span_from_names(start_name, end_name) else {
+			return Vec::new();
+		};
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(if inclusive {
+					*pos >= start && *pos <= end
+				} else {
+					*pos > start && *pos < end
+				})
+				.then_some((*pos, name.clone()))
+			})
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		pairs.into_iter().map(|(_, name)| name).collect()
+	}
+
+	/// Count anchors between two named anchors.
+	#[wasm_bindgen]
+	pub fn anchor_count_between(&self, start_name: &str, end_name: &str, inclusive: bool) -> usize {
+		self.anchor_names_between(start_name, end_name, inclusive)
+			.len()
+	}
+
+	/// Shift anchors between two named anchors by a signed delta.
+	///
+	/// Offsets are clamped to document bounds. Returns number shifted.
+	#[wasm_bindgen]
+	pub fn shift_anchors_between(
+		&mut self,
+		start_name: &str,
+		end_name: &str,
+		delta: i32,
+		inclusive: bool,
+	) -> usize {
+		let Some((start, end)) = self.anchor_span_from_names(start_name, end_name) else {
+			return 0;
+		};
+		let max = self.runtime.document().char_count() as i64;
+		let mut shifted = 0usize;
+		for offset in self.anchors.values_mut() {
+			let in_range = if inclusive {
+				*offset >= start && *offset <= end
+			} else {
+				*offset > start && *offset < end
+			};
+			if in_range {
+				let next = ((*offset as i64) + i64::from(delta)).clamp(0, max) as usize;
+				*offset = next;
+				shifted += 1;
+			}
+		}
+		shifted
+	}
+
+	/// Remove anchors between two named anchors.
+	///
+	/// Returns number removed.
+	#[wasm_bindgen]
+	pub fn remove_anchors_between(
+		&mut self,
+		start_name: &str,
+		end_name: &str,
+		inclusive: bool,
+	) -> usize {
+		let Some((start, end)) = self.anchor_span_from_names(start_name, end_name) else {
+			return 0;
+		};
+		let keys: Vec<String> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(if inclusive {
+					*pos >= start && *pos <= end
+				} else {
+					*pos > start && *pos < end
+				})
+				.then_some(name.clone())
+			})
+			.collect();
+		let removed = keys.len();
+		for key in keys {
+			self.anchors.remove(&key);
+		}
+		removed
+	}
+
 	/// Anchor offsets inside an inclusive range, sorted ascending.
 	#[wasm_bindgen]
 	pub fn anchor_offsets_in_range(&self, start_offset: usize, end_offset: usize) -> Vec<usize> {
@@ -8627,6 +8738,85 @@ impl CanvistEditor {
 			/ total as f64
 	}
 
+	/// Number of line-content groups with size at least `min_count`.
+	#[wasm_bindgen]
+	pub fn line_occurrence_group_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+	) -> usize {
+		let threshold = min_count.max(1);
+		self.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.filter(|lines| lines.len() >= threshold)
+			.count()
+	}
+
+	/// Ranked line-occurrence groups as flat `[line, count, ...]`.
+	///
+	/// `line` is the first line number for each group. Results are sorted by
+	/// count descending, then representative line ascending.
+	#[wasm_bindgen]
+	pub fn line_occurrence_rankings(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+	) -> Vec<usize> {
+		let threshold = min_count.max(1);
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut rows: Vec<(usize, usize)> = groups
+			.values()
+			.filter_map(|lines| (lines.len() >= threshold).then_some((lines[0], lines.len())))
+			.collect();
+		rows.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+
+		let mut out = Vec::with_capacity(rows.len() * 2);
+		for (line, count) in rows {
+			out.push(line);
+			out.push(count);
+		}
+		out
+	}
+
+	/// Largest line-occurrence count across all line-content groups.
+	#[wasm_bindgen]
+	pub fn most_common_line_occurrence_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> usize {
+		self.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.map(Vec::len)
+			.max()
+			.unwrap_or(0)
+	}
+
+	/// Line numbers in the most common line-content group.
+	///
+	/// Ties are broken by lowest first line, then lexicographic line list.
+	#[wasm_bindgen]
+	pub fn most_common_line_occurrence_lines(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+	) -> Vec<usize> {
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut candidates: Vec<Vec<usize>> = groups.values().cloned().collect();
+		for lines in &mut candidates {
+			lines.sort_unstable();
+		}
+		candidates.sort_by(|a, b| {
+			b.len()
+				.cmp(&a.len())
+				.then_with(|| a[0].cmp(&b[0]))
+				.then_with(|| a.cmp(b))
+		});
+		candidates.into_iter().next().unwrap_or_default()
+	}
+
 	/// Whether the provided line is unique by content matching.
 	#[wasm_bindgen]
 	pub fn line_is_unique_by_content(
@@ -8675,6 +8865,17 @@ impl CanvistEditor {
 			return 0.0;
 		}
 		self.duplicate_line_count(case_sensitive, ignore_whitespace) as f64 / total as f64
+	}
+
+	/// Normalized offset span for two anchor names.
+	fn anchor_span_from_names(&self, start_name: &str, end_name: &str) -> Option<(usize, usize)> {
+		let start = *self.anchors.get(start_name)?;
+		let end = *self.anchors.get(end_name)?;
+		if start <= end {
+			Some((start, end))
+		} else {
+			Some((end, start))
+		}
 	}
 
 	/// Normalized line-content key for a specific line index.

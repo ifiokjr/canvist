@@ -2581,6 +2581,40 @@ export async function createEditor(
 			anchorNamesAfterOffset(offset: number, inclusive = true) {
 				return Array.from(ref.anchor_names_after_offset(offset, inclusive));
 			},
+			anchorSpanOffsets(startName: string, endName: string) {
+				return Array.from(ref.anchor_span_offsets(startName, endName));
+			},
+			anchorNamesBetween(
+				startName: string,
+				endName: string,
+				inclusive = true,
+			) {
+				return Array.from(
+					ref.anchor_names_between(startName, endName, inclusive),
+				);
+			},
+			anchorCountBetween(
+				startName: string,
+				endName: string,
+				inclusive = true,
+			) {
+				return ref.anchor_count_between(startName, endName, inclusive);
+			},
+			shiftAnchorsBetween(
+				startName: string,
+				endName: string,
+				delta: number,
+				inclusive = true,
+			) {
+				return ref.shift_anchors_between(startName, endName, delta, inclusive);
+			},
+			removeAnchorsBetween(
+				startName: string,
+				endName: string,
+				inclusive = true,
+			) {
+				return ref.remove_anchors_between(startName, endName, inclusive);
+			},
 			anchorOffsetsInRange(startOffset: number, endOffset: number) {
 				return Array.from(ref.anchor_offsets_in_range(startOffset, endOffset));
 			},
@@ -3012,6 +3046,50 @@ export async function createEditor(
 					line,
 					caseSensitive,
 					ignoreWhitespace,
+				);
+			},
+			lineOccurrenceGroupCount(
+				caseSensitive = false,
+				ignoreWhitespace = false,
+				minCount = 1,
+			) {
+				return ref.line_occurrence_group_count(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+				);
+			},
+			lineOccurrenceRankings(
+				caseSensitive = false,
+				ignoreWhitespace = false,
+				minCount = 1,
+			) {
+				return Array.from(
+					ref.line_occurrence_rankings(
+						caseSensitive,
+						ignoreWhitespace,
+						minCount,
+					),
+				);
+			},
+			mostCommonLineOccurrenceCount(
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.most_common_line_occurrence_count(
+					caseSensitive,
+					ignoreWhitespace,
+				);
+			},
+			mostCommonLineOccurrenceLines(
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return Array.from(
+					ref.most_common_line_occurrence_lines(
+						caseSensitive,
+						ignoreWhitespace,
+					),
 				);
 			},
 			lineIsUniqueByContent(

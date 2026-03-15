@@ -8356,4 +8356,234 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor span helpers by named anchors ────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor span and between-name helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghijklmnop");
+						ed.set_anchor("start", 2);
+						ed.set_anchor("inner.b", 5);
+						ed.set_anchor("inner.a", 8);
+						ed.set_anchor("end", 11);
+						ed.set_anchor("outer", 15);
+
+						const span = Array.from(ed.anchor_span_offsets("start", "end"));
+						const spanReverse = Array.from(
+							ed.anchor_span_offsets("end", "start"),
+						);
+						const betweenInclusive = Array.from(
+							ed.anchor_names_between("start", "end", true),
+						);
+						const betweenExclusive = Array.from(
+							ed.anchor_names_between("start", "end", false),
+						);
+						const countInclusive = ed.anchor_count_between(
+							"start",
+							"end",
+							true,
+						);
+						const countExclusive = ed.anchor_count_between(
+							"start",
+							"end",
+							false,
+						);
+						const shiftedExclusive = ed.shift_anchors_between(
+							"start",
+							"end",
+							-1,
+							false,
+						);
+						const namesAfterShift = Array.from(ed.anchor_names_by_offset());
+						const entriesAfterShift = Array.from(ed.anchor_entries());
+						const removedExclusive = ed.remove_anchors_between(
+							"start",
+							"end",
+							false,
+						);
+						const namesAfterRemove = Array.from(ed.anchor_names_by_offset());
+						const missingSpan = Array.from(
+							ed.anchor_span_offsets("missing", "end"),
+						);
+						const missingBetween = Array.from(
+							ed.anchor_names_between("missing", "end", true),
+						);
+						const missingShift = ed.shift_anchors_between(
+							"missing",
+							"end",
+							1,
+							true,
+						);
+						const missingRemove = ed.remove_anchors_between(
+							"missing",
+							"end",
+							true,
+						);
+
+						return {
+							span,
+							spanReverse,
+							betweenInclusive,
+							betweenExclusive,
+							countInclusive,
+							countExclusive,
+							shiftedExclusive,
+							namesAfterShift,
+							entriesAfterShift,
+							removedExclusive,
+							namesAfterRemove,
+							missingSpan,
+							missingBetween,
+							missingShift,
+							missingRemove,
+						};
+					});
+
+					assertEquals(result.span, [2, 11]);
+					assertEquals(result.spanReverse, [2, 11]);
+					assertEquals(result.betweenInclusive, [
+						"start",
+						"inner.b",
+						"inner.a",
+						"end",
+					]);
+					assertEquals(result.betweenExclusive, ["inner.b", "inner.a"]);
+					assertEquals(result.countInclusive, 4);
+					assertEquals(result.countExclusive, 2);
+					assertEquals(result.shiftedExclusive, 2);
+					assertEquals(result.namesAfterShift, [
+						"start",
+						"inner.b",
+						"inner.a",
+						"end",
+						"outer",
+					]);
+					assertEquals(result.entriesAfterShift, [
+						"end",
+						"11",
+						"inner.a",
+						"7",
+						"inner.b",
+						"4",
+						"outer",
+						"15",
+						"start",
+						"2",
+					]);
+					assertEquals(result.removedExclusive, 2);
+					assertEquals(result.namesAfterRemove, ["start", "end", "outer"]);
+					assertEquals(result.missingSpan, []);
+					assertEquals(result.missingBetween, []);
+					assertEquals(result.missingShift, 0);
+					assertEquals(result.missingRemove, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line occurrence rankings and most-common helpers ───────────
+
+	Deno.test({
+		name: `[${browserName}] line occurrence rankings and most-common helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("a\na\nA\nb\nb\nb\nc\nc\nsolo");
+
+						const strict = {
+							groupCount2: ed.line_occurrence_group_count(true, false, 2),
+							groupCount3: ed.line_occurrence_group_count(true, false, 3),
+							rankings1: Array.from(
+								ed.line_occurrence_rankings(true, false, 1),
+							),
+							rankings2: Array.from(
+								ed.line_occurrence_rankings(true, false, 2),
+							),
+							mostCount: ed.most_common_line_occurrence_count(true, false),
+							mostLines: Array.from(
+								ed.most_common_line_occurrence_lines(true, false),
+							),
+						};
+						const loose = {
+							groupCount2: ed.line_occurrence_group_count(false, false, 2),
+							rankings2: Array.from(
+								ed.line_occurrence_rankings(false, false, 2),
+							),
+							rankingsZero: Array.from(
+								ed.line_occurrence_rankings(false, false, 0),
+							),
+							mostCount: ed.most_common_line_occurrence_count(false, false),
+							mostLines: Array.from(
+								ed.most_common_line_occurrence_lines(false, false),
+							),
+						};
+
+						return { strict, loose };
+					});
+
+					assertEquals(result.strict.groupCount2, 3);
+					assertEquals(result.strict.groupCount3, 1);
+					assertEquals(result.strict.rankings1, [
+						3,
+						3,
+						0,
+						2,
+						6,
+						2,
+						2,
+						1,
+						8,
+						1,
+					]);
+					assertEquals(result.strict.rankings2, [3, 3, 0, 2, 6, 2]);
+					assertEquals(result.strict.mostCount, 3);
+					assertEquals(result.strict.mostLines, [3, 4, 5]);
+
+					assertEquals(result.loose.groupCount2, 3);
+					assertEquals(result.loose.rankings2, [0, 3, 3, 3, 6, 2]);
+					assertEquals(result.loose.rankingsZero, [
+						0,
+						3,
+						3,
+						3,
+						6,
+						2,
+						8,
+						1,
+					]);
+					assertEquals(result.loose.mostCount, 3);
+					assertEquals(result.loose.mostLines, [0, 1, 2]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }
