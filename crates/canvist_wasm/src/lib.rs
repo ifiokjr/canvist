@@ -7118,6 +7118,81 @@ impl CanvistEditor {
 		removed
 	}
 
+	/// Anchor names whose offsets are within `radius` of `center_offset`.
+	///
+	/// Distance check is inclusive (`abs_diff <= radius`).
+	/// Output is sorted by offset then name.
+	#[wasm_bindgen]
+	pub fn anchor_names_in_offset_window(
+		&self,
+		center_offset: usize,
+		radius: usize,
+	) -> Vec<String> {
+		let mut pairs: Vec<(usize, String)> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(pos.abs_diff(center_offset) <= radius).then_some((*pos, name.clone()))
+			})
+			.collect();
+		pairs.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(&b.1)));
+		pairs.into_iter().map(|(_, name)| name).collect()
+	}
+
+	/// Count anchors whose offsets are within `radius` of `center_offset`.
+	#[wasm_bindgen]
+	pub fn anchor_count_in_offset_window(&self, center_offset: usize, radius: usize) -> usize {
+		self.anchor_names_in_offset_window(center_offset, radius)
+			.len()
+	}
+
+	/// Shift anchors whose offsets are within `radius` of `center_offset`.
+	///
+	/// Distance check is inclusive (`abs_diff <= radius`).
+	/// Offsets are clamped to document bounds. Returns number shifted.
+	#[wasm_bindgen]
+	pub fn shift_anchors_in_offset_window(
+		&mut self,
+		center_offset: usize,
+		radius: usize,
+		delta: i32,
+	) -> usize {
+		let max = self.runtime.document().char_count() as i64;
+		let mut shifted = 0usize;
+		for offset in self.anchors.values_mut() {
+			if offset.abs_diff(center_offset) <= radius {
+				let next = ((*offset as i64) + i64::from(delta)).clamp(0, max) as usize;
+				*offset = next;
+				shifted += 1;
+			}
+		}
+		shifted
+	}
+
+	/// Remove anchors whose offsets are within `radius` of `center_offset`.
+	///
+	/// Distance check is inclusive (`abs_diff <= radius`).
+	/// Returns number removed.
+	#[wasm_bindgen]
+	pub fn remove_anchors_in_offset_window(
+		&mut self,
+		center_offset: usize,
+		radius: usize,
+	) -> usize {
+		let keys: Vec<String> = self
+			.anchors
+			.iter()
+			.filter_map(|(name, pos)| {
+				(pos.abs_diff(center_offset) <= radius).then_some(name.clone())
+			})
+			.collect();
+		let removed = keys.len();
+		for key in keys {
+			self.anchors.remove(&key);
+		}
+		removed
+	}
+
 	/// Anchor names before a named anchor offset.
 	///
 	/// When `inclusive` is false, only anchors strictly before are returned.
@@ -9020,6 +9095,75 @@ impl CanvistEditor {
 		out
 	}
 
+	/// Number of line-content groups constrained to an inclusive count range.
+	#[wasm_bindgen]
+	pub fn line_occurrence_group_count_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> usize {
+		let lower = min_count.max(1);
+		if max_count < lower {
+			return 0;
+		}
+		self.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.filter(|lines| {
+				let count = lines.len();
+				count >= lower && count <= max_count
+			})
+			.count()
+	}
+
+	/// Number of lines belonging to groups constrained to an inclusive count range.
+	#[wasm_bindgen]
+	pub fn line_occurrence_line_count_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> usize {
+		let lower = min_count.max(1);
+		if max_count < lower {
+			return 0;
+		}
+		self.line_groups(case_sensitive, ignore_whitespace)
+			.values()
+			.filter_map(|lines| {
+				let count = lines.len();
+				(count >= lower && count <= max_count).then_some(count)
+			})
+			.sum()
+	}
+
+	/// Line numbers belonging to groups constrained to an inclusive count range.
+	#[wasm_bindgen]
+	pub fn line_occurrence_lines_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> Vec<usize> {
+		let lower = min_count.max(1);
+		if max_count < lower {
+			return Vec::new();
+		}
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut out = Vec::new();
+		for lines in groups.values() {
+			let count = lines.len();
+			if count >= lower && count <= max_count {
+				out.extend(lines.iter().copied());
+			}
+		}
+		out.sort_unstable();
+		out
+	}
+
 	/// Line-occurrence histogram as `[occurrence_count, group_count, ...]`.
 	///
 	/// Rows are sorted by occurrence count descending.
@@ -9036,6 +9180,41 @@ impl CanvistEditor {
 		for lines in groups.values() {
 			let size = lines.len();
 			if size >= threshold {
+				*buckets.entry(size).or_default() += 1;
+			}
+		}
+		let mut rows: Vec<(usize, usize)> = buckets.into_iter().collect();
+		rows.sort_by(|a, b| b.0.cmp(&a.0));
+
+		let mut out = Vec::with_capacity(rows.len() * 2);
+		for (occurrence_count, group_count) in rows {
+			out.push(occurrence_count);
+			out.push(group_count);
+		}
+		out
+	}
+
+	/// Line-occurrence histogram constrained to an inclusive count range.
+	///
+	/// Returns `[occurrence_count, group_count, ...]` sorted by occurrence
+	/// count descending.
+	#[wasm_bindgen]
+	pub fn line_occurrence_histogram_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> Vec<usize> {
+		let lower = min_count.max(1);
+		if max_count < lower {
+			return Vec::new();
+		}
+		let groups = self.line_groups(case_sensitive, ignore_whitespace);
+		let mut buckets: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+		for lines in groups.values() {
+			let size = lines.len();
+			if size >= lower && size <= max_count {
 				*buckets.entry(size).or_default() += 1;
 			}
 		}
