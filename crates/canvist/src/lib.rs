@@ -15,7 +15,7 @@
 //! - [`canvist_core`] — Document model, operations, selections, and
 //!   collaboration
 //! - [`canvist_render`] — Platform-agnostic rendering traits and text layout
-//! - [`canvist_wasm`] (behind the `wasm` feature) — WebAssembly + `Canvas2D`
+//! - `canvist_wasm` (behind the `wasm` feature) — WebAssembly + `Canvas2D`
 //!   backend
 //!
 //! ## Quick start
@@ -40,7 +40,7 @@ pub use canvist_core as core;
 /// Re-export of [`canvist_render`].
 pub use canvist_render as render;
 #[cfg(feature = "wasm")]
-/// Re-export of [`canvist_wasm`] (requires the `wasm` feature).
+/// Re-export of `canvist_wasm` (requires the `wasm` feature).
 pub use canvist_wasm as wasm;
 
 /// Convenience prelude that imports the most commonly used types.

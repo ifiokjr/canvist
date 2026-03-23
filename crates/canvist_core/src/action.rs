@@ -1,7 +1,7 @@
 //! First-class editor action envelope and deterministic event conversion.
 //!
 //! Actions are serializable, intent-level records produced from canonical
-//! [`EditorEvent`](crate::EditorEvent) values.
+//! [`EditorEvent`] values.
 
 use serde::Deserialize;
 use serde::Serialize;

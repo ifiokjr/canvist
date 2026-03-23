@@ -26,7 +26,7 @@ pub struct LayoutConfig {
 	/// Text alignment for this layout pass.
 	///
 	/// Controls the horizontal positioning of each line within the available
-	/// width. Defaults to [`TextAlign::Left`].
+	/// width. Defaults to left alignment.
 	pub text_align: crate::style::TextAlign,
 }
 
