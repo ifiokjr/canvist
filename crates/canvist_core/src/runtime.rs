@@ -718,4 +718,103 @@ mod tests {
 		assert!(runtime.undo()); // undo "a"
 		assert_eq!(runtime.document().plain_text(), "");
 	}
+
+	#[test]
+	fn format_partial_then_undo_preserves_text() {
+		let mut runtime = runtime_with_plaintext("Hello world");
+		let _ = runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(0), Position::new(5)),
+		});
+		runtime.apply_operation(crate::operation::Operation::format(
+			Selection::range(Position::new(0), Position::new(5)),
+			crate::Style::new().bold(),
+		));
+
+		// After format: 2 runs ("Hello" bold + " world" normal).
+		let runs = runtime.document().styled_runs();
+		assert_eq!(runs.len(), 2);
+		assert_eq!(runs[0].0, "Hello");
+		assert_eq!(runtime.document().plain_text(), "Hello world");
+
+		// Undo the format.
+		assert!(runtime.undo());
+		assert_eq!(runtime.document().plain_text(), "Hello world");
+
+		// After undo, all runs should be unstyled.
+		for (text, style, _, _) in runtime.document().styled_runs() {
+			assert_eq!(
+				style.font_weight, None,
+				"run '{}' should be unstyled after undo",
+				text
+			);
+		}
+	}
+
+	#[test]
+	fn insert_newline_creates_paragraph_then_undo_merges() {
+		let mut runtime = runtime_with_plaintext("ab");
+		assert_eq!(runtime.document().paragraph_count(), 1);
+
+		// Move cursor to offset 1 and insert newline.
+		let _ = runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(1)),
+		});
+		let _ = runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: "\n".to_string(),
+			})
+			.unwrap();
+
+		assert_eq!(runtime.document().paragraph_count(), 2);
+		assert_eq!(runtime.document().plain_text(), "a\nb");
+
+		// Undo should merge back to 1 paragraph.
+		assert!(runtime.undo());
+		assert_eq!(runtime.document().paragraph_count(), 1);
+		assert_eq!(runtime.document().plain_text(), "ab");
+	}
+
+	#[test]
+	fn multiple_operations_undo_redo_roundtrip() {
+		let mut runtime = runtime_with_plaintext("");
+
+		// Insert → Format → Insert.
+		runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: "Hello".to_string(),
+			})
+			.unwrap();
+		runtime.apply_operation(crate::operation::Operation::format(
+			Selection::range(Position::new(0), Position::new(5)),
+			crate::Style::new().bold(),
+		));
+		let _ = runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(5)),
+		});
+		runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: " world".to_string(),
+			})
+			.unwrap();
+
+		assert_eq!(runtime.document().plain_text(), "Hello world");
+
+		// Undo " world".
+		assert!(runtime.undo());
+		assert_eq!(runtime.document().plain_text(), "Hello");
+
+		// Undo format.
+		assert!(runtime.undo());
+		assert_eq!(runtime.document().plain_text(), "Hello");
+
+		// Redo format.
+		assert!(runtime.redo());
+		let runs = runtime.document().styled_runs();
+		assert!(runs.iter().any(|(_, s, _, _)| s.font_weight
+			== Some(crate::style::FontWeight::Bold)));
+
+		// Redo " world".
+		assert!(runtime.redo());
+		assert_eq!(runtime.document().plain_text(), "Hello world");
+	}
 }

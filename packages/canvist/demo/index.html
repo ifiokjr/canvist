@@ -1423,15 +1423,44 @@
           }
           if (mod && e.key === "v") {
             e.preventDefault();
-            navigator.clipboard.readText().then((text) => {
-              if (text) {
-                deleteSelectionIfNeeded();
-                editor.insert_text_at(cursorOffset, text);
-                cursorOffset += text.length;
-                clearSelection();
-                renderFrame();
+            // Try rich-text paste first via Clipboard API, fall back to plain text.
+            (async () => {
+              try {
+                const items = await navigator.clipboard.read();
+                let htmlPasted = false;
+                for (const item of items) {
+                  if (item.types.includes("text/html")) {
+                    const blob = await item.getType("text/html");
+                    const html = await blob.text();
+                    deleteSelectionIfNeeded();
+                    editor.paste_html(html);
+                    cursorOffset = editor.selection_end();
+                    clearSelection();
+                    htmlPasted = true;
+                    break;
+                  }
+                }
+                if (!htmlPasted) {
+                  const text = await navigator.clipboard.readText();
+                  if (text) {
+                    deleteSelectionIfNeeded();
+                    editor.insert_text_at(cursorOffset, text);
+                    cursorOffset += text.length;
+                    clearSelection();
+                  }
+                }
+              } catch {
+                // Fallback for browsers that don't support clipboard.read().
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                  deleteSelectionIfNeeded();
+                  editor.insert_text_at(cursorOffset, text);
+                  cursorOffset += text.length;
+                  clearSelection();
+                }
               }
-            });
+              renderFrame();
+            })();
             return;
           }
 

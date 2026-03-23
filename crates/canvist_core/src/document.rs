@@ -384,7 +384,7 @@ impl Document {
 
 		// Delete text from overlapping runs.
 		let runs_to_delete = self.overlapping_runs(start, end);
-		let mut dirty = !runs_to_delete.is_empty() || crosses_paragraph;
+		let dirty = !runs_to_delete.is_empty() || crosses_paragraph;
 		for (run_id, local_start, local_end) in runs_to_delete {
 			if local_start >= local_end {
 				continue;
