@@ -934,6 +934,20 @@ export class CanvistEditor {
         return ret;
     }
     /**
+     * Apply a remote binary update from another peer.
+     *
+     * After applying, the local document is synced from the CRDT.
+     * @param {Uint8Array} update
+     */
+    collab_apply_update(update) {
+        const ptr0 = passArray8ToWasm0(update, wasm.__wbindgen_malloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_collab_apply_update(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
      * Number of collaborative cursors.
      * @returns {number}
      */
@@ -950,6 +964,53 @@ export class CanvistEditor {
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Whether collaboration is currently enabled.
+     * @returns {boolean}
+     */
+    collab_enabled() {
+        const ret = wasm.canvisteditor_collab_enabled(this.__wbg_ptr);
+        return ret !== 0;
+    }
+    /**
+     * Encode the full CRDT state as a binary update (Uint8Array).
+     *
+     * Send this to a new peer so they can bootstrap their local copy.
+     * @returns {Uint8Array}
+     */
+    collab_encode_state() {
+        const ret = wasm.canvisteditor_collab_encode_state(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * Encode the local state vector for incremental sync handshakes.
+     * @returns {Uint8Array}
+     */
+    collab_encode_state_vector() {
+        const ret = wasm.canvisteditor_collab_encode_state_vector(this.__wbg_ptr);
+        if (ret[3]) {
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        var v1 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+        return v1;
+    }
+    /**
+     * Sync local document edits into the CRDT.
+     *
+     * Call this after local edits to prepare updates for remote peers.
+     */
+    collab_sync_local() {
+        const ret = wasm.canvisteditor_collab_sync_local(this.__wbg_ptr);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
     }
     /**
      * Collapse blank-line runs to at most `max_consecutive` lines.
@@ -1549,6 +1610,13 @@ export class CanvistEditor {
         } finally {
             wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
         }
+    }
+    /**
+     * Enable collaboration by creating a Yrs CRDT session and syncing
+     * the current document into it.
+     */
+    enable_collab() {
+        wasm.canvisteditor_enable_collab(this.__wbg_ptr);
     }
     /**
      * End a batch of operations.
@@ -6091,6 +6159,19 @@ if (Symbol.dispose) CanvistEditor.prototype[Symbol.dispose] = CanvistEditor.prot
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
+        __wbg___wbindgen_is_function_3c846841762788c1: function(arg0) {
+            const ret = typeof(arg0) === 'function';
+            return ret;
+        },
+        __wbg___wbindgen_is_object_781bc9f159099513: function(arg0) {
+            const val = arg0;
+            const ret = typeof(val) === 'object' && val !== null;
+            return ret;
+        },
+        __wbg___wbindgen_is_string_7ef6b97b02428fae: function(arg0) {
+            const ret = typeof(arg0) === 'string';
+            return ret;
+        },
         __wbg___wbindgen_is_undefined_52709e72fb9f179c: function(arg0) {
             const ret = arg0 === undefined;
             return ret;
@@ -6108,6 +6189,14 @@ function __wbg_get_imports() {
         },
         __wbg_beginPath_596efed55075dbc3: function(arg0) {
             arg0.beginPath();
+        },
+        __wbg_call_2d781c1f4d5c0ef8: function() { return handleError(function (arg0, arg1, arg2) {
+            const ret = arg0.call(arg1, arg2);
+            return ret;
+        }, arguments); },
+        __wbg_crypto_38df2bab126b63dc: function(arg0) {
+            const ret = arg0.crypto;
+            return ret;
         },
         __wbg_document_c0320cd4183c6d9b: function(arg0) {
             const ret = arg0.document;
@@ -6127,6 +6216,9 @@ function __wbg_get_imports() {
             const ret = arg0.getElementById(getStringFromWasm0(arg1, arg2));
             return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
         },
+        __wbg_getRandomValues_c44a50d8cfdaebeb: function() { return handleError(function (arg0, arg1) {
+            arg0.getRandomValues(arg1);
+        }, arguments); },
         __wbg_height_6568c4427c3b889d: function(arg0) {
             const ret = arg0.height;
             return ret;
@@ -6161,6 +6253,10 @@ function __wbg_get_imports() {
             const ret = result;
             return ret;
         },
+        __wbg_length_ea16607d7b61445b: function(arg0) {
+            const ret = arg0.length;
+            return ret;
+        },
         __wbg_lineTo_8ea7db5b5d763030: function(arg0, arg1, arg2) {
             arg0.lineTo(arg1, arg2);
         },
@@ -6171,6 +6267,32 @@ function __wbg_get_imports() {
         __wbg_moveTo_6d04ca2f71946754: function(arg0, arg1, arg2) {
             arg0.moveTo(arg1, arg2);
         },
+        __wbg_msCrypto_bd5a034af96bcba6: function(arg0) {
+            const ret = arg0.msCrypto;
+            return ret;
+        },
+        __wbg_new_with_length_825018a1616e9e55: function(arg0) {
+            const ret = new Uint8Array(arg0 >>> 0);
+            return ret;
+        },
+        __wbg_node_84ea875411254db1: function(arg0) {
+            const ret = arg0.node;
+            return ret;
+        },
+        __wbg_process_44c7a14e11e9f69e: function(arg0) {
+            const ret = arg0.process;
+            return ret;
+        },
+        __wbg_prototypesetcall_d62e5099504357e6: function(arg0, arg1, arg2) {
+            Uint8Array.prototype.set.call(getArrayU8FromWasm0(arg0, arg1), arg2);
+        },
+        __wbg_randomFillSync_6c25eac9869eb53c: function() { return handleError(function (arg0, arg1) {
+            arg0.randomFillSync(arg1);
+        }, arguments); },
+        __wbg_require_b4edbdcf3e2a1ef0: function() { return handleError(function () {
+            const ret = module.require;
+            return ret;
+        }, arguments); },
         __wbg_set_fillStyle_58417b6b548ae475: function(arg0, arg1, arg2) {
             arg0.fillStyle = getStringFromWasm0(arg1, arg2);
         },
@@ -6205,6 +6327,10 @@ function __wbg_get_imports() {
         __wbg_stroke_affa71c0888c6f31: function(arg0) {
             arg0.stroke();
         },
+        __wbg_subarray_a068d24e39478a8a: function(arg0, arg1, arg2) {
+            const ret = arg0.subarray(arg1 >>> 0, arg2 >>> 0);
+            return ret;
+        },
         __wbg_toDataURL_bf99d85b39ce57cc: function() { return handleError(function (arg0, arg1) {
             const ret = arg1.toDataURL();
             const ptr1 = passStringToWasm0(ret, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
@@ -6212,6 +6338,10 @@ function __wbg_get_imports() {
             getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
             getDataViewMemory0().setInt32(arg0 + 4 * 0, ptr1, true);
         }, arguments); },
+        __wbg_versions_276b2795b1c6a219: function(arg0) {
+            const ret = arg0.versions;
+            return ret;
+        },
         __wbg_width_4d6fc7fecd877217: function(arg0) {
             const ret = arg0.width;
             return ret;
@@ -6221,6 +6351,11 @@ function __wbg_get_imports() {
             return ret;
         },
         __wbindgen_cast_0000000000000001: function(arg0, arg1) {
+            // Cast intrinsic for `Ref(Slice(U8)) -> NamedExternref("Uint8Array")`.
+            const ret = getArrayU8FromWasm0(arg0, arg1);
+            return ret;
+        },
+        __wbindgen_cast_0000000000000002: function(arg0, arg1) {
             // Cast intrinsic for `Ref(String) -> Externref`.
             const ret = getStringFromWasm0(arg0, arg1);
             return ret;

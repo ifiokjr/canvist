@@ -445,6 +445,12 @@ export class CanvistEditor {
      */
     coalesce_timeout(): number;
     /**
+     * Apply a remote binary update from another peer.
+     *
+     * After applying, the local document is synced from the CRDT.
+     */
+    collab_apply_update(update: Uint8Array): void;
+    /**
      * Number of collaborative cursors.
      */
     collab_cursor_count(): number;
@@ -452,6 +458,26 @@ export class CanvistEditor {
      * Get all collaborative cursors as [offset, name, r, g, b, ...].
      */
     collab_cursor_list(): string[];
+    /**
+     * Whether collaboration is currently enabled.
+     */
+    collab_enabled(): boolean;
+    /**
+     * Encode the full CRDT state as a binary update (Uint8Array).
+     *
+     * Send this to a new peer so they can bootstrap their local copy.
+     */
+    collab_encode_state(): Uint8Array;
+    /**
+     * Encode the local state vector for incremental sync handshakes.
+     */
+    collab_encode_state_vector(): Uint8Array;
+    /**
+     * Sync local document edits into the CRDT.
+     *
+     * Call this after local edits to prepare updates for remote peers.
+     */
+    collab_sync_local(): void;
     /**
      * Collapse blank-line runs to at most `max_consecutive` lines.
      *
@@ -721,6 +747,11 @@ export class CanvistEditor {
      * Editor version string.
      */
     editor_version(): string;
+    /**
+     * Enable collaboration by creating a Yrs CRDT session and syncing
+     * the current document into it.
+     */
+    enable_collab(): void;
     /**
      * End a batch of operations.
      *
@@ -2994,8 +3025,13 @@ export interface InitOutput {
     readonly canvisteditor_clipboard_ring_push: (a: number, b: number, c: number) => void;
     readonly canvisteditor_closest_anchor_to_offset: (a: number, b: number) => [number, number];
     readonly canvisteditor_coalesce_timeout: (a: number) => number;
+    readonly canvisteditor_collab_apply_update: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_collab_cursor_count: (a: number) => number;
     readonly canvisteditor_collab_cursor_list: (a: number) => [number, number];
+    readonly canvisteditor_collab_enabled: (a: number) => number;
+    readonly canvisteditor_collab_encode_state: (a: number) => [number, number, number, number];
+    readonly canvisteditor_collab_encode_state_vector: (a: number) => [number, number, number, number];
+    readonly canvisteditor_collab_sync_local: (a: number) => [number, number];
     readonly canvisteditor_collapse_blank_lines: (a: number, b: number) => number;
     readonly canvisteditor_command_list: (a: number) => [number, number];
     readonly canvisteditor_comment_prefix: (a: number) => [number, number];
@@ -3048,6 +3084,7 @@ export interface InitOutput {
     readonly canvisteditor_duplicate_peer_line_count: (a: number, b: number, c: number, d: number) => number;
     readonly canvisteditor_duplicate_peer_lines_for_line: (a: number, b: number, c: number, d: number) => [number, number];
     readonly canvisteditor_editor_version: (a: number) => [number, number];
+    readonly canvisteditor_enable_collab: (a: number) => void;
     readonly canvisteditor_ensure_final_newline: (a: number) => number;
     readonly canvisteditor_ensure_single_trailing_newline: (a: number) => number;
     readonly canvisteditor_event_log_clear: (a: number) => void;
@@ -3476,9 +3513,9 @@ export interface InitOutput {
     readonly canvisteditor_measure_text_width: (a: number, b: number, c: number) => number;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+    readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_table_alloc: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
-    readonly __wbindgen_exn_store: (a: number) => void;
     readonly __externref_drop_slice: (a: number, b: number) => void;
     readonly __wbindgen_free: (a: number, b: number, c: number) => void;
     readonly __externref_table_dealloc: (a: number) => void;
