@@ -201,33 +201,45 @@ impl Document {
 	pub fn insert_text(&mut self, position: Position, text: &str) {
 		if self.root().children.is_empty() {
 			// Create the first paragraph + text run.
-			let run_id = self.alloc_id();
-			let para_id = self.alloc_id();
+			// If the text contains newlines, split into multiple paragraphs.
+			let lines: Vec<&str> = text.split('\n').collect();
 
-			let run = Node {
-				id: run_id,
-				kind: NodeKind::TextRun {
-					text: text.to_string(),
-					style: Style::new(),
-				},
-				children: Vec::new(),
-				parent: Some(para_id),
-			};
+			for (i, line) in lines.iter().enumerate() {
+				let run_id = self.alloc_id();
+				let para_id = self.alloc_id();
 
-			let para = Node {
-				id: para_id,
-				kind: NodeKind::Paragraph {
-					style: Style::new(),
-				},
-				children: vec![run_id],
-				parent: Some(NodeId::ROOT),
-			};
+				let run = Node {
+					id: run_id,
+					kind: NodeKind::TextRun {
+						text: line.to_string(),
+						style: Style::new(),
+					},
+					children: Vec::new(),
+					parent: Some(para_id),
+				};
 
-			self.nodes.insert(run_id, run);
-			self.nodes.insert(para_id, para);
+				let para = Node {
+					id: para_id,
+					kind: NodeKind::Paragraph {
+						style: Style::new(),
+					},
+					children: vec![run_id],
+					parent: Some(para_id),
+				};
 
-			if let Some(root) = self.nodes.get_mut(&NodeId::ROOT) {
-				root.children.push(para_id);
+				self.nodes.insert(run_id, run);
+				self.nodes.insert(para_id, para);
+
+				if let Some(root) = self.nodes.get_mut(&NodeId::ROOT) {
+					root.children.push(para_id);
+				}
+
+				// Fix parent reference.
+				if let Some(node) = self.nodes.get_mut(&run_id) {
+					node.parent = Some(para_id);
+				}
+
+				let _ = i; // used for iteration
 			}
 
 			self.rebuild_indexes();
@@ -235,20 +247,123 @@ impl Document {
 		}
 
 		// Find the text run at the given offset and splice the text in.
+		// If the text contains newlines, we need to split the current
+		// paragraph and create new ones.
 		let offset = position.offset();
-		if let Some((run_id, local_offset)) = self.find_run_at_offset(offset)
-			&& let Some(node) = self.nodes.get_mut(&run_id)
-			&& let NodeKind::TextRun {
+
+		if !text.contains('\n') {
+			// Simple case: no newlines, just insert into the existing run.
+			if let Some((run_id, local_offset)) = self.find_run_at_offset(offset)
+				&& let Some(node) = self.nodes.get_mut(&run_id)
+				&& let NodeKind::TextRun {
+					text: ref mut t, ..
+				} = node.kind
+			{
+				let byte_offset = char_to_byte_offset(t, local_offset);
+				t.insert_str(byte_offset, text);
+				self.rebuild_indexes();
+			}
+			return;
+		}
+
+		// Complex case: text contains newlines. Split the run at the
+		// insertion point, then create new paragraphs for each line.
+		let Some((run_id, local_offset)) = self.find_run_at_offset(offset) else {
+			return;
+		};
+
+		// Get the current run's text, style, and parent paragraph.
+		let (run_text, run_style, para_id) = {
+			let Some(node) = self.nodes.get(&run_id) else {
+				return;
+			};
+			let NodeKind::TextRun {
+				ref text,
+				ref style,
+			} = node.kind
+			else {
+				return;
+			};
+			(text.clone(), style.clone(), node.parent.unwrap_or(NodeId::ROOT))
+		};
+
+		let run_chars: Vec<char> = run_text.chars().collect();
+		let before: String = run_chars[..local_offset].iter().collect();
+		let after: String = run_chars[local_offset..].iter().collect();
+
+		let lines: Vec<&str> = text.split('\n').collect();
+
+		// First line: append to the text before the split point.
+		let first_line = format!("{}{}", before, lines[0]);
+
+		// Update the current run with the first line text.
+		if let Some(node) = self.nodes.get_mut(&run_id) {
+			if let NodeKind::TextRun {
 				text: ref mut t, ..
 			} = node.kind
-		{
-			let byte_offset = char_to_byte_offset(t, local_offset);
-			t.insert_str(byte_offset, text);
-			self.rebuild_indexes();
+			{
+				*t = first_line;
+			}
 		}
+
+		// Find the position of the current paragraph in the root's children.
+		let para_pos = self
+			.root()
+			.children
+			.iter()
+			.position(|&c| c == para_id)
+			.unwrap_or(0);
+
+		// Create new paragraphs for middle lines and the last line.
+		let mut insert_after = para_pos;
+		for (i, line) in lines.iter().enumerate().skip(1) {
+			let new_run_id = self.alloc_id();
+			let new_para_id = self.alloc_id();
+
+			// Last line gets the remainder text appended.
+			let line_text = if i == lines.len() - 1 {
+				format!("{}{}", line, after)
+			} else {
+				line.to_string()
+			};
+
+			let new_run = Node {
+				id: new_run_id,
+				kind: NodeKind::TextRun {
+					text: line_text,
+					style: run_style.clone(),
+				},
+				children: Vec::new(),
+				parent: Some(new_para_id),
+			};
+
+			let new_para = Node {
+				id: new_para_id,
+				kind: NodeKind::Paragraph {
+					style: Style::new(),
+				},
+				children: vec![new_run_id],
+				parent: Some(NodeId::ROOT),
+			};
+
+			self.nodes.insert(new_run_id, new_run);
+			self.nodes.insert(new_para_id, new_para);
+
+			insert_after += 1;
+			if let Some(root) = self.nodes.get_mut(&NodeId::ROOT) {
+				root.children.insert(insert_after, new_para_id);
+			}
+		}
+
+		self.rebuild_indexes();
 	}
 
 	/// Delete text covered by the given selection.
+	///
+	/// When the deletion spans across a paragraph boundary (i.e. the `\n`
+	/// between two paragraphs), the affected paragraphs are merged: the
+	/// second paragraph's runs are appended to the first, and any empty
+	/// paragraphs are removed.
 	pub fn delete(&mut self, selection: &Selection) {
 		if selection.is_collapsed() {
 			return;
@@ -260,8 +375,17 @@ impl Document {
 			return;
 		}
 
-		let mut dirty = false;
-		for (run_id, local_start, local_end) in self.overlapping_runs(start, end) {
+		// Determine which paragraphs are affected by the deletion.
+		// The plain text has `\n` between paragraphs. If the deletion
+		// range crosses any `\n`, we need to merge paragraphs.
+		let plain = self.plain_text();
+		let deleted: String = plain.chars().skip(start).take(end - start).collect();
+		let crosses_paragraph = deleted.contains('\n');
+
+		// Delete text from overlapping runs.
+		let runs_to_delete = self.overlapping_runs(start, end);
+		let mut dirty = !runs_to_delete.is_empty() || crosses_paragraph;
+		for (run_id, local_start, local_end) in runs_to_delete {
 			if local_start >= local_end {
 				continue;
 			}
@@ -274,12 +398,121 @@ impl Document {
 				let byte_start = char_to_byte_offset(t, local_start);
 				let byte_end = char_to_byte_offset(t, local_end);
 				t.drain(byte_start..byte_end);
-				dirty = true;
 			}
 		}
 
 		if dirty {
+			// If the deletion crossed paragraph boundaries, merge the
+			// affected paragraphs and clean up empty ones.
+			if crosses_paragraph {
+				self.merge_empty_paragraphs();
+			}
 			self.rebuild_indexes();
+		}
+	}
+
+	/// Merge adjacent paragraphs when one has been emptied by deletion.
+	///
+	/// After text deletion across a `\n` boundary, the second paragraph
+	/// may be empty or the split may be unnecessary. This method:
+	/// 1. Removes completely empty paragraphs (no runs or all-empty runs).
+	/// 2. Merges a paragraph that lost its trailing content with the next
+	///    paragraph by moving the next paragraph's runs into it.
+	fn merge_empty_paragraphs(&mut self) {
+		let para_ids: Vec<NodeId> = self.root().children.clone();
+		let mut to_remove: Vec<NodeId> = Vec::new();
+		let mut to_merge: Vec<(NodeId, NodeId)> = Vec::new(); // (keep, absorb)
+
+		for (i, &pid) in para_ids.iter().enumerate() {
+			let is_empty = self
+				.nodes
+				.get(&pid)
+				.map(|p| {
+					p.children.iter().all(|cid| {
+						self.nodes
+							.get(cid)
+							.map(|n| {
+								if let NodeKind::TextRun { ref text, .. } = n.kind {
+									text.is_empty()
+								} else {
+									false
+								}
+							})
+							.unwrap_or(true)
+					})
+				})
+				.unwrap_or(true);
+
+			if is_empty && para_ids.len() > 1 {
+				// If this empty paragraph has a non-empty predecessor,
+				// merge them (move nothing — the empty one just gets removed).
+				// If the NEXT paragraph has content and this one is empty,
+				// just remove the empty one.
+				to_remove.push(pid);
+			} else if !is_empty && i + 1 < para_ids.len() {
+				// Check if the next paragraph should be merged into this one.
+				let next_pid = para_ids[i + 1];
+				let next_empty = self
+					.nodes
+					.get(&next_pid)
+					.map(|p| {
+						p.children.iter().all(|cid| {
+							self.nodes
+								.get(cid)
+								.map(|n| {
+									if let NodeKind::TextRun { ref text, .. } = n.kind {
+										text.is_empty()
+									} else {
+										false
+									}
+								})
+								.unwrap_or(true)
+						})
+					})
+					.unwrap_or(true);
+
+				if !next_empty && !to_remove.contains(&next_pid) {
+					// Both non-empty — they were split by a newline that's now
+					// been deleted. Merge the next paragraph's runs into this one.
+					to_merge.push((pid, next_pid));
+				}
+			}
+		}
+
+		// Perform merges: move runs from the absorbed paragraph into the keeper.
+		for (keep_id, absorb_id) in &to_merge {
+			let absorbed_children: Vec<NodeId> = self
+				.nodes
+				.get(absorb_id)
+				.map(|p| p.children.clone())
+				.unwrap_or_default();
+
+			// Reparent the absorbed runs.
+			for &cid in &absorbed_children {
+				if let Some(node) = self.nodes.get_mut(&cid) {
+					node.parent = Some(*keep_id);
+				}
+			}
+
+			// Append to keeper's children.
+			if let Some(keeper) = self.nodes.get_mut(keep_id) {
+				keeper.children.extend(absorbed_children);
+			}
+
+			// Mark absorbed paragraph for removal.
+			to_remove.push(*absorb_id);
+		}
+
+		// Remove marked paragraphs.
+		if !to_remove.is_empty() {
+			if let Some(root) = self.nodes.get_mut(&NodeId::ROOT) {
+				root.children.retain(|c| !to_remove.contains(c));
+			}
+			for pid in &to_remove {
+				// Remove the paragraph node itself (but not its children,
+				// which may have been reparented).
+				self.nodes.remove(pid);
+			}
 		}
 	}
 
@@ -633,17 +866,13 @@ impl Document {
 		self.plain_text().split_whitespace().count()
 	}
 
-	/// Count the number of paragraphs (newline-separated blocks).
+	/// Count the number of paragraphs in the document tree.
 	///
-	/// A single line with no newlines counts as 1. An empty document counts
-	/// as 1 (the implicit empty paragraph).
+	/// Returns the number of `Paragraph` child nodes under the root.
+	/// An empty document (no paragraphs) returns 1 (implicit empty paragraph).
 	#[must_use]
 	pub fn paragraph_count(&self) -> usize {
-		let text = self.plain_text();
-		if text.is_empty() {
-			return 1;
-		}
-		text.split('\n').count()
+		self.root().children.len().max(1)
 	}
 
 	/// Return the leading whitespace (tabs/spaces) of the line containing
@@ -1039,45 +1268,38 @@ impl Document {
 	/// `<s>`, `<span>`).
 	#[must_use]
 	pub fn to_html(&self) -> String {
-		let runs = self.styled_runs();
-		if runs.is_empty() {
+		let para_ids = self.root().children.clone();
+		if para_ids.is_empty() {
 			return String::from("<p></p>");
 		}
 
 		let mut html = String::new();
-		let mut in_paragraph = false;
 
-		for (text, style, _offset, _len) in &runs {
-			let resolved = style.resolve();
+		for para_id in &para_ids {
+			html.push_str("<p>");
 
-			// Split on newlines — each \n boundary starts a new paragraph.
-			let parts: Vec<&str> = text.split('\n').collect();
-			for (i, part) in parts.iter().enumerate() {
-				if i > 0 {
-					// Close previous paragraph, start new one.
-					if in_paragraph {
-						html.push_str("</p>");
-					}
-					html.push_str("<p>");
-					in_paragraph = true;
-				}
-				if !in_paragraph {
-					html.push_str("<p>");
-					in_paragraph = true;
-				}
+			if let Some(para) = self.nodes.get(para_id) {
+				let mut has_content = false;
+				for run_id in &para.children {
+					if let Some(run) = self.nodes.get(run_id)
+						&& let NodeKind::TextRun {
+							ref text,
+							ref style,
+						} = run.kind
+					{
+						if text.is_empty() {
+							continue;
+						}
+						has_content = true;
+						let resolved = style.resolve();
 
-				if part.is_empty() && i > 0 {
-					continue;
-				}
+						let escaped = html_escape(text);
+						let mut content = escaped;
 
-				// Build inline wrappers.
-				let escaped = html_escape(part);
-				let mut content = escaped;
-
-				if resolved.strikethrough {
-					content = format!("<s>{content}</s>");
-				}
-				if resolved.underline {
+						if resolved.strikethrough {
+							content = format!("<s>{content}</s>");
+						}
+						if resolved.underline {
 					content = format!("<u>{content}</u>");
 				}
 				if resolved.italic {
@@ -1087,24 +1309,31 @@ impl Document {
 					content = format!("<strong>{content}</strong>");
 				}
 
-				// Font size and color via <span> if non-default.
-				let mut span_styles = Vec::new();
-				if (resolved.font_size - 16.0).abs() > 0.01 {
-					span_styles.push(format!("font-size:{}px", resolved.font_size));
-				}
-				if resolved.color != crate::style::Color::BLACK {
-					span_styles.push(format!("color:{}", resolved.color.to_css()));
-				}
+						// Font size and color via <span> if non-default.
+						let mut span_styles = Vec::new();
+						if (resolved.font_size - 16.0).abs() > 0.01 {
+							span_styles.push(format!("font-size:{}px", resolved.font_size));
+						}
+						if resolved.color != crate::style::Color::BLACK {
+							span_styles.push(format!(
+								"color:{}",
+								resolved.color.to_css()
+							));
+						}
 
-				if !span_styles.is_empty() {
-					content = format!("<span style=\"{}\">{content}</span>", span_styles.join(";"));
-				}
+						if !span_styles.is_empty() {
+							content = format!(
+								"<span style=\"{}\">{content}</span>",
+								span_styles.join(";")
+							);
+						}
 
-				html.push_str(&content);
+						html.push_str(&content);
+					}
+				}
+				let _ = has_content;
 			}
-		}
 
-		if in_paragraph {
 			html.push_str("</p>");
 		}
 
@@ -1121,39 +1350,46 @@ impl Document {
 	/// Underline has no standard Markdown equivalent and is ignored.
 	#[must_use]
 	pub fn to_markdown(&self) -> String {
-		let runs = self.styled_runs();
-		if runs.is_empty() {
+		let para_ids = self.root().children.clone();
+		if para_ids.is_empty() {
 			return String::new();
 		}
 
 		let mut md = String::new();
 
-		for (text, style, _offset, _len) in &runs {
-			let resolved = style.resolve();
+		for (pi, para_id) in para_ids.iter().enumerate() {
+			if pi > 0 {
+				md.push_str("\n\n");
+			}
 
-			let parts: Vec<&str> = text.split('\n').collect();
-			for (i, part) in parts.iter().enumerate() {
-				if i > 0 {
-					md.push_str("\n\n");
-				}
+			if let Some(para) = self.nodes.get(para_id) {
+				for run_id in &para.children {
+					if let Some(run) = self.nodes.get(run_id)
+						&& let NodeKind::TextRun {
+							ref text,
+							ref style,
+						} = run.kind
+					{
+						if text.is_empty() {
+							continue;
+						}
+						let resolved = style.resolve();
 
-				if part.is_empty() {
-					continue;
-				}
+						let mut content = text.clone();
 
-				let mut content = (*part).to_string();
+						if resolved.strikethrough {
+							content = format!("~~{content}~~");
+						}
+						if resolved.italic {
+							content = format!("*{content}*");
+						}
+						if resolved.font_weight == crate::style::FontWeight::Bold {
+							content = format!("**{content}**");
+						}
 
-				if resolved.strikethrough {
-					content = format!("~~{content}~~");
+						md.push_str(&content);
+					}
 				}
-				if resolved.italic {
-					content = format!("*{content}*");
-				}
-				if resolved.font_weight == crate::style::FontWeight::Bold {
-					content = format!("**{content}**");
-				}
-
-				md.push_str(&content);
 			}
 		}
 
@@ -2178,5 +2414,57 @@ mod tests {
 		assert_eq!(runs[0].0, "abc");
 		assert_eq!(runs[1].0, "def");
 		assert_eq!(doc.plain_text(), "abcdef");
+	}
+
+	#[test]
+	fn insert_newline_creates_two_paragraphs() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello\nworld");
+
+		assert_eq!(doc.paragraph_count(), 2);
+		assert_eq!(doc.plain_text(), "hello\nworld");
+	}
+
+	#[test]
+	fn insert_multiple_newlines_creates_multiple_paragraphs() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "a\nb\nc");
+
+		assert_eq!(doc.paragraph_count(), 3);
+		assert_eq!(doc.plain_text(), "a\nb\nc");
+	}
+
+	#[test]
+	fn delete_across_paragraph_boundary_merges() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "hello\nworld");
+
+		assert_eq!(doc.paragraph_count(), 2);
+
+		// Delete the newline (offset 5..6).
+		let sel = Selection::range(Position::new(5), Position::new(6));
+		doc.delete(&sel);
+
+		assert_eq!(doc.plain_text(), "helloworld");
+		// Should merge back to 1 paragraph.
+		assert_eq!(doc.paragraph_count(), 1);
+	}
+
+	#[test]
+	fn paragraph_roundtrip_insert_delete_newline() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "ab");
+		assert_eq!(doc.paragraph_count(), 1);
+
+		// Insert newline to split.
+		doc.insert_text(Position::new(1), "\n");
+		assert_eq!(doc.paragraph_count(), 2);
+		assert_eq!(doc.plain_text(), "a\nb");
+
+		// Delete the newline to merge.
+		let sel = Selection::range(Position::new(1), Position::new(2));
+		doc.delete(&sel);
+		assert_eq!(doc.paragraph_count(), 1);
+		assert_eq!(doc.plain_text(), "ab");
 	}
 }
