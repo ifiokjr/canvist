@@ -198,6 +198,24 @@ impl Document {
 	/// If the position falls inside an existing paragraph, the text is inserted
 	/// into (or splits) the appropriate text run. If the document is empty, a
 	/// new paragraph and text run are created automatically.
+	///
+	/// Newlines in `text` create paragraph splits — each `\n` produces a new
+	/// `Paragraph` node in the document tree.
+	///
+	/// # Examples
+	///
+	/// ```
+	/// use canvist_core::{Document, Position};
+	///
+	/// let mut doc = Document::new();
+	/// doc.insert_text(Position::zero(), "Hello, world!");
+	/// assert_eq!(doc.plain_text(), "Hello, world!");
+	///
+	/// // Newlines create paragraphs.
+	/// let mut doc2 = Document::new();
+	/// doc2.insert_text(Position::zero(), "First\nSecond");
+	/// assert_eq!(doc2.paragraph_count(), 2);
+	/// ```
 	pub fn insert_text(&mut self, position: Position, text: &str) {
 		if self.root().children.is_empty() {
 			// Create the first paragraph + text run.
@@ -363,6 +381,17 @@ impl Document {
 	/// between two paragraphs), the affected paragraphs are merged: the
 	/// second paragraph's runs are appended to the first, and any empty
 	/// paragraphs are removed.
+	///
+	/// # Examples
+	///
+	/// ```
+	/// use canvist_core::{Document, Position, Selection};
+	///
+	/// let mut doc = Document::new();
+	/// doc.insert_text(Position::zero(), "Hello, world!");
+	/// doc.delete(&Selection::range(Position::new(5), Position::new(7)));
+	/// assert_eq!(doc.plain_text(), "Helloworld!");
+	/// ```
 	pub fn delete(&mut self, selection: &Selection) {
 		if selection.is_collapsed() {
 			return;
@@ -512,6 +541,28 @@ impl Document {
 	}
 
 	/// Apply a style to all text runs overlapping the given selection.
+	///
+	/// When the selection partially overlaps a run, the run is split at the
+	/// selection boundaries so that only the selected portion receives the
+	/// new style.
+	///
+	/// # Examples
+	///
+	/// ```
+	/// use canvist_core::{Document, Position, Selection, Style};
+	///
+	/// let mut doc = Document::new();
+	/// doc.insert_text(Position::zero(), "Hello world");
+	///
+	/// // Bold only "world".
+	/// let sel = Selection::range(Position::new(6), Position::new(11));
+	/// doc.apply_style(sel, &Style::new().bold());
+	///
+	/// let runs = doc.styled_runs();
+	/// assert_eq!(runs.len(), 2);
+	/// assert_eq!(runs[0].0, "Hello ");
+	/// assert_eq!(runs[1].0, "world");
+	/// ```
 	pub fn apply_style(&mut self, selection: Selection, style: &Style) {
 		let start = selection.start().offset();
 		let end = selection.end().offset();
@@ -1393,6 +1444,18 @@ impl Document {
 	///
 	/// Supports `**bold**`, `*italic*`, `~~strikethrough~~`, and paragraph
 	/// breaks (double newline). Resets the current document content.
+	///
+	/// # Examples
+	///
+	/// ```
+	/// use canvist_core::Document;
+	///
+	/// let mut doc = Document::new();
+	/// doc.from_markdown("**Bold** and *italic*");
+	///
+	/// let runs = doc.styled_runs();
+	/// assert!(runs.iter().any(|(t, _, _, _)| t == "Bold"));
+	/// ```
 	pub fn from_markdown(&mut self, md: &str) {
 		let segments = parse_simple_markdown(md);
 

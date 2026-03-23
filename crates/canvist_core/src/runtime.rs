@@ -59,6 +59,30 @@ impl EditorRuntime {
 		self.op_log.replay(target)
 	}
 
+	/// Create a new runtime with the given document, initial selection, and
+	/// actor identifier (used for operation log attribution).
+	///
+	/// # Examples
+	///
+	/// ```
+	/// use canvist_core::{Document, EditorRuntime, EditorEvent, Position, Selection};
+	///
+	/// let mut runtime = EditorRuntime::new(
+	///     Document::new(),
+	///     Selection::collapsed(Position::zero()),
+	///     "user:demo",
+	/// );
+	///
+	/// runtime.handle_event(EditorEvent::TextInsert {
+	///     text: "Hello!".to_string(),
+	/// }).unwrap();
+	///
+	/// assert_eq!(runtime.document().plain_text(), "Hello!");
+	///
+	/// // Undo restores the previous state.
+	/// assert!(runtime.undo());
+	/// assert_eq!(runtime.document().plain_text(), "");
+	/// ```
 	#[must_use]
 	pub fn new(document: Document, selection: Selection, actor: impl Into<String>) -> Self {
 		Self {
