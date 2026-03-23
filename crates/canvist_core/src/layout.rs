@@ -175,9 +175,9 @@ pub fn layout_paragraph(
 		// height from the maximum font size on this line.
 		let mut width = 0.0f32;
 		let mut max_line_height = base_line_height;
-		for i in line_start..line_end {
-			let style = fragment_style_at(fragments, i);
-			width += measurer.measure_char(chars[i], style);
+		for (idx, &ch) in chars[line_start..line_end].iter().enumerate() {
+			let style = fragment_style_at(fragments, line_start + idx);
+			width += measurer.measure_char(ch, style);
 			let resolved = style.resolve();
 			let char_lh = resolved.font_size * resolved.line_height;
 			if char_lh > max_line_height {

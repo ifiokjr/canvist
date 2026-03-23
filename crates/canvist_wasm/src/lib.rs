@@ -1,3 +1,4 @@
+#![allow(clippy::doc_markdown, clippy::struct_excessive_bools)]
 //! # canvist_wasm
 //!
 //! WebAssembly + Canvas2D rendering backend for the canvist canvas editor.
@@ -2079,7 +2080,7 @@ impl CanvistEditor {
 							let inner_end = close;
 							if inner_start <= sel_start && inner_end >= sel_end {
 								let span = inner_end - inner_start;
-								if best.map_or(true, |(s, e)| span < e - s) {
+								if best.is_none_or(|(s, e)| span < e - s) {
 									best = Some((inner_start, inner_end));
 								}
 							}
@@ -2134,7 +2135,7 @@ impl CanvistEditor {
 							let inner_start = o + 1;
 							let inner_end = close;
 							let span = inner_end - inner_start;
-							if best.map_or(true, |(s, e)| span < e - s) {
+							if best.is_none_or(|(s, e)| span < e - s) {
 								best = Some((inner_start, inner_end));
 							}
 							break;
@@ -2169,7 +2170,7 @@ impl CanvistEditor {
 								let inner_end = j;
 								if inner_start > sel_start || inner_end < sel_end {
 									let span = inner_end - inner_start;
-									if best.map_or(true, |(s, e)| span < e - s) {
+									if best.is_none_or(|(s, e)| span < e - s) {
 										best = Some((inner_start, inner_end));
 									}
 								}
@@ -3809,12 +3810,13 @@ impl CanvistEditor {
 	/// Useful for external change detection: compare hashes to check
 	/// if content has changed without comparing full text.
 	#[wasm_bindgen]
+	#[allow(clippy::unreadable_literal)]
 	pub fn text_hash(&self) -> String {
 		let plain = self.runtime.document().plain_text();
-		let mut hash: u64 = 0xcbf29ce484222325;
+		let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
 		for byte in plain.as_bytes() {
 			hash ^= *byte as u64;
-			hash = hash.wrapping_mul(0x100000001b3);
+			hash = hash.wrapping_mul(0x0100_0000_01b3);
 		}
 		format!("{hash:016x}")
 	}
@@ -4947,7 +4949,7 @@ impl CanvistEditor {
 	/// Returns default colours if not customised.
 	#[wasm_bindgen]
 	pub fn get_token_color(&self, kind: &str) -> Vec<u8> {
-		let (r, g, b, a) = self.token_colors.get(kind).copied().unwrap_or_else(|| {
+		let (r, g, b, a) = self.token_colors.get(kind).copied().unwrap_or(
 			match kind {
 				"word" => (212, 212, 212, 255),        // light gray
 				"number" => (181, 206, 168, 255),      // green
@@ -4956,7 +4958,7 @@ impl CanvistEditor {
 				"newline" => (0, 0, 0, 0),             // invisible
 				_ => (212, 212, 212, 255),
 			}
-		});
+		);
 		vec![r, g, b, a]
 	}
 
@@ -4975,6 +4977,7 @@ impl CanvistEditor {
 	/// "gutter_bg", "gutter_text", "gutter_border",
 	/// "scrollbar_track", "scrollbar_thumb".
 	#[wasm_bindgen]
+	#[allow(clippy::many_single_char_names)]
 	pub fn set_theme_color(&mut self, slot: &str, r: u8, g: u8, b: u8, a: u8) {
 		let c = Color::new(r, g, b, a);
 		match slot {
@@ -8859,10 +8862,10 @@ impl CanvistEditor {
 		let Some(text) = plain.split('\n').nth(line) else {
 			return String::new();
 		};
-		let mut hash: u64 = 0xcbf29ce484222325;
+		let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
 		for byte in text.as_bytes() {
 			hash ^= *byte as u64;
-			hash = hash.wrapping_mul(0x100000001b3);
+			hash = hash.wrapping_mul(0x0100_0000_01b3);
 		}
 		format!("{hash:016x}")
 	}
@@ -8873,10 +8876,10 @@ impl CanvistEditor {
 		let plain = self.runtime.document().plain_text();
 		let mut out = Vec::new();
 		for (i, line) in plain.split('\n').enumerate() {
-			let mut hash: u64 = 0xcbf29ce484222325;
+			let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
 			for byte in line.as_bytes() {
 				hash ^= *byte as u64;
-				hash = hash.wrapping_mul(0x100000001b3);
+				hash = hash.wrapping_mul(0x0100_0000_01b3);
 			}
 			out.push(i.to_string());
 			out.push(format!("{hash:016x}"));
@@ -8899,10 +8902,10 @@ impl CanvistEditor {
 		}
 		let mut out = Vec::new();
 		for (idx, line) in lines.iter().enumerate().take(e + 1).skip(s) {
-			let mut hash: u64 = 0xcbf29ce484222325;
+			let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
 			for byte in line.as_bytes() {
 				hash ^= *byte as u64;
-				hash = hash.wrapping_mul(0x100000001b3);
+				hash = hash.wrapping_mul(0x0100_0000_01b3);
 			}
 			out.push(idx.to_string());
 			out.push(format!("{hash:016x}"));
@@ -10898,7 +10901,7 @@ impl CanvistEditor {
 		line_starts.push(s);
 		// Find subsequent line starts within selection.
 		for i in s..sel_end.min(chars.len()) {
-			if chars[i] == '\n' && i + 1 <= sel_end {
+			if chars[i] == '\n' && i < sel_end {
 				line_starts.push(i + 1);
 			}
 		}
@@ -10930,7 +10933,7 @@ impl CanvistEditor {
 		}
 		line_starts.push(s);
 		for i in s..sel_end.min(chars.len()) {
-			if chars[i] == '\n' && i + 1 <= sel_end {
+			if chars[i] == '\n' && i < sel_end {
 				line_starts.push(i + 1);
 			}
 		}

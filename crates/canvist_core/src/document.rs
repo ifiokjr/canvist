@@ -297,14 +297,13 @@ impl Document {
 		let first_line = format!("{}{}", before, lines[0]);
 
 		// Update the current run with the first line text.
-		if let Some(node) = self.nodes.get_mut(&run_id) {
-			if let NodeKind::TextRun {
+		if let Some(node) = self.nodes.get_mut(&run_id)
+			&& let NodeKind::TextRun {
 				text: ref mut t, ..
 			} = node.kind
 			{
 				*t = first_line;
 			}
-		}
 
 		// Find the position of the current paragraph in the root's children.
 		let para_pos = self
@@ -322,7 +321,7 @@ impl Document {
 
 			// Last line gets the remainder text appended.
 			let line_text = if i == lines.len() - 1 {
-				format!("{}{}", line, after)
+				format!("{line}{after}")
 			} else {
 				line.to_string()
 			};
@@ -427,21 +426,19 @@ impl Document {
 			let is_empty = self
 				.nodes
 				.get(&pid)
-				.map(|p| {
+				.is_none_or(|p| {
 					p.children.iter().all(|cid| {
 						self.nodes
 							.get(cid)
-							.map(|n| {
+							.is_none_or(|n| {
 								if let NodeKind::TextRun { ref text, .. } = n.kind {
 									text.is_empty()
 								} else {
 									false
 								}
 							})
-							.unwrap_or(true)
 					})
-				})
-				.unwrap_or(true);
+				});
 
 			if is_empty && para_ids.len() > 1 {
 				// If this empty paragraph has a non-empty predecessor,
@@ -455,21 +452,19 @@ impl Document {
 				let next_empty = self
 					.nodes
 					.get(&next_pid)
-					.map(|p| {
+					.is_none_or(|p| {
 						p.children.iter().all(|cid| {
 							self.nodes
 								.get(cid)
-								.map(|n| {
+								.is_none_or(|n| {
 									if let NodeKind::TextRun { ref text, .. } = n.kind {
 										text.is_empty()
 									} else {
 										false
 									}
 								})
-								.unwrap_or(true)
 						})
-					})
-					.unwrap_or(true);
+					});
 
 				if !next_empty && !to_remove.contains(&next_pid) {
 					// Both non-empty — they were split by a newline that's now
@@ -583,13 +578,12 @@ impl Document {
 				let child_pos = self
 					.nodes
 					.get(&parent)
-					.map(|p| {
+					.map_or(0, |p| {
 						p.children
 							.iter()
 							.position(|&c| c == run_id)
 							.unwrap_or(0)
-					})
-					.unwrap_or(0);
+					});
 
 				// Build up to 3 split pieces.
 				let mut new_ids: Vec<NodeId> = Vec::new();
@@ -796,8 +790,8 @@ impl Document {
 			);
 
 			// Replace the split runs in the parent's children list.
-			if let Some(parent_node) = self.nodes.get_mut(&parent) {
-				if let Some(first_pos) = parent_node
+			if let Some(parent_node) = self.nodes.get_mut(&parent)
+				&& let Some(first_pos) = parent_node
 					.children
 					.iter()
 					.position(|c| overlapping.contains(c))
@@ -808,7 +802,6 @@ impl Document {
 						.retain(|c| !overlapping.contains(c));
 					parent_node.children.insert(first_pos, merged_id);
 				}
-			}
 
 			// Remove the old split nodes.
 			for rid in &overlapping {
@@ -1445,7 +1438,7 @@ impl Document {
 	}
 
 	/// Return the character length of a text run.
-	#[cfg_attr(not(test), allow(dead_code))]
+	#[allow(dead_code)]
 	fn run_text_len(&self, id: NodeId) -> usize {
 		self.nodes
 			.get(&id)
@@ -1556,17 +1549,14 @@ impl Document {
 				let current_id = children[i];
 
 				// Collect the style and text of the current run.
-				let (mut merged_text, current_style) = match self.nodes.get(&current_id) {
-					Some(Node {
+				let (mut merged_text, current_style) = if let Some(Node {
 						kind: NodeKind::TextRun { text, style },
 						..
-					}) => (text.clone(), style.clone()),
-					_ => {
-						new_children.push(current_id);
-						i += 1;
-						continue;
-					}
-				};
+					}) = self.nodes.get(&current_id) { (text.clone(), style.clone()) } else {
+    						new_children.push(current_id);
+    						i += 1;
+    						continue;
+    					};
 
 				// Look ahead and merge consecutive runs with the same style.
 				let mut j = i + 1;
@@ -1577,14 +1567,13 @@ impl Document {
 					let same_style = self
 						.nodes
 						.get(&next_id)
-						.map(|n| {
+						.is_some_and(|n| {
 							if let NodeKind::TextRun { style, .. } = &n.kind {
 								*style == current_style
 							} else {
 								false
 							}
-						})
-						.unwrap_or(false);
+						});
 
 					if !same_style {
 						break;
@@ -1607,11 +1596,10 @@ impl Document {
 					new_children.push(current_id);
 				} else {
 					// Update the current run with the merged text.
-					if let Some(node) = self.nodes.get_mut(&current_id) {
-						if let NodeKind::TextRun { text, .. } = &mut node.kind {
+					if let Some(node) = self.nodes.get_mut(&current_id)
+						&& let NodeKind::TextRun { text, .. } = &mut node.kind {
 							*text = merged_text;
 						}
-					}
 					new_children.push(current_id);
 
 					// Remove absorbed nodes.
@@ -1649,14 +1637,13 @@ impl Document {
 				let is_empty = self
 					.nodes
 					.get(cid)
-					.map(|n| {
+					.is_some_and(|n| {
 						if let NodeKind::TextRun { text, .. } = &n.kind {
 							text.is_empty()
 						} else {
 							false
 						}
-					})
-					.unwrap_or(false);
+					});
 
 				if is_empty {
 					self.nodes.remove(cid);
@@ -1672,11 +1659,10 @@ impl Document {
 				continue;
 			}
 
-			if non_empty.len() != children.len() {
-				if let Some(para) = self.nodes.get_mut(&para_id) {
+			if non_empty.len() != children.len()
+				&& let Some(para) = self.nodes.get_mut(&para_id) {
 					para.children = non_empty;
 				}
-			}
 		}
 	}
 }
@@ -2253,7 +2239,7 @@ mod tests {
 			text.contains("<script>"),
 			"entities should be decoded: {text}"
 		);
-		assert!(text.contains("&"), "got: {text}");
+		assert!(text.contains('&'), "got: {text}");
 		assert!(text.contains("\"test\""), "got: {text}");
 	}
 
@@ -2449,8 +2435,7 @@ mod tests {
 		for (text, style, _, _) in &runs_after_undo {
 			assert_eq!(
 				style.font_weight, None,
-				"after undo, run '{}' should not be bold",
-				text
+				"after undo, run '{text}' should not be bold"
 			);
 		}
 	}
@@ -2578,8 +2563,7 @@ mod tests {
 				assert_eq!(
 					style.font_weight,
 					Some(crate::style::FontWeight::Bold),
-					"run '{}' should be bold after paragraph split",
-					text
+					"run '{text}' should be bold after paragraph split"
 				);
 			}
 		}
@@ -2626,8 +2610,8 @@ mod tests {
 		);
 
 		let html = doc.to_html();
-		assert!(html.contains("<em>"), "should have <em> tag: {}", html);
-		assert!(html.contains("</p><p>"), "should have paragraph break: {}", html);
+		assert!(html.contains("<em>"), "should have <em> tag: {html}");
+		assert!(html.contains("</p><p>"), "should have paragraph break: {html}");
 
 		// Roundtrip through from_html.
 		let mut doc2 = Document::new();
@@ -2635,8 +2619,7 @@ mod tests {
 		let text = doc2.plain_text();
 		assert!(
 			text.contains("First") && text.contains("Second"),
-			"roundtrip text: {}",
-			text
+			"roundtrip text: {text}"
 		);
 	}
 
@@ -2723,11 +2706,11 @@ mod tests {
 
 	#[test]
 	fn parse_markdown_basic() {
-		let segments = super::parse_simple_markdown("Hello **bold** and *italic* text");
+		let segments = parse_simple_markdown("Hello **bold** and *italic* text");
 		let texts: Vec<_> = segments.iter().map(|(t, _, _, _)| t.as_str()).collect();
-		assert!(texts.contains(&"Hello "), "should have plain text: {:?}", texts);
-		assert!(texts.contains(&"bold"), "should have bold text: {:?}", texts);
-		assert!(texts.contains(&"italic"), "should have italic text: {:?}", texts);
+		assert!(texts.contains(&"Hello "), "should have plain text: {texts:?}");
+		assert!(texts.contains(&"bold"), "should have bold text: {texts:?}");
+		assert!(texts.contains(&"italic"), "should have italic text: {texts:?}");
 
 		let bold_seg = segments.iter().find(|(t, _, _, _)| t == "bold");
 		assert!(bold_seg.unwrap().1, "bold segment should have bold=true");
@@ -2768,16 +2751,15 @@ mod tests {
 		);
 
 		let md = doc.to_markdown();
-		assert!(md.contains("**Hello**"), "markdown: {}", md);
-		assert!(md.contains("*World*"), "markdown: {}", md);
+		assert!(md.contains("**Hello**"), "markdown: {md}");
+		assert!(md.contains("*World*"), "markdown: {md}");
 
 		let mut doc2 = Document::new();
 		doc2.from_markdown(&md);
 		let text = doc2.plain_text();
 		assert!(
 			text.contains("Hello") && text.contains("World"),
-			"roundtrip text: {}",
-			text
+			"roundtrip text: {text}"
 		);
 	}
 
@@ -2802,7 +2784,7 @@ mod tests {
 		// The middle paragraph should be empty but present.
 		let runs = doc.styled_runs();
 		let texts: Vec<_> = runs.iter().map(|(t, _, _, _)| t.as_str()).collect();
-		assert!(texts.contains(&"A"), "should have 'A': {:?}", texts);
-		assert!(texts.contains(&"B"), "should have 'B': {:?}", texts);
+		assert!(texts.contains(&"A"), "should have 'A': {texts:?}");
+		assert!(texts.contains(&"B"), "should have 'B': {texts:?}");
 	}
 }

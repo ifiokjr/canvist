@@ -404,8 +404,8 @@ mod tests {
 
 		let final_text = peer_a.text();
 		assert!(final_text.contains("Base"), "should contain Base");
-		assert!(final_text.contains("A"), "should contain A");
-		assert!(final_text.contains("B"), "should contain B");
-		assert!(final_text.contains("C"), "should contain C");
+		assert!(final_text.contains('A'), "should contain A");
+		assert!(final_text.contains('B'), "should contain B");
+		assert!(final_text.contains('C'), "should contain C");
 	}
 }

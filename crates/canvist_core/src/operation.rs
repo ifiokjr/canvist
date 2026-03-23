@@ -926,13 +926,11 @@ mod tests {
 		for (text, style, _, _) in &runs {
 			assert_eq!(
 				style.font_weight, None,
-				"after undo, run '{}' should not be bold",
-				text
+				"after undo, run '{text}' should not be bold"
 			);
 			assert_eq!(
 				style.italic, None,
-				"after undo, run '{}' should not be italic",
-				text
+				"after undo, run '{text}' should not be italic"
 			);
 		}
 		assert_eq!(doc.plain_text(), "Hello world");
