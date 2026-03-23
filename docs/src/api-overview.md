@@ -4,11 +4,11 @@ This document defines the public programming model used by both human-driven app
 
 The model is intentionally layered:
 
-1. **Intent/Event** — what the user/agent wants to achieve
-2. **Action envelope** — a concrete, policy-checked command + metadata
-3. **Operation** — deterministic, atomic document mutation
-4. **State transition** — verified application of operations/log entries
-5. **Render delta** — visual updates derived from the new state
+1. **Intent/Event** - what the user/agent wants to achieve
+2. **Action envelope** - a concrete, policy-checked command + metadata
+3. **Operation** - deterministic, atomic document mutation
+4. **State transition** - verified application of operations/log entries
+5. **Render delta** - visual updates derived from the new state
 
 Keeping these layers explicit makes replay, undo/redo, automation, and cross-platform behavior predictable.
 
@@ -35,13 +35,13 @@ Status legend: ✅ covered by automated tests, ⚠️ partially covered, ❌ no 
 | `setTitle()` API contract                            | README/API promises                                             | `packages/canvist/tests/playwright/editor.spec.ts` (`editor bindings compose a complete editing workflow`)                                                                        | ✅     | Verifies title metadata round-trips through `to_json`.                                                |
 | `toJSON()` API contract/schema                       | README/API promises                                             | `packages/canvist/tests/playwright/editor.spec.ts` (`editor bindings compose a complete editing workflow`)                                                                        | ✅     | Parses JSON and asserts expected metadata fields.                                                     |
 | `destroy()` cleanup contract                         | README/API promises                                             | _No active test currently in repo_                                                                                                                                                | ❌     | Add lifecycle cleanup test (event listeners/resources/input detachment).                              |
-| Clipboard operations (copy/cut/paste)                | Canonical event pipeline includes clipboard                     | _None_                                                                                                                                                                            | ❌     | Add Playwright clipboard interaction tests (permissions + keyboard shortcuts/context menu).           |
+| Clipboard operations (copy/cut/paste)                | Canonical event pipeline includes clipboard                     | Demo supports rich HTML paste via Clipboard API (`paste_html`), Markdown paste (`paste_markdown`). Playwright tests pending.                                                      | ⚠️     | Rich paste implemented; clipboard permission tests need Playwright harness.                           |
 | IME/composition input                                | Canonical event pipeline includes composition                   | `packages/canvist/tests/playwright/editor.spec.ts` (`compositionend commits IME text exactly once`)                                                                               | ✅     | Covers compositionstart/input/compositionend commit behavior.                                         |
 | Accessibility shadow DOM + focus semantics           | `canvist_wasm` architecture section                             | `packages/canvist/tests/playwright/editor.spec.ts` (`accessibility wiring exposes hidden input and textbox semantics`, `focus and keyboard routing keeps hidden textarea active`) | ✅     | Asserts roles/labels, `aria-valuetext`, and focus routing.                                            |
-| Runtime action-envelope/policy/precondition pipeline | Architecture + API layers 2–4                                   | _None in `packages/canvist/tests`_                                                                                                                                                | ❌     | Requires core/runtime-level deterministic transition tests.                                           |
-| Operation log replay guarantees                      | API Layer 4 contract                                            | _None in `packages/canvist/tests`_                                                                                                                                                | ❌     | Add replay/divergence tests around `OperationLog` preconditions.                                      |
-| Render-delta/invalidation contract                   | API Layer 5 contract                                            | _None_                                                                                                                                                                            | ❌     | Need backend-visible invalidation assertions beyond “canvas visible”.                                 |
-| Collaboration/CRDT sync path                         | Architecture (`canvist_core` CRDT sync)                         | _None_                                                                                                                                                                            | ❌     | Add multi-actor convergence tests once web sync harness exists.                                       |
+| Runtime action-envelope/policy/precondition pipeline | Architecture + API layers 2–4                                   | `crates/canvist_core/src/runtime.rs` (`maps_text_insert_event_to_action_and_transaction`, `operation_log_has_preconditions_and_deterministic_ids`, `format_partial_then_undo_preserves_text`, `multiple_operations_undo_redo_roundtrip`) | ✅     | Covered by runtime unit tests including undo coalescing and paragraph-aware undo.                     |
+| Operation log replay guarantees                      | API Layer 4 contract                                            | `crates/canvist_core/src/runtime.rs` (`export_log_replays_deterministically_into_fresh_document`, `replay_handles_multi_operation_selection_replacement`, `replay_into_returns_error_when_preconditions_do_not_match`) | ✅     | Replay determinism and precondition failure tested.                                                   |
+| Render-delta/invalidation contract                   | API Layer 5 contract                                            | `crates/canvist_core/src/runtime.rs` (`invalidation_is_selection_for_cursor_and_selection_events`)                                                                                 | ⚠️     | Invalidation enum tested; visual repaint region assertions not yet implemented.                       |
+| Collaboration/CRDT sync path                         | Architecture (`canvist_core` CRDT sync)                         | `crates/canvist_core/src/collaboration.rs` (`sync_between_peers`, `concurrent_edits_converge`, `three_peer_convergence`, `remote_update_projects_back_into_document`, `apply_operation_maps_into_crdt`) | ✅     | Multi-peer convergence, document sync roundtrip, and operation mapping tested.                        |
 
 ### Maintenance checklist
 
@@ -72,10 +72,10 @@ assert_eq!(doc.plain_text(), "Hello, world!");
 An **intent/event** is high-level and goal-oriented. Examples:
 
 - `EditorEvent::TextInsert` from keyboard/IME
-- “Toggle bold for current selection” from command palette
-- “Apply remote patch entry #42” from sync pipeline
+- "Toggle bold for current selection" from command palette
+- "Apply remote patch entry #42" from sync pipeline
 
-At this layer, payloads may still be ambiguous (e.g. “at cursor” needs resolved position) and must not mutate state directly.
+At this layer, payloads may still be ambiguous (e.g. "at cursor" needs resolved position) and must not mutate state directly.
 
 ## Layer 2: Action envelope API (validated commands)
 
@@ -83,11 +83,11 @@ An **action envelope** is an intent transformed into a fully-specified command a
 
 Action metadata contract:
 
-- `action_id` (`ActionId`) — stable command identity
-- `actor` (`ActorId`) — user/agent/service identity
-- `intent` (`ActionIntent`) — semantic category
-- `args` (`ActionArgs`) — fully-resolved concrete parameters
-- timestamps/logical metadata — ordering + observability
+- `action_id` (`ActionId`) - stable command identity
+- `actor` (`ActorId`) - user/agent/service identity
+- `intent` (`ActionIntent`) - semantic category
+- `args` (`ActionArgs`) - fully-resolved concrete parameters
+- timestamps/logical metadata - ordering + observability
 
 Typical validation/normalization includes:
 
