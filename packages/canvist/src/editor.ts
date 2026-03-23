@@ -93,6 +93,11 @@ export async function createEditor(
 
 	// --- Hidden textarea for capturing keyboard input ---
 	const canvas = document.getElementById(canvasId) as HTMLCanvasElement;
+	// AbortController for all event listeners — calling abort() on destroy
+	// removes every listener in one shot, preventing memory leaks.
+	const listenerAC = new AbortController();
+	const listenerSignal = { signal: listenerAC.signal };
+
 	const textarea = document.createElement("textarea");
 	textarea.id = "canvist-input";
 	textarea.setAttribute("autocomplete", "off");
@@ -109,7 +114,7 @@ export async function createEditor(
 	canvas.setAttribute("aria-controls", textarea.id);
 
 	// Keep textarea focused so we receive keyboard events.
-	canvas.addEventListener("focus", () => textarea.focus());
+	canvas.addEventListener("focus", () => textarea.focus(), listenerSignal);
 	canvas.setAttribute("tabindex", "0");
 
 	// --- Mouse click-to-cursor hit-testing & drag-to-select ---
@@ -248,8 +253,8 @@ export async function createEditor(
 
 	// Listen on `document` so we capture mousemove/mouseup even when the
 	// pointer leaves the canvas bounds (standard drag-select UX).
-	document.addEventListener("mousemove", onMouseMove);
-	document.addEventListener("mouseup", onMouseUp);
+	document.addEventListener("mousemove", onMouseMove, listenerSignal);
+	document.addEventListener("mouseup", onMouseUp, listenerSignal);
 
 	// --- Mouse wheel scroll ---
 	canvas.addEventListener(
@@ -3722,10 +3727,23 @@ export async function createEditor(
 				clearInterval(caretBlinkTimer);
 				caretBlinkTimer = null;
 			}
-			// Remove document-level drag listeners to prevent leaks.
+			// Abort all event listeners registered with the AbortController.
+			// This removes canvas, textarea, and document-level listeners
+			// in one shot, preventing memory leaks and dangling closures.
+			listenerAC.abort();
+			// Also remove explicitly-added document listeners (legacy path).
 			document.removeEventListener("mousemove", onMouseMove);
 			document.removeEventListener("mouseup", onMouseUp);
+			// Remove DOM elements.
 			textarea.remove();
+			// Remove ARIA attributes from canvas.
+			canvas.removeAttribute("role");
+			canvas.removeAttribute("aria-multiline");
+			canvas.removeAttribute("aria-label");
+			canvas.removeAttribute("aria-controls");
+			canvas.removeAttribute("aria-valuetext");
+			canvas.removeAttribute("tabindex");
+			// Free WASM resources.
 			try {
 				inner.free();
 			} catch {
