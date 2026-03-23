@@ -5069,6 +5069,15 @@ export class CanvistEditor {
         wasm.canvisteditor_set_placeholder(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Reset the document to plain text, removing all formatting.
+     * @param {string} text
+     */
+    set_plain_text(text) {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_plain_text(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Set the editor to read-only mode. Editing operations are blocked;
      * selection, copy, and navigation still work.
      * @param {boolean} read_only

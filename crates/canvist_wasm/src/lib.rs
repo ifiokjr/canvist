@@ -9762,6 +9762,13 @@ impl CanvistEditor {
 			.map_err(|e| JsValue::from_str(&e.to_string()))
 	}
 
+	/// Reset the document to plain text, removing all formatting.
+	#[wasm_bindgen]
+	pub fn set_plain_text(&mut self, text: &str) {
+		self.runtime.document_mut().set_plain_text(text);
+		self.is_modified = true;
+	}
+
 	/// Import a document from JSON, replacing the current content.
 	///
 	/// The JSON should be the output of `to_json()`. This preserves all

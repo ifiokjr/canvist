@@ -458,6 +458,7 @@ export const canvisteditor_set_minimap_width: (a: number, b: number) => void;
 export const canvisteditor_set_now_ms: (a: number, b: number) => void;
 export const canvisteditor_set_overwrite_mode: (a: number, b: number) => void;
 export const canvisteditor_set_placeholder: (a: number, b: number, c: number) => void;
+export const canvisteditor_set_plain_text: (a: number, b: number, c: number) => void;
 export const canvisteditor_set_read_only: (a: number, b: number) => void;
 export const canvisteditor_set_rulers: (a: number, b: number, c: number) => void;
 export const canvisteditor_set_scroll_y: (a: number, b: number) => void;
