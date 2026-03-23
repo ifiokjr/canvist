@@ -2384,6 +2384,10 @@ export class CanvistEditor {
      */
     set_placeholder(text: string): void;
     /**
+     * Reset the document to plain text, removing all formatting.
+     */
+    set_plain_text(text: string): void;
+    /**
      * Set the editor to read-only mode. Editing operations are blocked;
      * selection, copy, and navigation still work.
      */
@@ -3413,6 +3417,7 @@ export interface InitOutput {
     readonly canvisteditor_set_now_ms: (a: number, b: number) => void;
     readonly canvisteditor_set_overwrite_mode: (a: number, b: number) => void;
     readonly canvisteditor_set_placeholder: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_set_plain_text: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_read_only: (a: number, b: number) => void;
     readonly canvisteditor_set_rulers: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_scroll_y: (a: number, b: number) => void;

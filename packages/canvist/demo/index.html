@@ -161,6 +161,9 @@
         <div style="display:flex;gap:2px;align-items:center;">
           <button id="btn-export-html" title="Copy as HTML" style="font-size:0.8em;padding:4px 8px;">HTML</button>
           <button id="btn-export-md" title="Copy as Markdown" style="font-size:0.8em;padding:4px 8px;">MD</button>
+          <button id="btn-download" title="Download as HTML file" style="font-size:0.8em;padding:4px 8px;">⬇</button>
+          <button id="btn-open" title="Open HTML/text file" style="font-size:0.8em;padding:4px 8px;">📂</button>
+          <input id="file-input" type="file" accept=".html,.htm,.md,.txt,.json" style="display:none;" />
         </div>
         <span style="border-left:1px solid #ddd;height:24px;"></span>
         <div style="display:flex;gap:2px;align-items:center;">
@@ -637,6 +640,58 @@
           }).catch(() => {
             prompt("Copy Markdown:", md);
           });
+          textarea.focus();
+        });
+
+        // --- Download as file ---
+        document.getElementById("btn-download").addEventListener("click", () => {
+          const html = editor.to_html();
+          const fullHtml = `<!DOCTYPE html>\n<html><head><meta charset="utf-8"><title>canvist document</title></head><body>\n${html}\n</body></html>`;
+          const blob = new Blob([fullHtml], { type: "text/html" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "document.html";
+          a.click();
+          URL.revokeObjectURL(url);
+          announceA11y("Document downloaded");
+          textarea.focus();
+        });
+
+        // --- Open file ---
+        const fileInput = document.getElementById("file-input");
+        document.getElementById("btn-open").addEventListener("click", () => {
+          fileInput.click();
+        });
+        fileInput.addEventListener("change", async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const text = await file.text();
+          const ext = file.name.split(".").pop()?.toLowerCase();
+
+          if (ext === "json") {
+            try {
+              editor.from_json(text);
+            } catch {
+              editor.set_plain_text("");
+              editor.insert_text_at(0, text);
+            }
+          } else if (ext === "html" || ext === "htm") {
+            editor.set_plain_text("");
+            editor.paste_html(text);
+          } else if (ext === "md") {
+            editor.set_plain_text("");
+            editor.paste_markdown(text);
+          } else {
+            editor.set_plain_text("");
+            editor.insert_text_at(0, text);
+          }
+
+          cursorOffset = 0;
+          clearSelection();
+          renderFrame();
+          announceA11y(`Opened ${file.name}`);
+          fileInput.value = "";
           textarea.focus();
         });
 
