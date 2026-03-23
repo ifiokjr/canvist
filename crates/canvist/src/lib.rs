@@ -47,14 +47,44 @@ pub use canvist_wasm as wasm;
 ///
 /// ```
 /// use canvist::prelude::*;
+///
+/// // Document editing.
+/// let mut runtime = EditorRuntime::new(
+///     Document::new(),
+///     Selection::collapsed(Position::zero()),
+///     "user:demo",
+/// );
+/// runtime.handle_event(EditorEvent::TextInsert {
+///     text: "Hello!".to_string(),
+/// }).unwrap();
+///
+/// // Formatting.
+/// runtime.apply_operation(Operation::format(
+///     Selection::range(Position::new(0), Position::new(5)),
+///     Style::new().bold(),
+/// ));
+///
+/// assert_eq!(runtime.document().plain_text(), "Hello!");
 /// ```
 pub mod prelude {
+	// Document model.
+	pub use canvist_core::Color;
 	pub use canvist_core::Document;
+	pub use canvist_core::FontWeight;
 	pub use canvist_core::NodeId;
 	pub use canvist_core::Position;
 	pub use canvist_core::Selection;
 	pub use canvist_core::Style;
+	// Runtime and events.
+	pub use canvist_core::EditorEvent;
+	pub use canvist_core::EditorRuntime;
+	pub use canvist_core::Invalidation;
+	// Operations.
+	pub use canvist_core::operation::Operation;
+	pub use canvist_core::operation::Transaction;
+	// Rendering.
 	pub use canvist_render::Canvas;
+	pub use canvist_render::Rect;
 	pub use canvist_render::Renderer;
 	pub use canvist_render::Viewport;
 }
