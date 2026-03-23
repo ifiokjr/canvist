@@ -61,11 +61,13 @@ struct LayoutConstants {
 
 impl LayoutConstants {
 	/// Create layout constants for a canvas of the given pixel dimensions.
+	#[allow(dead_code)]
 	fn new(canvas_width: f32) -> Self {
 		Self::with_zoom(canvas_width, 1.0)
 	}
 
 	/// Create layout constants with a specific zoom level and text colour.
+	#[allow(dead_code)]
 	fn with_zoom(canvas_width: f32, zoom: f32) -> Self {
 		Self::with_zoom_and_color(canvas_width, zoom, Color::BLACK)
 	}
@@ -460,6 +462,10 @@ pub struct CanvistEditor {
 	text_align: canvist_core::style::TextAlign,
 	/// Optional collaboration session for real-time sync.
 	collab: Option<canvist_core::collaboration::CollaborationSession>,
+	/// Pending style to apply to the next inserted text when the cursor is
+	/// collapsed. Set by toggling formatting (bold/italic/etc.) with no
+	/// selection and consumed on the next text insertion.
+	pending_style: Option<Style>,
 }
 
 /// Colour theme for the editor canvas.
@@ -620,6 +626,7 @@ impl CanvistEditor {
 			selection_profiles: std::collections::HashMap::new(),
 			text_align: canvist_core::style::TextAlign::Left,
 			collab: None,
+			pending_style: None,
 		})
 	}
 
@@ -1444,7 +1451,6 @@ impl CanvistEditor {
 		}
 
 		let close_ch = close.unwrap();
-		let offset = self.runtime.selection().end().offset();
 
 		// Delete selection if any.
 		let sel = self.runtime.selection();
@@ -2944,8 +2950,6 @@ impl CanvistEditor {
 		if !self.is_writable() {
 			return;
 		}
-		let offset = self.runtime.selection().end().offset();
-
 		// Delete selection if any.
 		let sel = self.runtime.selection();
 		if !sel.is_collapsed() {
@@ -3670,7 +3674,7 @@ impl CanvistEditor {
 		// We provide the text; the caller should use JS RegExp for complex
 		// patterns. This method handles the simple case of literal + flags.
 		let plain = self.runtime.document().plain_text();
-		let chars: Vec<char> = plain.chars().collect();
+		let _chars: Vec<char> = plain.chars().collect();
 
 		// Simple implementation: treat pattern as literal with case-insensitive flag.
 		// For real regex, the JS side should use RegExp.
@@ -9969,12 +9973,20 @@ impl CanvistEditor {
 		if !self.is_writable() {
 			return;
 		}
+		let pending = self.pending_style.take();
 		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
 			selection: Selection::collapsed(Position::new(offset)),
 		});
 		let _ = self.runtime.handle_event(EditorEvent::TextInsert {
 			text: text.to_string(),
 		});
+		// Apply pending style to the just-inserted text.
+		if let Some(style) = pending {
+			let char_count = text.chars().count();
+			let sel = Selection::range(Position::new(offset), Position::new(offset + char_count));
+			self.runtime
+				.apply_operation(Operation::format(sel, style));
+		}
 		self.is_modified = true;
 	}
 
@@ -10166,6 +10178,8 @@ impl CanvistEditor {
 	/// Set selection range.
 	#[wasm_bindgen]
 	pub fn set_selection(&mut self, start: usize, end: usize) {
+		// Clear pending style when selection changes via explicit set.
+		self.pending_style = None;
 		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
 			selection: Selection::range(Position::new(start), Position::new(end)),
 		});
@@ -10174,6 +10188,7 @@ impl CanvistEditor {
 	/// Move cursor to an absolute position; extend toggles range selection.
 	#[wasm_bindgen]
 	pub fn move_cursor_to(&mut self, position: usize, extend: bool) {
+		self.pending_style = None;
 		let _ = self.runtime.handle_event(EditorEvent::CursorMove {
 			position: Position::new(position),
 			extend,
@@ -10206,6 +10221,18 @@ impl CanvistEditor {
 		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
+			// Toggle pending bold for next insertion.
+			let current = self
+				.pending_style
+				.clone()
+				.unwrap_or_else(|| self.runtime.document().style_at_offset(sel.end().offset()));
+			let resolved = current.resolve();
+			let new_style = if resolved.font_weight.as_u16() >= 700 {
+				current.merge(&Style::new().font_weight(canvist_core::FontWeight::Normal))
+			} else {
+				current.merge(&Style::new().bold())
+			};
+			self.pending_style = Some(new_style);
 			return;
 		}
 		let start = sel.start().offset();
@@ -10220,7 +10247,6 @@ impl CanvistEditor {
 			Selection::range(Position::new(start), Position::new(end)),
 			style,
 		));
-		// Restore selection (apply_operation resets it).
 		let _ = self
 			.runtime
 			.handle_event(EditorEvent::SelectionSet { selection: sel });
@@ -10235,6 +10261,20 @@ impl CanvistEditor {
 		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
+			let current = self
+				.pending_style
+				.clone()
+				.unwrap_or_else(|| self.runtime.document().style_at_offset(sel.end().offset()));
+			let resolved = current.resolve();
+			let new_style = if resolved.italic {
+				Style {
+					italic: Some(false),
+					..current
+				}
+			} else {
+				current.merge(&Style::new().italic())
+			};
+			self.pending_style = Some(new_style);
 			return;
 		}
 		let start = sel.start().offset();
@@ -10264,6 +10304,20 @@ impl CanvistEditor {
 		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
+			let current = self
+				.pending_style
+				.clone()
+				.unwrap_or_else(|| self.runtime.document().style_at_offset(sel.end().offset()));
+			let resolved = current.resolve();
+			let new_style = if resolved.underline {
+				Style {
+					underline: Some(false),
+					..current
+				}
+			} else {
+				current.merge(&Style::new().underline())
+			};
+			self.pending_style = Some(new_style);
 			return;
 		}
 		let start = sel.start().offset();
@@ -10286,6 +10340,9 @@ impl CanvistEditor {
 	/// Check if the current selection is all bold.
 	#[wasm_bindgen]
 	pub fn is_bold(&self) -> bool {
+		if let Some(ref ps) = self.pending_style {
+			return ps.resolve().font_weight.as_u16() >= 700;
+		}
 		let sel = self.runtime.selection();
 		self.runtime
 			.document()
@@ -10295,6 +10352,9 @@ impl CanvistEditor {
 	/// Check if the current selection is all italic.
 	#[wasm_bindgen]
 	pub fn is_italic(&self) -> bool {
+		if let Some(ref ps) = self.pending_style {
+			return ps.resolve().italic;
+		}
 		let sel = self.runtime.selection();
 		self.runtime
 			.document()
@@ -10304,6 +10364,9 @@ impl CanvistEditor {
 	/// Check if the current selection is all underline.
 	#[wasm_bindgen]
 	pub fn is_underline(&self) -> bool {
+		if let Some(ref ps) = self.pending_style {
+			return ps.resolve().underline;
+		}
 		let sel = self.runtime.selection();
 		self.runtime
 			.document()
@@ -10318,6 +10381,20 @@ impl CanvistEditor {
 		}
 		let sel = self.runtime.selection();
 		if sel.is_collapsed() {
+			let current = self
+				.pending_style
+				.clone()
+				.unwrap_or_else(|| self.runtime.document().style_at_offset(sel.end().offset()));
+			let resolved = current.resolve();
+			let new_style = if resolved.strikethrough {
+				Style {
+					strikethrough: Some(false),
+					..current
+				}
+			} else {
+				current.merge(&Style::new().strikethrough())
+			};
+			self.pending_style = Some(new_style);
 			return;
 		}
 		let start = sel.start().offset();

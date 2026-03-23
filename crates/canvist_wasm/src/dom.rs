@@ -3,6 +3,8 @@
 //! Helpers for working with the browser DOM — event listeners, accessibility
 //! shadow DOM, and canonical editor input event mapping.
 
+#![allow(dead_code)]
+
 use std::collections::VecDeque;
 
 use canvist_core::CompositionPhase;
