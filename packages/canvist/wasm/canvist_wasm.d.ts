@@ -938,6 +938,13 @@ export class CanvistEditor {
      */
     from_html(html: string): void;
     /**
+     * Import a document from JSON, replacing the current content.
+     *
+     * The JSON should be the output of `to_json()`. This preserves all
+     * formatting, paragraph structure, and metadata.
+     */
+    from_json(json: string): void;
+    /**
      * Get annotations as flat array: [start, end, kind, message, ...].
      */
     get_annotations(): string[];
@@ -3125,6 +3132,7 @@ export interface InitOutput {
     readonly canvisteditor_format_range_strikethrough: (a: number, b: number, c: number) => void;
     readonly canvisteditor_format_range_underline: (a: number, b: number, c: number) => void;
     readonly canvisteditor_from_html: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_from_json: (a: number, b: number, c: number) => [number, number];
     readonly canvisteditor_get_annotations: (a: number) => [number, number];
     readonly canvisteditor_get_block_selection: (a: number, b: number, c: number, d: number, e: number) => [number, number];
     readonly canvisteditor_get_keybinding: (a: number, b: number, c: number) => [number, number];

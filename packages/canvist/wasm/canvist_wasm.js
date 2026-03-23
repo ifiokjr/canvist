@@ -2010,6 +2010,21 @@ export class CanvistEditor {
         wasm.canvisteditor_from_html(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Import a document from JSON, replacing the current content.
+     *
+     * The JSON should be the output of `to_json()`. This preserves all
+     * formatting, paragraph structure, and metadata.
+     * @param {string} json
+     */
+    from_json(json) {
+        const ptr0 = passStringToWasm0(json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_from_json(this.__wbg_ptr, ptr0, len0);
+        if (ret[1]) {
+            throw takeFromExternrefTable0(ret[0]);
+        }
+    }
+    /**
      * Get annotations as flat array: [start, end, kind, message, ...].
      * @returns {string[]}
      */

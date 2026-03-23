@@ -177,6 +177,7 @@ export const canvisteditor_format_range_italic: (a: number, b: number, c: number
 export const canvisteditor_format_range_strikethrough: (a: number, b: number, c: number) => void;
 export const canvisteditor_format_range_underline: (a: number, b: number, c: number) => void;
 export const canvisteditor_from_html: (a: number, b: number, c: number) => void;
+export const canvisteditor_from_json: (a: number, b: number, c: number) => [number, number];
 export const canvisteditor_get_annotations: (a: number) => [number, number];
 export const canvisteditor_get_block_selection: (a: number, b: number, c: number, d: number, e: number) => [number, number];
 export const canvisteditor_get_keybinding: (a: number, b: number, c: number) => [number, number];
