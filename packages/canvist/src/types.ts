@@ -2244,6 +2244,37 @@ export interface CanvistEditor {
 		ignoreWhitespace?: boolean,
 	): number;
 
+	// ── Text Alignment ──────────────────────────────────────────────
+
+	/** Set the text alignment: "left", "center", "right", "justify". */
+	setTextAlign(align: string): void;
+
+	/** Get the current text alignment. */
+	readonly textAlign: string;
+
+	// ── Collaboration Session ───────────────────────────────────────
+
+	/** Enable collaboration by creating a Yrs CRDT session. */
+	enableCollab(): void;
+
+	/** Whether collaboration is currently enabled. */
+	readonly collabEnabled: boolean;
+
+	/** Encode the full CRDT state as a binary update (Uint8Array). */
+	collabEncodeState(): Uint8Array;
+
+	/** Encode the local state vector for incremental sync. */
+	collabEncodeStateVector(): Uint8Array;
+
+	/**
+	 * Apply a remote binary update from another peer. After applying,
+	 * the local document is synced from the CRDT.
+	 */
+	collabApplyUpdate(update: Uint8Array): void;
+
+	/** Push local document edits into the CRDT. */
+	collabSyncLocal(): void;
+
 	/** Destroy the editor and release WASM resources. */
 	destroy(): void;
 }

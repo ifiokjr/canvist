@@ -134,6 +134,12 @@ export async function createEditor(
 	// --- Multi-click tracking (double/triple-click) ---
 	let clickCount = 0;
 	let lastClickTime = 0;
+	let skipNextClick = false;
+	let selectionMode: "char" | "word" | "line" = "char";
+	let wordAnchorStart = 0;
+	let wordAnchorEnd = 0;
+	let lineAnchorStart = 0;
+	let lineAnchorEnd = 0;
 
 	canvas.addEventListener("mousedown", (e: MouseEvent) => {
 		const { x, y } = canvasCoordsFromEvent(e);
@@ -145,24 +151,35 @@ export async function createEditor(
 			const offset = inner.hit_test(x, y);
 			textarea.focus();
 
-			if (clickCount === 3) {
+			if (clickCount >= 3) {
 				// Triple-click: select entire line/paragraph.
+				selectionMode = "line";
 				const text = inner.plain_text();
 				let start = offset;
 				while (start > 0 && text[start - 1] !== "\n") start--;
 				let end = offset;
 				while (end < text.length && text[end] !== "\n") end++;
+				lineAnchorStart = start;
+				lineAnchorEnd = end;
 				cursorOffset = end;
 				dragAnchorOffset = start;
 				inner.set_selection(start, end);
+				isDragging = true;
+				skipNextClick = true;
 				clickCount = 0;
 			} else if (clickCount === 2) {
 				// Double-click: select word.
+				selectionMode = "word";
 				inner.select_word_at(offset);
-				cursorOffset = inner.selection_end();
-				dragAnchorOffset = inner.selection_start();
+				wordAnchorStart = inner.selection_start();
+				wordAnchorEnd = inner.selection_end();
+				cursorOffset = wordAnchorEnd;
+				dragAnchorOffset = wordAnchorStart;
+				isDragging = true;
+				skipNextClick = true;
 			} else {
 				// Single click: position cursor, start drag.
+				selectionMode = "char";
 				cursorOffset = offset;
 				dragAnchorOffset = offset;
 				isDragging = true;
@@ -188,8 +205,35 @@ export async function createEditor(
 
 		try {
 			const offset = inner.hit_test(x, y);
-			cursorOffset = offset;
-			inner.set_selection(dragAnchorOffset, offset);
+
+			if (selectionMode === "word") {
+				// Snap to word boundaries.
+				inner.select_word_at(offset);
+				const dragWordStart = inner.selection_start();
+				const dragWordEnd = inner.selection_end();
+				const selStart = Math.min(wordAnchorStart, dragWordStart);
+				const selEnd = Math.max(wordAnchorEnd, dragWordEnd);
+				cursorOffset = selEnd;
+				inner.set_selection(selStart, selEnd);
+			} else if (selectionMode === "line") {
+				// Snap to line boundaries.
+				const text = inner.plain_text();
+				let dragLineStart = offset;
+				while (dragLineStart > 0 && text[dragLineStart - 1] !== "\n") {
+					dragLineStart--;
+				}
+				let dragLineEnd = offset;
+				while (dragLineEnd < text.length && text[dragLineEnd] !== "\n") {
+					dragLineEnd++;
+				}
+				const selStart = Math.min(lineAnchorStart, dragLineStart);
+				const selEnd = Math.max(lineAnchorEnd, dragLineEnd);
+				cursorOffset = selEnd;
+				inner.set_selection(selStart, selEnd);
+			} else {
+				cursorOffset = offset;
+				inner.set_selection(dragAnchorOffset, offset);
+			}
 			renderFrame();
 		} catch {
 			// hit_test may fail if canvas is detached.
