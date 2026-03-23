@@ -456,6 +456,8 @@ pub struct CanvistEditor {
 	named_states: std::collections::HashMap<String, String>,
 	/// Named saved selection ranges: name -> (start, end).
 	selection_profiles: std::collections::HashMap<String, (usize, usize)>,
+	/// Current text alignment for the content area.
+	text_align: canvist_core::style::TextAlign,
 }
 
 /// Colour theme for the editor canvas.
@@ -614,6 +616,7 @@ impl CanvistEditor {
 			anchors: std::collections::HashMap::new(),
 			named_states: std::collections::HashMap::new(),
 			selection_profiles: std::collections::HashMap::new(),
+			text_align: canvist_core::style::TextAlign::Left,
 		})
 	}
 
@@ -833,6 +836,32 @@ impl CanvistEditor {
 	#[wasm_bindgen]
 	pub fn word_wrap(&self) -> bool {
 		self.word_wrap
+	}
+
+	/// Set the text alignment for the entire editor.
+	///
+	/// - `"left"` — left-aligned (default)
+	/// - `"center"` — centered
+	/// - `"right"` — right-aligned
+	#[wasm_bindgen]
+	pub fn set_text_align(&mut self, align: &str) {
+		self.text_align = match align {
+			"center" => canvist_core::style::TextAlign::Center,
+			"right" => canvist_core::style::TextAlign::Right,
+			"justify" => canvist_core::style::TextAlign::Justify,
+			_ => canvist_core::style::TextAlign::Left,
+		};
+	}
+
+	/// Get the current text alignment as a string.
+	#[wasm_bindgen]
+	pub fn text_align(&self) -> String {
+		match self.text_align {
+			canvist_core::style::TextAlign::Left => "left".to_string(),
+			canvist_core::style::TextAlign::Center => "center".to_string(),
+			canvist_core::style::TextAlign::Right => "right".to_string(),
+			canvist_core::style::TextAlign::Justify => "justify".to_string(),
+		}
 	}
 
 	// ── Statistics ───────────────────────────────────────────────────
@@ -9915,7 +9944,9 @@ impl CanvistEditor {
 		} else {
 			100_000.0 // effectively infinite
 		};
-		LayoutConstants::with_zoom_and_color(width, self.zoom, self.theme.text)
+		let mut lc = LayoutConstants::with_zoom_and_color(width, self.zoom, self.theme.text);
+		lc.layout_config.text_align = self.text_align;
+		lc
 	}
 
 	/// Insert text at the current cursor position (start of document).
@@ -11350,7 +11381,8 @@ impl CanvistEditor {
 		} else {
 			100_000.0
 		};
-		let lc = LayoutConstants::with_zoom_and_color(content_w, self.zoom, theme.text);
+		let mut lc = LayoutConstants::with_zoom_and_color(content_w, self.zoom, theme.text);
+		lc.layout_config.text_align = self.text_align;
 		let doc = self.runtime.document();
 		let selection = self.runtime.selection();
 		let styled_runs = doc.styled_runs();
