@@ -458,6 +458,8 @@ pub struct CanvistEditor {
 	selection_profiles: std::collections::HashMap<String, (usize, usize)>,
 	/// Current text alignment for the content area.
 	text_align: canvist_core::style::TextAlign,
+	/// Optional collaboration session for real-time sync.
+	collab: Option<canvist_core::collaboration::CollaborationSession>,
 }
 
 /// Colour theme for the editor canvas.
@@ -617,6 +619,7 @@ impl CanvistEditor {
 			named_states: std::collections::HashMap::new(),
 			selection_profiles: std::collections::HashMap::new(),
 			text_align: canvist_core::style::TextAlign::Left,
+			collab: None,
 		})
 	}
 
@@ -11186,6 +11189,69 @@ impl CanvistEditor {
 		let tx: Transaction = serde_json::from_str(operations_json)
 			.map_err(|e| JsValue::from_str(&format!("failed to parse transaction: {e}")))?;
 		self.runtime.apply_transaction(tx);
+		Ok(())
+	}
+
+	// ── Collaboration ────────────────────────────────────────────────
+
+	/// Enable collaboration by creating a Yrs CRDT session and syncing
+	/// the current document into it.
+	#[wasm_bindgen]
+	pub fn enable_collab(&mut self) {
+		let session = canvist_core::collaboration::CollaborationSession::new();
+		session.sync_from_document(self.runtime.document());
+		self.collab = Some(session);
+	}
+
+	/// Whether collaboration is currently enabled.
+	#[wasm_bindgen]
+	pub fn collab_enabled(&self) -> bool {
+		self.collab.is_some()
+	}
+
+	/// Encode the full CRDT state as a binary update (Uint8Array).
+	///
+	/// Send this to a new peer so they can bootstrap their local copy.
+	#[wasm_bindgen]
+	pub fn collab_encode_state(&self) -> Result<Vec<u8>, JsValue> {
+		self.collab
+			.as_ref()
+			.map(|s| s.encode_state())
+			.ok_or_else(|| JsValue::from_str("collaboration not enabled"))
+	}
+
+	/// Encode the local state vector for incremental sync handshakes.
+	#[wasm_bindgen]
+	pub fn collab_encode_state_vector(&self) -> Result<Vec<u8>, JsValue> {
+		self.collab
+			.as_ref()
+			.map(|s| s.encode_state_vector())
+			.ok_or_else(|| JsValue::from_str("collaboration not enabled"))
+	}
+
+	/// Apply a remote binary update from another peer.
+	///
+	/// After applying, the local document is synced from the CRDT.
+	#[wasm_bindgen]
+	pub fn collab_apply_update(&mut self, update: &[u8]) -> Result<(), JsValue> {
+		let session = self
+			.collab
+			.as_ref()
+			.ok_or_else(|| JsValue::from_str("collaboration not enabled"))?;
+		session.apply_remote_update_to_document(update, self.runtime.document_mut());
+		Ok(())
+	}
+
+	/// Sync local document edits into the CRDT.
+	///
+	/// Call this after local edits to prepare updates for remote peers.
+	#[wasm_bindgen]
+	pub fn collab_sync_local(&self) -> Result<(), JsValue> {
+		let session = self
+			.collab
+			.as_ref()
+			.ok_or_else(|| JsValue::from_str("collaboration not enabled"))?;
+		session.sync_from_document(self.runtime.document());
 		Ok(())
 	}
 }

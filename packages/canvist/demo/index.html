@@ -1718,11 +1718,43 @@
           ceEditor.textContent || "(empty)";
       });
 
+      // --- localStorage auto-save/restore ---
+      const STORAGE_KEY = "canvist-demo-doc";
+      const STORAGE_CURSOR_KEY = "canvist-demo-cursor";
+
+      function saveToLocalStorage() {
+        if (!editor) return;
+        try {
+          localStorage.setItem(STORAGE_KEY, editor.plain_text());
+          localStorage.setItem(STORAGE_CURSOR_KEY, String(cursorOffset));
+        } catch {}
+      }
+
+      function restoreFromLocalStorage() {
+        if (!editor) return;
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved && saved.length > 0) {
+            editor.insert_text_at(0, saved);
+            const savedCursor = parseInt(localStorage.getItem(STORAGE_CURSOR_KEY) || "0", 10);
+            cursorOffset = Math.min(savedCursor, saved.length);
+            clearSelection();
+          }
+        } catch {}
+      }
+
+      // Auto-save every 2 seconds.
+      setInterval(saveToLocalStorage, 2000);
+      // Save on page unload.
+      window.addEventListener("beforeunload", saveToLocalStorage);
+
       // Expose editor globally for Playwright tests.
       window.__canvistSetup = setup();
       window.__canvistEditor = null;
       window.__canvistSetup.then(() => {
         window.__canvistEditor = editor;
+        restoreFromLocalStorage();
+        renderFrame();
       });
     </script>
   </body>

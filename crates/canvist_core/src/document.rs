@@ -1228,6 +1228,10 @@ impl Document {
 	}
 
 	fn rebuild_indexes(&mut self) {
+		// Merge adjacent runs with identical styles before rebuilding,
+		// preventing fragmentation from repeated format/undo cycles.
+		self.compact_runs();
+
 		self.run_index.clear();
 		self.plain_text_cache.clear();
 
@@ -1253,6 +1257,154 @@ impl Document {
 						self.plain_text_cache.push_str(text);
 						global_char += len_chars;
 					}
+				}
+			}
+		}
+	}
+
+	/// Merge adjacent text runs within each paragraph when they share
+	/// identical styles. This prevents run fragmentation from accumulating
+	/// over repeated format/undo cycles.
+	fn compact_runs(&mut self) {
+		let para_ids: Vec<NodeId> = self.root().children.clone();
+
+		for para_id in para_ids {
+			let children: Vec<NodeId> = self
+				.nodes
+				.get(&para_id)
+				.map(|p| p.children.clone())
+				.unwrap_or_default();
+
+			if children.len() < 2 {
+				continue;
+			}
+
+			let mut new_children: Vec<NodeId> = Vec::with_capacity(children.len());
+			let mut i = 0;
+
+			while i < children.len() {
+				let current_id = children[i];
+
+				// Collect the style and text of the current run.
+				let (mut merged_text, current_style) = match self.nodes.get(&current_id) {
+					Some(Node {
+						kind: NodeKind::TextRun { text, style },
+						..
+					}) => (text.clone(), style.clone()),
+					_ => {
+						new_children.push(current_id);
+						i += 1;
+						continue;
+					}
+				};
+
+				// Look ahead and merge consecutive runs with the same style.
+				let mut j = i + 1;
+				let mut absorbed: Vec<NodeId> = Vec::new();
+
+				while j < children.len() {
+					let next_id = children[j];
+					let same_style = self
+						.nodes
+						.get(&next_id)
+						.map(|n| {
+							if let NodeKind::TextRun { style, .. } = &n.kind {
+								*style == current_style
+							} else {
+								false
+							}
+						})
+						.unwrap_or(false);
+
+					if !same_style {
+						break;
+					}
+
+					// Absorb the next run's text.
+					if let Some(Node {
+						kind: NodeKind::TextRun { text, .. },
+						..
+					}) = self.nodes.get(&next_id)
+					{
+						merged_text.push_str(text);
+						absorbed.push(next_id);
+					}
+					j += 1;
+				}
+
+				if absorbed.is_empty() {
+					// No merge needed — keep original.
+					new_children.push(current_id);
+				} else {
+					// Update the current run with the merged text.
+					if let Some(node) = self.nodes.get_mut(&current_id) {
+						if let NodeKind::TextRun { text, .. } = &mut node.kind {
+							*text = merged_text;
+						}
+					}
+					new_children.push(current_id);
+
+					// Remove absorbed nodes.
+					for rid in &absorbed {
+						self.nodes.remove(rid);
+					}
+				}
+
+				i = j;
+			}
+
+			// Update the paragraph's children list.
+			if let Some(para) = self.nodes.get_mut(&para_id) {
+				para.children = new_children;
+			}
+		}
+
+		// Remove empty text runs, but keep at least one run per paragraph
+		// so that insert operations can still find a target.
+		let para_ids2: Vec<NodeId> = self.root().children.clone();
+		for para_id in para_ids2 {
+			let children: Vec<NodeId> = self
+				.nodes
+				.get(&para_id)
+				.map(|p| p.children.clone())
+				.unwrap_or_default();
+
+			if children.len() <= 1 {
+				// Keep at least one run (even if empty) per paragraph.
+				continue;
+			}
+
+			let mut non_empty: Vec<NodeId> = Vec::new();
+			for cid in &children {
+				let is_empty = self
+					.nodes
+					.get(cid)
+					.map(|n| {
+						if let NodeKind::TextRun { text, .. } = &n.kind {
+							text.is_empty()
+						} else {
+							false
+						}
+					})
+					.unwrap_or(false);
+
+				if is_empty {
+					self.nodes.remove(cid);
+				} else {
+					non_empty.push(*cid);
+				}
+			}
+
+			// Ensure at least one child remains.
+			if non_empty.is_empty() {
+				// Shouldn't happen since children.len() > 1 and we'd need
+				// all to be empty, but guard anyway.
+				continue;
+			}
+
+			if non_empty.len() != children.len() {
+				if let Some(para) = self.nodes.get_mut(&para_id) {
+					para.children = non_empty;
 				}
 			}
 		}
@@ -1978,5 +2130,53 @@ mod tests {
 				text
 			);
 		}
+	}
+
+	#[test]
+	fn compact_runs_merges_adjacent_same_style() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello world");
+
+		// Bold the whole thing then un-bold a middle section, creating
+		// 3 runs: bold "Hello" | normal " wor" | bold "ld".
+		let sel_all = Selection::range(Position::new(0), Position::new(11));
+		doc.apply_style(sel_all, &Style::new().bold());
+
+		// Un-bold " wor" (offsets 5..9) — creates split.
+		let sel_mid = Selection::range(Position::new(5), Position::new(9));
+		doc.apply_style(
+			sel_mid,
+			&Style::new().font_weight(crate::style::FontWeight::Normal),
+		);
+
+		// Now re-bold " wor" — all 3 runs should have bold, so
+		// compact_runs should merge them back into 1.
+		doc.apply_style(sel_mid, &Style::new().bold());
+
+		let runs = doc.styled_runs();
+		assert_eq!(
+			runs.len(),
+			1,
+			"all runs with identical bold style should merge into 1, got {} runs",
+			runs.len()
+		);
+		assert_eq!(runs[0].0, "Hello world");
+		assert_eq!(doc.plain_text(), "Hello world");
+	}
+
+	#[test]
+	fn compact_runs_preserves_different_styles() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "abcdef");
+
+		// Bold "abc", leave "def" normal.
+		let sel = Selection::range(Position::new(0), Position::new(3));
+		doc.apply_style(sel, &Style::new().bold());
+
+		let runs = doc.styled_runs();
+		assert_eq!(runs.len(), 2, "different styles should stay separate");
+		assert_eq!(runs[0].0, "abc");
+		assert_eq!(runs[1].0, "def");
+		assert_eq!(doc.plain_text(), "abcdef");
 	}
 }
