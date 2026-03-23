@@ -1090,7 +1090,7 @@ export async function createEditor(
 					Boolean(style.underline),
 					style.fontSize,
 					style.fontFamily,
-					style.colorRgba,
+					style.colorRgba ? new Uint8Array(style.colorRgba) : undefined,
 				);
 				renderFrame();
 			},
@@ -3681,6 +3681,35 @@ export async function createEditor(
 				syncTime();
 				ref.remove_highlight_color();
 				renderFrame();
+			},
+
+			// ── Text Alignment ──────────────────────────────────────────
+			setTextAlign(align: string) {
+				ref.set_text_align(align);
+				renderFrame();
+			},
+			get textAlign() {
+				return ref.text_align();
+			},
+
+			// ── Collaboration ───────────────────────────────────────────
+			enableCollab() {
+				ref.enable_collab();
+			},
+			get collabEnabled() {
+				return ref.collab_enabled();
+			},
+			collabEncodeState() {
+				return ref.collab_encode_state();
+			},
+			collabEncodeStateVector() {
+				return ref.collab_encode_state_vector();
+			},
+			collabApplyUpdate(update: Uint8Array) {
+				ref.collab_apply_update(update);
+			},
+			collabSyncLocal() {
+				ref.collab_sync_local();
 			},
 		};
 	}
