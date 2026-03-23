@@ -61,7 +61,12 @@
   </head>
   <body>
     <h1>canvist collab</h1>
-    <p class="subtitle">Real-time collaboration via BroadcastChannel (same browser, multiple tabs)</p>
+    <p class="subtitle">Real-time collaboration — same browser (BroadcastChannel) or cross-machine (WebSocket)</p>
+    <div style="margin-bottom:1rem;display:flex;gap:8px;align-items:center;font-size:0.85rem;">
+      <label>Server: <input id="ws-url" type="text" placeholder="ws://localhost:9001/room/demo" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;width:280px;" /></label>
+      <button id="ws-connect" style="padding:4px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;">Connect</button>
+      <span id="ws-status" style="color:#999;">Not connected</span>
+    </div>
 
     <div class="editor-container">
       <canvas id="editor-canvas" width="800" height="400"></canvas>
@@ -74,9 +79,10 @@
     </div>
 
     <div class="instructions">
-      <strong>How to test:</strong> Open this page in two browser tabs.
-      Type in either tab — edits sync in real-time via the Yrs CRDT.
-      Each tab gets a random color cursor visible in the other tab.
+      <strong>Same-browser:</strong> Open this page in two tabs. Edits sync via BroadcastChannel.<br>
+      <strong>Cross-machine:</strong> Run <code>deno run --allow-net demo/collab-server.ts</code>,
+      then enter <code>ws://localhost:9001/room/demo</code> above and click Connect.
+      Share the URL with others on the same network.
     </div>
 
     <script type="module">
@@ -175,6 +181,99 @@
 
         // Announce ourselves.
         channel.postMessage({ type: "hello", peerId });
+
+        // --- WebSocket for cross-machine sync ---
+        let ws = null;
+        const wsStatus = document.getElementById("ws-status");
+        const wsUrlInput = document.getElementById("ws-url");
+
+        function connectWebSocket() {
+          const url = wsUrlInput.value.trim();
+          if (!url) return;
+          if (ws) { ws.close(); ws = null; }
+
+          try {
+            ws = new WebSocket(url);
+            wsStatus.textContent = "Connecting...";
+            wsStatus.style.color = "#ff9500";
+
+            ws.addEventListener("open", () => {
+              wsStatus.textContent = "Connected ✓";
+              wsStatus.style.color = "#34c759";
+              // Send initial state.
+              scheduleSyncOut();
+            });
+
+            ws.addEventListener("message", (event) => {
+              try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === "sync" && msg.peerId !== peerId) {
+                  const update = new Uint8Array(msg.state);
+                  editor.collab_apply_update(update);
+                  editor.clear_collab_cursors();
+                  editor.add_collab_cursor(
+                    msg.cursor || 0,
+                    msg.peerId,
+                    msg.color[0], msg.color[1], msg.color[2],
+                  );
+                  editor.render();
+                } else if (msg.type === "cursor" && msg.name !== peerId) {
+                  editor.clear_collab_cursors();
+                  editor.add_collab_cursor(msg.offset, msg.name, msg.color[0], msg.color[1], msg.color[2]);
+                  editor.render();
+                } else if (msg.type === "peer_count") {
+                  wsStatus.textContent = `Connected ✓ (${msg.count} peers)`;
+                }
+              } catch {}
+            });
+
+            ws.addEventListener("close", () => {
+              wsStatus.textContent = "Disconnected";
+              wsStatus.style.color = "#999";
+              ws = null;
+            });
+
+            ws.addEventListener("error", () => {
+              wsStatus.textContent = "Connection failed";
+              wsStatus.style.color = "#ff3b30";
+            });
+          } catch {
+            wsStatus.textContent = "Invalid URL";
+            wsStatus.style.color = "#ff3b30";
+          }
+        }
+
+        document.getElementById("ws-connect").addEventListener("click", connectWebSocket);
+        wsUrlInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") connectWebSocket();
+        });
+
+        // Override scheduleSyncOut to also send via WebSocket.
+        const originalScheduleSyncOut = scheduleSyncOut;
+        scheduleSyncOut = function() {
+          // BroadcastChannel sync (same browser).
+          if (syncTimer) clearTimeout(syncTimer);
+          syncTimer = setTimeout(() => {
+            try {
+              const state = editor.collab_encode_state();
+              const msg = {
+                type: "sync",
+                peerId,
+                state: Array.from(state),
+                cursor: cursorOffset,
+                color: peerColor,
+              };
+              channel.postMessage(msg);
+              // Also send via WebSocket if connected.
+              if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(msg));
+              }
+              document.getElementById("status-sync").textContent = "Synced";
+            } catch (e) {
+              console.error("sync error:", e);
+            }
+          }, 50);
+        };
 
         // --- Input handling (simplified version of the main demo) ---
         const textarea = document.createElement("textarea");
