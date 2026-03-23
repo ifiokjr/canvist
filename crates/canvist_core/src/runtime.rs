@@ -313,18 +313,134 @@ impl EditorRuntime {
 			}
 		}
 
-		match action.args {
+		match &action.args {
 			ActionArgs::SelectionSet { selection } => {
-				self.selection = selection;
+				self.selection = *selection;
 				(None, Invalidation::Selection)
 			}
 			ActionArgs::CursorMove { position, extend } => {
-				self.selection = if extend {
-					Selection::range(self.selection.start(), position)
+				self.selection = if *extend {
+					Selection::range(self.selection.start(), *position)
 				} else {
-					Selection::collapsed(position)
+					Selection::collapsed(*position)
 				};
 				(None, Invalidation::Selection)
+			}
+			ActionArgs::KeyDown {
+				key, modifiers, ..
+			} => self.handle_keydown(key, modifiers),
+			ActionArgs::Focus => {
+				(None, Invalidation::Selection)
+			}
+			ActionArgs::Blur => {
+				self.force_new_group = true;
+				(None, Invalidation::Selection)
+			}
+			_ => (None, Invalidation::None),
+		}
+	}
+
+	/// Handle keyboard shortcuts that modify selection or trigger navigation.
+	///
+	/// Returns `(transaction, invalidation)` — the transaction is `None` for
+	/// pure selection changes (arrow keys) and `Some` for edits.
+	fn handle_keydown(
+		&mut self,
+		key: &crate::EditorKey,
+		modifiers: &crate::Modifiers,
+	) -> (Option<Transaction>, Invalidation) {
+		use crate::EditorKey;
+
+		let doc_chars = self.document.char_count();
+		let caret = self.selection.end().offset();
+
+		match key {
+			// Arrow keys — cursor movement.
+			EditorKey::ArrowLeft => {
+				let new_pos = if modifiers.control || modifiers.meta {
+					self.document.word_boundary_left(caret)
+				} else {
+					caret.saturating_sub(1)
+				};
+				if modifiers.shift {
+					self.selection =
+						Selection::range(self.selection.start(), Position::new(new_pos));
+				} else {
+					self.selection = Selection::collapsed(Position::new(new_pos));
+				}
+				(None, Invalidation::Selection)
+			}
+			EditorKey::ArrowRight => {
+				let new_pos = if modifiers.control || modifiers.meta {
+					self.document.word_boundary_right(caret)
+				} else {
+					(caret + 1).min(doc_chars)
+				};
+				if modifiers.shift {
+					self.selection =
+						Selection::range(self.selection.start(), Position::new(new_pos));
+				} else {
+					self.selection = Selection::collapsed(Position::new(new_pos));
+				}
+				(None, Invalidation::Selection)
+			}
+			EditorKey::Home => {
+				let new_pos = if modifiers.control || modifiers.meta {
+					0
+				} else {
+					// Line start — find the previous newline.
+					let text = self.document.plain_text();
+					let chars: Vec<char> = text.chars().collect();
+					let mut pos = caret;
+					while pos > 0 && chars.get(pos - 1) != Some(&'\n') {
+						pos -= 1;
+					}
+					pos
+				};
+				if modifiers.shift {
+					self.selection =
+						Selection::range(self.selection.start(), Position::new(new_pos));
+				} else {
+					self.selection = Selection::collapsed(Position::new(new_pos));
+				}
+				(None, Invalidation::Selection)
+			}
+			EditorKey::End => {
+				let new_pos = if modifiers.control || modifiers.meta {
+					doc_chars
+				} else {
+					// Line end — find the next newline.
+					let text = self.document.plain_text();
+					let chars: Vec<char> = text.chars().collect();
+					let mut pos = caret;
+					while pos < chars.len() && chars[pos] != '\n' {
+						pos += 1;
+					}
+					pos
+				};
+				if modifiers.shift {
+					self.selection =
+						Selection::range(self.selection.start(), Position::new(new_pos));
+				} else {
+					self.selection = Selection::collapsed(Position::new(new_pos));
+				}
+				(None, Invalidation::Selection)
+			}
+			// Select all.
+			EditorKey::Character(ch) if ch == "a" && (modifiers.control || modifiers.meta) => {
+				self.selection =
+					Selection::range(Position::new(0), Position::new(doc_chars));
+				(None, Invalidation::Selection)
+			}
+			// Undo.
+			EditorKey::Character(ch) if ch == "z" && (modifiers.control || modifiers.meta) && !modifiers.shift => {
+				self.undo();
+				(None, Invalidation::DocumentAndSelection)
+			}
+			// Redo.
+			EditorKey::Character(ch) if ch == "z" && (modifiers.control || modifiers.meta) && modifiers.shift => {
+				self.redo();
+				(None, Invalidation::DocumentAndSelection)
 			}
 			_ => (None, Invalidation::None),
 		}
@@ -740,6 +856,111 @@ mod tests {
 		assert!(runtime.undo()); // undo "b"
 		assert!(runtime.undo()); // undo "\n"
 		assert!(runtime.undo()); // undo "a"
+		assert_eq!(runtime.document().plain_text(), "");
+	}
+
+	#[test]
+	fn keydown_arrow_left_moves_cursor() {
+		let mut runtime = runtime_with_plaintext("Hello");
+		let _ = runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(3)),
+		});
+
+		let output = runtime
+			.handle_event(EditorEvent::KeyDown {
+				key: crate::EditorKey::ArrowLeft,
+				modifiers: crate::Modifiers::default(),
+				repeat: false,
+			})
+			.unwrap();
+
+		assert_eq!(output.invalidation, Invalidation::Selection);
+		assert_eq!(runtime.selection().end().offset(), 2);
+	}
+
+	#[test]
+	fn keydown_ctrl_a_selects_all() {
+		let mut runtime = runtime_with_plaintext("Hello world");
+
+		let output = runtime
+			.handle_event(EditorEvent::KeyDown {
+				key: crate::EditorKey::Character("a".to_string()),
+				modifiers: crate::Modifiers {
+					control: true,
+					..Default::default()
+				},
+				repeat: false,
+			})
+			.unwrap();
+
+		assert_eq!(output.invalidation, Invalidation::Selection);
+		assert_eq!(runtime.selection().start().offset(), 0);
+		assert_eq!(runtime.selection().end().offset(), 11);
+	}
+
+	#[test]
+	fn keydown_home_end_navigation() {
+		let mut runtime = runtime_with_plaintext("Hello\nWorld");
+
+		// Move to offset 8 (middle of "World").
+		let _ = runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(8)),
+		});
+
+		// Home → start of "World" line (offset 6).
+		runtime
+			.handle_event(EditorEvent::KeyDown {
+				key: crate::EditorKey::Home,
+				modifiers: crate::Modifiers::default(),
+				repeat: false,
+			})
+			.unwrap();
+		assert_eq!(runtime.selection().end().offset(), 6);
+
+		// End → end of "World" line (offset 11).
+		runtime
+			.handle_event(EditorEvent::KeyDown {
+				key: crate::EditorKey::End,
+				modifiers: crate::Modifiers::default(),
+				repeat: false,
+			})
+			.unwrap();
+		assert_eq!(runtime.selection().end().offset(), 11);
+
+		// Ctrl+Home → document start.
+		runtime
+			.handle_event(EditorEvent::KeyDown {
+				key: crate::EditorKey::Home,
+				modifiers: crate::Modifiers {
+					control: true,
+					..Default::default()
+				},
+				repeat: false,
+			})
+			.unwrap();
+		assert_eq!(runtime.selection().end().offset(), 0);
+	}
+
+	#[test]
+	fn keydown_ctrl_z_undoes() {
+		let mut runtime = runtime_with_plaintext("");
+		runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: "Hello".to_string(),
+			})
+			.unwrap();
+		assert_eq!(runtime.document().plain_text(), "Hello");
+
+		runtime
+			.handle_event(EditorEvent::KeyDown {
+				key: crate::EditorKey::Character("z".to_string()),
+				modifiers: crate::Modifiers {
+					control: true,
+					..Default::default()
+				},
+				repeat: false,
+			})
+			.unwrap();
 		assert_eq!(runtime.document().plain_text(), "");
 	}
 
