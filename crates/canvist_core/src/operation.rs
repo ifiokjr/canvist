@@ -574,6 +574,42 @@ impl Transaction {
 			operations: inverses,
 		}
 	}
+
+	/// Return a cursor position hint for where the caret should be placed
+	/// after this transaction is applied. Returns the start offset of the
+	/// first insert or delete operation, or `None` if empty.
+	#[must_use]
+	pub fn cursor_hint(&self) -> Option<usize> {
+		for op in &self.operations {
+			match op {
+				Operation::Insert { position, text } => {
+					return Some(position.offset() + text.chars().count());
+				}
+				Operation::Delete { selection } => {
+					return Some(selection.start().offset());
+				}
+				Operation::Format { selection, .. } => {
+					return Some(selection.end().offset());
+				}
+				Operation::FormatRestore { .. } => {}
+			}
+		}
+		None
+	}
+
+	/// Compose two transactions by concatenating their operations.
+	///
+	/// The resulting transaction, when applied, first applies all operations
+	/// from `first`, then all operations from `second`. This is used by undo
+	/// coalescing to merge multiple inverse transactions into a single group.
+	#[must_use]
+	pub fn compose(first: &Self, second: &Self) -> Self {
+		let mut ops =
+			Vec::with_capacity(first.operations.len() + second.operations.len());
+		ops.extend(first.operations.iter().cloned());
+		ops.extend(second.operations.iter().cloned());
+		Self { operations: ops }
+	}
 }
 
 #[cfg(test)]

@@ -793,8 +793,8 @@
         }
 
         ctxMenu.append(
-          ctxItem("Undo", "Ctrl+Z", () => { editor.undo(); editor.render(); }),
-          ctxItem("Redo", "Ctrl+Y", () => { editor.redo(); editor.render(); }),
+          ctxItem("Undo", "Ctrl+Z", () => { editor.undo(); cursorOffset = editor.selection_end(); clearSelection(); renderFrame(); }),
+          ctxItem("Redo", "Ctrl+Y", () => { editor.redo(); cursorOffset = editor.selection_end(); clearSelection(); renderFrame(); }),
           (() => { const d = document.createElement("div"); d.style.cssText = "border-top:1px solid #eee;margin:4px 0;"; return d; })(),
           ctxItem("Cut", "Ctrl+X", () => {
             const t = editor.get_selected_text();

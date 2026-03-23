@@ -42,6 +42,8 @@ pub struct EditorRuntime {
 	redo_stack: Vec<Transaction>,
 	coalesce_timeout_ms: u64,
 	force_new_group: bool,
+	/// Timestamp of the last coalesced keystroke (for grouping rapid typing).
+	last_coalesce_ms: u64,
 }
 
 impl EditorRuntime {
@@ -72,6 +74,7 @@ impl EditorRuntime {
 			redo_stack: Vec::new(),
 			coalesce_timeout_ms: 500,
 			force_new_group: false,
+			last_coalesce_ms: 0,
 		}
 	}
 
@@ -117,7 +120,14 @@ impl EditorRuntime {
 		let redo_tx = inverse_tx.inverse(&self.document);
 		inverse_tx.apply(&mut self.document);
 		self.redo_stack.push(redo_tx);
-		self.selection = Selection::collapsed(Position::new(self.document.char_count()));
+
+		// Place cursor at the position implied by the inverse transaction.
+		// For an undo of an insert, this is the position where the text was
+		// inserted. For an undo of a delete, it's after the restored text.
+		let cursor_pos = inverse_tx
+			.cursor_hint()
+			.unwrap_or(self.document.char_count());
+		self.selection = Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
 		self.force_new_group = true;
 		true
 	}
@@ -138,7 +148,12 @@ impl EditorRuntime {
 		let inverse_tx = forward_tx.inverse(&self.document);
 		forward_tx.apply(&mut self.document);
 		self.undo_stack.push(inverse_tx);
-		self.selection = Selection::collapsed(Position::new(self.document.char_count()));
+
+		// Place cursor at the end of the re-applied change.
+		let cursor_pos = forward_tx
+			.cursor_hint()
+			.unwrap_or(self.document.char_count());
+		self.selection = Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
 		self.force_new_group = true;
 		true
 	}
@@ -375,14 +390,66 @@ impl EditorRuntime {
 			runtime.run_after_hooks(&self.document, &crate::TransactionMeta::new("runtime"), &tx);
 		}
 
-		// Push the inverse onto the undo stack so that calling `undo()` will
-		// apply it to restore the previous document state. The forward
-		// transaction is pushed to the redo stack when an undo is performed.
-		self.undo_stack.push(inverse);
+		// Undo coalescing: merge consecutive single-character inserts into
+		// a single undo group if they arrive within `coalesce_timeout_ms` of
+		// each other. This gives the user a "word at a time" undo experience
+		// rather than undoing one character at a time.
+		let should_coalesce = !self.force_new_group
+			&& Self::is_single_char_insert(&tx)
+			&& self.can_coalesce_with_top(&tx);
+
+		if should_coalesce {
+			// Merge: replace the top of the undo stack with a combined
+			// inverse that covers the full span from the group start.
+			// The combined inverse is built by composing: first undo the
+			// current keystroke, then undo everything accumulated so far.
+			if let Some(prev_inverse) = self.undo_stack.pop() {
+				// The combined inverse, when applied, will first undo this
+				// latest character, then undo all previous characters in the
+				// group — restoring the document to the state before the
+				// first keystroke in the burst.
+				let combined = Transaction::compose(&inverse, &prev_inverse);
+				self.undo_stack.push(combined);
+			}
+			// Update the coalesce timestamp so the window extends.
+			self.last_coalesce_ms = self.timestamp_ms;
+		} else {
+			self.undo_stack.push(inverse);
+			self.last_coalesce_ms = self.timestamp_ms;
+		}
+
 		self.redo_stack.clear();
-		self.force_new_group = false;
+		// Non-coalescible edits (newlines, multi-char, deletions, etc.)
+		// should break the chain so subsequent single-char inserts start
+		// a fresh undo group.
+		self.force_new_group = !Self::is_single_char_insert(&tx);
 
 		self.selection = Selection::collapsed(Position::new(self.document.char_count()));
+	}
+
+	/// Check if a transaction is a single-character insert (no deletion).
+	fn is_single_char_insert(tx: &Transaction) -> bool {
+		let ops = tx.operations();
+		if ops.len() != 1 {
+			return false;
+		}
+		matches!(
+			&ops[0],
+			Operation::Insert { text, .. } if text.chars().count() == 1
+				&& !text.starts_with('\n')
+		)
+	}
+
+	/// Check if the new transaction can coalesce with the top of the undo stack.
+	fn can_coalesce_with_top(&self, _tx: &Transaction) -> bool {
+		if self.undo_stack.is_empty() {
+			return false;
+		}
+		// Only coalesce if within the timeout window.
+		if self.timestamp_ms.saturating_sub(self.last_coalesce_ms) > self.coalesce_timeout_ms {
+			return false;
+		}
+		true
 	}
 }
 
@@ -550,5 +617,105 @@ mod tests {
 			err,
 			crate::operation::ReplayError::PreconditionFailed { .. }
 		));
+	}
+
+	#[test]
+	fn undo_coalescing_merges_rapid_single_char_inserts() {
+		let mut runtime = runtime_with_plaintext("");
+		runtime.set_coalesce_timeout_ms(1000);
+
+		// Simulate rapid typing: each keystroke is 50ms apart.
+		for (i, ch) in "hello".chars().enumerate() {
+			runtime.set_now_ms((i as u64 + 1) * 50);
+			runtime
+				.handle_event(EditorEvent::TextInsert {
+					text: ch.to_string(),
+				})
+				.expect("insert should succeed");
+		}
+
+		assert_eq!(runtime.document().plain_text(), "hello");
+
+		// Because the chars arrived within the 1000ms window, they should
+		// have coalesced into fewer undo entries. A single undo should
+		// remove the whole burst.
+		assert!(runtime.undo());
+		assert_eq!(
+			runtime.document().plain_text(),
+			"",
+			"undo should remove the entire coalesced typing burst"
+		);
+	}
+
+	#[test]
+	fn undo_coalescing_splits_on_timeout() {
+		let mut runtime = runtime_with_plaintext("");
+		runtime.set_coalesce_timeout_ms(100);
+
+		// First burst: "ab" within 100ms.
+		runtime.set_now_ms(10);
+		runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: "a".to_string(),
+			})
+			.unwrap();
+		runtime.set_now_ms(60);
+		runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: "b".to_string(),
+			})
+			.unwrap();
+
+		// Gap of 500ms — exceeds timeout.
+		runtime.set_now_ms(560);
+		runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: "c".to_string(),
+			})
+			.unwrap();
+
+		assert_eq!(runtime.document().plain_text(), "abc");
+
+		// First undo removes "c" (second group).
+		assert!(runtime.undo());
+		assert_eq!(runtime.document().plain_text(), "ab");
+
+		// Second undo removes "ab" (first group).
+		assert!(runtime.undo());
+		assert_eq!(runtime.document().plain_text(), "");
+	}
+
+	#[test]
+	fn newline_breaks_undo_coalescing() {
+		let mut runtime = runtime_with_plaintext("");
+		runtime.set_coalesce_timeout_ms(10000);
+
+		runtime.set_now_ms(10);
+		runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: "a".to_string(),
+			})
+			.unwrap();
+		runtime.set_now_ms(20);
+		runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: "\n".to_string(),
+			})
+			.unwrap();
+		runtime.set_now_ms(30);
+		runtime
+			.handle_event(EditorEvent::TextInsert {
+				text: "b".to_string(),
+			})
+			.unwrap();
+
+		assert_eq!(runtime.document().plain_text(), "a\nb");
+
+		// Newline is NOT a single-char coalescible insert, so it starts
+		// a new group. "b" after the newline is in its own group too.
+		assert!(runtime.undo()); // undo "b"
+		assert!(runtime.undo()); // undo "\n"
+		assert!(runtime.undo()); // undo "a"
+		assert_eq!(runtime.document().plain_text(), "");
 	}
 }

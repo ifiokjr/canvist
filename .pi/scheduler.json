@@ -7,13 +7,13 @@
       "kind": "recurring",
       "enabled": true,
       "createdAt": 1774286283770,
-      "nextRunAt": 1774287495125,
+      "nextRunAt": 1774291095125,
       "intervalMs": 600000,
       "expiresAt": 1774545483770,
       "jitterMs": 11355,
-      "runCount": 1,
+      "runCount": 3,
       "pending": false,
-      "lastRunAt": 1774286895306,
+      "lastRunAt": 1774290514450,
       "lastStatus": "success"
     },
     {
@@ -22,13 +22,13 @@
       "kind": "recurring",
       "enabled": true,
       "createdAt": 1774286277211,
-      "nextRunAt": 1774287495323,
+      "nextRunAt": 1774291095323,
       "intervalMs": 600000,
       "expiresAt": 1774545477211,
       "jitterMs": 18112,
-      "runCount": 1,
+      "runCount": 3,
       "pending": false,
-      "lastRunAt": 1774286947349,
+      "lastRunAt": 1774290516453,
       "lastStatus": "success"
     }
   ]
