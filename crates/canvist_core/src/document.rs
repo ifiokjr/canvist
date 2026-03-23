@@ -2606,4 +2606,46 @@ mod tests {
 		);
 		assert_eq!(doc.plain_text(), "Hello\nWorld");
 	}
+
+	#[test]
+	fn delete_across_multiple_paragraph_boundaries() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "AAA\nBBB\nCCC\nDDD");
+
+		assert_eq!(doc.paragraph_count(), 4);
+
+		// Delete "BBB\nCCC\n" (offsets 4..12).
+		let sel = Selection::range(Position::new(4), Position::new(12));
+		doc.delete(&sel);
+
+		assert_eq!(doc.plain_text(), "AAA\nDDD");
+		assert_eq!(doc.paragraph_count(), 2);
+	}
+
+	#[test]
+	fn insert_text_at_paragraph_boundary() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello\nWorld");
+
+		// Insert at offset 6 (start of "World").
+		doc.insert_text(Position::new(6), "Beautiful ");
+
+		assert_eq!(doc.plain_text(), "Hello\nBeautiful World");
+		assert_eq!(doc.paragraph_count(), 2);
+	}
+
+	#[test]
+	fn empty_paragraphs_after_multiple_newlines() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "A\n\nB");
+
+		assert_eq!(doc.paragraph_count(), 3);
+		assert_eq!(doc.plain_text(), "A\n\nB");
+
+		// The middle paragraph should be empty but present.
+		let runs = doc.styled_runs();
+		let texts: Vec<_> = runs.iter().map(|(t, _, _, _)| t.as_str()).collect();
+		assert!(texts.contains(&"A"), "should have 'A': {:?}", texts);
+		assert!(texts.contains(&"B"), "should have 'B': {:?}", texts);
+	}
 }

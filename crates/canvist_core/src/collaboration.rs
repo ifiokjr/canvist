@@ -332,4 +332,80 @@ mod tests {
 		let result = session.encode_diff_from_state_vector_payload(&[0xff, 0x00, 0x01]);
 		assert!(result.is_err());
 	}
+
+	#[test]
+	fn concurrent_edits_converge() {
+		let peer_a = CollaborationSession::new();
+		let peer_b = CollaborationSession::new();
+
+		// Bootstrap both peers with the same initial state.
+		peer_a.insert(0, "Hello");
+		let bootstrap = peer_a.encode_state();
+		peer_b.apply_update(&bootstrap);
+		assert_eq!(peer_a.text(), "Hello");
+		assert_eq!(peer_b.text(), "Hello");
+
+		// Concurrent edits: A appends, B prepends.
+		peer_a.insert(5, " World");
+		peer_b.insert(0, "Say: ");
+
+		// Exchange updates.
+		let update_a = peer_a.encode_state();
+		let update_b = peer_b.encode_state();
+		peer_a.apply_update(&update_b);
+		peer_b.apply_update(&update_a);
+
+		// Both should converge to the same state (CRDT guarantee).
+		assert_eq!(
+			peer_a.text(),
+			peer_b.text(),
+			"peers should converge: A={:?} B={:?}",
+			peer_a.text(),
+			peer_b.text()
+		);
+		// Both texts should contain all edits.
+		let final_text = peer_a.text();
+		assert!(final_text.contains("Hello"), "should contain Hello");
+		assert!(final_text.contains("World"), "should contain World");
+		assert!(final_text.contains("Say:"), "should contain Say:");
+	}
+
+	#[test]
+	fn three_peer_convergence() {
+		let peer_a = CollaborationSession::new();
+		let peer_b = CollaborationSession::new();
+		let peer_c = CollaborationSession::new();
+
+		peer_a.insert(0, "Base");
+		let init = peer_a.encode_state();
+		peer_b.apply_update(&init);
+		peer_c.apply_update(&init);
+
+		// Each peer makes a concurrent edit.
+		peer_a.insert(4, " A");
+		peer_b.insert(0, "B ");
+		peer_c.insert(4, " C");
+
+		// Full mesh sync.
+		let ua = peer_a.encode_state();
+		let ub = peer_b.encode_state();
+		let uc = peer_c.encode_state();
+
+		peer_a.apply_update(&ub);
+		peer_a.apply_update(&uc);
+		peer_b.apply_update(&ua);
+		peer_b.apply_update(&uc);
+		peer_c.apply_update(&ua);
+		peer_c.apply_update(&ub);
+
+		// All three should converge.
+		assert_eq!(peer_a.text(), peer_b.text());
+		assert_eq!(peer_b.text(), peer_c.text());
+
+		let final_text = peer_a.text();
+		assert!(final_text.contains("Base"), "should contain Base");
+		assert!(final_text.contains("A"), "should contain A");
+		assert!(final_text.contains("B"), "should contain B");
+		assert!(final_text.contains("C"), "should contain C");
+	}
 }

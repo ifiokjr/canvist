@@ -107,6 +107,9 @@
   </head>
   <body>
     <h1>canvist editor</h1>
+    <p style="margin-bottom:1rem;font-size:0.85rem;color:#666;">
+      <a href="collab.html" style="color:#4285f4;text-decoration:none;">Open collaboration demo →</a>
+    </p>
 
     <div class="controls">
       <button id="btn-canvas" class="active">Canvas Editor</button>
@@ -1386,6 +1389,20 @@
             editor.toggle_underline();
             updateToolbarState();
             renderFrame();
+            return;
+          }
+
+          // --- Save (Ctrl+S) ---
+          if (mod && e.key === "s") {
+            e.preventDefault();
+            saveToLocalStorage();
+            announceA11y("Document saved");
+            // Flash the status bar.
+            const statusBar = document.getElementById("status-bar");
+            if (statusBar) {
+              statusBar.style.background = "#e8f5e9";
+              setTimeout(() => { statusBar.style.background = "#f5f5f5"; }, 600);
+            }
             return;
           }
 
