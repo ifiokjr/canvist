@@ -9450,4 +9450,219 @@ for (const browserName of BROWSERS) {
 		sanitizeResources: false,
 		sanitizeOps: false,
 	});
+
+	// ── Anchor named-window helpers ─────────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] anchor named-window helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text("abcdefghijklmnopqrstuvwxyz");
+						ed.set_anchor("a0", 1);
+						ed.set_anchor("a1", 4);
+						ed.set_anchor("a2", 6);
+						ed.set_anchor("a3", 10);
+						ed.set_anchor("a4", 15);
+						ed.set_anchor("a5", 18);
+
+						return {
+							aroundA2R2: Array.from(ed.anchor_names_in_anchor_window("a2", 2)),
+							aroundA2R5: Array.from(ed.anchor_names_in_anchor_window("a2", 5)),
+							aroundMissing: Array.from(
+								ed.anchor_names_in_anchor_window("missing", 5),
+							),
+							countA2R5: ed.anchor_count_in_anchor_window("a2", 5),
+							countMissing: ed.anchor_count_in_anchor_window("missing", 5),
+							shiftedA2R5: ed.shift_anchors_in_anchor_window("a2", 5, 2),
+							shiftedMissing: ed.shift_anchors_in_anchor_window(
+								"missing",
+								5,
+								2,
+							),
+							afterShift: Array.from(ed.anchor_names_by_offset()),
+							removedA3R3: ed.remove_anchors_in_anchor_window("a3", 3),
+							removedMissing: ed.remove_anchors_in_anchor_window("missing", 3),
+							afterRemove: Array.from(ed.anchor_names_by_offset()),
+						};
+					});
+
+					assertEquals(result.aroundA2R2, ["a1", "a2"]);
+					assertEquals(result.aroundA2R5, ["a0", "a1", "a2", "a3"]);
+					assertEquals(result.aroundMissing, []);
+					assertEquals(result.countA2R5, 4);
+					assertEquals(result.countMissing, 0);
+					assertEquals(result.shiftedA2R5, 4);
+					assertEquals(result.shiftedMissing, 0);
+					assertEquals(result.afterShift, ["a0", "a1", "a2", "a3", "a4", "a5"]);
+					assertEquals(result.removedA3R3, 2);
+					assertEquals(result.removedMissing, 0);
+					assertEquals(result.afterRemove, ["a0", "a1", "a2", "a5"]);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
+
+	// ── Line occurrence ratio helpers ───────────────────────────────
+
+	Deno.test({
+		name: `[${browserName}] line occurrence ratio helpers`,
+		fn: async () => {
+			const { server, url } = startServer(PKG_ROOT);
+			try {
+				const { browser, page } = await launchBrowser(browserName);
+				try {
+					await page.goto(url, { waitUntil: "networkidle" });
+					await waitForEditor(page);
+
+					const result = await page.evaluate(() => {
+						const ed = (window as any).__canvistEditor;
+						ed.insert_text(
+							"red\nblue\nred\ngreen\nBLUE\nblue\nblue\nsolo\nred",
+						);
+
+						const strict = {
+							groupRatio2to3: ed.line_occurrence_group_ratio_in_count_range(
+								true,
+								false,
+								2,
+								3,
+							),
+							groupRatio3: ed.line_occurrence_group_ratio_with_count(
+								true,
+								false,
+								3,
+							),
+							groupRatioMin2: ed.line_occurrence_group_ratio_with_min_count(
+								true,
+								false,
+								2,
+							),
+							groupRatioMax1: ed.line_occurrence_group_ratio_with_max_count(
+								true,
+								false,
+								1,
+							),
+							groupRatioMax0: ed.line_occurrence_group_ratio_with_max_count(
+								true,
+								false,
+								0,
+							),
+							lineRatio3: ed.line_occurrence_line_ratio_with_count(
+								true,
+								false,
+								3,
+							),
+							lineRatioMin2: ed.line_occurrence_line_ratio_with_min_count(
+								true,
+								false,
+								2,
+							),
+							lineRatioMax1: ed.line_occurrence_line_ratio_with_max_count(
+								true,
+								false,
+								1,
+							),
+							lineRatio0: ed.line_occurrence_line_ratio_with_count(
+								true,
+								false,
+								0,
+							),
+							groupRatio4to3: ed.line_occurrence_group_ratio_in_count_range(
+								true,
+								false,
+								4,
+								3,
+							),
+						};
+
+						const loose = {
+							groupRatio2to4: ed.line_occurrence_group_ratio_in_count_range(
+								false,
+								false,
+								2,
+								4,
+							),
+							groupRatio4: ed.line_occurrence_group_ratio_with_count(
+								false,
+								false,
+								4,
+							),
+							groupRatioMin3: ed.line_occurrence_group_ratio_with_min_count(
+								false,
+								false,
+								3,
+							),
+							groupRatioMax1: ed.line_occurrence_group_ratio_with_max_count(
+								false,
+								false,
+								1,
+							),
+							lineRatio4: ed.line_occurrence_line_ratio_with_count(
+								false,
+								false,
+								4,
+							),
+							lineRatioMin3: ed.line_occurrence_line_ratio_with_min_count(
+								false,
+								false,
+								3,
+							),
+							lineRatioMax1: ed.line_occurrence_line_ratio_with_max_count(
+								false,
+								false,
+								1,
+							),
+							lineRatioMax0: ed.line_occurrence_line_ratio_with_max_count(
+								false,
+								false,
+								0,
+							),
+						};
+
+						return { strict, loose };
+					});
+
+					assertEquals(result.strict.groupRatio2to3, 2 / 5);
+					assertEquals(result.strict.groupRatio3, 2 / 5);
+					assertEquals(result.strict.groupRatioMin2, 2 / 5);
+					assertEquals(result.strict.groupRatioMax1, 3 / 5);
+					assertEquals(result.strict.groupRatioMax0, 0);
+					assertEquals(result.strict.lineRatio3, 2 / 3);
+					assertEquals(result.strict.lineRatioMin2, 2 / 3);
+					assertEquals(result.strict.lineRatioMax1, 1 / 3);
+					assertEquals(result.strict.lineRatio0, 0);
+					assertEquals(result.strict.groupRatio4to3, 0);
+
+					assertEquals(result.loose.groupRatio2to4, 1 / 2);
+					assertEquals(result.loose.groupRatio4, 1 / 4);
+					assertEquals(result.loose.groupRatioMin3, 1 / 2);
+					assertEquals(result.loose.groupRatioMax1, 1 / 2);
+					assertEquals(result.loose.lineRatio4, 4 / 9);
+					assertEquals(result.loose.lineRatioMin3, 7 / 9);
+					assertEquals(result.loose.lineRatioMax1, 2 / 9);
+					assertEquals(result.loose.lineRatioMax0, 0);
+				} finally {
+					await browser.close();
+				}
+			} finally {
+				await server.shutdown();
+			}
+		},
+		sanitizeResources: false,
+		sanitizeOps: false,
+	});
 }

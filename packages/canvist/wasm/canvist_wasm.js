@@ -172,6 +172,18 @@ export class CanvistEditor {
         return ret >>> 0;
     }
     /**
+     * Count anchors whose offsets are within `radius` of a named anchor.
+     * @param {string} name
+     * @param {number} radius
+     * @returns {number}
+     */
+    anchor_count_in_anchor_window(name, radius) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_count_in_anchor_window(this.__wbg_ptr, ptr0, len0, radius);
+        return ret >>> 0;
+    }
+    /**
      * Count anchors whose offsets are within `radius` of `center_offset`.
      * @param {number} center_offset
      * @param {number} radius
@@ -350,6 +362,24 @@ export class CanvistEditor {
         var v1 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
         wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
         return v1;
+    }
+    /**
+     * Anchor names whose offsets are within `radius` of a named anchor.
+     *
+     * Distance check is inclusive (`abs_diff <= radius`).
+     * Returns empty when the named anchor does not exist.
+     * Output is sorted by offset then name.
+     * @param {string} name
+     * @param {number} radius
+     * @returns {string[]}
+     */
+    anchor_names_in_anchor_window(name, radius) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_anchor_names_in_anchor_window(this.__wbg_ptr, ptr0, len0, radius);
+        var v2 = getArrayJsValueFromWasm0(ret[0], ret[1]).slice();
+        wasm.__wbindgen_free(ret[0], ret[1] * 4, 4);
+        return v2;
     }
     /**
      * Anchor names whose offsets are within `radius` of `center_offset`.
@@ -2702,6 +2732,51 @@ export class CanvistEditor {
         return v1;
     }
     /**
+     * Ratio of groups constrained to an inclusive occurrence-count range.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @param {number} max_count
+     * @returns {number}
+     */
+    line_occurrence_group_ratio_in_count_range(case_sensitive, ignore_whitespace, min_count, max_count) {
+        const ret = wasm.canvisteditor_line_occurrence_group_ratio_in_count_range(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count, max_count);
+        return ret;
+    }
+    /**
+     * Ratio of groups whose occurrence size equals `count`.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} count
+     * @returns {number}
+     */
+    line_occurrence_group_ratio_with_count(case_sensitive, ignore_whitespace, count) {
+        const ret = wasm.canvisteditor_line_occurrence_group_ratio_with_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, count);
+        return ret;
+    }
+    /**
+     * Ratio of groups whose occurrence size is at most `max_count`.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} max_count
+     * @returns {number}
+     */
+    line_occurrence_group_ratio_with_max_count(case_sensitive, ignore_whitespace, max_count) {
+        const ret = wasm.canvisteditor_line_occurrence_group_ratio_with_max_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, max_count);
+        return ret;
+    }
+    /**
+     * Ratio of groups whose occurrence size is at least `min_count`.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @returns {number}
+     */
+    line_occurrence_group_ratio_with_min_count(case_sensitive, ignore_whitespace, min_count) {
+        const ret = wasm.canvisteditor_line_occurrence_group_ratio_with_min_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count);
+        return ret;
+    }
+    /**
      * Line-occurrence histogram as `[occurrence_count, group_count, ...]`.
      *
      * Rows are sorted by occurrence count descending.
@@ -2755,6 +2830,39 @@ export class CanvistEditor {
      */
     line_occurrence_line_ratio_in_count_range(case_sensitive, ignore_whitespace, min_count, max_count) {
         const ret = wasm.canvisteditor_line_occurrence_line_ratio_in_count_range(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count, max_count);
+        return ret;
+    }
+    /**
+     * Ratio of lines belonging to groups whose occurrence size equals `count`.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} count
+     * @returns {number}
+     */
+    line_occurrence_line_ratio_with_count(case_sensitive, ignore_whitespace, count) {
+        const ret = wasm.canvisteditor_line_occurrence_line_ratio_with_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, count);
+        return ret;
+    }
+    /**
+     * Ratio of lines belonging to groups with at most `max_count` occurrences.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} max_count
+     * @returns {number}
+     */
+    line_occurrence_line_ratio_with_max_count(case_sensitive, ignore_whitespace, max_count) {
+        const ret = wasm.canvisteditor_line_occurrence_line_ratio_with_max_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, max_count);
+        return ret;
+    }
+    /**
+     * Ratio of lines belonging to groups with at least `min_count` occurrences.
+     * @param {boolean} case_sensitive
+     * @param {boolean} ignore_whitespace
+     * @param {number} min_count
+     * @returns {number}
+     */
+    line_occurrence_line_ratio_with_min_count(case_sensitive, ignore_whitespace, min_count) {
+        const ret = wasm.canvisteditor_line_occurrence_line_ratio_with_min_count(this.__wbg_ptr, case_sensitive, ignore_whitespace, min_count);
         return ret;
     }
     /**
@@ -3886,6 +3994,22 @@ export class CanvistEditor {
         const ptr1 = passStringToWasm0(end_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_remove_anchors_between(this.__wbg_ptr, ptr0, len0, ptr1, len1, inclusive);
+        return ret >>> 0;
+    }
+    /**
+     * Remove anchors whose offsets are within `radius` of a named anchor.
+     *
+     * Distance check is inclusive (`abs_diff <= radius`).
+     * Returns number removed.
+     * Returns 0 when the named anchor does not exist.
+     * @param {string} name
+     * @param {number} radius
+     * @returns {number}
+     */
+    remove_anchors_in_anchor_window(name, radius) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_remove_anchors_in_anchor_window(this.__wbg_ptr, ptr0, len0, radius);
         return ret >>> 0;
     }
     /**
@@ -5126,6 +5250,23 @@ export class CanvistEditor {
         const ptr1 = passStringToWasm0(end_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
         const ret = wasm.canvisteditor_shift_anchors_between(this.__wbg_ptr, ptr0, len0, ptr1, len1, delta, inclusive);
+        return ret >>> 0;
+    }
+    /**
+     * Shift anchors whose offsets are within `radius` of a named anchor.
+     *
+     * Distance check is inclusive (`abs_diff <= radius`).
+     * Offsets are clamped to document bounds. Returns number shifted.
+     * Returns 0 when the named anchor does not exist.
+     * @param {string} name
+     * @param {number} radius
+     * @param {number} delta
+     * @returns {number}
+     */
+    shift_anchors_in_anchor_window(name, radius, delta) {
+        const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.canvisteditor_shift_anchors_in_anchor_window(this.__wbg_ptr, ptr0, len0, radius, delta);
         return ret >>> 0;
     }
     /**
