@@ -2,21 +2,6 @@
   "version": 1,
   "tasks": [
     {
-      "id": "vxxijzm9",
-      "prompt": "continue improving the codebae",
-      "kind": "recurring",
-      "enabled": true,
-      "createdAt": 1774286277211,
-      "nextRunAt": 1774291095323,
-      "intervalMs": 600000,
-      "expiresAt": 1774545477211,
-      "jitterMs": 18112,
-      "runCount": 3,
-      "pending": true,
-      "lastRunAt": 1774290516453,
-      "lastStatus": "success"
-    },
-    {
       "id": "vl0fvc40",
       "prompt": "continue improving the codebase",
       "kind": "recurring",
@@ -27,8 +12,23 @@
       "expiresAt": 1774545483770,
       "jitterMs": 11355,
       "runCount": 4,
-      "pending": false,
+      "pending": true,
       "lastRunAt": 1774291286917,
+      "lastStatus": "success"
+    },
+    {
+      "id": "vxxijzm9",
+      "prompt": "continue improving the codebae",
+      "kind": "recurring",
+      "enabled": true,
+      "createdAt": 1774286277211,
+      "nextRunAt": 1774292295323,
+      "intervalMs": 600000,
+      "expiresAt": 1774545477211,
+      "jitterMs": 18112,
+      "runCount": 4,
+      "pending": false,
+      "lastRunAt": 1774291700765,
       "lastStatus": "success"
     }
   ]
