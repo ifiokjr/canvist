@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>canvist — collaboration demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: "Inter", system-ui, sans-serif;
+        background: #f0f4f8;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+        min-height: 100vh;
+      }
+      h1 { margin-bottom: 0.5rem; color: #333; }
+      .subtitle { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
+      .editor-container {
+        position: relative;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+      }
+      #editor-canvas {
+        display: block;
+        cursor: text;
+        -webkit-font-smoothing: antialiased;
+      }
+      .status {
+        display: flex; gap: 1rem; padding: 8px 12px;
+        background: #f8f9fa; border-top: 1px solid #eee;
+        border-radius: 0 0 8px 8px; font-size: 0.82rem; color: #666;
+        max-width: 800px; width: 100%;
+      }
+      .peer-indicator {
+        display: inline-block; width: 8px; height: 8px;
+        border-radius: 50%; margin-right: 4px;
+      }
+      .connected { background: #34c759; }
+      .syncing { background: #ff9500; animation: pulse 1s infinite; }
+      @keyframes pulse { 50% { opacity: 0.4; } }
+      .instructions {
+        margin-top: 1rem; padding: 1rem; background: #e8f0fe;
+        border-radius: 8px; max-width: 800px; font-size: 0.85rem;
+        color: #333; line-height: 1.5;
+      }
+      .instructions strong { color: #1a73e8; }
+    </style>
+  </head>
+  <body>
+    <h1>canvist collab</h1>
+    <p class="subtitle">Real-time collaboration via BroadcastChannel (same browser, multiple tabs)</p>
+
+    <div class="editor-container">
+      <canvas id="editor-canvas" width="800" height="400"></canvas>
+    </div>
+    <div class="status">
+      <span><span id="peer-dot" class="peer-indicator connected"></span> <span id="peer-label">Peer</span></span>
+      <span id="status-sync">Synced</span>
+      <span id="status-words">0 words</span>
+      <span id="status-chars">0 chars</span>
+    </div>
+
+    <div class="instructions">
+      <strong>How to test:</strong> Open this page in two browser tabs.
+      Type in either tab — edits sync in real-time via the Yrs CRDT.
+      Each tab gets a random color cursor visible in the other tab.
+    </div>
+
+    <script type="module">
+      import init, { CanvistEditor } from "../wasm/canvist_wasm.js";
+
+      const PEER_COLORS = [
+        [66, 133, 244],   // blue
+        [234, 67, 53],    // red
+        [52, 168, 83],    // green
+        [251, 188, 4],    // yellow
+        [153, 0, 255],    // purple
+        [255, 109, 0],    // orange
+      ];
+
+      async function setup() {
+        await init();
+
+        const canvas = document.getElementById("editor-canvas");
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = 800, cssHeight = 400;
+        canvas.style.width = cssWidth + "px";
+        canvas.style.height = cssHeight + "px";
+        canvas.width = Math.round(cssWidth * dpr);
+        canvas.height = Math.round(cssHeight * dpr);
+        const ctx2d = canvas.getContext("2d");
+        if (ctx2d && dpr !== 1) ctx2d.scale(dpr, dpr);
+
+        try { await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 2000))]); } catch {}
+
+        const editor = CanvistEditor.create("editor-canvas");
+        editor.set_size(cssWidth, cssHeight);
+
+        // Assign a random peer identity.
+        const peerId = "peer-" + Math.random().toString(36).slice(2, 8);
+        const peerColor = PEER_COLORS[Math.floor(Math.random() * PEER_COLORS.length)];
+        document.getElementById("peer-label").textContent = peerId;
+        document.getElementById("peer-dot").style.background =
+          `rgb(${peerColor[0]},${peerColor[1]},${peerColor[2]})`;
+
+        // Enable collaboration.
+        editor.enable_collab();
+
+        // --- BroadcastChannel for tab-to-tab sync ---
+        const channel = new BroadcastChannel("canvist-collab");
+
+        // Debounce sync to avoid flooding.
+        let syncTimer = null;
+        function scheduleSyncOut() {
+          if (syncTimer) clearTimeout(syncTimer);
+          syncTimer = setTimeout(() => {
+            try {
+              const state = editor.collab_encode_state();
+              channel.postMessage({
+                type: "sync",
+                peerId,
+                state: Array.from(state),
+                cursor: cursorOffset,
+                color: peerColor,
+              });
+              document.getElementById("status-sync").textContent = "Synced";
+            } catch (e) {
+              console.error("sync error:", e);
+            }
+          }, 50);
+        }
+
+        channel.addEventListener("message", (e) => {
+          const msg = e.data;
+          if (msg.type === "sync" && msg.peerId !== peerId) {
+            try {
+              const update = new Uint8Array(msg.state);
+              editor.collab_apply_update(update);
+
+              // Show remote peer's cursor.
+              editor.clear_collab_cursors();
+              editor.add_collab_cursor(
+                msg.cursor || 0,
+                msg.peerId,
+                msg.color[0], msg.color[1], msg.color[2],
+              );
+
+              document.getElementById("peer-dot").classList.add("syncing");
+              setTimeout(() => {
+                document.getElementById("peer-dot").classList.remove("syncing");
+              }, 300);
+
+              editor.render();
+            } catch (e) {
+              console.error("apply update error:", e);
+            }
+          } else if (msg.type === "hello" && msg.peerId !== peerId) {
+            // New peer joined — send our state.
+            scheduleSyncOut();
+          }
+        });
+
+        // Announce ourselves.
+        channel.postMessage({ type: "hello", peerId });
+
+        // --- Input handling (simplified version of the main demo) ---
+        const textarea = document.createElement("textarea");
+        textarea.id = "canvist-input";
+        textarea.setAttribute("autocomplete", "off");
+        textarea.setAttribute("spellcheck", "false");
+        textarea.style.cssText =
+          "position:absolute;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;";
+        canvas.parentElement.appendChild(textarea);
+
+        canvas.addEventListener("click", () => textarea.focus());
+        canvas.setAttribute("tabindex", "0");
+
+        let cursorOffset = 0;
+        let selectionAnchor = 0;
+
+        function charOffsetFromMouse(e) {
+          const rect = canvas.getBoundingClientRect();
+          try { return editor.hit_test(e.clientX - rect.left, e.clientY - rect.top); }
+          catch { return cursorOffset; }
+        }
+
+        function renderFrame() {
+          try {
+            editor.set_caret_visible(true);
+            editor.set_now_ms(Date.now());
+            editor.render();
+            // Update status.
+            document.getElementById("status-words").textContent =
+              editor.word_count() + " words";
+            document.getElementById("status-chars").textContent =
+              editor.char_count() + " chars";
+          } catch (e) { console.error("render:", e); }
+        }
+
+        // Caret blink.
+        let caretVis = true;
+        setInterval(() => {
+          caretVis = !caretVis;
+          editor.set_caret_visible(caretVis);
+          try { editor.render(); } catch {}
+        }, 530);
+
+        canvas.addEventListener("mousedown", (e) => {
+          const offset = charOffsetFromMouse(e);
+          textarea.focus();
+          cursorOffset = offset;
+          selectionAnchor = offset;
+          editor.set_selection(offset, offset);
+          renderFrame();
+          e.preventDefault();
+        });
+
+        textarea.addEventListener("beforeinput", (e) => {
+          if (e.isComposing) return;
+          if (e.inputType === "insertText" && e.data) {
+            e.preventDefault();
+            editor.insert_text_at(cursorOffset, e.data);
+            cursorOffset += e.data.length;
+            editor.set_selection(cursorOffset, cursorOffset);
+            editor.collab_sync_local();
+            scheduleSyncOut();
+            textarea.value = "";
+            renderFrame();
+          } else if (e.inputType === "deleteContentBackward") {
+            e.preventDefault();
+            if (cursorOffset > 0) {
+              editor.delete_range(cursorOffset - 1, cursorOffset);
+              cursorOffset--;
+              editor.set_selection(cursorOffset, cursorOffset);
+              editor.collab_sync_local();
+              scheduleSyncOut();
+            }
+            textarea.value = "";
+            renderFrame();
+          } else if (e.inputType === "insertLineBreak" || e.inputType === "insertParagraph") {
+            e.preventDefault();
+            editor.insert_text_at(cursorOffset, "\n");
+            cursorOffset++;
+            editor.set_selection(cursorOffset, cursorOffset);
+            editor.collab_sync_local();
+            scheduleSyncOut();
+            textarea.value = "";
+            renderFrame();
+          }
+        });
+
+        textarea.addEventListener("keydown", (e) => {
+          if (e.isComposing) return;
+          const mod = e.ctrlKey || e.metaKey;
+
+          if (e.key === "Enter") {
+            e.preventDefault();
+            editor.insert_text_at(cursorOffset, "\n");
+            cursorOffset++;
+            editor.set_selection(cursorOffset, cursorOffset);
+            editor.collab_sync_local();
+            scheduleSyncOut();
+            textarea.value = "";
+            renderFrame();
+            return;
+          }
+
+          if (e.key === "Backspace") {
+            e.preventDefault();
+            if (cursorOffset > 0) {
+              editor.delete_range(cursorOffset - 1, cursorOffset);
+              cursorOffset--;
+              editor.set_selection(cursorOffset, cursorOffset);
+              editor.collab_sync_local();
+              scheduleSyncOut();
+            }
+            textarea.value = "";
+            renderFrame();
+            return;
+          }
+
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            if (cursorOffset > 0) cursorOffset--;
+            editor.set_selection(cursorOffset, cursorOffset);
+            renderFrame();
+            return;
+          }
+          if (e.key === "ArrowRight") {
+            e.preventDefault();
+            if (cursorOffset < editor.char_count()) cursorOffset++;
+            editor.set_selection(cursorOffset, cursorOffset);
+            renderFrame();
+            return;
+          }
+
+          if (mod && e.key === "a") {
+            e.preventDefault();
+            editor.set_selection(0, editor.char_count());
+            cursorOffset = editor.char_count();
+            renderFrame();
+            return;
+          }
+
+          if (mod && e.key === "z") {
+            e.preventDefault();
+            if (e.shiftKey) editor.redo(); else editor.undo();
+            cursorOffset = editor.selection_end();
+            editor.collab_sync_local();
+            scheduleSyncOut();
+            renderFrame();
+            return;
+          }
+
+          // Formatting.
+          if (mod && e.key === "b") { e.preventDefault(); editor.toggle_bold(); renderFrame(); return; }
+          if (mod && e.key === "i") { e.preventDefault(); editor.toggle_italic(); renderFrame(); return; }
+          if (mod && e.key === "u") { e.preventDefault(); editor.toggle_underline(); renderFrame(); return; }
+        });
+
+        textarea.addEventListener("focus", () => {
+          editor.set_focused(true);
+          canvas.parentElement.style.borderColor = "#4285f4";
+          canvas.parentElement.style.boxShadow = "0 0 0 2px rgba(66,133,244,0.25)";
+          renderFrame();
+        });
+        textarea.addEventListener("blur", () => {
+          editor.set_focused(false);
+          canvas.parentElement.style.borderColor = "#ddd";
+          canvas.parentElement.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+          renderFrame();
+        });
+
+        renderFrame();
+        textarea.focus();
+      }
+
+      setup();
+    </script>
+  </body>
+</html>
