@@ -11341,6 +11341,10 @@ impl CanvistEditor {
 		// Gutter width for line numbers (0 when disabled).
 		let gutter_width: f32 = if self.show_line_numbers { 48.0 } else { 0.0 };
 
+		// Pass the available canvas width minus the gutter to the layout
+		// engine. `LayoutConstants` subtracts `padding_x * 2` internally, so
+		// the final `max_width` will be `(width - gutter_width) - 40`, which
+		// leaves room for left+right padding within the content area.
 		let content_w = if self.word_wrap {
 			width - gutter_width
 		} else {

@@ -114,12 +114,15 @@
     </div>
 
     <div id="canvas-section">
-      <div id="formatting-toolbar" style="margin-bottom:8px;display:flex;gap:4px;">
-        <button id="btn-bold" title="Bold (Ctrl+B)" style="font-weight:bold;width:32px;">B</button>
-        <button id="btn-italic" title="Italic (Ctrl+I)" style="font-style:italic;width:32px;">I</button>
-        <button id="btn-underline" title="Underline (Ctrl+U)" style="text-decoration:underline;width:32px;">U</button>
-        <button id="btn-strikethrough" title="Strikethrough (Ctrl+Shift+S)" style="text-decoration:line-through;width:32px;">S</button>
-        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
+      <div id="formatting-toolbar" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px;max-width:800px;align-items:center;">
+        <!-- Row 1: Core formatting -->
+        <div style="display:flex;gap:2px;align-items:center;">
+          <button id="btn-bold" title="Bold (Ctrl+B)" style="font-weight:bold;width:32px;">B</button>
+          <button id="btn-italic" title="Italic (Ctrl+I)" style="font-style:italic;width:32px;">I</button>
+          <button id="btn-underline" title="Underline (Ctrl+U)" style="text-decoration:underline;width:32px;">U</button>
+          <button id="btn-strikethrough" title="Strikethrough (Ctrl+Shift+S)" style="text-decoration:line-through;width:32px;">S</button>
+        </div>
+        <span style="border-left:1px solid #ddd;height:24px;"></span>
         <select id="font-size-select" title="Font Size" style="padding:4px;">
           <option value="12">12px</option>
           <option value="14">14px</option>
@@ -129,70 +132,81 @@
           <option value="32">32px</option>
           <option value="48">48px</option>
         </select>
-        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
-        <button id="btn-align-left" title="Align Left" style="width:32px;font-weight:bold;">⇤</button>
-        <button id="btn-align-center" title="Align Center" style="width:32px;font-weight:bold;">⇔</button>
-        <button id="btn-align-right" title="Align Right" style="width:32px;font-weight:bold;">⇥</button>
-        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
-        <label title="Text Color" style="display:inline-flex;align-items:center;cursor:pointer;">
-          <span style="font-size:0.85em;margin-right:2px;">A</span>
-          <input id="color-picker" type="color" value="#000000" style="width:24px;height:24px;border:none;padding:0;cursor:pointer;" />
-        </label>
-        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
-        <button id="btn-export-html" title="Copy as HTML" style="font-size:0.8em;padding:4px 8px;">HTML</button>
-        <button id="btn-export-md" title="Copy as Markdown" style="font-size:0.8em;padding:4px 8px;">MD</button>
-        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
-        <label title="Show line numbers" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
-          <input id="line-numbers-toggle" type="checkbox" style="margin-right:3px;" />
-          <span>#</span>
-        </label>
-        <label title="Read-only mode" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
-          <input id="read-only-toggle" type="checkbox" style="margin-right:3px;" />
-          <span>🔒</span>
-        </label>
-        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
-        <label title="Highlight Color" style="display:inline-flex;align-items:center;cursor:pointer;">
-          <span style="font-size:0.85em;margin-right:2px;background:#ff0;">🖍</span>
-          <input id="highlight-picker" type="color" value="#ffff00" style="width:24px;height:24px;border:none;padding:0;cursor:pointer;" />
-        </label>
-        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
-        <button id="btn-bullet" title="Toggle Bullet List" style="font-size:0.9em;padding:4px 8px;">•</button>
-        <button id="btn-numbered" title="Toggle Numbered List" style="font-size:0.8em;padding:4px 8px;">1.</button>
-        <label title="Word Wrap" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
-          <input id="word-wrap-toggle" type="checkbox" checked style="margin-right:3px;" />
-          <span>↩</span>
-        </label>
-        <label title="Show Whitespace" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
-          <input id="whitespace-toggle" type="checkbox" style="margin-right:3px;" />
-          <span>¶</span>
-        </label>
-        <label title="Auto-Close Brackets" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
-          <input id="auto-close-toggle" type="checkbox" style="margin-right:3px;" />
-          <span>()</span>
-        </label>
-        <label title="Soft Tabs (spaces)" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
-          <input id="soft-tabs-toggle" type="checkbox" style="margin-right:3px;" />
-          <span>⇥</span>
-        </label>
-        <label title="Auto-Surround" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
-          <input id="auto-surround-toggle" type="checkbox" style="margin-right:3px;" />
-          <span>⟨⟩</span>
-        </label>
-        <label title="Bracket Highlight" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
-          <input id="bracket-highlight-toggle" type="checkbox" checked style="margin-right:3px;" />
-          <span>{ }</span>
-        </label>
-        <label title="Indent Guides" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
-          <input id="indent-guides-toggle" type="checkbox" style="margin-right:3px;" />
-          <span>┆</span>
-        </label>
-        <button id="bookmark-toggle" title="Toggle Bookmark (on current line)" style="font-size:0.8em;padding:2px 6px;">🔖</button>
-        <span style="border-left:1px solid #ccc;margin:0 4px;"></span>
-        <button id="btn-theme" title="Toggle Dark/Light Mode" style="font-size:0.8em;padding:4px 8px;">🌙</button>
-        <button id="btn-zoom-in" title="Zoom In (Ctrl+=)" style="font-size:0.8em;padding:4px 8px;">+</button>
-        <span id="zoom-label" style="font-size:0.8em;min-width:40px;text-align:center;">100%</span>
-        <button id="btn-zoom-out" title="Zoom Out (Ctrl+-)" style="font-size:0.8em;padding:4px 8px;">−</button>
-        <button id="btn-shortcuts" title="Keyboard Shortcuts (Ctrl+/)" style="font-size:0.8em;padding:4px 8px;">⌨</button>
+        <span style="border-left:1px solid #ddd;height:24px;"></span>
+        <div style="display:flex;gap:2px;align-items:center;">
+          <button id="btn-align-left" title="Align Left" style="width:32px;font-weight:bold;">⇤</button>
+          <button id="btn-align-center" title="Align Center" style="width:32px;font-weight:bold;">⇔</button>
+          <button id="btn-align-right" title="Align Right" style="width:32px;font-weight:bold;">⇥</button>
+        </div>
+        <span style="border-left:1px solid #ddd;height:24px;"></span>
+        <div style="display:flex;gap:4px;align-items:center;">
+          <label title="Text Color" style="display:inline-flex;align-items:center;cursor:pointer;">
+            <span style="font-size:0.85em;margin-right:2px;">A</span>
+            <input id="color-picker" type="color" value="#000000" style="width:24px;height:24px;border:none;padding:0;cursor:pointer;" />
+          </label>
+          <label title="Highlight Color" style="display:inline-flex;align-items:center;cursor:pointer;">
+            <span style="font-size:0.85em;margin-right:2px;background:#ff0;">🖍</span>
+            <input id="highlight-picker" type="color" value="#ffff00" style="width:24px;height:24px;border:none;padding:0;cursor:pointer;" />
+          </label>
+        </div>
+        <span style="border-left:1px solid #ddd;height:24px;"></span>
+        <div style="display:flex;gap:2px;align-items:center;">
+          <button id="btn-bullet" title="Toggle Bullet List" style="font-size:0.9em;padding:4px 8px;">•</button>
+          <button id="btn-numbered" title="Toggle Numbered List" style="font-size:0.8em;padding:4px 8px;">1.</button>
+        </div>
+        <span style="border-left:1px solid #ddd;height:24px;"></span>
+        <div style="display:flex;gap:2px;align-items:center;">
+          <button id="btn-export-html" title="Copy as HTML" style="font-size:0.8em;padding:4px 8px;">HTML</button>
+          <button id="btn-export-md" title="Copy as Markdown" style="font-size:0.8em;padding:4px 8px;">MD</button>
+        </div>
+        <span style="border-left:1px solid #ddd;height:24px;"></span>
+        <div style="display:flex;gap:2px;align-items:center;">
+          <button id="btn-theme" title="Toggle Dark/Light Mode" style="font-size:0.8em;padding:4px 8px;">🌙</button>
+          <button id="btn-zoom-out" title="Zoom Out (Ctrl+-)" style="font-size:0.8em;padding:4px 8px;">−</button>
+          <span id="zoom-label" style="font-size:0.8em;min-width:36px;text-align:center;">100%</span>
+          <button id="btn-zoom-in" title="Zoom In (Ctrl+=)" style="font-size:0.8em;padding:4px 8px;">+</button>
+          <button id="btn-shortcuts" title="Keyboard Shortcuts (Ctrl+/)" style="font-size:0.8em;padding:4px 8px;">⌨</button>
+        </div>
+        <!-- Row 2: Editor options (wraps to second line) -->
+        <div style="display:flex;gap:4px;align-items:center;width:100%;padding-top:4px;border-top:1px solid #eee;margin-top:2px;">
+          <label title="Show line numbers" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+            <input id="line-numbers-toggle" type="checkbox" style="margin-right:3px;" />
+            <span>#</span>
+          </label>
+          <label title="Word Wrap" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+            <input id="word-wrap-toggle" type="checkbox" checked style="margin-right:3px;" />
+            <span>↩</span>
+          </label>
+          <label title="Show Whitespace" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+            <input id="whitespace-toggle" type="checkbox" style="margin-right:3px;" />
+            <span>¶</span>
+          </label>
+          <label title="Indent Guides" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+            <input id="indent-guides-toggle" type="checkbox" style="margin-right:3px;" />
+            <span>┆</span>
+          </label>
+          <label title="Bracket Highlight" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+            <input id="bracket-highlight-toggle" type="checkbox" checked style="margin-right:3px;" />
+            <span>{ }</span>
+          </label>
+          <label title="Auto-Close Brackets" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+            <input id="auto-close-toggle" type="checkbox" style="margin-right:3px;" />
+            <span>()</span>
+          </label>
+          <label title="Soft Tabs (spaces)" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+            <input id="soft-tabs-toggle" type="checkbox" style="margin-right:3px;" />
+            <span>⇥</span>
+          </label>
+          <label title="Auto-Surround" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+            <input id="auto-surround-toggle" type="checkbox" style="margin-right:3px;" />
+            <span>⟨⟩</span>
+          </label>
+          <label title="Read-only mode" style="display:inline-flex;align-items:center;cursor:pointer;font-size:0.8em;">
+            <input id="read-only-toggle" type="checkbox" style="margin-right:3px;" />
+            <span>🔒</span>
+          </label>
+          <button id="bookmark-toggle" title="Toggle Bookmark (on current line)" style="font-size:0.8em;padding:2px 6px;">🔖</button>
+        </div>
       </div>
       <!-- Find/Replace bar (hidden by default) -->
       <div id="find-bar" style="display:none;margin-bottom:8px;padding:8px;background:#f0f0f0;border:1px solid #ddd;border-radius:4px;gap:4px;align-items:center;">
@@ -276,6 +290,12 @@
       let didDragSelection = false;
       let isDragDropping = false;
       let dragDropSource = null; // {start, end}
+      let skipNextClick = false; // set after double/triple-click to prevent click handler clearing selection
+      let selectionMode = 'char'; // 'char' | 'word' | 'line' — governs drag selection granularity
+      let wordAnchorStart = 0; // anchor word boundaries for word-mode drag
+      let wordAnchorEnd = 0;
+      let lineAnchorStart = 0; // anchor line boundaries for line-mode drag
+      let lineAnchorEnd = 0;
 
       async function setup() {
         await init();
@@ -781,22 +801,35 @@
           const offset = charOffsetFromMouse(e);
           textarea.focus();
 
-          if (clickCount === 3) {
+          if (clickCount >= 3) {
             // Triple-click: select entire line/paragraph.
+            selectionMode = 'line';
             const text = editor.plain_text();
             let start = offset;
             while (start > 0 && text[start - 1] !== "\n") start--;
             let end = offset;
             while (end < text.length && text[end] !== "\n") end++;
+            lineAnchorStart = start;
+            lineAnchorEnd = end;
             setSelection(start, end);
+            isDraggingSelection = true;
+            didDragSelection = false;
+            skipNextClick = true;
             clickCount = 0;
           } else if (clickCount === 2) {
             // Double-click: select word.
+            selectionMode = 'word';
             editor.select_word_at(offset);
-            selectionAnchor = editor.selection_start();
-            selectionFocus = editor.selection_end();
-            cursorOffset = selectionFocus;
+            wordAnchorStart = editor.selection_start();
+            wordAnchorEnd = editor.selection_end();
+            selectionAnchor = wordAnchorStart;
+            selectionFocus = wordAnchorEnd;
+            cursorOffset = wordAnchorEnd;
+            isDraggingSelection = true;
+            didDragSelection = false;
+            skipNextClick = true;
           } else {
+            selectionMode = 'char';
             // Check if clicking inside an existing selection → start drag-drop.
             const ss = editor.selection_start();
             const se = editor.selection_end();
@@ -826,7 +859,40 @@
           if (offset !== cursorOffset) {
             didDragSelection = true;
           }
-          setSelection(selectionAnchor, offset);
+
+          if (selectionMode === 'word') {
+            // Snap drag to word boundaries.
+            const text = editor.plain_text();
+            let dragWordStart = offset;
+            let dragWordEnd = offset;
+            // Find word boundaries around current mouse position.
+            try {
+              // Use word_at for the drag position.
+              editor.select_word_at(offset);
+              dragWordStart = editor.selection_start();
+              dragWordEnd = editor.selection_end();
+            } catch {
+              dragWordStart = offset;
+              dragWordEnd = offset;
+            }
+            // Extend from the anchor word to the drag word.
+            const selStart = Math.min(wordAnchorStart, dragWordStart);
+            const selEnd = Math.max(wordAnchorEnd, dragWordEnd);
+            setSelection(selStart, selEnd);
+          } else if (selectionMode === 'line') {
+            // Snap drag to line (paragraph) boundaries.
+            const text = editor.plain_text();
+            let dragLineStart = offset;
+            while (dragLineStart > 0 && text[dragLineStart - 1] !== "\n") dragLineStart--;
+            let dragLineEnd = offset;
+            while (dragLineEnd < text.length && text[dragLineEnd] !== "\n") dragLineEnd++;
+            // Extend from the anchor line to the drag line.
+            const selStart = Math.min(lineAnchorStart, dragLineStart);
+            const selEnd = Math.max(lineAnchorEnd, dragLineEnd);
+            setSelection(selStart, selEnd);
+          } else {
+            setSelection(selectionAnchor, offset);
+          }
           renderFrame();
         });
 
@@ -851,6 +917,10 @@
 
         canvas.addEventListener("click", (e) => {
           textarea.focus();
+          if (skipNextClick) {
+            skipNextClick = false;
+            return;
+          }
           if (didDragSelection) {
             didDragSelection = false;
             return;
@@ -1492,12 +1562,45 @@
           }
         });
 
+        // --- IME / Composition ---
+        let compositionText = "";
+        let compositionStart = -1;
+
+        textarea.addEventListener("compositionstart", () => {
+          compositionStart = cursorOffset;
+          compositionText = "";
+        });
+
+        textarea.addEventListener("compositionupdate", (e) => {
+          // Remove previously inserted composition text, then insert updated.
+          if (compositionText.length > 0 && compositionStart >= 0) {
+            editor.delete_range(compositionStart, compositionStart + compositionText.length);
+            cursorOffset = compositionStart;
+            clearSelection();
+          }
+          compositionText = e.data || "";
+          if (compositionText.length > 0) {
+            editor.insert_text_at(compositionStart, compositionText);
+            cursorOffset = compositionStart + compositionText.length;
+            clearSelection();
+          }
+          renderFrame();
+        });
+
         textarea.addEventListener("compositionend", (e) => {
-          const committed = e.data || textarea.value;
+          // Remove the in-progress composition text and insert the final committed text.
+          if (compositionText.length > 0 && compositionStart >= 0) {
+            editor.delete_range(compositionStart, compositionStart + compositionText.length);
+            cursorOffset = compositionStart;
+            clearSelection();
+          }
+          const committed = e.data || "";
           if (committed) {
             insertTextAtSelection(committed);
             renderFrame();
           }
+          compositionText = "";
+          compositionStart = -1;
           textarea.value = "";
         });
 

@@ -856,6 +856,8 @@ mod tests {
 		doc.insert_text(Position::zero(), "Hello world");
 
 		// Apply bold to first 5 chars and italic to next 6.
+		// With run-splitting, this creates two distinct runs:
+		//   "Hello" (bold) + " world" (italic)
 		let tx = Transaction::new()
 			.push(Operation::format(
 				Selection::range(Position::zero(), Position::new(5)),
@@ -869,19 +871,35 @@ mod tests {
 		let inv = tx.inverse(&doc);
 		tx.apply(&mut doc);
 
-		// Verify styles applied.
+		// Verify styles applied — now properly split into 2 runs.
 		let runs = doc.styled_runs();
-		assert_eq!(runs.len(), 1); // single run in current model
+		assert_eq!(runs.len(), 2);
+		assert_eq!(runs[0].0, "Hello");
 		assert_eq!(runs[0].1.font_weight, Some(crate::style::FontWeight::Bold));
-		assert_eq!(runs[0].1.italic, Some(true));
+		assert_eq!(runs[1].0, " world");
+		assert_eq!(runs[1].1.italic, Some(true));
+
+		// Verify plain text is preserved.
+		assert_eq!(doc.plain_text(), "Hello world");
 
 		// Undo the transaction.
 		inv.apply(&mut doc);
 
-		// Styles should be restored to default.
+		// Styles should be restored to default (runs may be merged or separate).
 		let runs = doc.styled_runs();
-		assert_eq!(runs[0].1.font_weight, None);
-		assert_eq!(runs[0].1.italic, None);
+		for (text, style, _, _) in &runs {
+			assert_eq!(
+				style.font_weight, None,
+				"after undo, run '{}' should not be bold",
+				text
+			);
+			assert_eq!(
+				style.italic, None,
+				"after undo, run '{}' should not be italic",
+				text
+			);
+		}
+		assert_eq!(doc.plain_text(), "Hello world");
 	}
 
 	#[test]

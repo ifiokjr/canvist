@@ -288,25 +288,157 @@ impl Document {
 		let start = selection.start().offset();
 		let end = selection.end().offset();
 
-		let run_ids = self.ordered_run_ids();
-		let mut global_offset = 0usize;
+		if start >= end {
+			return;
+		}
 
-		for run_id in run_ids {
-			let run_len = self.run_text_len(run_id);
-			let run_start = global_offset;
-			let run_end = global_offset + run_len;
-
-			if start < run_end
-				&& end > run_start
-				&& let Some(node) = self.nodes.get_mut(&run_id)
-				&& let NodeKind::TextRun {
-					style: ref mut s, ..
+		// Collect run info before mutating to avoid borrow conflicts.
+		let run_infos: Vec<(NodeId, usize, usize, String, Style, Option<NodeId>)> = self
+			.run_index
+			.iter()
+			.filter_map(|entry| {
+				let run_start = entry.start_char;
+				let run_end = entry.start_char + entry.len_chars;
+				// Only process runs that overlap the selection.
+				if start >= run_end || end <= run_start {
+					return None;
+				}
+				let node = self.nodes.get(&entry.run_id)?;
+				if let NodeKind::TextRun {
+					ref text,
+					ref style,
 				} = node.kind
-			{
-				*s = s.merge(style);
-			}
+				{
+					Some((
+						entry.run_id,
+						run_start,
+						run_end,
+						text.clone(),
+						style.clone(),
+						node.parent,
+					))
+				} else {
+					None
+				}
+			})
+			.collect();
 
-			global_offset = run_end;
+		let mut dirty = false;
+
+		for (run_id, run_start, run_end, run_text, run_style, parent_id) in run_infos {
+			let sel_start_in_run = start.saturating_sub(run_start);
+			let sel_end_in_run = (end - run_start).min(run_end - run_start);
+
+			let fully_covers = sel_start_in_run == 0 && sel_end_in_run >= run_end - run_start;
+
+			if fully_covers {
+				// Selection covers the entire run — merge in place.
+				if let Some(node) = self.nodes.get_mut(&run_id)
+					&& let NodeKind::TextRun {
+						style: ref mut s, ..
+					} = node.kind
+				{
+					*s = s.merge(style);
+					dirty = true;
+				}
+			} else {
+				// Partial overlap — need to split the run.
+				let run_chars: Vec<char> = run_text.chars().collect();
+				let parent = parent_id.unwrap_or(NodeId::ROOT);
+
+				// Find the position of this run in its parent's children list.
+				let child_pos = self
+					.nodes
+					.get(&parent)
+					.map(|p| {
+						p.children
+							.iter()
+							.position(|&c| c == run_id)
+							.unwrap_or(0)
+					})
+					.unwrap_or(0);
+
+				// Build up to 3 split pieces.
+				let mut new_ids: Vec<NodeId> = Vec::new();
+
+				// Before-selection portion.
+				if sel_start_in_run > 0 {
+					let before_text: String =
+						run_chars[..sel_start_in_run].iter().collect();
+					let before_id = self.alloc_id();
+					self.nodes.insert(
+						before_id,
+						Node {
+							id: before_id,
+							kind: NodeKind::TextRun {
+								text: before_text,
+								style: run_style.clone(),
+							},
+							children: Vec::new(),
+							parent: Some(parent),
+						},
+					);
+					new_ids.push(before_id);
+				}
+
+				// Selected portion (gets merged style).
+				{
+					let mid_text: String = run_chars
+						[sel_start_in_run..sel_end_in_run]
+						.iter()
+						.collect();
+					let mid_id = self.alloc_id();
+					self.nodes.insert(
+						mid_id,
+						Node {
+							id: mid_id,
+							kind: NodeKind::TextRun {
+								text: mid_text,
+								style: run_style.clone().merge(style),
+							},
+							children: Vec::new(),
+							parent: Some(parent),
+						},
+					);
+					new_ids.push(mid_id);
+				}
+
+				// After-selection portion.
+				if sel_end_in_run < run_chars.len() {
+					let after_text: String =
+						run_chars[sel_end_in_run..].iter().collect();
+					let after_id = self.alloc_id();
+					self.nodes.insert(
+						after_id,
+						Node {
+							id: after_id,
+							kind: NodeKind::TextRun {
+								text: after_text,
+								style: run_style,
+							},
+							children: Vec::new(),
+							parent: Some(parent),
+						},
+					);
+					new_ids.push(after_id);
+				}
+
+				// Replace the old run in the parent's children list.
+				if let Some(parent_node) = self.nodes.get_mut(&parent) {
+					parent_node.children.splice(
+						child_pos..=child_pos,
+						new_ids,
+					);
+				}
+
+				// Remove the old run node.
+				self.nodes.remove(&run_id);
+				dirty = true;
+			}
+		}
+
+		if dirty {
+			self.rebuild_indexes();
 		}
 	}
 
@@ -354,30 +486,106 @@ impl Document {
 	/// *replaces* (not merges) the run's style with the captured value.
 	/// This is the apply-side counterpart of
 	/// [`run_style_snapshots`](Self::run_style_snapshots).
+	///
+	/// When a format operation has split a run into multiple pieces, this
+	/// method merges them back into a single run with the snapshot's style
+	/// before restoring, so that undo fully reverses the split.
 	pub fn restore_run_styles(&mut self, snapshots: &[StyleSnapshot]) {
+		let mut needs_rebuild = false;
+
 		for snapshot in snapshots {
 			let snap_start = snapshot.selection.start().offset();
 			let snap_end = snapshot.selection.end().offset();
 
-			// Find the run whose current range matches the snapshot range.
-			// In the normal undo path (inverse applied right after the forward
-			// op) the run boundaries haven't changed, so an exact match on
-			// start_char + len_chars is expected.
-			for entry in &self.run_index {
-				let run_start = entry.start_char;
-				let run_end = entry.start_char + entry.len_chars;
+			// Try exact match first (fast path when run wasn't split).
+			let exact = self.run_index.iter().find(|entry| {
+				entry.start_char == snap_start
+					&& entry.start_char + entry.len_chars == snap_end
+			});
 
-				if run_start == snap_start && run_end == snap_end {
-					if let Some(node) = self.nodes.get_mut(&entry.run_id)
-						&& let NodeKind::TextRun {
-							style: ref mut s, ..
-						} = node.kind
-					{
-						*s = snapshot.style.clone();
+			if let Some(entry) = exact {
+				if let Some(node) = self.nodes.get_mut(&entry.run_id)
+					&& let NodeKind::TextRun {
+						style: ref mut s, ..
+					} = node.kind
+				{
+					*s = snapshot.style.clone();
+				}
+				continue;
+			}
+
+			// Slow path: the run was split by apply_style. Merge all runs
+			// that fall within [snap_start, snap_end) back into one run.
+			let overlapping: Vec<_> = self
+				.run_index
+				.iter()
+				.filter(|entry| {
+					let rs = entry.start_char;
+					let re = entry.start_char + entry.len_chars;
+					rs >= snap_start && re <= snap_end
+				})
+				.map(|e| e.run_id)
+				.collect();
+
+			if overlapping.is_empty() {
+				continue;
+			}
+
+			// Collect text from all pieces and determine the parent.
+			let mut merged_text = String::new();
+			let mut parent_id = None;
+			for &rid in &overlapping {
+				if let Some(node) = self.nodes.get(&rid) {
+					if parent_id.is_none() {
+						parent_id = node.parent;
 					}
-					break;
+					if let NodeKind::TextRun { ref text, .. } = node.kind {
+						merged_text.push_str(text);
+					}
 				}
 			}
+
+			let parent = parent_id.unwrap_or(NodeId::ROOT);
+
+			// Create the merged run.
+			let merged_id = self.alloc_id();
+			self.nodes.insert(
+				merged_id,
+				Node {
+					id: merged_id,
+					kind: NodeKind::TextRun {
+						text: merged_text,
+						style: snapshot.style.clone(),
+					},
+					children: Vec::new(),
+					parent: Some(parent),
+				},
+			);
+
+			// Replace the split runs in the parent's children list.
+			if let Some(parent_node) = self.nodes.get_mut(&parent) {
+				if let Some(first_pos) = parent_node
+					.children
+					.iter()
+					.position(|c| overlapping.contains(c))
+				{
+					// Remove all overlapping children and insert the merged one.
+					parent_node
+						.children
+						.retain(|c| !overlapping.contains(c));
+					parent_node.children.insert(first_pos, merged_id);
+				}
+			}
+
+			// Remove the old split nodes.
+			for rid in &overlapping {
+				self.nodes.remove(rid);
+			}
+			needs_rebuild = true;
+		}
+
+		if needs_rebuild {
+			self.rebuild_indexes();
 		}
 	}
 
@@ -961,11 +1169,13 @@ impl Document {
 	}
 
 	/// Return an ordered list of all text run node IDs in document order.
+	#[cfg_attr(not(test), allow(dead_code))]
 	fn ordered_run_ids(&self) -> Vec<NodeId> {
 		self.run_index.iter().map(|entry| entry.run_id).collect()
 	}
 
 	/// Return the character length of a text run.
+	#[cfg_attr(not(test), allow(dead_code))]
 	fn run_text_len(&self, id: NodeId) -> usize {
 		self.nodes
 			.get(&id)
@@ -1637,5 +1847,136 @@ mod tests {
 		let mut doc = Document::new();
 		doc.insert_text(Position::zero(), "  hello");
 		assert_eq!(doc.leading_whitespace_at(0), "  ");
+	}
+
+	#[test]
+	fn apply_style_partial_selection_splits_run() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello world");
+
+		// Bold only "world" (offsets 6..11)
+		let sel = Selection::range(Position::new(6), Position::new(11));
+		doc.apply_style(sel, &Style::new().bold());
+
+		// Should now have 2 runs: "Hello " (normal) + "world" (bold)
+		let runs = doc.styled_runs();
+		assert_eq!(runs.len(), 2, "expected 2 runs after partial format");
+		assert_eq!(runs[0].0, "Hello ");
+		assert_eq!(runs[0].1.font_weight, None); // normal
+		assert_eq!(runs[1].0, "world");
+		assert_eq!(
+			runs[1].1.font_weight,
+			Some(crate::style::FontWeight::Bold)
+		);
+
+		// Plain text must be preserved.
+		assert_eq!(doc.plain_text(), "Hello world");
+	}
+
+	#[test]
+	fn apply_style_middle_of_run_creates_three_splits() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "abcdefgh");
+
+		// Bold only "cdef" (offsets 2..6)
+		let sel = Selection::range(Position::new(2), Position::new(6));
+		doc.apply_style(sel, &Style::new().bold());
+
+		let runs = doc.styled_runs();
+		assert_eq!(runs.len(), 3, "expected 3 runs: before, middle, after");
+		assert_eq!(runs[0].0, "ab");
+		assert_eq!(runs[0].1.font_weight, None);
+		assert_eq!(runs[1].0, "cdef");
+		assert_eq!(
+			runs[1].1.font_weight,
+			Some(crate::style::FontWeight::Bold)
+		);
+		assert_eq!(runs[2].0, "gh");
+		assert_eq!(runs[2].1.font_weight, None);
+
+		assert_eq!(doc.plain_text(), "abcdefgh");
+	}
+
+	#[test]
+	fn apply_style_full_run_no_split() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+
+		// Bold the entire run
+		let sel = Selection::range(Position::new(0), Position::new(5));
+		doc.apply_style(sel, &Style::new().bold());
+
+		let runs = doc.styled_runs();
+		assert_eq!(runs.len(), 1, "full coverage should not split");
+		assert_eq!(runs[0].0, "Hello");
+		assert_eq!(
+			runs[0].1.font_weight,
+			Some(crate::style::FontWeight::Bold)
+		);
+	}
+
+	#[test]
+	fn apply_style_start_of_run_creates_two_splits() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello world");
+
+		// Bold "Hello" (offsets 0..5)
+		let sel = Selection::range(Position::new(0), Position::new(5));
+		doc.apply_style(sel, &Style::new().bold());
+
+		let runs = doc.styled_runs();
+		assert_eq!(runs.len(), 2);
+		assert_eq!(runs[0].0, "Hello");
+		assert_eq!(
+			runs[0].1.font_weight,
+			Some(crate::style::FontWeight::Bold)
+		);
+		assert_eq!(runs[1].0, " world");
+		assert_eq!(runs[1].1.font_weight, None);
+	}
+
+	#[test]
+	fn apply_style_then_undo_restores_original() {
+		use crate::EditorRuntime;
+
+		let mut runtime = EditorRuntime::new(
+			Document::new(),
+			Selection::collapsed(Position::zero()),
+			"test:user",
+		);
+
+		// Insert text via runtime for proper undo tracking.
+		runtime
+			.handle_event(crate::EditorEvent::TextInsert {
+				text: "Hello world".to_string(),
+			})
+			.unwrap();
+
+		// Select "world" and bold it.
+		let _ = runtime.handle_event(crate::EditorEvent::SelectionSet {
+			selection: Selection::range(Position::new(6), Position::new(11)),
+		});
+		runtime.apply_operation(crate::operation::Operation::format(
+			Selection::range(Position::new(6), Position::new(11)),
+			Style::new().bold(),
+		));
+
+		// Should have 2 runs now.
+		assert_eq!(runtime.document().styled_runs().len(), 2);
+		assert_eq!(runtime.document().plain_text(), "Hello world");
+
+		// Undo should restore to 1 run.
+		assert!(runtime.undo());
+		assert_eq!(runtime.document().plain_text(), "Hello world");
+
+		let runs_after_undo = runtime.document().styled_runs();
+		// After undo, the run should be unstyled.
+		for (text, style, _, _) in &runs_after_undo {
+			assert_eq!(
+				style.font_weight, None,
+				"after undo, run '{}' should not be bold",
+				text
+			);
+		}
 	}
 }
