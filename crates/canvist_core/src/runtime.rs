@@ -725,7 +725,7 @@ mod tests {
 		let _ = runtime.handle_event(EditorEvent::SelectionSet {
 			selection: Selection::range(Position::new(0), Position::new(5)),
 		});
-		runtime.apply_operation(crate::operation::Operation::format(
+		runtime.apply_operation(Operation::format(
 			Selection::range(Position::new(0), Position::new(5)),
 			crate::Style::new().bold(),
 		));
@@ -744,8 +744,7 @@ mod tests {
 		for (text, style, _, _) in runtime.document().styled_runs() {
 			assert_eq!(
 				style.font_weight, None,
-				"run '{}' should be unstyled after undo",
-				text
+				"run '{text}' should be unstyled after undo"
 			);
 		}
 	}
@@ -784,7 +783,7 @@ mod tests {
 				text: "Hello".to_string(),
 			})
 			.unwrap();
-		runtime.apply_operation(crate::operation::Operation::format(
+		runtime.apply_operation(Operation::format(
 			Selection::range(Position::new(0), Position::new(5)),
 			crate::Style::new().bold(),
 		));

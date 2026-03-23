@@ -374,6 +374,7 @@ mod tests {
 		}
 	}
 
+	#[allow(dead_code)]
 	struct TestExtension {
 		id: &'static str,
 		priority: i32,
@@ -524,6 +525,7 @@ mod tests {
 
 	#[test]
 	fn hooks_run_in_deterministic_order_and_wrap_apply() {
+		#[allow(dead_code)]
 		struct HookExt {
 			id: &'static str,
 			priority: i32,
