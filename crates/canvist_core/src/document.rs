@@ -2850,4 +2850,167 @@ mod tests {
 		assert!(texts.contains(&"A"), "should have 'A': {texts:?}");
 		assert!(texts.contains(&"B"), "should have 'B': {texts:?}");
 	}
+
+	// ── Stress / edge-case tests ────────────────────────────────────
+
+	#[test]
+	fn insert_at_out_of_bounds_offset() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+		// Insert past end — should not panic.
+		doc.insert_text(Position::new(999), " world");
+		assert!(doc.plain_text().contains("Hello"));
+	}
+
+	#[test]
+	fn delete_empty_document() {
+		let mut doc = Document::new();
+		// Should not panic on empty doc.
+		let sel = Selection::range(Position::new(0), Position::new(5));
+		doc.delete(&sel);
+		assert_eq!(doc.plain_text(), "");
+	}
+
+	#[test]
+	fn delete_past_end() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hi");
+		let sel = Selection::range(Position::new(0), Position::new(100));
+		doc.delete(&sel);
+		assert_eq!(doc.plain_text(), "");
+	}
+
+	#[test]
+	fn apply_style_to_empty_document() {
+		let mut doc = Document::new();
+		// Should not panic.
+		let sel = Selection::range(Position::new(0), Position::new(5));
+		doc.apply_style(sel, &Style::new().bold());
+		assert_eq!(doc.plain_text(), "");
+	}
+
+	#[test]
+	fn apply_style_past_end() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hi");
+		let sel = Selection::range(Position::new(0), Position::new(100));
+		doc.apply_style(sel, &Style::new().bold());
+		assert_eq!(doc.plain_text(), "Hi");
+	}
+
+	#[test]
+	fn rapid_insert_delete_cycles() {
+		let mut doc = Document::new();
+		for i in 0..100 {
+			doc.insert_text(Position::zero(), &format!("Line {i}\n"));
+		}
+		let text = doc.plain_text();
+		assert!(text.contains("Line 0"));
+		assert!(text.contains("Line 99"));
+
+		// Delete everything character by character from the end.
+		for _ in 0..text.chars().count() {
+			let len = doc.char_count();
+			if len == 0 {
+				break;
+			}
+			doc.delete(&Selection::range(
+				Position::new(len - 1),
+				Position::new(len),
+			));
+		}
+		assert_eq!(doc.plain_text(), "");
+	}
+
+	#[test]
+	fn unicode_emoji_handling() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello 🌍🎉 world");
+
+		assert_eq!(doc.plain_text(), "Hello 🌍🎉 world");
+
+		// Delete the emoji range (offsets 6..8).
+		let sel = Selection::range(Position::new(6), Position::new(8));
+		doc.delete(&sel);
+		assert_eq!(doc.plain_text(), "Hello  world");
+	}
+
+	#[test]
+	fn format_single_character() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+
+		// Bold just "H".
+		let sel = Selection::range(Position::new(0), Position::new(1));
+		doc.apply_style(sel, &Style::new().bold());
+
+		let runs = doc.styled_runs();
+		assert_eq!(runs.len(), 2);
+		assert_eq!(runs[0].0, "H");
+		assert_eq!(
+			runs[0].1.font_weight,
+			Some(crate::style::FontWeight::Bold)
+		);
+		assert_eq!(runs[1].0, "ello");
+	}
+
+	#[test]
+	fn many_paragraph_splits_and_merges() {
+		let mut doc = Document::new();
+		// Create 50 paragraphs.
+		let text: String = (0..50).map(|i| format!("Para {i}")).collect::<Vec<_>>().join("\n");
+		doc.insert_text(Position::zero(), &text);
+		assert_eq!(doc.paragraph_count(), 50);
+
+		// Delete all newlines to merge into 1.
+		while doc.plain_text().contains('\n') {
+			if let Some(pos) = doc.plain_text().find('\n') {
+				let char_offset = doc.plain_text().chars().take(pos).count();
+				doc.delete(&Selection::range(
+					Position::new(char_offset),
+					Position::new(char_offset + 1),
+				));
+			}
+		}
+		assert_eq!(doc.paragraph_count(), 1);
+		assert!(!doc.plain_text().contains('\n'));
+	}
+
+	#[test]
+	fn concurrent_format_and_delete() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "ABCDEFGHIJ");
+
+		// Bold "CDE" then delete "BCD".
+		doc.apply_style(
+			Selection::range(Position::new(2), Position::new(5)),
+			&Style::new().bold(),
+		);
+		doc.delete(&Selection::range(Position::new(1), Position::new(4)));
+
+		// Should have "A" + some styled remainder.
+		assert_eq!(doc.char_count(), 7);
+		assert!(doc.plain_text().starts_with('A'));
+	}
+
+	#[test]
+	fn stress_html_export_empty() {
+		let doc = Document::new();
+		assert_eq!(doc.to_html(), "<p></p>");
+	}
+
+	#[test]
+	fn stress_markdown_export_empty() {
+		let doc = Document::new();
+		assert_eq!(doc.to_markdown(), "");
+	}
+
+	#[test]
+	fn stress_json_roundtrip_empty() {
+		let doc = Document::new();
+		let json = doc.to_json().unwrap();
+		let restored = Document::from_json(&json).unwrap();
+		assert_eq!(restored.plain_text(), "");
+		assert_eq!(restored.paragraph_count(), 1);
+	}
 }
