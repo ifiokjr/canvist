@@ -291,6 +291,18 @@ impl Operation {
 	}
 
 	/// Create an insert operation.
+	///
+	/// # Examples
+	///
+	/// ```
+	/// use canvist_core::{Document, Position};
+	/// use canvist_core::operation::Operation;
+	///
+	/// let mut doc = Document::new();
+	/// let op = Operation::insert(Position::zero(), "Hello");
+	/// op.apply(&mut doc);
+	/// assert_eq!(doc.plain_text(), "Hello");
+	/// ```
 	#[must_use]
 	pub fn insert(position: Position, text: impl Into<String>) -> Self {
 		Self::Insert {
@@ -300,12 +312,42 @@ impl Operation {
 	}
 
 	/// Create a delete operation.
+	///
+	/// # Examples
+	///
+	/// ```
+	/// use canvist_core::{Document, Position, Selection};
+	/// use canvist_core::operation::Operation;
+	///
+	/// let mut doc = Document::new();
+	/// doc.insert_text(Position::zero(), "Hello world");
+	/// let op = Operation::delete(Selection::range(Position::new(5), Position::new(11)));
+	/// op.apply(&mut doc);
+	/// assert_eq!(doc.plain_text(), "Hello");
+	/// ```
 	#[must_use]
 	pub fn delete(selection: Selection) -> Self {
 		Self::Delete { selection }
 	}
 
 	/// Create a format operation.
+	///
+	/// # Examples
+	///
+	/// ```
+	/// use canvist_core::{Document, Position, Selection, Style};
+	/// use canvist_core::operation::Operation;
+	///
+	/// let mut doc = Document::new();
+	/// doc.insert_text(Position::zero(), "Bold me");
+	/// let op = Operation::format(
+	///     Selection::range(Position::new(0), Position::new(4)),
+	///     Style::new().bold(),
+	/// );
+	/// op.apply(&mut doc);
+	/// let runs = doc.styled_runs();
+	/// assert_eq!(runs[0].0, "Bold");
+	/// ```
 	#[must_use]
 	pub fn format(selection: Selection, style: Style) -> Self {
 		Self::Format { selection, style }

@@ -43,6 +43,21 @@ use crate::operation::Operation;
 /// session.insert(0, "Hello!");
 /// assert_eq!(session.text(), "Hello!");
 /// ```
+///
+/// # Multi-peer sync
+///
+/// ```
+/// use canvist_core::collaboration::CollaborationSession;
+///
+/// let peer_a = CollaborationSession::new();
+/// let peer_b = CollaborationSession::new();
+///
+/// peer_a.insert(0, "Hello");
+/// let update = peer_a.encode_state();
+/// peer_b.apply_update(&update);
+///
+/// assert_eq!(peer_b.text(), "Hello");
+/// ```
 pub struct CollaborationSession {
 	/// The underlying Yrs document.
 	doc: Doc,
