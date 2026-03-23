@@ -255,11 +255,13 @@ pub fn hit_test_point(
 	}
 
 	// Find which line the y coordinate falls on.
+	// SAFETY: we return early above if `layout.lines.is_empty()`.
+	let last_line = &layout.lines[layout.lines.len() - 1];
 	let line = layout
 		.lines
 		.iter()
 		.find(|l| y >= l.y && y < l.y + l.height)
-		.unwrap_or(layout.lines.last().unwrap());
+		.unwrap_or(last_line);
 
 	let line_start = line.start_offset;
 	let line_end = line.end_offset;

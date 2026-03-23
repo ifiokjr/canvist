@@ -209,7 +209,10 @@ fn layout_paragraphs(
 		});
 
 		// Advance y_offset for next paragraph.
-		let para_height = result.last().unwrap().layout.total_height;
+		let para_height = result
+			.last()
+			.map(|p| p.layout.total_height)
+			.unwrap_or(0.0);
 		y_offset += para_height;
 		// Add paragraph spacing (except after the last paragraph, but it
 		// doesn't matter — it just adds trailing space).
@@ -1450,7 +1453,9 @@ impl CanvistEditor {
 			return 1;
 		}
 
-		let close_ch = close.unwrap();
+		let Some(close_ch) = close else {
+			return 0;
+		};
 
 		// Delete selection if any.
 		let sel = self.runtime.selection();
@@ -2074,7 +2079,7 @@ impl CanvistEditor {
 							let inner_end = close;
 							if inner_start <= sel_start && inner_end >= sel_end {
 								let span = inner_end - inner_start;
-								if best.is_none() || span < best.unwrap().1 - best.unwrap().0 {
+								if best.map_or(true, |(s, e)| span < e - s) {
 									best = Some((inner_start, inner_end));
 								}
 							}
@@ -2129,7 +2134,7 @@ impl CanvistEditor {
 							let inner_start = o + 1;
 							let inner_end = close;
 							let span = inner_end - inner_start;
-							if best.is_none() || span < best.unwrap().1 - best.unwrap().0 {
+							if best.map_or(true, |(s, e)| span < e - s) {
 								best = Some((inner_start, inner_end));
 							}
 							break;
@@ -2164,7 +2169,7 @@ impl CanvistEditor {
 								let inner_end = j;
 								if inner_start > sel_start || inner_end < sel_end {
 									let span = inner_end - inner_start;
-									if best.is_none() || span < best.unwrap().1 - best.unwrap().0 {
+									if best.map_or(true, |(s, e)| span < e - s) {
 										best = Some((inner_start, inner_end));
 									}
 								}
@@ -11223,7 +11228,9 @@ impl CanvistEditor {
 				if let Some(next_para) = paragraphs.get(para_idx + 1) {
 					let cur_fragments =
 						build_fragments(&para.text, &para.local_runs, &lc.default_style);
-					let cur_line = para.layout.lines.last().unwrap();
+					let Some(cur_line) = para.layout.lines.last() else {
+						return Ok(para.global_char_start + para.char_count);
+					};
 					let target_x = canvist_core::layout::x_offset_in_line(
 						cur_line.start_offset,
 						local_offset,
