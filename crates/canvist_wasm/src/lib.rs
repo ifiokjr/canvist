@@ -9762,6 +9762,70 @@ impl CanvistEditor {
 			.map_err(|e| JsValue::from_str(&e.to_string()))
 	}
 
+	/// Set the block type of the paragraph containing the cursor.
+	///
+	/// - `"body"` — normal paragraph
+	/// - `"h1"` — heading level 1
+	/// - `"h2"` — heading level 2
+	/// - `"h3"` — heading level 3
+	#[wasm_bindgen]
+	pub fn set_block_type(&mut self, block_type: &str) {
+		let bt = match block_type {
+			"h1" => canvist_core::BlockType::Heading1,
+			"h2" => canvist_core::BlockType::Heading2,
+			"h3" => canvist_core::BlockType::Heading3,
+			_ => canvist_core::BlockType::Body,
+		};
+		let offset = self.runtime.selection().end().offset();
+		let block = self.runtime.document().block_type_at_offset(offset);
+		// Find the paragraph index for this offset.
+		let para_ids = self.runtime.document().root().children.clone();
+		let mut global = 0usize;
+		for (i, pid) in para_ids.iter().enumerate() {
+			if i > 0 {
+				global += 1;
+			}
+			if let Some(para) = self.runtime.document().node(*pid) {
+				let para_len: usize = para
+					.children
+					.iter()
+					.filter_map(|cid| {
+						if let Some(canvist_core::Node {
+							kind: canvist_core::NodeKind::TextRun { text, .. },
+							..
+						}) = self.runtime.document().node(*cid)
+						{
+							Some(text.chars().count())
+						} else {
+							None
+						}
+					})
+					.sum();
+				if offset <= global + para_len {
+					self.runtime
+						.document_mut()
+						.set_paragraph_block_type(i, bt);
+					break;
+				}
+				global += para_len;
+			}
+			let _ = block;
+		}
+	}
+
+	/// Get the block type of the paragraph at the cursor.
+	#[wasm_bindgen]
+	pub fn block_type(&self) -> String {
+		let offset = self.runtime.selection().end().offset();
+		let bt = self.runtime.document().block_type_at_offset(offset);
+		match bt {
+			canvist_core::BlockType::Body => "body".to_string(),
+			canvist_core::BlockType::Heading1 => "h1".to_string(),
+			canvist_core::BlockType::Heading2 => "h2".to_string(),
+			canvist_core::BlockType::Heading3 => "h3".to_string(),
+		}
+	}
+
 	/// Reset the document to plain text, removing all formatting.
 	#[wasm_bindgen]
 	pub fn set_plain_text(&mut self, text: &str) {

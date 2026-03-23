@@ -51,6 +51,64 @@ impl std::fmt::Display for NodeId {
 	}
 }
 
+/// The block-level type of a paragraph node.
+///
+/// Determines how the paragraph is rendered (font size, weight) and
+/// exported (HTML tag, Markdown prefix).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum BlockType {
+	/// Normal body text paragraph.
+	#[default]
+	Body,
+	/// Heading level 1 (`<h1>`, `# `).
+	Heading1,
+	/// Heading level 2 (`<h2>`, `## `).
+	Heading2,
+	/// Heading level 3 (`<h3>`, `### `).
+	Heading3,
+}
+
+impl BlockType {
+	/// Default font size for this block type.
+	#[must_use]
+	pub fn default_font_size(&self) -> f32 {
+		match self {
+			Self::Body => 16.0,
+			Self::Heading1 => 32.0,
+			Self::Heading2 => 24.0,
+			Self::Heading3 => 20.0,
+		}
+	}
+
+	/// Whether this block type renders with bold weight by default.
+	#[must_use]
+	pub fn is_bold(&self) -> bool {
+		!matches!(self, Self::Body)
+	}
+
+	/// The HTML tag for this block type.
+	#[must_use]
+	pub fn html_tag(&self) -> &'static str {
+		match self {
+			Self::Body => "p",
+			Self::Heading1 => "h1",
+			Self::Heading2 => "h2",
+			Self::Heading3 => "h3",
+		}
+	}
+
+	/// The Markdown prefix for this block type.
+	#[must_use]
+	pub fn markdown_prefix(&self) -> &'static str {
+		match self {
+			Self::Body => "",
+			Self::Heading1 => "# ",
+			Self::Heading2 => "## ",
+			Self::Heading3 => "### ",
+		}
+	}
+}
+
 /// The kind of content a node holds.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NodeKind {
@@ -61,6 +119,9 @@ pub enum NodeKind {
 	Paragraph {
 		/// Paragraph-level style overrides.
 		style: Style,
+		/// Block type (body text, heading, etc.).
+		#[serde(default)]
+		block_type: BlockType,
 	},
 
 	/// A contiguous run of text sharing the same style.
@@ -240,6 +301,7 @@ impl Document {
 					id: para_id,
 					kind: NodeKind::Paragraph {
 						style: Style::new(),
+						block_type: BlockType::Body,
 					},
 					children: vec![run_id],
 					parent: Some(para_id),
@@ -358,6 +420,7 @@ impl Document {
 				id: new_para_id,
 				kind: NodeKind::Paragraph {
 					style: Style::new(),
+					block_type: BlockType::Body,
 				},
 				children: vec![new_run_id],
 				parent: Some(NodeId::ROOT),
@@ -919,6 +982,73 @@ impl Document {
 		self.root().children.len().max(1)
 	}
 
+	/// Get the block type of the paragraph at the given index (0-based).
+	#[must_use]
+	pub fn paragraph_block_type(&self, para_index: usize) -> BlockType {
+		let para_ids = self.root().children.clone();
+		para_ids
+			.get(para_index)
+			.and_then(|pid| self.nodes.get(pid))
+			.map(|node| {
+				if let NodeKind::Paragraph { block_type, .. } = &node.kind {
+					*block_type
+				} else {
+					BlockType::Body
+				}
+			})
+			.unwrap_or(BlockType::Body)
+	}
+
+	/// Set the block type of the paragraph at the given index (0-based).
+	pub fn set_paragraph_block_type(&mut self, para_index: usize, block_type: BlockType) {
+		let para_ids = self.root().children.clone();
+		if let Some(pid) = para_ids.get(para_index) {
+			if let Some(node) = self.nodes.get_mut(pid) {
+				if let NodeKind::Paragraph {
+					block_type: ref mut bt,
+					..
+				} = node.kind
+				{
+					*bt = block_type;
+				}
+			}
+		}
+	}
+
+	/// Get the block type of the paragraph containing the given character offset.
+	#[must_use]
+	pub fn block_type_at_offset(&self, offset: usize) -> BlockType {
+		let para_ids = self.root().children.clone();
+		let mut global = 0usize;
+		for (i, pid) in para_ids.iter().enumerate() {
+			if i > 0 {
+				global += 1; // account for \n separator
+			}
+			if let Some(para) = self.nodes.get(pid) {
+				let para_len: usize = para
+					.children
+					.iter()
+					.filter_map(|cid| {
+						if let Some(Node {
+							kind: NodeKind::TextRun { text, .. },
+							..
+						}) = self.nodes.get(cid)
+						{
+							Some(text.chars().count())
+						} else {
+							None
+						}
+					})
+					.sum();
+				if offset <= global + para_len {
+					return self.paragraph_block_type(i);
+				}
+				global += para_len;
+			}
+		}
+		BlockType::Body
+	}
+
 	/// Return the leading whitespace (tabs/spaces) of the line containing
 	/// the given character `offset`.
 	///
@@ -1320,7 +1450,18 @@ impl Document {
 		let mut html = String::new();
 
 		for para_id in &para_ids {
-			html.push_str("<p>");
+			let tag = self
+				.nodes
+				.get(para_id)
+				.map(|n| {
+					if let NodeKind::Paragraph { block_type, .. } = &n.kind {
+						block_type.html_tag()
+					} else {
+						"p"
+					}
+				})
+				.unwrap_or("p");
+			html.push_str(&format!("<{tag}>"));
 
 			if let Some(para) = self.nodes.get(para_id) {
 				let mut has_content = false;
@@ -1378,7 +1519,7 @@ impl Document {
 				let _ = has_content;
 			}
 
-			html.push_str("</p>");
+			html.push_str(&format!("</{tag}>"));
 		}
 
 		if html.is_empty() {
@@ -1405,6 +1546,20 @@ impl Document {
 			if pi > 0 {
 				md.push_str("\n\n");
 			}
+
+			// Add heading prefix if applicable.
+			let prefix = self
+				.nodes
+				.get(para_id)
+				.map(|n| {
+					if let NodeKind::Paragraph { block_type, .. } = &n.kind {
+						block_type.markdown_prefix()
+					} else {
+						""
+					}
+				})
+				.unwrap_or("");
+			md.push_str(prefix);
 
 			if let Some(para) = self.nodes.get(para_id) {
 				for run_id in &para.children {
@@ -3012,5 +3167,61 @@ mod tests {
 		let restored = Document::from_json(&json).unwrap();
 		assert_eq!(restored.plain_text(), "");
 		assert_eq!(restored.paragraph_count(), 1);
+	}
+
+	#[test]
+	fn heading_block_type_default_is_body() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello");
+		assert_eq!(doc.paragraph_block_type(0), super::BlockType::Body);
+	}
+
+	#[test]
+	fn set_and_get_heading_block_type() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Title\nSubtitle\nBody text");
+
+		doc.set_paragraph_block_type(0, super::BlockType::Heading1);
+		doc.set_paragraph_block_type(1, super::BlockType::Heading2);
+
+		assert_eq!(doc.paragraph_block_type(0), super::BlockType::Heading1);
+		assert_eq!(doc.paragraph_block_type(1), super::BlockType::Heading2);
+		assert_eq!(doc.paragraph_block_type(2), super::BlockType::Body);
+	}
+
+	#[test]
+	fn heading_to_html_uses_correct_tags() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Title\nBody");
+		doc.set_paragraph_block_type(0, super::BlockType::Heading1);
+
+		let html = doc.to_html();
+		assert!(html.contains("<h1>"), "should have <h1>: {html}");
+		assert!(html.contains("</h1>"), "should have </h1>: {html}");
+		assert!(html.contains("<p>"), "should have <p>: {html}");
+	}
+
+	#[test]
+	fn heading_to_markdown_uses_prefix() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Title\nBody");
+		doc.set_paragraph_block_type(0, super::BlockType::Heading1);
+
+		let md = doc.to_markdown();
+		assert!(md.starts_with("# "), "should start with '# ': {md}");
+	}
+
+	#[test]
+	fn heading_json_roundtrip() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Title\nBody");
+		doc.set_paragraph_block_type(0, super::BlockType::Heading2);
+
+		let json = doc.to_json().unwrap();
+		let restored = Document::from_json(&json).unwrap();
+
+		assert_eq!(restored.paragraph_block_type(0), super::BlockType::Heading2);
+		assert_eq!(restored.paragraph_block_type(1), super::BlockType::Body);
+		assert_eq!(restored.plain_text(), "Title\nBody");
 	}
 }

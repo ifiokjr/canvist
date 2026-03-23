@@ -51,6 +51,7 @@ export const canvisteditor_avg_word_length: (a: number) => number;
 export const canvisteditor_base64_decode_selection: (a: number) => void;
 export const canvisteditor_base64_encode_selection: (a: number) => void;
 export const canvisteditor_begin_batch: (a: number) => void;
+export const canvisteditor_block_type: (a: number) => [number, number];
 export const canvisteditor_bookmark_count: (a: number) => number;
 export const canvisteditor_bookmarked_lines: (a: number) => [number, number];
 export const canvisteditor_breadcrumbs: (a: number) => [number, number];
@@ -435,6 +436,7 @@ export const canvisteditor_set_anchor_if_absent: (a: number, b: number, c: numbe
 export const canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
 export const canvisteditor_set_auto_surround: (a: number, b: number) => void;
 export const canvisteditor_set_block_selection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+export const canvisteditor_set_block_type: (a: number, b: number, c: number) => void;
 export const canvisteditor_set_caret_visible: (a: number, b: number) => void;
 export const canvisteditor_set_coalesce_timeout: (a: number, b: number) => void;
 export const canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;

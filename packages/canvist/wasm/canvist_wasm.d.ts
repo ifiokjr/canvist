@@ -283,6 +283,10 @@ export class CanvistEditor {
      */
     begin_batch(): void;
     /**
+     * Get the block type of the paragraph at the cursor.
+     */
+    block_type(): string;
+    /**
      * Number of active bookmarks.
      */
     bookmark_count(): number;
@@ -2255,6 +2259,15 @@ export class CanvistEditor {
      */
     set_block_selection(start_line: number, end_line: number, start_col: number, end_col: number, text: string): void;
     /**
+     * Set the block type of the paragraph containing the cursor.
+     *
+     * - `"body"` — normal paragraph
+     * - `"h1"` — heading level 1
+     * - `"h2"` — heading level 2
+     * - `"h3"` — heading level 3
+     */
+    set_block_type(block_type: string): void;
+    /**
      * Set whether the caret (text cursor) is visible.
      *
      * Called by the JS blink controller on a 530 ms interval to toggle the
@@ -3010,6 +3023,7 @@ export interface InitOutput {
     readonly canvisteditor_base64_decode_selection: (a: number) => void;
     readonly canvisteditor_base64_encode_selection: (a: number) => void;
     readonly canvisteditor_begin_batch: (a: number) => void;
+    readonly canvisteditor_block_type: (a: number) => [number, number];
     readonly canvisteditor_bookmark_count: (a: number) => number;
     readonly canvisteditor_bookmarked_lines: (a: number) => [number, number];
     readonly canvisteditor_breadcrumbs: (a: number) => [number, number];
@@ -3394,6 +3408,7 @@ export interface InitOutput {
     readonly canvisteditor_set_auto_close_brackets: (a: number, b: number) => void;
     readonly canvisteditor_set_auto_surround: (a: number, b: number) => void;
     readonly canvisteditor_set_block_selection: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly canvisteditor_set_block_type: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_caret_visible: (a: number, b: number) => void;
     readonly canvisteditor_set_coalesce_timeout: (a: number, b: number) => void;
     readonly canvisteditor_set_color: (a: number, b: number, c: number, d: number, e: number) => void;

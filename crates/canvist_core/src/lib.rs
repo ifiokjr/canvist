@@ -53,6 +53,7 @@ pub use action::ActionMeta;
 pub use action::ActionValidationContext;
 pub use action::ActionValidationError;
 pub use action::ActorId;
+pub use document::BlockType;
 pub use document::Document;
 pub use document::Node;
 pub use document::NodeId;

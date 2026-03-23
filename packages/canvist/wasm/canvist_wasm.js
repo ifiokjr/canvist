@@ -638,6 +638,22 @@ export class CanvistEditor {
         wasm.canvisteditor_begin_batch(this.__wbg_ptr);
     }
     /**
+     * Get the block type of the paragraph at the cursor.
+     * @returns {string}
+     */
+    block_type() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_block_type(this.__wbg_ptr);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
      * Number of active bookmarks.
      * @returns {number}
      */
@@ -4845,6 +4861,20 @@ export class CanvistEditor {
         const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
         wasm.canvisteditor_set_block_selection(this.__wbg_ptr, start_line, end_line, start_col, end_col, ptr0, len0);
+    }
+    /**
+     * Set the block type of the paragraph containing the cursor.
+     *
+     * - `"body"` — normal paragraph
+     * - `"h1"` — heading level 1
+     * - `"h2"` — heading level 2
+     * - `"h3"` — heading level 3
+     * @param {string} block_type
+     */
+    set_block_type(block_type) {
+        const ptr0 = passStringToWasm0(block_type, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_block_type(this.__wbg_ptr, ptr0, len0);
     }
     /**
      * Set whether the caret (text cursor) is visible.
