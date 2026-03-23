@@ -127,7 +127,7 @@ pub fn layout_paragraph(
 		};
 	}
 
-	let line_height = default_line_height(config);
+	let base_line_height = default_line_height(config);
 
 	let mut lines = Vec::new();
 	let mut line_start = 0usize;
@@ -171,13 +171,20 @@ pub fn layout_paragraph(
 			tentative_end
 		};
 
-		// Measure the final line width accurately.
-		let width: f32 = (line_start..line_end)
-			.map(|i| {
-				let style = fragment_style_at(fragments, i);
-				measurer.measure_char(chars[i], style)
-			})
-			.sum();
+		// Measure the final line width accurately, and compute dynamic line
+		// height from the maximum font size on this line.
+		let mut width = 0.0f32;
+		let mut max_line_height = base_line_height;
+		for i in line_start..line_end {
+			let style = fragment_style_at(fragments, i);
+			width += measurer.measure_char(chars[i], style);
+			let resolved = style.resolve();
+			let char_lh = resolved.font_size * resolved.line_height;
+			if char_lh > max_line_height {
+				max_line_height = char_lh;
+			}
+		}
+		let line_height = max_line_height;
 
 		// Compute horizontal offset for text alignment.
 		let x_offset: f32 = match config.text_align {
@@ -710,5 +717,33 @@ mod tests {
 				line.x_offset
 			);
 		}
+	}
+
+	#[test]
+	fn mixed_font_sizes_use_tallest_line_height() {
+		let small = Style::new().font_size(12.0);
+		let large = Style::new().font_size(48.0);
+		let fragments = vec![
+			TextFragment {
+				text: "Small",
+				style: &small,
+			},
+			TextFragment {
+				text: "Large",
+				style: &large,
+			},
+		];
+		let config = LayoutConfig::new(800.0);
+		let layout = layout_paragraph(&fragments, &config, &HeuristicTextMeasure);
+
+		assert_eq!(layout.lines.len(), 1);
+		// Line height should be based on the 48px font, not the 12px one.
+		// 48.0 * 1.5 (default line_height multiplier) = 72.0
+		let line = &layout.lines[0];
+		assert!(
+			line.height >= 72.0,
+			"line height should be >= 72.0 for 48px text, got {}",
+			line.height
+		);
 	}
 }
