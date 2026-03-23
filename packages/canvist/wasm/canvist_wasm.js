@@ -3811,6 +3811,18 @@ export class CanvistEditor {
         wasm.canvisteditor_paste_html(this.__wbg_ptr, ptr0, len0);
     }
     /**
+     * Paste Markdown text, parsing formatting markers into styled text.
+     *
+     * Supports `**bold**`, `*italic*`, `~~strikethrough~~`, and paragraph
+     * breaks (double newline).
+     * @param {string} md
+     */
+    paste_markdown(md) {
+        const ptr0 = passStringToWasm0(md, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_paste_markdown(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Paste text with auto-adjusted indentation.
      *
      * Detects the indentation level at the cursor and adjusts the

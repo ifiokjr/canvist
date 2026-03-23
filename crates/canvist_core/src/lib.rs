@@ -61,6 +61,7 @@ pub use document::NodeKind;
 ///
 /// Re-exported for WASM paste-with-formatting support.
 pub use document::parse_simple_html as document_parse_html;
+pub use document::parse_simple_markdown as document_parse_markdown;
 pub use event::CompositionPhase;
 pub use event::EditorEvent;
 pub use event::EditorKey;

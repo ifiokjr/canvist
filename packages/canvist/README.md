@@ -4,6 +4,16 @@
 
 **canvist** renders text through a custom WASM-powered canvas engine, giving you full control over every pixel. Instead of relying on `contenteditable`, it manages its own rendering, selection, input handling, and accessibility.
 
+## Features
+
+- 🎨 **Canvas rendering** — platform-agnostic, pixel-perfect text rendering
+- ✨ **Rich formatting** — bold, italic, underline, strikethrough, font size, colors
+- ↩️ **Smart undo** — word-at-a-time coalescing with configurable timeout
+- 🤝 **Real-time collaboration** — built-in Yrs CRDT with encode/decode/sync API
+- ♿ **Accessibility** — hidden DOM mirror for screen readers + announcements
+- 📋 **Rich paste** — paste HTML preserving formatting
+- 🌐 **Cross-platform** — WebAssembly runs anywhere
+
 ## Install
 
 ```bash
@@ -14,59 +24,84 @@ deno add @canvist/canvist
 npx jsr add @canvist/canvist
 ```
 
-## Usage
+## Quick start
 
 ```ts
 import { createEditor } from "@canvist/canvist";
 
 const editor = await createEditor("my-canvas");
+
+// Insert and format text.
 editor.insertText("Hello, canvist!");
 editor.render();
 
-console.log(editor.text); // "Hello, canvist!"
-console.log(editor.charCount); // 15
+// Bold a range.
+editor.setSelection(0, 5);
+editor.toggleBold();
+editor.render();
+
+console.log(editor.text);      // "Hello, canvist!"
+console.log(editor.charCount);  // 15
+console.log(editor.toHtml());   // "<p><strong>Hello</strong>, canvist!</p>"
 ```
 
-## API
+## Collaboration
 
-### `createEditor(canvasId: string, options?: EditorOptions): Promise<CanvistEditor>`
+```ts
+const editor = await createEditor("canvas");
 
-Create an editor attached to a `<canvas>` element. Initialises the WASM module automatically on first call.
+// Enable CRDT session.
+editor.enableCollab();
 
-### `initWasm(): Promise<void>`
+// Send state to a new peer.
+const state = editor.collabEncodeState(); // Uint8Array
+sendToPeer(state);
 
-Explicitly initialise the WASM module. Idempotent — safe to call multiple times.
+// Apply remote updates.
+onPeerUpdate((update: Uint8Array) => {
+  editor.collabApplyUpdate(update);
+  editor.render();
+});
 
-### `CanvistEditor`
+// After local edits, sync to CRDT.
+editor.collabSyncLocal();
+```
 
-| Property / Method  | Description                |
-| ------------------ | -------------------------- |
-| `text`             | Current plain-text content |
-| `charCount`        | Number of characters       |
-| `canvasId`         | The canvas element ID      |
-| `insertText(text)` | Insert text at cursor      |
-| `setTitle(title)`  | Set document title         |
-| `render()`         | Re-render to canvas        |
-| `toJSON()`         | Export document as JSON    |
-| `destroy()`        | Release resources          |
+## API highlights
+
+| Property / Method        | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `text`                   | Current plain-text content               |
+| `charCount`              | Number of characters                     |
+| `insertText(text)`       | Insert text at cursor                    |
+| `deleteRange(start,end)` | Delete a character range                 |
+| `toggleBold()`           | Toggle bold (works with selection or pending) |
+| `toggleItalic()`         | Toggle italic                            |
+| `toggleUnderline()`      | Toggle underline                         |
+| `setTextAlign(align)`    | Set alignment: left, center, right       |
+| `undo()` / `redo()`      | Undo/redo with coalescing                |
+| `toHtml()` / `toMarkdown()` | Export as HTML or Markdown           |
+| `toJSON()` / `fromJSON()`   | Serialize/deserialize document       |
+| `enableCollab()`         | Start a Yrs CRDT collaboration session   |
+| `render()`               | Re-render the canvas                     |
+| `destroy()`              | Release WASM resources                   |
+
+## Demos
+
+- **Editor demo**: `packages/canvist/demo/index.html`
+- **Collaboration demo**: `packages/canvist/demo/collab.html` (tab-to-tab sync via BroadcastChannel)
 
 ## Development
 
-From `packages/canvist`, use Deno tasks so local runs match CI:
-
 ```bash
-# Build the WebAssembly bundle used by the package.
+# Build WASM
 deno task build:wasm
 
-# Run non-browser tests.
+# Run unit tests
 deno task test:unit
 
-# Run browser E2E tests (Playwright). Includes --allow-sys for OS detection and --allow-write for local browser/temp artifacts.
-# Playwright specs use *.spec.ts so they stay out of Deno's default *_test.ts unit discovery.
+# Run browser tests (Playwright)
 deno task test:playwright
-
-# Run the full web test matrix used by CI.
-deno task ci:test
 ```
 
 ## License

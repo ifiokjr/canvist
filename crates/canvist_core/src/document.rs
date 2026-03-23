@@ -1396,6 +1396,40 @@ impl Document {
 		md
 	}
 
+	/// Import a document from Markdown text.
+	///
+	/// Supports `**bold**`, `*italic*`, `~~strikethrough~~`, and paragraph
+	/// breaks (double newline). Resets the current document content.
+	pub fn from_markdown(&mut self, md: &str) {
+		let segments = parse_simple_markdown(md);
+
+		// Collect all plain text first, then apply formatting.
+		let full_text: String = segments.iter().map(|(t, _, _, _)| t.as_str()).collect();
+		self.set_plain_text(&full_text);
+
+		// Now apply formatting to each segment.
+		let mut offset = 0usize;
+		for (text, bold, italic, strike) in &segments {
+			let len = text.chars().count();
+			if *bold || *italic || *strike {
+				let mut style = Style::new();
+				if *bold {
+					style = style.bold();
+				}
+				if *italic {
+					style = style.italic();
+				}
+				if *strike {
+					style = style.strikethrough();
+				}
+				let sel =
+					Selection::range(Position::new(offset), Position::new(offset + len));
+				self.apply_style(sel, &style);
+			}
+			offset += len;
+		}
+	}
+
 	// -- internal helpers ----------------------------------------------------
 
 	fn alloc_id(&mut self) -> NodeId {
@@ -1726,6 +1760,59 @@ pub fn parse_simple_html(html: &str) -> Vec<(String, bool, bool, bool, bool)> {
 
 	if !buf.is_empty() {
 		result.push((buf, bold, italic, underline, strike));
+	}
+
+	result
+}
+
+/// Parse simple Markdown into styled text segments.
+///
+/// Returns `(text, bold, italic, strikethrough)` tuples.
+/// Supports `**bold**`, `*italic*`, `~~strikethrough~~`, and paragraph
+/// breaks (double newline → single `\n`).
+pub fn parse_simple_markdown(md: &str) -> Vec<(String, bool, bool, bool)> {
+	let mut result = Vec::new();
+	let mut bold = false;
+	let mut italic = false;
+	let mut strike = false;
+	let mut buf = String::new();
+	let mut chars = md.chars().peekable();
+
+	while let Some(ch) = chars.next() {
+		if ch == '~' && chars.peek() == Some(&'~') {
+			// Flush buffer.
+			if !buf.is_empty() {
+				result.push((std::mem::take(&mut buf), bold, italic, strike));
+			}
+			chars.next(); // consume second ~
+			strike = !strike;
+		} else if ch == '*' && chars.peek() == Some(&'*') {
+			// Bold marker.
+			if !buf.is_empty() {
+				result.push((std::mem::take(&mut buf), bold, italic, strike));
+			}
+			chars.next(); // consume second *
+			bold = !bold;
+		} else if ch == '*' {
+			// Italic marker.
+			if !buf.is_empty() {
+				result.push((std::mem::take(&mut buf), bold, italic, strike));
+			}
+			italic = !italic;
+		} else if ch == '\n' && chars.peek() == Some(&'\n') {
+			// Double newline → paragraph break (single \n).
+			if !buf.is_empty() {
+				result.push((std::mem::take(&mut buf), bold, italic, strike));
+			}
+			chars.next(); // consume second \n
+			result.push(("\n".to_string(), false, false, false));
+		} else {
+			buf.push(ch);
+		}
+	}
+
+	if !buf.is_empty() {
+		result.push((buf, bold, italic, strike));
 	}
 
 	result
@@ -2632,6 +2719,76 @@ mod tests {
 
 		assert_eq!(doc.plain_text(), "Hello\nBeautiful World");
 		assert_eq!(doc.paragraph_count(), 2);
+	}
+
+	#[test]
+	fn parse_markdown_basic() {
+		let segments = super::parse_simple_markdown("Hello **bold** and *italic* text");
+		let texts: Vec<_> = segments.iter().map(|(t, _, _, _)| t.as_str()).collect();
+		assert!(texts.contains(&"Hello "), "should have plain text: {:?}", texts);
+		assert!(texts.contains(&"bold"), "should have bold text: {:?}", texts);
+		assert!(texts.contains(&"italic"), "should have italic text: {:?}", texts);
+
+		let bold_seg = segments.iter().find(|(t, _, _, _)| t == "bold");
+		assert!(bold_seg.unwrap().1, "bold segment should have bold=true");
+
+		let italic_seg = segments.iter().find(|(t, _, _, _)| t == "italic");
+		assert!(italic_seg.unwrap().2, "italic segment should have italic=true");
+	}
+
+	#[test]
+	fn from_markdown_creates_styled_document() {
+		let mut doc = Document::new();
+		doc.from_markdown("**Bold** and *italic*");
+
+		let runs = doc.styled_runs();
+		let bold_run = runs.iter().find(|(t, _, _, _)| t == "Bold");
+		assert!(bold_run.is_some(), "should have 'Bold' run");
+		assert_eq!(
+			bold_run.unwrap().1.font_weight,
+			Some(crate::style::FontWeight::Bold)
+		);
+
+		let italic_run = runs.iter().find(|(t, _, _, _)| t == "italic");
+		assert!(italic_run.is_some(), "should have 'italic' run");
+		assert_eq!(italic_run.unwrap().1.italic, Some(true));
+	}
+
+	#[test]
+	fn markdown_roundtrip() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello World");
+		doc.apply_style(
+			Selection::range(Position::new(0), Position::new(5)),
+			&Style::new().bold(),
+		);
+		doc.apply_style(
+			Selection::range(Position::new(6), Position::new(11)),
+			&Style::new().italic(),
+		);
+
+		let md = doc.to_markdown();
+		assert!(md.contains("**Hello**"), "markdown: {}", md);
+		assert!(md.contains("*World*"), "markdown: {}", md);
+
+		let mut doc2 = Document::new();
+		doc2.from_markdown(&md);
+		let text = doc2.plain_text();
+		assert!(
+			text.contains("Hello") && text.contains("World"),
+			"roundtrip text: {}",
+			text
+		);
+	}
+
+	#[test]
+	fn from_markdown_with_paragraphs() {
+		let mut doc = Document::new();
+		doc.from_markdown("First paragraph\n\nSecond paragraph");
+
+		assert_eq!(doc.paragraph_count(), 2);
+		assert!(doc.plain_text().contains("First paragraph"));
+		assert!(doc.plain_text().contains("Second paragraph"));
 	}
 
 	#[test]

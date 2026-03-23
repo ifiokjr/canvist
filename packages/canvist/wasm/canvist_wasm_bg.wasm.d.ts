@@ -336,6 +336,7 @@ export const canvisteditor_overwrite_mode: (a: number) => number;
 export const canvisteditor_paragraph_block_count: (a: number) => number;
 export const canvisteditor_paragraph_count: (a: number) => number;
 export const canvisteditor_paste_html: (a: number, b: number, c: number) => void;
+export const canvisteditor_paste_markdown: (a: number, b: number, c: number) => void;
 export const canvisteditor_paste_with_indent: (a: number, b: number, c: number) => void;
 export const canvisteditor_placeholder: (a: number) => [number, number];
 export const canvisteditor_plain_text: (a: number) => [number, number];

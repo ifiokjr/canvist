@@ -10115,6 +10115,55 @@ impl CanvistEditor {
 		}
 	}
 
+	/// Paste Markdown text, parsing formatting markers into styled text.
+	///
+	/// Supports `**bold**`, `*italic*`, `~~strikethrough~~`, and paragraph
+	/// breaks (double newline).
+	#[wasm_bindgen]
+	pub fn paste_markdown(&mut self, md: &str) {
+		if !self.is_writable() {
+			return;
+		}
+		use canvist_core::operation::Operation;
+
+		let sel = self.runtime.selection();
+		if !sel.is_collapsed() {
+			self.delete_range(sel.start().offset(), sel.end().offset());
+		}
+
+		let insert_at = self.runtime.selection().end().offset();
+		let segments = canvist_core::document_parse_markdown(md);
+		let mut offset = insert_at;
+
+		for (text, bold, italic, strike) in &segments {
+			self.runtime
+				.apply_operation(Operation::insert(Position::new(offset), text.clone()));
+			let len = text.chars().count();
+			if *bold || *italic || *strike {
+				let mut style = Style::new();
+				if *bold {
+					style = style.bold();
+				}
+				if *italic {
+					style = style.italic();
+				}
+				if *strike {
+					style = style.strikethrough();
+				}
+				self.runtime.apply_operation(Operation::format(
+					Selection::range(Position::new(offset), Position::new(offset + len)),
+					style,
+				));
+			}
+			offset += len;
+		}
+
+		let _ = self.runtime.handle_event(EditorEvent::SelectionSet {
+			selection: Selection::collapsed(Position::new(offset)),
+		});
+		self.is_modified = true;
+	}
+
 	/// Queue canonical text input and process it into operations.
 	#[wasm_bindgen]
 	pub fn queue_text_input(&mut self, text: &str) {
