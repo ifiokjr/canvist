@@ -399,6 +399,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		let last_y = paragraphs
 			.last()
@@ -423,6 +424,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		let caret_offset = self.runtime.selection().end().offset();
 		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, caret_offset);
@@ -616,6 +618,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		Ok(paragraphs.iter().map(|p| p.layout.lines.len()).sum())
 	}
@@ -634,6 +637,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		let caret = self.runtime.selection().end().offset();
 		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, caret);
@@ -664,6 +668,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		let caret = self.runtime.selection().end().offset();
 		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, caret);
@@ -6249,6 +6254,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		paragraphs
 			.get(line)
@@ -9680,6 +9686,14 @@ impl CanvistEditor {
 		lc
 	}
 
+	/// Extract block types for all paragraphs in the document.
+	fn paragraph_block_types(&self) -> Vec<canvist_core::BlockType> {
+		let doc = self.runtime.document();
+		(0..doc.paragraph_count())
+			.map(|i| doc.paragraph_block_type(i))
+			.collect()
+	}
+
 	/// Insert text at the current cursor position (start of document).
 	#[wasm_bindgen]
 	pub fn insert_text(&mut self, text: &str) {
@@ -10892,6 +10906,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		let (para_idx, _) = find_para_and_line_for_offset(&paragraphs, offset);
 		if let Some(para) = paragraphs.get(para_idx) {
@@ -10919,6 +10934,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		let (para_idx, _) = find_para_and_line_for_offset(&paragraphs, offset);
 		if let Some(para) = paragraphs.get(para_idx) {
@@ -10948,6 +10964,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, offset);
 
@@ -11008,6 +11025,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 		let total_chars = doc.char_count();
 		let (para_idx, line_idx) = find_para_and_line_for_offset(&paragraphs, offset);
@@ -11293,6 +11311,7 @@ impl CanvistEditor {
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			None,
 		);
 
 		if paragraphs.is_empty() {
@@ -11390,13 +11409,15 @@ impl CanvistEditor {
 		let styled_runs = doc.styled_runs();
 		let plain_text = doc.plain_text();
 
-		// Compute per-paragraph layouts.
+		// Compute per-paragraph layouts with heading block types.
+		let block_types = self.paragraph_block_types();
 		let paragraphs = layout_paragraphs(
 			&plain_text,
 			&styled_runs,
 			&lc.layout_config,
 			&renderer,
 			&lc.default_style,
+			Some(&block_types),
 		);
 
 		// Helper: compute the x-offset (pixels) from the start of a layout
@@ -11592,6 +11613,19 @@ impl CanvistEditor {
 		for para in &paragraphs {
 			let para_chars: Vec<char> = para.text.chars().collect();
 
+			// Compute the effective default style for this paragraph,
+			// accounting for heading block types.
+			let para_default_style = if para.block_type != canvist_core::BlockType::Body {
+				let heading_size = para.block_type.default_font_size() * self.zoom;
+				let mut s = lc.default_style.clone().font_size(heading_size);
+				if para.block_type.is_bold() {
+					s = s.bold();
+				}
+				s
+			} else {
+				lc.default_style.clone()
+			};
+
 			for line in &para.layout.lines {
 				let line_start = line.start_offset;
 				let line_end = line.end_offset;
@@ -11613,7 +11647,7 @@ impl CanvistEditor {
 					let line_text: String = para_chars[line_start..line_end.min(para_chars.len())]
 						.iter()
 						.collect();
-					renderer.draw_text(line_x, line_y, &line_text, &lc.default_style);
+					renderer.draw_text(line_x, line_y, &line_text, &para_default_style);
 				} else {
 					let mut x = line_x;
 

@@ -126,6 +126,12 @@
           <button id="btn-strikethrough" title="Strikethrough (Ctrl+Shift+S)" style="text-decoration:line-through;width:32px;">S</button>
         </div>
         <span style="border-left:1px solid #ddd;height:24px;"></span>
+        <select id="block-type-select" title="Block Type" style="padding:4px;min-width:80px;">
+          <option value="body">Body</option>
+          <option value="h1">Heading 1</option>
+          <option value="h2">Heading 2</option>
+          <option value="h3">Heading 3</option>
+        </select>
         <select id="font-size-select" title="Font Size" style="padding:4px;">
           <option value="12">12px</option>
           <option value="14">14px</option>
@@ -504,6 +510,10 @@
             editor.render();
             syncA11yState();
             updateStatusBar();
+            // Sync block type dropdown with cursor position.
+            if (typeof updateBlockTypeSelect === "function") {
+              updateBlockTypeSelect();
+            }
           } catch (e) {
             console.error("render error:", e);
           }
@@ -1098,6 +1108,21 @@
           renderFrame();
           textarea.focus();
         });
+        // --- Block type (heading) selector ---
+        const blockTypeSelect = document.getElementById("block-type-select");
+        blockTypeSelect.addEventListener("change", (e) => {
+          editor.set_block_type(e.target.value);
+          announceA11y(e.target.value === "body" ? "Body text" : `Heading ${e.target.value.slice(1)}`);
+          renderFrame();
+          textarea.focus();
+        });
+        function updateBlockTypeSelect() {
+          try {
+            const bt = editor.block_type();
+            blockTypeSelect.value = bt;
+          } catch {}
+        }
+
         document.getElementById("font-size-select").addEventListener("change", (e) => {
           const size = parseFloat(e.target.value);
           if (size && hasSelection()) {

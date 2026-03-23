@@ -77,6 +77,8 @@ pub(crate) struct ParagraphLayoutInfo {
 	pub(crate) local_runs: Vec<(String, Style, usize, usize)>,
 	/// The paragraph's plain text (no `\n`).
 	pub(crate) text: String,
+	/// Block type of this paragraph (Body, Heading1, etc.).
+	pub(crate) block_type: canvist_core::BlockType,
 }
 
 /// Split the document into per-paragraph data and lay out each one.
@@ -90,6 +92,7 @@ pub(crate) fn layout_paragraphs(
 	layout_config: &LayoutConfig,
 	measurer: &dyn TextMeasure,
 	default_style: &Style,
+	block_types: Option<&[canvist_core::BlockType]>,
 ) -> Vec<ParagraphLayoutInfo> {
 	// Split the plain text on '\n' to determine paragraph boundaries.
 	let para_texts: Vec<&str> = plain_text.split('\n').collect();
@@ -158,7 +161,25 @@ pub(crate) fn layout_paragraphs(
 				.collect()
 		};
 
-		let layout = layout_paragraph(&fragments, layout_config, measurer);
+		// Determine block type for this paragraph.
+		let bt = block_types
+			.and_then(|bts| bts.get(para_idx).copied())
+			.unwrap_or(canvist_core::BlockType::Body);
+
+		// For headings, override the layout config with a larger font size.
+		let para_layout_config = if bt != canvist_core::BlockType::Body {
+			let heading_size = bt.default_font_size() * (layout_config.default_style.font_size.unwrap_or(16.0) / 16.0);
+			let heading_style = layout_config.default_style.clone().font_size(heading_size);
+			LayoutConfig {
+				max_width: layout_config.max_width,
+				default_style: heading_style,
+				text_align: layout_config.text_align,
+			}
+		} else {
+			layout_config.clone()
+		};
+
+		let layout = layout_paragraph(&fragments, &para_layout_config, measurer);
 
 		result.push(ParagraphLayoutInfo {
 			layout,
@@ -167,6 +188,7 @@ pub(crate) fn layout_paragraphs(
 			y_offset,
 			local_runs,
 			text: para_text.to_string(),
+			block_type: bt,
 		});
 
 		// Advance y_offset for next paragraph.
