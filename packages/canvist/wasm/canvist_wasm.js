@@ -5092,6 +5092,19 @@ export class CanvistEditor {
         wasm.canvisteditor_set_tab_size(this.__wbg_ptr, size);
     }
     /**
+     * Set the text alignment for the entire editor.
+     *
+     * - `"left"` — left-aligned (default)
+     * - `"center"` — centered
+     * - `"right"` — right-aligned
+     * @param {string} align
+     */
+    set_text_align(align) {
+        const ptr0 = passStringToWasm0(align, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        wasm.canvisteditor_set_text_align(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
      * Set a single theme colour slot.
      *
      * Slot names: "background", "text", "caret", "caret_blur",
@@ -5491,6 +5504,22 @@ export class CanvistEditor {
         let deferred1_1;
         try {
             const ret = wasm.canvisteditor_text_after_cursor(this.__wbg_ptr, max_chars);
+            deferred1_0 = ret[0];
+            deferred1_1 = ret[1];
+            return getStringFromWasm0(ret[0], ret[1]);
+        } finally {
+            wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        }
+    }
+    /**
+     * Get the current text alignment as a string.
+     * @returns {string}
+     */
+    text_align() {
+        let deferred1_0;
+        let deferred1_1;
+        try {
+            const ret = wasm.canvisteditor_text_align(this.__wbg_ptr);
             deferred1_0 = ret[0];
             deferred1_1 = ret[1];
             return getStringFromWasm0(ret[0], ret[1]);

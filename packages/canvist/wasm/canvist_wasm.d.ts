@@ -2411,6 +2411,14 @@ export class CanvistEditor {
      */
     set_tab_size(size: number): void;
     /**
+     * Set the text alignment for the entire editor.
+     *
+     * - `"left"` — left-aligned (default)
+     * - `"center"` — centered
+     * - `"right"` — right-aligned
+     */
+    set_text_align(align: string): void;
+    /**
      * Set a single theme colour slot.
      *
      * Slot names: "background", "text", "caret", "caret_blur",
@@ -2609,6 +2617,10 @@ export class CanvistEditor {
      * Return up to `max_chars` immediately after the cursor.
      */
     text_after_cursor(max_chars: number): string;
+    /**
+     * Get the current text alignment as a string.
+     */
+    text_align(): string;
     /**
      * Return up to `max_chars` immediately before the cursor.
      */
@@ -3362,6 +3374,7 @@ export interface InitOutput {
     readonly canvisteditor_set_sticky_scroll: (a: number, b: number) => void;
     readonly canvisteditor_set_syntax_highlight: (a: number, b: number) => void;
     readonly canvisteditor_set_tab_size: (a: number, b: number) => void;
+    readonly canvisteditor_set_text_align: (a: number, b: number, c: number) => void;
     readonly canvisteditor_set_theme_color: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly canvisteditor_set_theme_dark: (a: number) => void;
     readonly canvisteditor_set_theme_light: (a: number) => void;
@@ -3400,6 +3413,7 @@ export interface InitOutput {
     readonly canvisteditor_task_count: (a: number) => number;
     readonly canvisteditor_task_progress: (a: number) => [number, number];
     readonly canvisteditor_text_after_cursor: (a: number, b: number) => [number, number];
+    readonly canvisteditor_text_align: (a: number) => [number, number];
     readonly canvisteditor_text_before_cursor: (a: number, b: number) => [number, number];
     readonly canvisteditor_text_hash: (a: number) => [number, number];
     readonly canvisteditor_theme_name: (a: number) => [number, number];

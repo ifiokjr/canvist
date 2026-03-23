@@ -353,6 +353,37 @@
           "position:absolute;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;";
         canvas.parentElement.appendChild(textarea);
 
+        // --- Accessibility DOM ---
+        // Create a hidden content mirror for screen readers (like Google Docs).
+        // This provides the full document text in a live region so assistive
+        // technology can read document contents even though rendering is canvas-based.
+        const a11yContainer = document.createElement("div");
+        a11yContainer.id = "canvist-a11y";
+        a11yContainer.setAttribute("role", "document");
+        a11yContainer.setAttribute("aria-label", "Document content");
+        a11yContainer.setAttribute("aria-live", "polite");
+        a11yContainer.setAttribute("aria-atomic", "false");
+        a11yContainer.setAttribute("aria-relevant", "text");
+        a11yContainer.style.cssText =
+          "position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:pre-wrap;";
+        canvas.parentElement.appendChild(a11yContainer);
+
+        // Status announcements for screen readers.
+        const a11yStatus = document.createElement("div");
+        a11yStatus.id = "canvist-a11y-status";
+        a11yStatus.setAttribute("role", "status");
+        a11yStatus.setAttribute("aria-live", "assertive");
+        a11yStatus.setAttribute("aria-atomic", "true");
+        a11yStatus.style.cssText =
+          "position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);";
+        canvas.parentElement.appendChild(a11yStatus);
+
+        function announceA11y(message) {
+          a11yStatus.textContent = message;
+          // Clear after a short delay so repeated identical announcements work.
+          setTimeout(() => { a11yStatus.textContent = ""; }, 1000);
+        }
+
         canvas.addEventListener("click", () => textarea.focus());
         canvas.addEventListener("focus", () => textarea.focus());
         canvas.setAttribute("tabindex", "0");
@@ -430,6 +461,29 @@
             textarea.setSelectionRange(cursorOffset, cursorOffset);
           }
           canvas.setAttribute("aria-valuetext", text);
+
+          // Update the hidden accessibility DOM with document content.
+          // Split into paragraphs so screen readers can navigate by paragraph.
+          const paragraphs = text.split("\n");
+          const existingParagraphs = a11yContainer.children.length;
+          // Only rebuild if paragraph count changed (avoid unnecessary DOM churn).
+          if (existingParagraphs !== paragraphs.length) {
+            a11yContainer.innerHTML = "";
+            for (const para of paragraphs) {
+              const p = document.createElement("p");
+              p.textContent = para || "\u00A0"; // nbsp for empty lines
+              a11yContainer.appendChild(p);
+            }
+          } else {
+            // Update text content of existing paragraphs.
+            for (let i = 0; i < paragraphs.length; i++) {
+              const existing = a11yContainer.children[i];
+              const newText = paragraphs[i] || "\u00A0";
+              if (existing && existing.textContent !== newText) {
+                existing.textContent = newText;
+              }
+            }
+          }
         }
 
         let autoScroll = true; // set to false when scrolling by mouse wheel
@@ -518,14 +572,31 @@
         }
 
         // --- Alignment toolbar ---
+        function updateAlignButtons() {
+          const align = editor.text_align();
+          document.getElementById("btn-align-left").style.background =
+            align === "left" ? "#c8e0ff" : "";
+          document.getElementById("btn-align-center").style.background =
+            align === "center" ? "#c8e0ff" : "";
+          document.getElementById("btn-align-right").style.background =
+            align === "right" ? "#c8e0ff" : "";
+        }
         document.getElementById("btn-align-left").addEventListener("click", () => {
-          // TODO: wire up set_text_align when paragraph-level alignment is implemented
+          editor.set_text_align("left");
+          updateAlignButtons();
+          editor.render();
           textarea.focus();
         });
         document.getElementById("btn-align-center").addEventListener("click", () => {
+          editor.set_text_align("center");
+          updateAlignButtons();
+          editor.render();
           textarea.focus();
         });
         document.getElementById("btn-align-right").addEventListener("click", () => {
+          editor.set_text_align("right");
+          updateAlignButtons();
+          editor.render();
           textarea.focus();
         });
 
@@ -945,23 +1016,27 @@
         document.getElementById("btn-bold").addEventListener("click", () => {
           editor.toggle_bold();
           updateToolbarState();
+          announceA11y(editor.is_bold() ? "Bold applied" : "Bold removed");
           renderFrame();
           textarea.focus();
         });
         document.getElementById("btn-italic").addEventListener("click", () => {
           editor.toggle_italic();
           updateToolbarState();
+          announceA11y(editor.is_italic() ? "Italic applied" : "Italic removed");
           renderFrame();
           textarea.focus();
         });
         document.getElementById("btn-underline").addEventListener("click", () => {
           editor.toggle_underline();
           updateToolbarState();
+          announceA11y(editor.is_underline() ? "Underline applied" : "Underline removed");
           renderFrame();
           textarea.focus();
         });
         document.getElementById("btn-strikethrough").addEventListener("click", () => {
           editor.toggle_strikethrough();
+          announceA11y("Strikethrough toggled");
           renderFrame();
           textarea.focus();
         });
