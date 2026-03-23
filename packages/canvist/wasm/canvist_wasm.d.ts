@@ -1746,6 +1746,13 @@ export class CanvistEditor {
      */
     paste_html(html: string): void;
     /**
+     * Paste Markdown text, parsing formatting markers into styled text.
+     *
+     * Supports `**bold**`, `*italic*`, `~~strikethrough~~`, and paragraph
+     * breaks (double newline).
+     */
+    paste_markdown(md: string): void;
+    /**
      * Paste text with auto-adjusted indentation.
      *
      * Detects the indentation level at the cursor and adjusts the
@@ -3277,6 +3284,7 @@ export interface InitOutput {
     readonly canvisteditor_paragraph_block_count: (a: number) => number;
     readonly canvisteditor_paragraph_count: (a: number) => number;
     readonly canvisteditor_paste_html: (a: number, b: number, c: number) => void;
+    readonly canvisteditor_paste_markdown: (a: number, b: number, c: number) => void;
     readonly canvisteditor_paste_with_indent: (a: number, b: number, c: number) => void;
     readonly canvisteditor_placeholder: (a: number) => [number, number];
     readonly canvisteditor_plain_text: (a: number) => [number, number];
