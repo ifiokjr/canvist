@@ -1114,6 +1114,11 @@ export async function createEditor(
 			toJSON() {
 				return ref.to_json();
 			},
+			fromJSON(json: string) {
+				ref.from_json(json);
+				cursorOffset = 0;
+				renderFrame();
+			},
 			toHTML() {
 				return ref.to_html();
 			},

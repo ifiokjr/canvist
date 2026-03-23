@@ -118,6 +118,9 @@ export interface CanvistEditor {
 	/** Export the document as a JSON string. */
 	toJSON(): string;
 
+	/** Import a document from JSON, replacing current content. Preserves formatting. */
+	fromJSON(json: string): void;
+
 	/** Export the document as HTML with inline styles and semantic elements. */
 	toHTML(): string;
 

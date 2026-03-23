@@ -9762,6 +9762,19 @@ impl CanvistEditor {
 			.map_err(|e| JsValue::from_str(&e.to_string()))
 	}
 
+	/// Import a document from JSON, replacing the current content.
+	///
+	/// The JSON should be the output of `to_json()`. This preserves all
+	/// formatting, paragraph structure, and metadata.
+	#[wasm_bindgen]
+	pub fn from_json(&mut self, json: &str) -> Result<(), JsValue> {
+		let doc = canvist_core::Document::from_json(json)
+			.map_err(|e| JsValue::from_str(&format!("invalid JSON: {e}")))?;
+		*self.runtime.document_mut() = doc;
+		self.is_modified = false;
+		Ok(())
+	}
+
 	/// Export the document as HTML.
 	///
 	/// Each paragraph becomes a `<p>` element. Styled text gets inline
