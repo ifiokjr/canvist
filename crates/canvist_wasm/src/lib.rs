@@ -7193,6 +7193,56 @@ impl CanvistEditor {
 		removed
 	}
 
+	/// Anchor names whose offsets are within `radius` of a named anchor.
+	///
+	/// Distance check is inclusive (`abs_diff <= radius`).
+	/// Returns empty when the named anchor does not exist.
+	/// Output is sorted by offset then name.
+	#[wasm_bindgen]
+	pub fn anchor_names_in_anchor_window(&self, name: &str, radius: usize) -> Vec<String> {
+		let Some(center_offset) = self.anchors.get(name).copied() else {
+			return Vec::new();
+		};
+		self.anchor_names_in_offset_window(center_offset, radius)
+	}
+
+	/// Count anchors whose offsets are within `radius` of a named anchor.
+	#[wasm_bindgen]
+	pub fn anchor_count_in_anchor_window(&self, name: &str, radius: usize) -> usize {
+		self.anchor_names_in_anchor_window(name, radius).len()
+	}
+
+	/// Shift anchors whose offsets are within `radius` of a named anchor.
+	///
+	/// Distance check is inclusive (`abs_diff <= radius`).
+	/// Offsets are clamped to document bounds. Returns number shifted.
+	/// Returns 0 when the named anchor does not exist.
+	#[wasm_bindgen]
+	pub fn shift_anchors_in_anchor_window(
+		&mut self,
+		name: &str,
+		radius: usize,
+		delta: i32,
+	) -> usize {
+		let Some(center_offset) = self.anchors.get(name).copied() else {
+			return 0;
+		};
+		self.shift_anchors_in_offset_window(center_offset, radius, delta)
+	}
+
+	/// Remove anchors whose offsets are within `radius` of a named anchor.
+	///
+	/// Distance check is inclusive (`abs_diff <= radius`).
+	/// Returns number removed.
+	/// Returns 0 when the named anchor does not exist.
+	#[wasm_bindgen]
+	pub fn remove_anchors_in_anchor_window(&mut self, name: &str, radius: usize) -> usize {
+		let Some(center_offset) = self.anchors.get(name).copied() else {
+			return 0;
+		};
+		self.remove_anchors_in_offset_window(center_offset, radius)
+	}
+
 	/// Anchor names sorted by proximity to `offset`.
 	///
 	/// Sort order is distance ascending, then anchor offset ascending,
@@ -9328,6 +9378,139 @@ impl CanvistEditor {
 			min_count,
 			max_count,
 		) as f64 / total as f64
+	}
+
+	/// Ratio of groups constrained to an inclusive occurrence-count range.
+	#[wasm_bindgen]
+	pub fn line_occurrence_group_ratio_in_count_range(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+		max_count: usize,
+	) -> f64 {
+		let total_groups = self.line_groups(case_sensitive, ignore_whitespace).len();
+		if total_groups == 0 {
+			return 0.0;
+		}
+		self.line_occurrence_group_count_in_count_range(
+			case_sensitive,
+			ignore_whitespace,
+			min_count,
+			max_count,
+		) as f64 / total_groups as f64
+	}
+
+	/// Ratio of groups whose occurrence size equals `count`.
+	#[wasm_bindgen]
+	pub fn line_occurrence_group_ratio_with_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		count: usize,
+	) -> f64 {
+		if count == 0 {
+			return 0.0;
+		}
+		let total_groups = self.line_groups(case_sensitive, ignore_whitespace).len();
+		if total_groups == 0 {
+			return 0.0;
+		}
+		self.line_occurrence_group_count_with_count(case_sensitive, ignore_whitespace, count) as f64
+			/ total_groups as f64
+	}
+
+	/// Ratio of groups whose occurrence size is at least `min_count`.
+	#[wasm_bindgen]
+	pub fn line_occurrence_group_ratio_with_min_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+	) -> f64 {
+		let total_groups = self.line_groups(case_sensitive, ignore_whitespace).len();
+		if total_groups == 0 {
+			return 0.0;
+		}
+		self.line_occurrence_group_count(case_sensitive, ignore_whitespace, min_count) as f64
+			/ total_groups as f64
+	}
+
+	/// Ratio of groups whose occurrence size is at most `max_count`.
+	#[wasm_bindgen]
+	pub fn line_occurrence_group_ratio_with_max_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		max_count: usize,
+	) -> f64 {
+		if max_count == 0 {
+			return 0.0;
+		}
+		let total_groups = self.line_groups(case_sensitive, ignore_whitespace).len();
+		if total_groups == 0 {
+			return 0.0;
+		}
+		self.line_occurrence_group_count_in_count_range(
+			case_sensitive,
+			ignore_whitespace,
+			1,
+			max_count,
+		) as f64 / total_groups as f64
+	}
+
+	/// Ratio of lines belonging to groups whose occurrence size equals `count`.
+	#[wasm_bindgen]
+	pub fn line_occurrence_line_ratio_with_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		count: usize,
+	) -> f64 {
+		if count == 0 {
+			return 0.0;
+		}
+		self.line_occurrence_line_ratio_in_count_range(
+			case_sensitive,
+			ignore_whitespace,
+			count,
+			count,
+		)
+	}
+
+	/// Ratio of lines belonging to groups with at least `min_count` occurrences.
+	#[wasm_bindgen]
+	pub fn line_occurrence_line_ratio_with_min_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		min_count: usize,
+	) -> f64 {
+		self.line_occurrence_line_ratio_in_count_range(
+			case_sensitive,
+			ignore_whitespace,
+			min_count,
+			usize::MAX,
+		)
+	}
+
+	/// Ratio of lines belonging to groups with at most `max_count` occurrences.
+	#[wasm_bindgen]
+	pub fn line_occurrence_line_ratio_with_max_count(
+		&self,
+		case_sensitive: bool,
+		ignore_whitespace: bool,
+		max_count: usize,
+	) -> f64 {
+		if max_count == 0 {
+			return 0.0;
+		}
+		self.line_occurrence_line_ratio_in_count_range(
+			case_sensitive,
+			ignore_whitespace,
+			1,
+			max_count,
+		)
 	}
 
 	/// Line-occurrence histogram as `[occurrence_count, group_count, ...]`.

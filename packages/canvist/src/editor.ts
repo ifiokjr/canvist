@@ -2625,6 +2625,18 @@ export async function createEditor(
 			removeAnchorsInOffsetWindow(centerOffset: number, radius: number) {
 				return ref.remove_anchors_in_offset_window(centerOffset, radius);
 			},
+			anchorNamesInAnchorWindow(name: string, radius: number) {
+				return Array.from(ref.anchor_names_in_anchor_window(name, radius));
+			},
+			anchorCountInAnchorWindow(name: string, radius: number) {
+				return ref.anchor_count_in_anchor_window(name, radius);
+			},
+			shiftAnchorsInAnchorWindow(name: string, radius: number, delta: number) {
+				return ref.shift_anchors_in_anchor_window(name, radius, delta);
+			},
+			removeAnchorsInAnchorWindow(name: string, radius: number) {
+				return ref.remove_anchors_in_anchor_window(name, radius);
+			},
 			anchorNamesByProximityToOffset(offset: number, limit = 10) {
 				return Array.from(
 					ref.anchor_names_by_proximity_to_offset(offset, limit),
@@ -3272,6 +3284,85 @@ export async function createEditor(
 					caseSensitive,
 					ignoreWhitespace,
 					minCount,
+					maxCount,
+				);
+			},
+			lineOccurrenceGroupRatioInCountRange(
+				minCount: number,
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_group_ratio_in_count_range(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+					maxCount,
+				);
+			},
+			lineOccurrenceGroupRatioWithCount(
+				count: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_group_ratio_with_count(
+					caseSensitive,
+					ignoreWhitespace,
+					count,
+				);
+			},
+			lineOccurrenceGroupRatioWithMinCount(
+				minCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_group_ratio_with_min_count(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+				);
+			},
+			lineOccurrenceGroupRatioWithMaxCount(
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_group_ratio_with_max_count(
+					caseSensitive,
+					ignoreWhitespace,
+					maxCount,
+				);
+			},
+			lineOccurrenceLineRatioWithCount(
+				count: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_line_ratio_with_count(
+					caseSensitive,
+					ignoreWhitespace,
+					count,
+				);
+			},
+			lineOccurrenceLineRatioWithMinCount(
+				minCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_line_ratio_with_min_count(
+					caseSensitive,
+					ignoreWhitespace,
+					minCount,
+				);
+			},
+			lineOccurrenceLineRatioWithMaxCount(
+				maxCount: number,
+				caseSensitive = false,
+				ignoreWhitespace = false,
+			) {
+				return ref.line_occurrence_line_ratio_with_max_count(
+					caseSensitive,
+					ignoreWhitespace,
 					maxCount,
 				);
 			},

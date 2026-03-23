@@ -1576,6 +1576,22 @@ export interface CanvistEditor {
 	/** Remove anchors whose offsets are within radius of centerOffset. */
 	removeAnchorsInOffsetWindow(centerOffset: number, radius: number): number;
 
+	/** Anchor names whose offsets are within radius of a named anchor. */
+	anchorNamesInAnchorWindow(name: string, radius: number): string[];
+
+	/** Count anchors whose offsets are within radius of a named anchor. */
+	anchorCountInAnchorWindow(name: string, radius: number): number;
+
+	/** Shift anchors whose offsets are within radius of a named anchor. */
+	shiftAnchorsInAnchorWindow(
+		name: string,
+		radius: number,
+		delta: number,
+	): number;
+
+	/** Remove anchors whose offsets are within radius of a named anchor. */
+	removeAnchorsInAnchorWindow(name: string, radius: number): number;
+
 	/** Anchor names sorted by proximity to an offset. */
 	anchorNamesByProximityToOffset(offset: number, limit?: number): string[];
 
@@ -2088,6 +2104,56 @@ export interface CanvistEditor {
 	/** Ratio of lines that belong to groups in an inclusive count range. */
 	lineOccurrenceLineRatioInCountRange(
 		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of groups constrained to inclusive count range. */
+	lineOccurrenceGroupRatioInCountRange(
+		minCount: number,
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of groups whose occurrence size equals count. */
+	lineOccurrenceGroupRatioWithCount(
+		count: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of groups with occurrence size at least minCount. */
+	lineOccurrenceGroupRatioWithMinCount(
+		minCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of groups with occurrence size at most maxCount. */
+	lineOccurrenceGroupRatioWithMaxCount(
+		maxCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of lines belonging to groups whose occurrence size equals count. */
+	lineOccurrenceLineRatioWithCount(
+		count: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of lines belonging to groups with occurrence size at least minCount. */
+	lineOccurrenceLineRatioWithMinCount(
+		minCount: number,
+		caseSensitive?: boolean,
+		ignoreWhitespace?: boolean,
+	): number;
+
+	/** Ratio of lines belonging to groups with occurrence size at most maxCount. */
+	lineOccurrenceLineRatioWithMaxCount(
 		maxCount: number,
 		caseSensitive?: boolean,
 		ignoreWhitespace?: boolean,
