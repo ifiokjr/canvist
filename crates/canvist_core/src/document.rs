@@ -2467,4 +2467,143 @@ mod tests {
 		assert_eq!(doc.paragraph_count(), 1);
 		assert_eq!(doc.plain_text(), "ab");
 	}
+
+	#[test]
+	fn insert_newline_in_styled_run_preserves_style() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "abcd");
+
+		// Bold the entire run.
+		let sel = Selection::range(Position::new(0), Position::new(4));
+		doc.apply_style(sel, &Style::new().bold());
+
+		// Insert newline in the middle of the bold run.
+		doc.insert_text(Position::new(2), "\n");
+
+		assert_eq!(doc.plain_text(), "ab\ncd");
+		assert_eq!(doc.paragraph_count(), 2);
+
+		// Both runs should retain bold.
+		let runs = doc.styled_runs();
+		assert!(runs.len() >= 2, "expected at least 2 runs, got {}", runs.len());
+		for (text, style, _, _) in &runs {
+			if !text.is_empty() {
+				assert_eq!(
+					style.font_weight,
+					Some(crate::style::FontWeight::Bold),
+					"run '{}' should be bold after paragraph split",
+					text
+				);
+			}
+		}
+	}
+
+	#[test]
+	fn json_roundtrip_multi_paragraph() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello\nWorld");
+		doc.apply_style(
+			Selection::range(Position::new(0), Position::new(5)),
+			&Style::new().bold(),
+		);
+
+		let json = doc.to_json().unwrap();
+		let restored = Document::from_json(&json).unwrap();
+
+		assert_eq!(restored.plain_text(), "Hello\nWorld");
+		assert_eq!(restored.paragraph_count(), 2);
+
+		// Bold should survive the roundtrip.
+		let runs = restored.styled_runs();
+		let bold_run = runs.iter().find(|(t, _, _, _)| t == "Hello");
+		assert!(
+			bold_run.is_some(),
+			"should find 'Hello' run after JSON roundtrip"
+		);
+		if let Some((_, style, _, _)) = bold_run {
+			assert_eq!(
+				style.font_weight,
+				Some(crate::style::FontWeight::Bold),
+				"'Hello' should be bold after JSON roundtrip"
+			);
+		}
+	}
+
+	#[test]
+	fn html_roundtrip_multi_paragraph_with_style() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "First\nSecond");
+		doc.apply_style(
+			Selection::range(Position::new(0), Position::new(5)),
+			&Style::new().italic(),
+		);
+
+		let html = doc.to_html();
+		assert!(html.contains("<em>"), "should have <em> tag: {}", html);
+		assert!(html.contains("</p><p>"), "should have paragraph break: {}", html);
+
+		// Roundtrip through from_html.
+		let mut doc2 = Document::new();
+		doc2.from_html(&html);
+		let text = doc2.plain_text();
+		assert!(
+			text.contains("First") && text.contains("Second"),
+			"roundtrip text: {}",
+			text
+		);
+	}
+
+	#[test]
+	fn collab_sync_multi_paragraph() {
+		use crate::collaboration::CollaborationSession;
+
+		let session = CollaborationSession::new();
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Para one\nPara two\nPara three");
+
+		session.sync_from_document(&doc);
+		assert_eq!(session.text(), "Para one\nPara two\nPara three");
+
+		// Roundtrip back to a new document.
+		let mut doc2 = Document::new();
+		session.sync_to_document(&mut doc2);
+		assert_eq!(doc2.plain_text(), "Para one\nPara two\nPara three");
+	}
+
+	#[test]
+	fn delete_entire_paragraph_content() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello\nWorld\nEnd");
+
+		assert_eq!(doc.paragraph_count(), 3);
+
+		// Delete "World\n" (offsets 6..12).
+		let sel = Selection::range(Position::new(6), Position::new(12));
+		doc.delete(&sel);
+
+		assert_eq!(doc.plain_text(), "Hello\nEnd");
+		assert_eq!(doc.paragraph_count(), 2);
+	}
+
+	#[test]
+	fn format_across_paragraph_boundary() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "Hello\nWorld");
+
+		// Bold across the paragraph boundary (offsets 3..8 = "lo\nWo").
+		let sel = Selection::range(Position::new(3), Position::new(8));
+		doc.apply_style(sel, &Style::new().bold());
+
+		// Should create styled runs that span the boundary.
+		let runs = doc.styled_runs();
+		let bold_runs: Vec<_> = runs
+			.iter()
+			.filter(|(_, s, _, _)| s.font_weight == Some(crate::style::FontWeight::Bold))
+			.collect();
+		assert!(
+			!bold_runs.is_empty(),
+			"should have bold runs spanning paragraph boundary"
+		);
+		assert_eq!(doc.plain_text(), "Hello\nWorld");
+	}
 }
