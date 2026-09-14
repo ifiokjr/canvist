@@ -25,10 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0 # v4
 
       - name: install deno
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@v2.0.5 # v2
         with:
           deno-version: v2.x
 
@@ -48,7 +48,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0 # v4
 
       - name: install rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -56,13 +56,13 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: cache rust
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v2.9.2 # v2
 
       - name: install wasm-pack
         run: cargo install wasm-pack --locked
 
       - name: install deno
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@v2.0.5 # v2
         with:
           deno-version: v2.x
 

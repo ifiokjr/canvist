@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0 # v4
 
       - name: setup
         uses: ./.github/actions/devenv
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0 # v4
 
       - name: setup
         uses: ./.github/actions/devenv
@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0 # v4
 
       - name: setup
         uses: ./.github/actions/devenv
@@ -76,10 +76,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0 # v4
 
       - name: run cargo-deny
-        uses: EmbarkStudios/cargo-deny-action@v2
+        uses: EmbarkStudios/cargo-deny-action@v2.1.1 # v2
 
   semver-checks:
     if: github.event_name == 'pull_request'
@@ -87,7 +87,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.4.0 # v4
         with:
           fetch-depth: 0
 
@@ -190,7 +190,7 @@ jobs:
 
       - name: comment on PR with semver-checks output
         if: steps.verify.outputs.has_missing == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v7.1.0 # v7
         with:
           script: |
             const missing = '${{ steps.verify.outputs.missing }}'.trim().split(/\s+/);
