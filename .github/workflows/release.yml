@@ -27,7 +27,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: checkout
-        uses: actions/checkout@v4.4.0 # v4
+        uses: actions/checkout@v7.0.1 # v7
         with:
           ref: ${{ env.RELEASE_TAG }}
 
