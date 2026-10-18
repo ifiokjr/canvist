@@ -27,6 +27,7 @@ in
     ]
     ++ lib.optionals stdenv.isDarwin [
       coreutils
+      xcodegen
     ];
 
   enterShell = ''
@@ -94,6 +95,46 @@ in
         wasm-pack build crates/canvist_wasm --target web
       '';
       description = "Build the WASM package for the web.";
+      binary = "bash";
+    };
+    "build:ios" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/apple/build.sh"
+      '';
+      description = "Build CanvistFFI.xcframework and the Swift bindings (macOS only).";
+      binary = "bash";
+    };
+    "build:android" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/android/build.sh"
+      '';
+      description = "Build libcanvist_ffi.so with cargo-ndk and the Kotlin bindings.";
+      binary = "bash";
+    };
+    "test:ios" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/apple/test.sh"
+      '';
+      description = "Run the Swift package and sample app tests on an iOS Simulator (macOS only).";
+      binary = "bash";
+    };
+    "test:android" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/android/test.sh"
+      '';
+      description = "Run the Android library and sample app instrumented tests on an emulator.";
+      binary = "bash";
+    };
+    "test:flutter" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/flutter/test.sh"
+      '';
+      description = "Run the Flutter integration tests on an iOS Simulator and an Android emulator.";
       binary = "bash";
     };
     "test:all" = {

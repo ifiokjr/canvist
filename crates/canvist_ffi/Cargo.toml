@@ -1,0 +1,38 @@
+[package]
+name = "canvist_ffi"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_ffi"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["text-editor", "canvas", "ffi", "uniffi", "mobile"]
+license.workspace = true
+publish = false
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "Native (Swift, Kotlin and Dart) binding surface for the canvist canvas editor"
+
+[lib]
+# `staticlib` feeds the iOS XCFramework, `cdylib` feeds Android `jniLibs` and
+# UniFFI's library-mode bindgen, and `lib` lets other Rust adapters (the
+# Flutter bridge) wrap the same handle.
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+# Build the `uniffi-bindgen` CLI used to generate the Swift and Kotlin sources.
+bindgen = ["uniffi/cli", "uniffi/cargo-metadata"]
+
+[dependencies]
+thiserror = { workspace = true }
+uniffi = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,10 @@
+.gradle/
+.kotlin/
+build/
+local.properties
+*.iml
+.idea/
+
+# Produced by `build.sh`.
+/canvist/src/main/jniLibs/
+/canvist/src/main/kotlin/

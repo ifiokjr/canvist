@@ -1,0 +1,11 @@
+[bindings.swift]
+module_name = "Canvist"
+ffi_module_name = "CanvistFFI"
+ffi_module_filename = "CanvistFFI"
+
+[bindings.kotlin]
+package_name = "io.github.ifiokjr.canvist"
+cdylib_name = "canvist_ffi"
+# Use `android.system.SystemCleaner` on API 33+ (falls back to JNA's cleaner).
+android = true
+kotlin_target_version = "2.4.0"

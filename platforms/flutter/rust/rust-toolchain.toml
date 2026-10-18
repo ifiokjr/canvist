@@ -1,0 +1,16 @@
+# `native_toolchain_rust` (the Dart build hook that compiles this crate) needs a
+# pinned channel and the full target list next to the crate. Keep `channel` in
+# sync with the workspace `rust-toolchain.toml`.
+[toolchain]
+channel = "1.93.1"
+targets = [
+	"aarch64-apple-darwin",
+	"aarch64-apple-ios",
+	"aarch64-apple-ios-sim",
+	"aarch64-linux-android",
+	"armv7-linux-androideabi",
+	"x86_64-apple-darwin",
+	"x86_64-apple-ios",
+	"x86_64-linux-android",
+	"x86_64-unknown-linux-gnu",
+]

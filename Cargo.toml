@@ -2,14 +2,17 @@
 members = [
 	"crates/canvist",
 	"crates/canvist_core",
+	"crates/canvist_ffi",
 	"crates/canvist_render",
 	"crates/canvist_test",
 	"crates/canvist_wasm",
 	"docs",
+	"platforms/flutter/rust",
 ]
 default-members = [
 	"crates/canvist",
 	"crates/canvist_core",
+	"crates/canvist_ffi",
 	"crates/canvist_render",
 	"crates/canvist_wasm",
 	"docs",
@@ -29,6 +32,7 @@ repository = "https://github.com/ifiokjr/canvist"
 rust-version = "1.93.0"
 
 [workspace.dependencies]
+flutter_rust_bridge = { default-features = true, version = "=2.13.0" }
 fontdue = { default-features = false, version = "^0.9" }
 insta = { default-features = false, version = "^1" }
 js-sys = { default-features = false, version = "^0.3" }
@@ -42,6 +46,7 @@ tokio = { default-features = false, version = "^1" }
 typed-builder = { default-features = false, version = "^0.23" }
 unicode-linebreak = { default-features = false, version = "^0.1" }
 unicode-segmentation = { default-features = false, version = "^1" }
+uniffi = { default-features = false, version = "^0.32" }
 wasm-bindgen = { default-features = false, version = "^0.2" }
 wasm-bindgen-futures = { default-features = false, version = "^0.4" }
 wasm-bindgen-test = { default-features = false, version = "^0.3" }
@@ -51,16 +56,19 @@ yrs = { default-features = false, version = "^0.25" }
 # Internal crates
 canvist = { path = "./crates/canvist", version = "0.1.0" }
 canvist_core = { path = "./crates/canvist_core", version = "0.1.0" }
+canvist_ffi = { path = "./crates/canvist_ffi", version = "0.1.0" }
 canvist_render = { path = "./crates/canvist_render", version = "0.1.0" }
 canvist_wasm = { path = "./crates/canvist_wasm", version = "0.1.0" }
 
 [workspace.metadata.bin]
 cargo-insta = { version = "1.46.3" }
 cargo-llvm-cov = { version = "0.8.4" }
+cargo-ndk = { version = "4.1.2" }
 cargo-nextest = { version = "0.9.129" }
 cargo-semver-checks = { version = "0.46.0" }
 cargo-deny = { version = "0.19.0" }
 cargo-workspaces = { version = "0.4.2" }
+flutter_rust_bridge_codegen = { version = "2.13.0" }
 knope = { version = "0.22.3", bins = ["knope"] }
 
 [workspace.lints.rust]
