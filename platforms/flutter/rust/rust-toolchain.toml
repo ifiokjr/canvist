@@ -2,7 +2,7 @@
 # pinned channel and the full target list next to the crate. Keep `channel` in
 # sync with the workspace `rust-toolchain.toml`.
 [toolchain]
-channel = "1.93.1"
+channel = "1.96.0"
 targets = [
 	"aarch64-apple-darwin",
 	"aarch64-apple-ios",

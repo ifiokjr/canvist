@@ -35,7 +35,7 @@ The cost is a second binding generator. It stays cheap because `platforms/flutte
 
 All platforms:
 
-- The workspace toolchain (`rust-toolchain.toml`, Rust 1.93.1). The build scripts add the cross-compilation targets they need with `rustup target add`.
+- The workspace toolchain (`rust-toolchain.toml`, Rust 1.96.0). The build scripts add the cross-compilation targets they need with `rustup target add`.
 - `cargo-run-bin` (provided by `devenv`). Pinned tools (`cargo-ndk`, `flutter_rust_bridge_codegen`) install on first use from `[workspace.metadata.bin]`.
 
 iOS (macOS only):
