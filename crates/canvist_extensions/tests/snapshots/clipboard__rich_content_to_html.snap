@@ -1,0 +1,5 @@
+---
+source: crates/canvist_extensions/tests/clipboard.rs
+expression: "clipboard::to_html(typist.editor.schema(), &slice)"
+---
+<h1>Title</h1><p>Some <strong>bold</strong>, <em>italic</em>, <s>gone</s>, <code>code</code> and <u>under</u> text<br>next line</p><ul><li><p>one</p><ul><li><p>two</p></li></ul></li></ul><ol><li><p>first</p></li></ol><blockquote><p>quoted</p></blockquote><pre><code class="language-rust">let x = 1;</code></pre><ul data-type="taskList"><li data-type="taskItem" data-checked="true"><p>done</p></li></ul><hr><p>see <a href="https://canvist.dev">https://canvist.dev</a> now</p><p></p>

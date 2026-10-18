@@ -1,0 +1,154 @@
+---
+source: crates/canvist_extensions/tests/clipboard.rs
+expression: pasted(slice)
+---
+[
+  {
+    "attrs": {
+      "level": 2
+    },
+    "content": [
+      {
+        "text": "Plan ",
+        "type": "text"
+      }
+    ],
+    "type": "heading"
+  },
+  {
+    "content": [
+      {
+        "text": "Ship ",
+        "type": "text"
+      },
+      {
+        "marks": [
+          {
+            "type": "bold"
+          }
+        ],
+        "text": "fast",
+        "type": "text"
+      },
+      {
+        "text": " & ",
+        "type": "text"
+      },
+      {
+        "marks": [
+          {
+            "type": "italic"
+          }
+        ],
+        "text": "well",
+        "type": "text"
+      }
+    ],
+    "type": "paragraph"
+  },
+  {
+    "content": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "text": "one",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "listItem"
+      },
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "text": "two",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          },
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "nested",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "listItem"
+              }
+            ],
+            "type": "bulletList"
+          }
+        ],
+        "type": "listItem"
+      }
+    ],
+    "type": "bulletList"
+  },
+  {
+    "attrs": {
+      "start": 4
+    },
+    "content": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "text": "four",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "listItem"
+      }
+    ],
+    "type": "orderedList"
+  },
+  {
+    "content": [
+      {
+        "text": "cell",
+        "type": "text"
+      }
+    ],
+    "type": "paragraph"
+  },
+  {
+    "content": [
+      {
+        "text": "line",
+        "type": "text"
+      },
+      {
+        "type": "hardBreak"
+      },
+      {
+        "text": "break",
+        "type": "text"
+      }
+    ],
+    "type": "paragraph"
+  },
+  {
+    "type": "horizontalRule"
+  },
+  {
+    "type": "paragraph"
+  }
+]

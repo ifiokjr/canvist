@@ -18,6 +18,7 @@ description = "The canvist StarterKit: paragraphs, headings, lists, quotes, code
 default = ["starter-kit"]
 starter-kit = [
 	"blockquote",
+	"clipboard",
 	"bold",
 	"bullet-list",
 	"code",
@@ -37,6 +38,7 @@ starter-kit = [
 blockquote = []
 bold = []
 bullet-list = ["list-item"]
+clipboard = []
 code = []
 code-block = []
 hard-break = []
