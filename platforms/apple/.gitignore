@@ -1,0 +1,8 @@
+# Produced by `build.sh`.
+/Frameworks/
+/Sources/Canvist/Canvist.swift
+/.build/
+/.swiftpm/
+
+# Produced by `xcodegen` from `Example/project.yml`.
+/Example/*.xcodeproj/

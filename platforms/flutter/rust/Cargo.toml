@@ -1,0 +1,21 @@
+[package]
+name = "canvist_flutter"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+rust-version.workspace = true
+description = "flutter_rust_bridge adapter that exposes canvist_ffi to Dart"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+canvist_ffi = { workspace = true }
+flutter_rust_bridge = { workspace = true }
+
+[lints]
+workspace = true
