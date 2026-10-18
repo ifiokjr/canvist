@@ -4,8 +4,10 @@ doc-valid-idents = [
 	"ProseMirror",
 	"TipTap",
 	"StarterKit",
-	"CommonMark",
 	"WebAssembly",
+	"WebKit",
 	"JavaScript",
 	"TypeScript",
+	"Canvas2D",
+	"CommonMark",
 ]
