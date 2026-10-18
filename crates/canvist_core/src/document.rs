@@ -474,8 +474,9 @@ impl Document {
 		// The plain text has `\n` between paragraphs. If the deletion
 		// range crosses any `\n`, we need to merge paragraphs.
 		let plain = self.plain_text();
-		let deleted: String = plain.chars().skip(start).take(end - start).collect();
-		let crosses_paragraph = deleted.contains('\n');
+		let first_paragraph = plain.chars().take(start).filter(|&c| c == '\n').count();
+		let last_paragraph = plain.chars().take(end).filter(|&c| c == '\n').count();
+		let crosses_paragraph = last_paragraph > first_paragraph;
 
 		// Delete text from overlapping runs.
 		let runs_to_delete = self.overlapping_runs(start, end);
@@ -497,103 +498,46 @@ impl Document {
 		}
 
 		if dirty {
-			// If the deletion crossed paragraph boundaries, merge the
-			// affected paragraphs and clean up empty ones.
+			// A deletion that crossed paragraph boundaries joins exactly the
+			// paragraphs it touched; every other paragraph, including
+			// intentionally empty ones, is left alone.
 			if crosses_paragraph {
-				self.merge_empty_paragraphs();
+				self.merge_paragraphs(first_paragraph, last_paragraph);
 			}
 			self.rebuild_indexes();
 		}
 	}
 
-	/// Merge adjacent paragraphs when one has been emptied by deletion.
-	///
-	/// After text deletion across a `\n` boundary, the second paragraph
-	/// may be empty or the split may be unnecessary. This method:
-	/// 1. Removes completely empty paragraphs (no runs or all-empty runs).
-	/// 2. Merges a paragraph that lost its trailing content with the next
-	///    paragraph by moving the next paragraph's runs into it.
-	fn merge_empty_paragraphs(&mut self) {
+	/// Merge root paragraphs `first + 1..=last` into paragraph `first`,
+	/// moving their runs into it in order.
+	fn merge_paragraphs(&mut self, first: usize, last: usize) {
 		let para_ids: Vec<NodeId> = self.root().children.clone();
-		let mut to_remove: Vec<NodeId> = Vec::new();
-		let mut to_merge: Vec<(NodeId, NodeId)> = Vec::new(); // (keep, absorb)
+		let Some(&keep_id) = para_ids.get(first) else {
+			return;
+		};
+		let absorbed: Vec<NodeId> = para_ids
+			.iter()
+			.skip(first + 1)
+			.take(last - first)
+			.copied()
+			.collect();
 
-		for (i, &pid) in para_ids.iter().enumerate() {
-			let is_empty = self.nodes.get(&pid).is_none_or(|p| {
-				p.children.iter().all(|cid| {
-					self.nodes.get(cid).is_none_or(|n| {
-						if let NodeKind::TextRun { ref text, .. } = n.kind {
-							text.is_empty()
-						} else {
-							false
-						}
-					})
-				})
-			});
-
-			if is_empty && para_ids.len() > 1 {
-				// If this empty paragraph has a non-empty predecessor,
-				// merge them (move nothing — the empty one just gets removed).
-				// If the NEXT paragraph has content and this one is empty,
-				// just remove the empty one.
-				to_remove.push(pid);
-			} else if !is_empty && i + 1 < para_ids.len() {
-				// Check if the next paragraph should be merged into this one.
-				let next_pid = para_ids[i + 1];
-				let next_empty = self.nodes.get(&next_pid).is_none_or(|p| {
-					p.children.iter().all(|cid| {
-						self.nodes.get(cid).is_none_or(|n| {
-							if let NodeKind::TextRun { ref text, .. } = n.kind {
-								text.is_empty()
-							} else {
-								false
-							}
-						})
-					})
-				});
-
-				if !next_empty && !to_remove.contains(&next_pid) {
-					// Both non-empty — they were split by a newline that's now
-					// been deleted. Merge the next paragraph's runs into this one.
-					to_merge.push((pid, next_pid));
+		for absorb_id in &absorbed {
+			let Some(paragraph) = self.nodes.remove(absorb_id) else {
+				continue;
+			};
+			for &child in &paragraph.children {
+				if let Some(node) = self.nodes.get_mut(&child) {
+					node.parent = Some(keep_id);
 				}
+			}
+			if let Some(keeper) = self.nodes.get_mut(&keep_id) {
+				keeper.children.extend(paragraph.children);
 			}
 		}
 
-		// Perform merges: move runs from the absorbed paragraph into the keeper.
-		for (keep_id, absorb_id) in &to_merge {
-			let absorbed_children: Vec<NodeId> = self
-				.nodes
-				.get(absorb_id)
-				.map(|p| p.children.clone())
-				.unwrap_or_default();
-
-			// Reparent the absorbed runs.
-			for &cid in &absorbed_children {
-				if let Some(node) = self.nodes.get_mut(&cid) {
-					node.parent = Some(*keep_id);
-				}
-			}
-
-			// Append to keeper's children.
-			if let Some(keeper) = self.nodes.get_mut(keep_id) {
-				keeper.children.extend(absorbed_children);
-			}
-
-			// Mark absorbed paragraph for removal.
-			to_remove.push(*absorb_id);
-		}
-
-		// Remove marked paragraphs.
-		if !to_remove.is_empty() {
-			if let Some(root) = self.nodes.get_mut(&NodeId::ROOT) {
-				root.children.retain(|c| !to_remove.contains(c));
-			}
-			for pid in &to_remove {
-				// Remove the paragraph node itself (but not its children,
-				// which may have been reparented).
-				self.nodes.remove(pid);
-			}
+		if let Some(root) = self.nodes.get_mut(&NodeId::ROOT) {
+			root.children.retain(|child| !absorbed.contains(child));
 		}
 	}
 
@@ -2013,6 +1957,22 @@ fn char_to_byte_offset(s: &str, char_offset: usize) -> usize {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn cross_paragraph_delete_merges_only_touched_paragraphs() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "aaa\nbbb\nccc\n\nddd");
+
+		doc.delete(&Selection::range(Position::new(0), Position::new(7)));
+		assert_eq!(
+			doc.plain_text(),
+			"\nccc\n\nddd",
+			"untouched empty paragraphs survive"
+		);
+
+		doc.insert_text(Position::new(0), "bbb\naaa");
+		assert_eq!(doc.plain_text(), "bbb\naaa\nccc\n\nddd");
+	}
 
 	#[test]
 	fn new_document_has_root() {
