@@ -40,9 +40,9 @@ editor.setSelection(0, 5);
 editor.toggleBold();
 editor.render();
 
-console.log(editor.text);      // "Hello, canvist!"
-console.log(editor.charCount);  // 15
-console.log(editor.toHtml());   // "<p><strong>Hello</strong>, canvist!</p>"
+console.log(editor.text); // "Hello, canvist!"
+console.log(editor.charCount); // 15
+console.log(editor.toHtml()); // "<p><strong>Hello</strong>, canvist!</p>"
 ```
 
 ## Collaboration
@@ -59,8 +59,8 @@ sendToPeer(state);
 
 // Apply remote updates.
 onPeerUpdate((update: Uint8Array) => {
-  editor.collabApplyUpdate(update);
-  editor.render();
+	editor.collabApplyUpdate(update);
+	editor.render();
 });
 
 // After local edits, sync to CRDT.
@@ -69,22 +69,22 @@ editor.collabSyncLocal();
 
 ## API highlights
 
-| Property / Method        | Description                              |
-| ------------------------ | ---------------------------------------- |
-| `text`                   | Current plain-text content               |
-| `charCount`              | Number of characters                     |
-| `insertText(text)`       | Insert text at cursor                    |
-| `deleteRange(start,end)` | Delete a character range                 |
-| `toggleBold()`           | Toggle bold (works with selection or pending) |
-| `toggleItalic()`         | Toggle italic                            |
-| `toggleUnderline()`      | Toggle underline                         |
-| `setTextAlign(align)`    | Set alignment: left, center, right       |
-| `undo()` / `redo()`      | Undo/redo with coalescing                |
-| `toHtml()` / `toMarkdown()` | Export as HTML or Markdown           |
-| `toJSON()` / `fromJSON()`   | Serialize/deserialize document       |
-| `enableCollab()`         | Start a Yrs CRDT collaboration session   |
-| `render()`               | Re-render the canvas                     |
-| `destroy()`              | Release WASM resources                   |
+| Property / Method           | Description                                   |
+| --------------------------- | --------------------------------------------- |
+| `text`                      | Current plain-text content                    |
+| `charCount`                 | Number of characters                          |
+| `insertText(text)`          | Insert text at cursor                         |
+| `deleteRange(start,end)`    | Delete a character range                      |
+| `toggleBold()`              | Toggle bold (works with selection or pending) |
+| `toggleItalic()`            | Toggle italic                                 |
+| `toggleUnderline()`         | Toggle underline                              |
+| `setTextAlign(align)`       | Set alignment: left, center, right            |
+| `undo()` / `redo()`         | Undo/redo with coalescing                     |
+| `toHtml()` / `toMarkdown()` | Export as HTML or Markdown                    |
+| `toJSON()` / `fromJSON()`   | Serialize/deserialize document                |
+| `enableCollab()`            | Start a Yrs CRDT collaboration session        |
+| `render()`                  | Re-render the canvas                          |
+| `destroy()`                 | Release WASM resources                        |
 
 ## Demos
 

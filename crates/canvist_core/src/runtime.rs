@@ -44,6 +44,9 @@ pub struct EditorRuntime {
 	force_new_group: bool,
 	/// Timestamp of the last coalesced keystroke (for grouping rapid typing).
 	last_coalesce_ms: u64,
+	/// Where the last single-character insert ended. Only an insert at
+	/// exactly this offset continues the current undo group.
+	coalesce_end: Option<usize>,
 }
 
 impl EditorRuntime {
@@ -99,6 +102,7 @@ impl EditorRuntime {
 			coalesce_timeout_ms: 500,
 			force_new_group: false,
 			last_coalesce_ms: 0,
+			coalesce_end: None,
 		}
 	}
 
@@ -151,7 +155,8 @@ impl EditorRuntime {
 		let cursor_pos = inverse_tx
 			.cursor_hint()
 			.unwrap_or(self.document.char_count());
-		self.selection = Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
+		self.selection =
+			Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
 		self.force_new_group = true;
 		true
 	}
@@ -177,7 +182,8 @@ impl EditorRuntime {
 		let cursor_pos = forward_tx
 			.cursor_hint()
 			.unwrap_or(self.document.char_count());
-		self.selection = Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
+		self.selection =
+			Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
 		self.force_new_group = true;
 		true
 	}
@@ -326,12 +332,8 @@ impl EditorRuntime {
 				};
 				(None, Invalidation::Selection)
 			}
-			ActionArgs::KeyDown {
-				key, modifiers, ..
-			} => self.handle_keydown(key, modifiers),
-			ActionArgs::Focus => {
-				(None, Invalidation::Selection)
-			}
+			ActionArgs::KeyDown { key, modifiers, .. } => self.handle_keydown(key, modifiers),
+			ActionArgs::Focus => (None, Invalidation::Selection),
 			ActionArgs::Blur => {
 				self.force_new_group = true;
 				(None, Invalidation::Selection)
@@ -428,17 +430,20 @@ impl EditorRuntime {
 			}
 			// Select all.
 			EditorKey::Character(ch) if ch == "a" && (modifiers.control || modifiers.meta) => {
-				self.selection =
-					Selection::range(Position::new(0), Position::new(doc_chars));
+				self.selection = Selection::range(Position::new(0), Position::new(doc_chars));
 				(None, Invalidation::Selection)
 			}
 			// Undo.
-			EditorKey::Character(ch) if ch == "z" && (modifiers.control || modifiers.meta) && !modifiers.shift => {
+			EditorKey::Character(ch)
+				if ch == "z" && (modifiers.control || modifiers.meta) && !modifiers.shift =>
+			{
 				self.undo();
 				(None, Invalidation::DocumentAndSelection)
 			}
 			// Redo.
-			EditorKey::Character(ch) if ch == "z" && (modifiers.control || modifiers.meta) && modifiers.shift => {
+			EditorKey::Character(ch)
+				if ch == "z" && (modifiers.control || modifiers.meta) && modifiers.shift =>
+			{
 				self.redo();
 				(None, Invalidation::DocumentAndSelection)
 			}
@@ -534,8 +539,10 @@ impl EditorRuntime {
 		// a single undo group if they arrive within `coalesce_timeout_ms` of
 		// each other. This gives the user a "word at a time" undo experience
 		// rather than undoing one character at a time.
+		let insert_offset = Self::single_char_insert_offset(&tx);
 		let should_coalesce = !self.force_new_group
-			&& Self::is_single_char_insert(&tx)
+			&& insert_offset.is_some()
+			&& insert_offset == self.coalesce_end
 			&& self.can_coalesce_with_top(&tx);
 
 		if should_coalesce {
@@ -562,22 +569,19 @@ impl EditorRuntime {
 		// Non-coalescible edits (newlines, multi-char, deletions, etc.)
 		// should break the chain so subsequent single-char inserts start
 		// a fresh undo group.
-		self.force_new_group = !Self::is_single_char_insert(&tx);
+		self.force_new_group = insert_offset.is_none();
+		self.coalesce_end = insert_offset.map(|offset| offset + 1);
 
 		self.selection = Selection::collapsed(Position::new(self.document.char_count()));
 	}
 
-	/// Check if a transaction is a single-character insert (no deletion).
-	fn is_single_char_insert(tx: &Transaction) -> bool {
-		let ops = tx.operations();
-		if ops.len() != 1 {
-			return false;
-		}
-		matches!(
-			&ops[0],
-			Operation::Insert { text, .. } if text.chars().count() == 1
-				&& !text.starts_with('\n')
-		)
+	/// The offset of a single-character insert (no deletion), if `tx` is one.
+	fn single_char_insert_offset(tx: &Transaction) -> Option<usize> {
+		let [Operation::Insert { position, text }] = tx.operations() else {
+			return None;
+		};
+		let single = text.chars().count() == 1 && !text.starts_with('\n');
+		single.then(|| position.offset())
 	}
 
 	/// Check if the new transaction can coalesce with the top of the undo stack.
@@ -788,6 +792,40 @@ mod tests {
 	}
 
 	#[test]
+	fn undo_coalescing_requires_contiguous_typing() {
+		let mut runtime = runtime_with_plaintext("");
+		runtime.set_coalesce_timeout_ms(1000);
+		let type_at = |runtime: &mut EditorRuntime, ms: u64, position: usize, ch: &str| {
+			runtime.set_now_ms(ms);
+			runtime
+				.handle_event(EditorEvent::CursorMove {
+					position: Position::new(position),
+					extend: false,
+				})
+				.expect("cursor move should succeed");
+			runtime
+				.handle_event(EditorEvent::TextInsert {
+					text: ch.to_string(),
+				})
+				.expect("insert should succeed");
+		};
+
+		type_at(&mut runtime, 50, 0, "a");
+		type_at(&mut runtime, 100, 1, "b");
+		type_at(&mut runtime, 150, 0, "!");
+		assert_eq!(runtime.document().plain_text(), "!ab");
+
+		assert!(runtime.undo());
+		assert_eq!(
+			runtime.document().plain_text(),
+			"ab",
+			"the jump starts a new undo group"
+		);
+		assert!(runtime.undo());
+		assert_eq!(runtime.document().plain_text(), "");
+	}
+
+	#[test]
 	fn undo_coalescing_splits_on_timeout() {
 		let mut runtime = runtime_with_plaintext("");
 		runtime.set_coalesce_timeout_ms(100);
@@ -986,7 +1024,7 @@ mod tests {
 		assert_eq!(runtime.document().plain_text(), "Hello world");
 
 		// After undo, all runs should be unstyled.
-		for (text, style, _, _) in runtime.document().styled_runs() {
+		for (text, style, ..) in runtime.document().styled_runs() {
 			assert_eq!(
 				style.font_weight, None,
 				"run '{text}' should be unstyled after undo"
@@ -1054,8 +1092,10 @@ mod tests {
 		// Redo format.
 		assert!(runtime.redo());
 		let runs = runtime.document().styled_runs();
-		assert!(runs.iter().any(|(_, s, _, _)| s.font_weight
-			== Some(crate::style::FontWeight::Bold)));
+		assert!(
+			runs.iter()
+				.any(|(_, s, ..)| s.font_weight == Some(crate::style::FontWeight::Bold))
+		);
 
 		// Redo " world".
 		assert!(runtime.redo());

@@ -364,7 +364,11 @@ impl Document {
 			else {
 				return;
 			};
-			(text.clone(), style.clone(), node.parent.unwrap_or(NodeId::ROOT))
+			(
+				text.clone(),
+				style.clone(),
+				node.parent.unwrap_or(NodeId::ROOT),
+			)
 		};
 
 		let run_chars: Vec<char> = run_text.chars().collect();
@@ -381,9 +385,9 @@ impl Document {
 			&& let NodeKind::TextRun {
 				text: ref mut t, ..
 			} = node.kind
-			{
-				*t = first_line;
-			}
+		{
+			*t = first_line;
+		}
 
 		// Find the position of the current paragraph in the root's children.
 		let para_pos = self
@@ -470,8 +474,9 @@ impl Document {
 		// The plain text has `\n` between paragraphs. If the deletion
 		// range crosses any `\n`, we need to merge paragraphs.
 		let plain = self.plain_text();
-		let deleted: String = plain.chars().skip(start).take(end - start).collect();
-		let crosses_paragraph = deleted.contains('\n');
+		let first_paragraph = plain.chars().take(start).filter(|&c| c == '\n').count();
+		let last_paragraph = plain.chars().take(end).filter(|&c| c == '\n').count();
+		let crosses_paragraph = last_paragraph > first_paragraph;
 
 		// Delete text from overlapping runs.
 		let runs_to_delete = self.overlapping_runs(start, end);
@@ -493,113 +498,46 @@ impl Document {
 		}
 
 		if dirty {
-			// If the deletion crossed paragraph boundaries, merge the
-			// affected paragraphs and clean up empty ones.
+			// A deletion that crossed paragraph boundaries joins exactly the
+			// paragraphs it touched; every other paragraph, including
+			// intentionally empty ones, is left alone.
 			if crosses_paragraph {
-				self.merge_empty_paragraphs();
+				self.merge_paragraphs(first_paragraph, last_paragraph);
 			}
 			self.rebuild_indexes();
 		}
 	}
 
-	/// Merge adjacent paragraphs when one has been emptied by deletion.
-	///
-	/// After text deletion across a `\n` boundary, the second paragraph
-	/// may be empty or the split may be unnecessary. This method:
-	/// 1. Removes completely empty paragraphs (no runs or all-empty runs).
-	/// 2. Merges a paragraph that lost its trailing content with the next
-	///    paragraph by moving the next paragraph's runs into it.
-	fn merge_empty_paragraphs(&mut self) {
+	/// Merge root paragraphs `first + 1..=last` into paragraph `first`,
+	/// moving their runs into it in order.
+	fn merge_paragraphs(&mut self, first: usize, last: usize) {
 		let para_ids: Vec<NodeId> = self.root().children.clone();
-		let mut to_remove: Vec<NodeId> = Vec::new();
-		let mut to_merge: Vec<(NodeId, NodeId)> = Vec::new(); // (keep, absorb)
+		let Some(&keep_id) = para_ids.get(first) else {
+			return;
+		};
+		let absorbed: Vec<NodeId> = para_ids
+			.iter()
+			.skip(first + 1)
+			.take(last - first)
+			.copied()
+			.collect();
 
-		for (i, &pid) in para_ids.iter().enumerate() {
-			let is_empty = self
-				.nodes
-				.get(&pid)
-				.is_none_or(|p| {
-					p.children.iter().all(|cid| {
-						self.nodes
-							.get(cid)
-							.is_none_or(|n| {
-								if let NodeKind::TextRun { ref text, .. } = n.kind {
-									text.is_empty()
-								} else {
-									false
-								}
-							})
-					})
-				});
-
-			if is_empty && para_ids.len() > 1 {
-				// If this empty paragraph has a non-empty predecessor,
-				// merge them (move nothing — the empty one just gets removed).
-				// If the NEXT paragraph has content and this one is empty,
-				// just remove the empty one.
-				to_remove.push(pid);
-			} else if !is_empty && i + 1 < para_ids.len() {
-				// Check if the next paragraph should be merged into this one.
-				let next_pid = para_ids[i + 1];
-				let next_empty = self
-					.nodes
-					.get(&next_pid)
-					.is_none_or(|p| {
-						p.children.iter().all(|cid| {
-							self.nodes
-								.get(cid)
-								.is_none_or(|n| {
-									if let NodeKind::TextRun { ref text, .. } = n.kind {
-										text.is_empty()
-									} else {
-										false
-									}
-								})
-						})
-					});
-
-				if !next_empty && !to_remove.contains(&next_pid) {
-					// Both non-empty — they were split by a newline that's now
-					// been deleted. Merge the next paragraph's runs into this one.
-					to_merge.push((pid, next_pid));
+		for absorb_id in &absorbed {
+			let Some(paragraph) = self.nodes.remove(absorb_id) else {
+				continue;
+			};
+			for &child in &paragraph.children {
+				if let Some(node) = self.nodes.get_mut(&child) {
+					node.parent = Some(keep_id);
 				}
+			}
+			if let Some(keeper) = self.nodes.get_mut(&keep_id) {
+				keeper.children.extend(paragraph.children);
 			}
 		}
 
-		// Perform merges: move runs from the absorbed paragraph into the keeper.
-		for (keep_id, absorb_id) in &to_merge {
-			let absorbed_children: Vec<NodeId> = self
-				.nodes
-				.get(absorb_id)
-				.map(|p| p.children.clone())
-				.unwrap_or_default();
-
-			// Reparent the absorbed runs.
-			for &cid in &absorbed_children {
-				if let Some(node) = self.nodes.get_mut(&cid) {
-					node.parent = Some(*keep_id);
-				}
-			}
-
-			// Append to keeper's children.
-			if let Some(keeper) = self.nodes.get_mut(keep_id) {
-				keeper.children.extend(absorbed_children);
-			}
-
-			// Mark absorbed paragraph for removal.
-			to_remove.push(*absorb_id);
-		}
-
-		// Remove marked paragraphs.
-		if !to_remove.is_empty() {
-			if let Some(root) = self.nodes.get_mut(&NodeId::ROOT) {
-				root.children.retain(|c| !to_remove.contains(c));
-			}
-			for pid in &to_remove {
-				// Remove the paragraph node itself (but not its children,
-				// which may have been reparented).
-				self.nodes.remove(pid);
-			}
+		if let Some(root) = self.nodes.get_mut(&NodeId::ROOT) {
+			root.children.retain(|child| !absorbed.contains(child));
 		}
 	}
 
@@ -689,23 +627,16 @@ impl Document {
 				let parent = parent_id.unwrap_or(NodeId::ROOT);
 
 				// Find the position of this run in its parent's children list.
-				let child_pos = self
-					.nodes
-					.get(&parent)
-					.map_or(0, |p| {
-						p.children
-							.iter()
-							.position(|&c| c == run_id)
-							.unwrap_or(0)
-					});
+				let child_pos = self.nodes.get(&parent).map_or(0, |p| {
+					p.children.iter().position(|&c| c == run_id).unwrap_or(0)
+				});
 
 				// Build up to 3 split pieces.
 				let mut new_ids: Vec<NodeId> = Vec::new();
 
 				// Before-selection portion.
 				if sel_start_in_run > 0 {
-					let before_text: String =
-						run_chars[..sel_start_in_run].iter().collect();
+					let before_text: String = run_chars[..sel_start_in_run].iter().collect();
 					let before_id = self.alloc_id();
 					self.nodes.insert(
 						before_id,
@@ -724,10 +655,8 @@ impl Document {
 
 				// Selected portion (gets merged style).
 				{
-					let mid_text: String = run_chars
-						[sel_start_in_run..sel_end_in_run]
-						.iter()
-						.collect();
+					let mid_text: String =
+						run_chars[sel_start_in_run..sel_end_in_run].iter().collect();
 					let mid_id = self.alloc_id();
 					self.nodes.insert(
 						mid_id,
@@ -746,8 +675,7 @@ impl Document {
 
 				// After-selection portion.
 				if sel_end_in_run < run_chars.len() {
-					let after_text: String =
-						run_chars[sel_end_in_run..].iter().collect();
+					let after_text: String = run_chars[sel_end_in_run..].iter().collect();
 					let after_id = self.alloc_id();
 					self.nodes.insert(
 						after_id,
@@ -766,10 +694,7 @@ impl Document {
 
 				// Replace the old run in the parent's children list.
 				if let Some(parent_node) = self.nodes.get_mut(&parent) {
-					parent_node.children.splice(
-						child_pos..=child_pos,
-						new_ids,
-					);
+					parent_node.children.splice(child_pos..=child_pos, new_ids);
 				}
 
 				// Remove the old run node.
@@ -840,8 +765,7 @@ impl Document {
 
 			// Try exact match first (fast path when run wasn't split).
 			let exact = self.run_index.iter().find(|entry| {
-				entry.start_char == snap_start
-					&& entry.start_char + entry.len_chars == snap_end
+				entry.start_char == snap_start && entry.start_char + entry.len_chars == snap_end
 			});
 
 			if let Some(entry) = exact {
@@ -909,13 +833,11 @@ impl Document {
 					.children
 					.iter()
 					.position(|c| overlapping.contains(c))
-				{
-					// Remove all overlapping children and insert the merged one.
-					parent_node
-						.children
-						.retain(|c| !overlapping.contains(c));
-					parent_node.children.insert(first_pos, merged_id);
-				}
+			{
+				// Remove all overlapping children and insert the merged one.
+				parent_node.children.retain(|c| !overlapping.contains(c));
+				parent_node.children.insert(first_pos, merged_id);
+			}
 
 			// Remove the old split nodes.
 			for rid in &overlapping {
@@ -1485,14 +1407,14 @@ impl Document {
 							content = format!("<s>{content}</s>");
 						}
 						if resolved.underline {
-					content = format!("<u>{content}</u>");
-				}
-				if resolved.italic {
-					content = format!("<em>{content}</em>");
-				}
-				if resolved.font_weight == crate::style::FontWeight::Bold {
-					content = format!("<strong>{content}</strong>");
-				}
+							content = format!("<u>{content}</u>");
+						}
+						if resolved.italic {
+							content = format!("<em>{content}</em>");
+						}
+						if resolved.font_weight == crate::style::FontWeight::Bold {
+							content = format!("<strong>{content}</strong>");
+						}
 
 						// Font size and color via <span> if non-default.
 						let mut span_styles = Vec::new();
@@ -1500,10 +1422,7 @@ impl Document {
 							span_styles.push(format!("font-size:{}px", resolved.font_size));
 						}
 						if resolved.color != crate::style::Color::BLACK {
-							span_styles.push(format!(
-								"color:{}",
-								resolved.color.to_css()
-							));
+							span_styles.push(format!("color:{}", resolved.color.to_css()));
 						}
 
 						if !span_styles.is_empty() {
@@ -1615,7 +1534,7 @@ impl Document {
 		let segments = parse_simple_markdown(md);
 
 		// Collect all plain text first, then apply formatting.
-		let full_text: String = segments.iter().map(|(t, _, _, _)| t.as_str()).collect();
+		let full_text: String = segments.iter().map(|(t, ..)| t.as_str()).collect();
 		self.set_plain_text(&full_text);
 
 		// Now apply formatting to each segment.
@@ -1633,8 +1552,7 @@ impl Document {
 				if *strike {
 					style = style.strikethrough();
 				}
-				let sel =
-					Selection::range(Position::new(offset), Position::new(offset + len));
+				let sel = Selection::range(Position::new(offset), Position::new(offset + len));
 				self.apply_style(sel, &style);
 			}
 			offset += len;
@@ -1768,13 +1686,16 @@ impl Document {
 
 				// Collect the style and text of the current run.
 				let (mut merged_text, current_style) = if let Some(Node {
-						kind: NodeKind::TextRun { text, style },
-						..
-					}) = self.nodes.get(&current_id) { (text.clone(), style.clone()) } else {
-    						new_children.push(current_id);
-    						i += 1;
-    						continue;
-    					};
+					kind: NodeKind::TextRun { text, style },
+					..
+				}) = self.nodes.get(&current_id)
+				{
+					(text.clone(), style.clone())
+				} else {
+					new_children.push(current_id);
+					i += 1;
+					continue;
+				};
 
 				// Look ahead and merge consecutive runs with the same style.
 				let mut j = i + 1;
@@ -1782,16 +1703,13 @@ impl Document {
 
 				while j < children.len() {
 					let next_id = children[j];
-					let same_style = self
-						.nodes
-						.get(&next_id)
-						.is_some_and(|n| {
-							if let NodeKind::TextRun { style, .. } = &n.kind {
-								*style == current_style
-							} else {
-								false
-							}
-						});
+					let same_style = self.nodes.get(&next_id).is_some_and(|n| {
+						if let NodeKind::TextRun { style, .. } = &n.kind {
+							*style == current_style
+						} else {
+							false
+						}
+					});
 
 					if !same_style {
 						break;
@@ -1815,9 +1733,10 @@ impl Document {
 				} else {
 					// Update the current run with the merged text.
 					if let Some(node) = self.nodes.get_mut(&current_id)
-						&& let NodeKind::TextRun { text, .. } = &mut node.kind {
-							*text = merged_text;
-						}
+						&& let NodeKind::TextRun { text, .. } = &mut node.kind
+					{
+						*text = merged_text;
+					}
 					new_children.push(current_id);
 
 					// Remove absorbed nodes.
@@ -1852,16 +1771,13 @@ impl Document {
 
 			let mut non_empty: Vec<NodeId> = Vec::new();
 			for cid in &children {
-				let is_empty = self
-					.nodes
-					.get(cid)
-					.is_some_and(|n| {
-						if let NodeKind::TextRun { text, .. } = &n.kind {
-							text.is_empty()
-						} else {
-							false
-						}
-					});
+				let is_empty = self.nodes.get(cid).is_some_and(|n| {
+					if let NodeKind::TextRun { text, .. } = &n.kind {
+						text.is_empty()
+					} else {
+						false
+					}
+				});
 
 				if is_empty {
 					self.nodes.remove(cid);
@@ -1878,9 +1794,10 @@ impl Document {
 			}
 
 			if non_empty.len() != children.len()
-				&& let Some(para) = self.nodes.get_mut(&para_id) {
-					para.children = non_empty;
-				}
+				&& let Some(para) = self.nodes.get_mut(&para_id)
+			{
+				para.children = non_empty;
+			}
 		}
 	}
 }
@@ -2040,6 +1957,22 @@ fn char_to_byte_offset(s: &str, char_offset: usize) -> usize {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn cross_paragraph_delete_merges_only_touched_paragraphs() {
+		let mut doc = Document::new();
+		doc.insert_text(Position::zero(), "aaa\nbbb\nccc\n\nddd");
+
+		doc.delete(&Selection::range(Position::new(0), Position::new(7)));
+		assert_eq!(
+			doc.plain_text(),
+			"\nccc\n\nddd",
+			"untouched empty paragraphs survive"
+		);
+
+		doc.insert_text(Position::new(0), "bbb\naaa");
+		assert_eq!(doc.plain_text(), "bbb\naaa\nccc\n\nddd");
+	}
 
 	#[test]
 	fn new_document_has_root() {
@@ -2543,10 +2476,7 @@ mod tests {
 		assert_eq!(runs[0].0, "Hello ");
 		assert_eq!(runs[0].1.font_weight, None); // normal
 		assert_eq!(runs[1].0, "world");
-		assert_eq!(
-			runs[1].1.font_weight,
-			Some(crate::style::FontWeight::Bold)
-		);
+		assert_eq!(runs[1].1.font_weight, Some(crate::style::FontWeight::Bold));
 
 		// Plain text must be preserved.
 		assert_eq!(doc.plain_text(), "Hello world");
@@ -2566,10 +2496,7 @@ mod tests {
 		assert_eq!(runs[0].0, "ab");
 		assert_eq!(runs[0].1.font_weight, None);
 		assert_eq!(runs[1].0, "cdef");
-		assert_eq!(
-			runs[1].1.font_weight,
-			Some(crate::style::FontWeight::Bold)
-		);
+		assert_eq!(runs[1].1.font_weight, Some(crate::style::FontWeight::Bold));
 		assert_eq!(runs[2].0, "gh");
 		assert_eq!(runs[2].1.font_weight, None);
 
@@ -2588,10 +2515,7 @@ mod tests {
 		let runs = doc.styled_runs();
 		assert_eq!(runs.len(), 1, "full coverage should not split");
 		assert_eq!(runs[0].0, "Hello");
-		assert_eq!(
-			runs[0].1.font_weight,
-			Some(crate::style::FontWeight::Bold)
-		);
+		assert_eq!(runs[0].1.font_weight, Some(crate::style::FontWeight::Bold));
 	}
 
 	#[test]
@@ -2606,10 +2530,7 @@ mod tests {
 		let runs = doc.styled_runs();
 		assert_eq!(runs.len(), 2);
 		assert_eq!(runs[0].0, "Hello");
-		assert_eq!(
-			runs[0].1.font_weight,
-			Some(crate::style::FontWeight::Bold)
-		);
+		assert_eq!(runs[0].1.font_weight, Some(crate::style::FontWeight::Bold));
 		assert_eq!(runs[1].0, " world");
 		assert_eq!(runs[1].1.font_weight, None);
 	}
@@ -2650,7 +2571,7 @@ mod tests {
 
 		let runs_after_undo = runtime.document().styled_runs();
 		// After undo, the run should be unstyled.
-		for (text, style, _, _) in &runs_after_undo {
+		for (text, style, ..) in &runs_after_undo {
 			assert_eq!(
 				style.font_weight, None,
 				"after undo, run '{text}' should not be bold"
@@ -2775,8 +2696,12 @@ mod tests {
 
 		// Both runs should retain bold.
 		let runs = doc.styled_runs();
-		assert!(runs.len() >= 2, "expected at least 2 runs, got {}", runs.len());
-		for (text, style, _, _) in &runs {
+		assert!(
+			runs.len() >= 2,
+			"expected at least 2 runs, got {}",
+			runs.len()
+		);
+		for (text, style, ..) in &runs {
 			if !text.is_empty() {
 				assert_eq!(
 					style.font_weight,
@@ -2804,12 +2729,12 @@ mod tests {
 
 		// Bold should survive the roundtrip.
 		let runs = restored.styled_runs();
-		let bold_run = runs.iter().find(|(t, _, _, _)| t == "Hello");
+		let bold_run = runs.iter().find(|(t, ..)| t == "Hello");
 		assert!(
 			bold_run.is_some(),
 			"should find 'Hello' run after JSON roundtrip"
 		);
-		if let Some((_, style, _, _)) = bold_run {
+		if let Some((_, style, ..)) = bold_run {
 			assert_eq!(
 				style.font_weight,
 				Some(crate::style::FontWeight::Bold),
@@ -2829,7 +2754,10 @@ mod tests {
 
 		let html = doc.to_html();
 		assert!(html.contains("<em>"), "should have <em> tag: {html}");
-		assert!(html.contains("</p><p>"), "should have paragraph break: {html}");
+		assert!(
+			html.contains("</p><p>"),
+			"should have paragraph break: {html}"
+		);
 
 		// Roundtrip through from_html.
 		let mut doc2 = Document::new();
@@ -2886,7 +2814,7 @@ mod tests {
 		let runs = doc.styled_runs();
 		let bold_runs: Vec<_> = runs
 			.iter()
-			.filter(|(_, s, _, _)| s.font_weight == Some(crate::style::FontWeight::Bold))
+			.filter(|(_, s, ..)| s.font_weight == Some(crate::style::FontWeight::Bold))
 			.collect();
 		assert!(
 			!bold_runs.is_empty(),
@@ -2925,16 +2853,25 @@ mod tests {
 	#[test]
 	fn parse_markdown_basic() {
 		let segments = parse_simple_markdown("Hello **bold** and *italic* text");
-		let texts: Vec<_> = segments.iter().map(|(t, _, _, _)| t.as_str()).collect();
-		assert!(texts.contains(&"Hello "), "should have plain text: {texts:?}");
+		let texts: Vec<_> = segments.iter().map(|(t, ..)| t.as_str()).collect();
+		assert!(
+			texts.contains(&"Hello "),
+			"should have plain text: {texts:?}"
+		);
 		assert!(texts.contains(&"bold"), "should have bold text: {texts:?}");
-		assert!(texts.contains(&"italic"), "should have italic text: {texts:?}");
+		assert!(
+			texts.contains(&"italic"),
+			"should have italic text: {texts:?}"
+		);
 
-		let bold_seg = segments.iter().find(|(t, _, _, _)| t == "bold");
+		let bold_seg = segments.iter().find(|(t, ..)| t == "bold");
 		assert!(bold_seg.unwrap().1, "bold segment should have bold=true");
 
-		let italic_seg = segments.iter().find(|(t, _, _, _)| t == "italic");
-		assert!(italic_seg.unwrap().2, "italic segment should have italic=true");
+		let italic_seg = segments.iter().find(|(t, ..)| t == "italic");
+		assert!(
+			italic_seg.unwrap().2,
+			"italic segment should have italic=true"
+		);
 	}
 
 	#[test]
@@ -2943,14 +2880,14 @@ mod tests {
 		doc.from_markdown("**Bold** and *italic*");
 
 		let runs = doc.styled_runs();
-		let bold_run = runs.iter().find(|(t, _, _, _)| t == "Bold");
+		let bold_run = runs.iter().find(|(t, ..)| t == "Bold");
 		assert!(bold_run.is_some(), "should have 'Bold' run");
 		assert_eq!(
 			bold_run.unwrap().1.font_weight,
 			Some(crate::style::FontWeight::Bold)
 		);
 
-		let italic_run = runs.iter().find(|(t, _, _, _)| t == "italic");
+		let italic_run = runs.iter().find(|(t, ..)| t == "italic");
 		assert!(italic_run.is_some(), "should have 'italic' run");
 		assert_eq!(italic_run.unwrap().1.italic, Some(true));
 	}
@@ -3001,7 +2938,7 @@ mod tests {
 
 		// The middle paragraph should be empty but present.
 		let runs = doc.styled_runs();
-		let texts: Vec<_> = runs.iter().map(|(t, _, _, _)| t.as_str()).collect();
+		let texts: Vec<_> = runs.iter().map(|(t, ..)| t.as_str()).collect();
 		assert!(texts.contains(&"A"), "should have 'A': {texts:?}");
 		assert!(texts.contains(&"B"), "should have 'B': {texts:?}");
 	}
@@ -3102,10 +3039,7 @@ mod tests {
 		let runs = doc.styled_runs();
 		assert_eq!(runs.len(), 2);
 		assert_eq!(runs[0].0, "H");
-		assert_eq!(
-			runs[0].1.font_weight,
-			Some(crate::style::FontWeight::Bold)
-		);
+		assert_eq!(runs[0].1.font_weight, Some(crate::style::FontWeight::Bold));
 		assert_eq!(runs[1].0, "ello");
 	}
 
@@ -3113,7 +3047,10 @@ mod tests {
 	fn many_paragraph_splits_and_merges() {
 		let mut doc = Document::new();
 		// Create 50 paragraphs.
-		let text: String = (0..50).map(|i| format!("Para {i}")).collect::<Vec<_>>().join("\n");
+		let text: String = (0..50)
+			.map(|i| format!("Para {i}"))
+			.collect::<Vec<_>>()
+			.join("\n");
 		doc.insert_text(Position::zero(), &text);
 		assert_eq!(doc.paragraph_count(), 50);
 
