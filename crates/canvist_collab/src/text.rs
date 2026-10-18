@@ -118,6 +118,12 @@ impl Chunks {
 
 	/// The model's view of this content.
 	pub(crate) fn to_inline(&self, schema: &Schema) -> InlineText {
+		// Most blocks are one chunk; building it directly skips a copy.
+		if let [chunk] = self.0.as_slice() {
+			let marks = values::marks_from(schema, chunk.attributes.as_deref());
+			return inline_from_out(schema, &chunk.insert, marks);
+		}
+
 		let mut inline = InlineText::new();
 
 		for chunk in &self.0 {

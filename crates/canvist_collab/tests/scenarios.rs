@@ -22,6 +22,7 @@ use yrs::Map;
 use yrs::MapPrelim;
 use yrs::MapRef;
 use yrs::Out;
+use yrs::ReadTxn;
 use yrs::Text;
 use yrs::TextPrelim;
 use yrs::TextRef;
@@ -115,6 +116,55 @@ fn concurrent_moves_of_one_block_keep_one_copy() {
 	);
 	assert_eq!(texts(&alice).len(), 3, "no paragraph is duplicated or lost");
 	assert_eq!(alice.rebuilt(), alice.json(), "the losing copy was deleted");
+}
+
+#[test]
+fn a_peer_receiving_both_copies_at_once_keeps_one() {
+	let (mut alice, mut bob) = pair();
+	let state = alice.binding.encode_state(Encoding::V1);
+	let move_first = |to_index| {
+		Step::MoveBlocks {
+			parent: None,
+			index: 0,
+			count: 1,
+			to_parent: None,
+			to_index,
+		}
+	};
+	alice.step(move_first(1)).expect("alice moves one");
+	bob.step(move_first(2)).expect("bob moves one");
+
+	// Both moves reach a raw Yjs document before anyone repairs, so a peer
+	// joining from it reads two live copies of `one` in one update.
+	let merged = Foreign::join(&state);
+
+	for update in [alice.binding.take_updates(), bob.binding.take_updates()].concat() {
+		let update = yrs::Update::decode_v1(&update).expect("decodes");
+		merged
+			.doc
+			.transact_mut()
+			.apply_update(update)
+			.expect("applies");
+	}
+
+	let joined = merged
+		.doc
+		.transact()
+		.encode_state_as_update_v1(&yrs::StateVector::default());
+	let mut carol = Peer::join(support::schema(), 3, &joined);
+
+	assert_eq!(texts(&carol).len(), 3, "carol shows one copy");
+	assert_eq!(
+		carol.binding.take_updates().len(),
+		1,
+		"and deletes the other"
+	);
+	sync(&mut alice, &mut bob);
+	assert_eq!(
+		carol.json(),
+		alice.json(),
+		"the copy carol keeps is everyone's"
+	);
 }
 
 #[test]

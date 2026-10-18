@@ -190,6 +190,10 @@ pub(crate) fn read_attrs<T: ReadTxn>(map: &MapRef, txn: &T) -> (Attrs, Option<yr
 	let Some(shared) = attrs_of(map, txn) else {
 		return (Attrs::new(), None);
 	};
+
+	if shared.len(txn) == 0 {
+		return (Attrs::new(), branch_id(&shared));
+	}
 	let entries: Vec<(Arc<str>, Any)> = shared
 		.iter(txn)
 		.filter_map(|(key, value)| {

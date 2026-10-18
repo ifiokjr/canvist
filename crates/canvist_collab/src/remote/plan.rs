@@ -109,6 +109,39 @@ struct Batch {
 	registrations: Vec<Registration>,
 }
 
+/// How incoming maps that carry the same block id are told apart.
+pub(crate) enum Incoming<'a> {
+	/// Scanned: the map with the smallest item id wins.
+	Scanned(&'a Owners),
+	/// Not scanned: ids are assumed unique, and a repeat is only noted so
+	/// the caller can scan and read again.
+	Unique {
+		seen: FxHashSet<BlockId>,
+		repeated: bool,
+	},
+}
+
+impl Incoming<'_> {
+	pub(crate) fn unique() -> Self {
+		Self::Unique {
+			seen: FxHashSet::default(),
+			repeated: false,
+		}
+	}
+
+	/// Whether `map` is the incoming map that owns `id`.
+	fn owns(&mut self, id: BlockId, map: &ID) -> bool {
+		match self {
+			Self::Scanned(owners) => owners.get(id) == Some(map),
+			Self::Unique { seen, repeated } => {
+				let first = seen.insert(id);
+				*repeated |= !first;
+				first
+			}
+		}
+	}
+}
+
 /// Claims for maps read during a remote transaction: among the incoming
 /// maps the smallest item id wins, and an incoming winner also beats an
 /// existing block with a larger map id unless that block is being removed
@@ -116,7 +149,7 @@ struct Batch {
 pub(crate) struct RemoteClaims<'a> {
 	doc: &'a Document,
 	registry: &'a Registry,
-	incoming: &'a Owners,
+	incoming: Incoming<'a>,
 	doomed: &'a FxHashSet<BlockId>,
 	/// The parent the map being read is inserted into.
 	pub(crate) target: Option<BlockId>,
@@ -128,7 +161,7 @@ impl<'a> RemoteClaims<'a> {
 	pub(crate) fn new(
 		doc: &'a Document,
 		registry: &'a Registry,
-		(incoming, doomed): (&'a Owners, &'a FxHashSet<BlockId>),
+		(incoming, doomed): (Incoming<'a>, &'a FxHashSet<BlockId>),
 	) -> Self {
 		Self {
 			doc,
@@ -140,6 +173,11 @@ impl<'a> RemoteClaims<'a> {
 		}
 	}
 
+	/// Whether two incoming maps carried the same block id.
+	pub(crate) fn repeated(&self) -> bool {
+		matches!(self.incoming, Incoming::Unique { repeated: true, .. })
+	}
+
 	fn contains_target(&self, block: BlockId) -> bool {
 		self.target
 			.is_some_and(|target| target == block || self.doc.is_ancestor(block, target))
@@ -148,7 +186,7 @@ impl<'a> RemoteClaims<'a> {
 
 impl Claim for RemoteClaims<'_> {
 	fn claim(&mut self, id: BlockId, map: &ID) -> bool {
-		if self.incoming.get(id) != Some(map) {
+		if !self.incoming.owns(id, map) {
 			return false;
 		}
 
@@ -346,7 +384,7 @@ impl<T: ReadTxn> Remote<'_, '_, T> {
 			.iter()
 			.map(|insert| (insert.map, insert.anchor))
 			.collect();
-		let (reads, evicted) = self.read_inserts(inserts, &doomed);
+		let (reads, evicted) = self.read_inserts(&inserts, &doomed);
 		let rest = self.apply_moves(reads, &mut doomed, &anchors)?;
 
 		for block in removed {
@@ -400,24 +438,45 @@ impl<T: ReadTxn> Remote<'_, '_, T> {
 	}
 
 	/// Read every inserted map whose parent survives.
+	///
+	/// Incoming maps almost never share a block id, so the first pass assumes
+	/// they don't and only notes a repeat. Only then are they scanned for the
+	/// smallest item id per block id and read again, which keeps the common
+	/// case to one pass over the new maps.
 	fn read_inserts(
 		&self,
-		inserts: Vec<Insert>,
+		inserts: &[Insert],
 		doomed: &FxHashSet<BlockId>,
 	) -> (Vec<Read>, Vec<BlockId>) {
-		let mut incoming = Owners::default();
+		let (reads, claims) = self.read_with(inserts, doomed, Incoming::unique());
 
-		for insert in &inserts {
+		if !claims.repeated() {
+			return (reads, claims.evicted);
+		}
+
+		let mut owners = Owners::default();
+
+		for insert in inserts {
 			if let Some(map) = map_ref(self.txn, &insert.map) {
-				incoming.scan(&map, self.txn);
+				owners.scan(&map, self.txn);
 			}
 		}
 
-		let doc = self.tx.doc();
-		let mut claims = RemoteClaims::new(doc, self.registry, (&incoming, doomed));
-		let mut reads = Vec::new();
+		let (reads, claims) = self.read_with(inserts, doomed, Incoming::Scanned(&owners));
+		(reads, claims.evicted)
+	}
 
-		for insert in inserts {
+	fn read_with<'c>(
+		&'c self,
+		inserts: &[Insert],
+		doomed: &'c FxHashSet<BlockId>,
+		incoming: Incoming<'c>,
+	) -> (Vec<Read>, RemoteClaims<'c>) {
+		let doc = self.tx.doc();
+		let mut claims = RemoteClaims::new(doc, self.registry, (incoming, doomed));
+		let mut reads = Vec::with_capacity(inserts.len());
+
+		for &insert in inserts {
 			let survives = insert
 				.parent
 				.is_none_or(|parent| doc.contains(parent) && !doomed.contains(&parent));
@@ -444,7 +503,7 @@ impl<T: ReadTxn> Remote<'_, '_, T> {
 			});
 		}
 
-		(reads, claims.evicted)
+		(reads, claims)
 	}
 
 	/// Whether `tree` re-inserts a removed block unchanged.

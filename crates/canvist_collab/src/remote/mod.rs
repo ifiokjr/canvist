@@ -47,6 +47,7 @@ use crate::registry::Owner;
 use crate::registry::Registration;
 use crate::registry::Registry;
 use crate::registry::branch_id;
+use crate::remote::plan::Incoming;
 use crate::remote::plan::Plan;
 use crate::remote::plan::RemoteClaims;
 use crate::remote::record::Record;
@@ -463,7 +464,11 @@ impl<'a, 'doc, T: ReadTxn> Remote<'a, 'doc, T> {
 		let mut incoming = Owners::default();
 		incoming.scan(shared, self.txn);
 		let none = FxHashSet::default();
-		let mut claims = RemoteClaims::new(self.tx.doc(), self.registry, (&incoming, &none));
+		let mut claims = RemoteClaims::new(
+			self.tx.doc(),
+			self.registry,
+			(Incoming::Scanned(&incoming), &none),
+		);
 		claims.target = parent;
 		let mut registration = Registration::default();
 		let mut reader = Reader {

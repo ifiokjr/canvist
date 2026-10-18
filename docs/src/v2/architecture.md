@@ -197,9 +197,9 @@ These budgets are enforced by benchmarks and checked in CI once each host exists
 | Scroll one screen into unmeasured blocks          | < 1 ms                                      | 53 µs                |
 | Mirror a keystroke into a Yjs update, 100k blocks | < 20 µs                                     | 1.9 µs               |
 | Apply a collaborator's keystroke, 100k blocks     | < 20 µs                                     | 2.7 µs               |
-| Mirror Enter into yrs, 100k blocks²               | < 15 ms                                     | 5.7 ms               |
-| Apply a collaborator's Enter, 100k blocks²        | < 30 ms                                     | 14 ms                |
-| Join a 10k-paragraph document from Yjs state      | < 50 ms                                     | 26 ms                |
+| Mirror Enter into yrs, 10k blocks²                | < 150 µs                                    | 45 µs                |
+| Apply a collaborator's Enter, 10k blocks²         | < 400 µs                                    | 114 µs               |
+| Join a 10k-paragraph document from Yjs state      | < 50 ms                                     | 24 ms                |
 | Keystroke → paint on the web (Event Timing), p95  | < 8 ms                                      | (M3)                 |
 | Typing burst: 1,000 key events in one task        | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
 | Open a 10k-paragraph document → first paint       | < 50 ms                                     | layout 0.6 ms (M2)   |
@@ -209,7 +209,7 @@ For reference, the best public number the research found is Lexical issue #7422:
 
 ¹ **Recorded exception: Enter grows with the document.** Layout re-flattens only the root-level subtrees a structural commit changed and reuses every other block's row and layout. But rows are stored in one array, so splicing a row in shifts the index of every row after it. That work is plain memory moves and integer updates, with no hashing, styling, or measuring, and costs about 10 ns per row. Chunked row storage would make it `O(log n)`, and is the follow-up if documents grow past 100k blocks.
 
-² Structural edits cost `O(siblings)`, and here the root holds 100,000 blocks: yrs computes an array event's delta by walking the whole array (Yjs does the same), and inserting at an index walks to it. At 10,000 blocks both take under 2 ms.
+² Structural edits cost `O(siblings)`: yrs computes an array event's delta by walking the whole array (Yjs does the same) and walks to an insertion index. Budgets use 10,000 root blocks, where the array stays in cache. At 100,000 the walk is bound by memory latency and varies about 14 times between machines (0.9 ms for a remote Enter on CI's x86 runners, 13 ms on Apple silicon).
 
 Layout's numbers use the deterministic `FixedMeasurer`, so they measure layout itself. Measuring with the browser or `parley` adds the host's own cost, but only for words the cache hasn't seen.
 
