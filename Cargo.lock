@@ -181,6 +181,19 @@ name = "canvist_book"
 version = "0.1.0"
 
 [[package]]
+name = "canvist_collab"
+version = "0.1.0"
+dependencies = [
+ "canvist_model",
+ "divan",
+ "proptest",
+ "rustc-hash",
+ "serde_json",
+ "thiserror 2.0.18",
+ "yrs",
+]
+
+[[package]]
 name = "canvist_core"
 version = "0.1.0"
 dependencies = [

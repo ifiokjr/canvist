@@ -81,11 +81,12 @@ A `Transaction` applies steps atomically and can roll back. If any step fails, t
   - Apps that don't collaborate shouldn't pay for yrs in wasm size or startup time. M3 measures that cost.
   - The 1:1 step mapping makes the mirror a translation, not a reconciliation.
 - **This is a known risk.** If the binding turns out to need diffing anywhere, revisit the decision.
-- **`Split` loses concurrent edits.** If a peer types in the tail of a block while another peer splits it, the tail is re-created in a new `Y.Text` and the peer's insert is lost. Every Yjs editor shares this limitation. M4 adds a test that measures it.
+- **`Split` loses concurrent edits.** If a peer edits the tail of a block while another peer splits it, the tail is re-created in a new `Y.Text` and the edit lands on the deleted original. M4 measured it (`canvist_collab/tests/concurrent_split.rs`): inserted text survives but moves to the end of the first block, while deletions and formatting in the tail are lost. Edits before the split point are unaffected. Every Yjs editor shares this limitation.
+- **Moving a block deletes and copies it.** yrs 0.28 has no move, so text typed concurrently into a moved block is lost, and when two peers move the same block at once every peer keeps the copy with the smallest yrs item id and deletes the others.
 
 ## Decision 3: UTF-8 offsets inside, UTF-16 at the edges
 
-The model uses UTF-8 byte offsets, validated to fall on character boundaries, because Rust strings are UTF-8 and slicing them is free. JavaScript hosts and the `yrs` binding (`OffsetKind::Utf16`, which JavaScript Yjs peers require) convert offsets at the boundary. Converting within one block costs `O(block length)`. Grapheme-cluster rules for caret movement live in `canvist_editor`, not the model.
+The model uses UTF-8 byte offsets, validated to fall on character boundaries, because Rust strings are UTF-8 and slicing them is free. JavaScript hosts and the `yrs` binding convert offsets at the boundary. The binding sets `OffsetKind::Utf16`: the setting only changes how yrs reads indices locally (the wire format always counts UTF-16), but yrs's sticky indexes, which awareness carets use, mix units under `OffsetKind::Bytes`. Converting within one block costs `O(block length)`. Grapheme-cluster rules for caret movement live in `canvist_editor`, not the model.
 
 ## Decision 4: the host measures text, Rust lays it out
 

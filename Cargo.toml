@@ -1,6 +1,7 @@
 [workspace]
 members = [
 	"crates/canvist",
+	"crates/canvist_collab",
 	"crates/canvist_core",
 	"crates/canvist_editor",
 	"crates/canvist_extensions",
@@ -13,6 +14,7 @@ members = [
 ]
 default-members = [
 	"crates/canvist",
+	"crates/canvist_collab",
 	"crates/canvist_core",
 	"crates/canvist_editor",
 	"crates/canvist_extensions",
@@ -62,6 +64,7 @@ yrs = { default-features = false, version = "^0.28" }
 
 # Internal crates
 canvist = { path = "./crates/canvist", version = "0.1.0" }
+canvist_collab = { path = "./crates/canvist_collab", version = "0.1.0" }
 canvist_core = { path = "./crates/canvist_core", version = "0.1.0" }
 canvist_editor = { path = "./crates/canvist_editor", version = "0.1.0" }
 canvist_extensions = { path = "./crates/canvist_extensions", version = "0.1.0" }
