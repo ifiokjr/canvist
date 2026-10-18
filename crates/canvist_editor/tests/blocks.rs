@@ -461,6 +461,36 @@ fn lifting_the_middle_of_a_quote_splits_it() {
 }
 
 #[test]
+fn enter_in_an_empty_quoted_line_lifts_it_out() {
+	let lifted = after(
+		"
+		blockquote
+		  paragraph: a
+		  paragraph: |
+		",
+		commands::lift_empty_block,
+	);
+	let mut full = state(
+		"
+		blockquote
+		  paragraph: a|
+		",
+	);
+
+	assert_eq!(
+		lifted,
+		dedent(
+			"
+		blockquote
+		  paragraph: a
+		paragraph: |
+	"
+		)
+	);
+	assert_eq!(commands::lift_empty_block(&mut full), Ok(None));
+}
+
+#[test]
 fn lifting_fails_where_the_parent_rejects_the_block() {
 	let mut root = state("paragraph: |a");
 	let mut item = state(

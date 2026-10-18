@@ -1,0 +1,24 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"``` ## not a heading\")"
+---
+{
+  "doc": [
+    {
+      "attrs": {
+        "language": null
+      },
+      "content": [
+        {
+          "text": "## not a heading",
+          "type": "text"
+        }
+      ],
+      "type": "codeBlock"
+    },
+    {
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0@16"
+}

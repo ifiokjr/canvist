@@ -1,0 +1,37 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"one[Mod-Shift-8][Mod-Shift-7][Mod-Shift-9][Mod-Alt-2]\")"
+---
+{
+  "doc": [
+    {
+      "content": [
+        {
+          "attrs": {
+            "checked": false
+          },
+          "content": [
+            {
+              "attrs": {
+                "level": 2
+              },
+              "content": [
+                {
+                  "text": "one",
+                  "type": "text"
+                }
+              ],
+              "type": "heading"
+            }
+          ],
+          "type": "taskItem"
+        }
+      ],
+      "type": "taskList"
+    },
+    {
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0.0.0@3"
+}

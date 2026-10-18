@@ -21,6 +21,7 @@ use canvist_editor::PasteRule;
 use canvist_editor::Platform;
 use canvist_editor::Slice;
 use canvist_editor::UndoHistory;
+use canvist_editor::UndoInputRule;
 use canvist_editor::Update;
 use canvist_editor::block_type;
 use canvist_editor::command;
@@ -133,6 +134,7 @@ fn editor_on(outline: &str, platform: Platform) -> Editor {
 	let mut editor = Editor::builder()
 		.extension(TestKit)
 		.extension(BaseKeymap)
+		.extension(UndoInputRule)
 		.platform(platform)
 		.build_with(|schema, _client| {
 			let (doc, marked) = support::parse(&schema, outline);

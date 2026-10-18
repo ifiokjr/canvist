@@ -154,9 +154,9 @@ pub fn join_backward(state: &mut EditorState) -> CommandResult {
 	let doc = state.doc();
 	let block = caret.block;
 	let parent = parent_of(doc, block);
-	let index = doc.index_in_parent(block).unwrap_or_default();
+	let first = doc.children(parent).first() == Some(&block);
 
-	if index == 0 {
+	if first {
 		if let Some(container) = parent.filter(|&id| structure::can_lift(doc, id, &(0..1))) {
 			return state.change(EditKind::Structure, |tr| {
 				structure::lift(tr, container, 0..1)?;

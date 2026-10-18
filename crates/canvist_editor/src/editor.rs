@@ -302,10 +302,14 @@ impl Editor {
 	pub fn insert_text(&mut self, text: &str, env: &Env<'_>) -> CommandResult {
 		if let Some(update) = self.apply_input_rules(text)? {
 			let finished = self.finish(Some(update), env.now)?;
-			self.last_rule = Some(AppliedRule {
-				version: self.state.doc().version(),
-				selection: self.state.selection(),
-				typed: text.to_owned(),
+			self.last_rule = finished.as_ref().map(|update| {
+				AppliedRule {
+					version: self.state.doc().version(),
+					selection: self.state.selection(),
+					typed: text.to_owned(),
+					undo_steps: update.commit.undo_steps(),
+					selection_before: update.selection_before,
+				}
 			});
 
 			return Ok(finished);

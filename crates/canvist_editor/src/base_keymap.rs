@@ -14,7 +14,6 @@ use crate::Platform;
 use crate::Unit;
 use crate::command;
 use crate::commands;
-use crate::context;
 use crate::motion;
 
 /// Arrow keys, Home and End, Backspace and Delete with their word and line
@@ -55,13 +54,13 @@ fn motion_pair(bindings: &mut Vec<Binding>, keys: [&'static str; 4], unit: Unit)
 
 fn common() -> Vec<Binding> {
 	let mut bindings = vec![
-		("Backspace", Arc::new(context::undo_input_rule) as Command),
 		("Backspace", delete(Direction::Backward, Unit::Grapheme)),
 		(
 			"Shift-Backspace",
 			delete(Direction::Backward, Unit::Grapheme),
 		),
 		("Delete", delete(Direction::Forward, Unit::Grapheme)),
+		("Enter", command(commands::lift_empty_block)),
 		("Enter", command(commands::split_block)),
 		("Mod-a", command(commands::select_all)),
 		("Escape", command(commands::select_parent)),
@@ -152,5 +151,29 @@ impl Extension for BaseKeymap {
 		});
 
 		Ok(bindings)
+	}
+}
+
+/// Backspace right after an input rule restores the text that triggered
+/// it, so `## ` then Backspace leaves a literal `## `. It runs before every
+/// other Backspace binding, such as joining list items, because the rule's
+/// effect is what the user is taking back.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct UndoInputRule;
+
+impl Extension for UndoInputRule {
+	fn name(&self) -> &'static str {
+		"undoInputRule"
+	}
+
+	fn priority(&self) -> i32 {
+		i32::MAX
+	}
+
+	fn keymap(&self, _schema: &Schema, _platform: Platform) -> Result<Vec<Binding>, EditorError> {
+		Ok(vec![(
+			"Backspace",
+			Arc::new(crate::undo_input_rule) as Command,
+		)])
 	}
 }

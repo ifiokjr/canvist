@@ -13,7 +13,8 @@
 //!   come from a [`LineNavigator`], which the layout engine implements.
 //! - [`Editor`]: the state plus [`History`], a [`Keymap`] with platform-aware
 //!   `Mod`, [`InputRule`]s, and [`PasteRule`]s, all contributed by
-//!   [`Extension`]s. [`BaseKeymap`] binds the platform's standard keys.
+//!   [`Extension`]s. [`BaseKeymap`] binds the platform's standard keys and
+//!   [`UndoInputRule`] lets Backspace take back an input rule.
 //!
 //! Grapheme and word boundaries follow Unicode (UAX #29), and inline embeds
 //! behave as single atoms everywhere.
@@ -97,6 +98,7 @@ pub mod text;
 mod transaction;
 
 pub use base_keymap::BaseKeymap;
+pub use base_keymap::UndoInputRule;
 pub use commands::CommandResult;
 pub use commands::Slice;
 pub use context::Command;

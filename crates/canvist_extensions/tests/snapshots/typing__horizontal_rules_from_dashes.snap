@@ -1,0 +1,21 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"---below\")"
+---
+{
+  "doc": [
+    {
+      "type": "horizontalRule"
+    },
+    {
+      "content": [
+        {
+          "text": "below",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 1@5"
+}

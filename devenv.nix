@@ -185,6 +185,7 @@ in
         set -e
         monostyle check crates/canvist_model --fail-under 90
         monostyle check crates/canvist_editor --fail-under 90
+        monostyle check crates/canvist_extensions --fail-under 90
       '';
       description = "Require readability and complexity scores of at least 90 for the v2 crates.";
       binary = "bash";

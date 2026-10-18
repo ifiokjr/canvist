@@ -1,0 +1,18 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"- ⌫\")"
+---
+{
+  "doc": [
+    {
+      "content": [
+        {
+          "text": "- ",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0@2"
+}

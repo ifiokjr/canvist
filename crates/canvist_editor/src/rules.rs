@@ -226,6 +226,11 @@ impl InputRule {
 	/// Match against the text before the caret plus the typed text.
 	#[must_use]
 	pub fn find(&self, input: &RuleInput) -> Option<RuleMatch> {
+		// Most rules do not match; answering that is cheaper than capturing.
+		if !self.pattern.is_match(&input.haystack) {
+			return None;
+		}
+
 		let captures = self.pattern.captures(&input.haystack)?;
 		let whole = captures.get(0)?;
 		let offset = |at: usize| input.window + at as u32;

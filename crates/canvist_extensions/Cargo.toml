@@ -1,0 +1,70 @@
+[package]
+name = "canvist_extensions"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_extensions"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["text-editor", "rich-text", "editor", "extensions"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "The canvist StarterKit: paragraphs, headings, lists, quotes, code, marks, links, history, and more, each behind its own Cargo feature"
+
+[features]
+default = ["starter-kit"]
+starter-kit = [
+	"blockquote",
+	"bold",
+	"bullet-list",
+	"code",
+	"code-block",
+	"hard-break",
+	"heading",
+	"history",
+	"horizontal-rule",
+	"italic",
+	"link",
+	"ordered-list",
+	"strike",
+	"task-list",
+	"trailing-node",
+	"underline",
+]
+blockquote = []
+bold = []
+bullet-list = ["list-item"]
+code = []
+code-block = []
+hard-break = []
+heading = []
+history = []
+horizontal-rule = []
+italic = []
+link = []
+list-item = []
+ordered-list = ["list-item"]
+strike = []
+task-list = []
+trailing-node = []
+underline = []
+
+[dependencies]
+canvist_editor = { workspace = true }
+canvist_model = { workspace = true }
+
+[dev-dependencies]
+divan = { workspace = true }
+insta = { workspace = true, features = ["json"] }
+proptest = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "keystroke"
+harness = false
+
+[lints]
+workspace = true

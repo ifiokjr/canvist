@@ -52,7 +52,6 @@ pub(crate) fn split_text_block(
 ) -> Result<Option<Point>, EditorError> {
 	let doc = tr.doc();
 	let parent = parent_of(doc, at.block);
-	let index = structure::index_of(doc, at.block)?;
 	let len = position::text_len(doc, at.block);
 	let Some(block) = doc.block(at.block) else {
 		return Ok(None);
@@ -64,6 +63,7 @@ pub(crate) fn split_text_block(
 		let Some(default) = default else {
 			return Ok(None);
 		};
+		let index = structure::index_of(tr.doc(), at.block)?;
 		let fresh = structure::fresh_block(tr, default)?;
 		let caret = Point::new(fresh.id, 0);
 		tr.insert_blocks(parent, index + 1, vec![fresh])?;
@@ -72,6 +72,7 @@ pub(crate) fn split_text_block(
 	}
 
 	if at.offset == 0 {
+		let index = structure::index_of(tr.doc(), at.block)?;
 		let fresh = structure::fresh_block(tr, default.unwrap_or(kind))?;
 		tr.insert_blocks(parent, index, vec![fresh])?;
 
