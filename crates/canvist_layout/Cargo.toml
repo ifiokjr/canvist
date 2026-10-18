@@ -1,0 +1,25 @@
+[package]
+name = "canvist_layout"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_layout"
+edition.workspace = true
+homepage.workspace = true
+include = ["src/**/*.rs", "Cargo.toml", "readme.md", "license"]
+keywords = ["text-layout", "rich-text", "line-breaking", "bidi", "canvas"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "Incremental text and block layout for the canvist editor: line breaking, bidi, hit testing, display lists, and SVG/HTML renderers"
+
+[dependencies]
+canvist_model = { workspace = true }
+icu_segmenter = { version = "^2.3", default-features = false, features = ["compiled_data"] }
+rustc-hash = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+unicode-bidi = { version = "^0.3", default-features = false, features = ["hardcoded-data", "std"] }
+
+[lints]
+workspace = true
