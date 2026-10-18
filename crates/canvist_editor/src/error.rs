@@ -1,5 +1,6 @@
 //! Editor errors.
 
+use canvist_model::JsonError;
 use canvist_model::SchemaError;
 use canvist_model::StepError;
 
@@ -8,7 +9,9 @@ use canvist_model::StepError;
 /// Commands that do not apply to the current state return `Ok(None)`, not an
 /// error. An error means a step was rejected by the model, which points at a
 /// bug in the command or an invalid document, so callers should surface it.
-#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+/// The remaining variants are configuration mistakes caught while building
+/// an [`Editor`](crate::Editor).
+#[derive(Clone, Debug, PartialEq, thiserror::Error)]
 pub enum EditorError {
 	/// The model rejected a step. The transaction was rolled back.
 	#[error(transparent)]
@@ -16,4 +19,29 @@ pub enum EditorError {
 	/// The extensions produced an invalid schema.
 	#[error(transparent)]
 	Schema(#[from] SchemaError),
+	/// The initial content did not fit the schema.
+	#[error(transparent)]
+	Json(#[from] JsonError),
+	/// An extension needs a block, mark, or embed type nobody registered.
+	#[error("extension `{extension}` needs the {kind} type `{name}`")]
+	MissingType {
+		/// The extension asking for the type.
+		extension: &'static str,
+		/// `block`, `mark`, or `embed`.
+		kind: &'static str,
+		/// The missing type's name.
+		name: &'static str,
+	},
+	/// A key binding could not be parsed.
+	#[error("invalid key binding `{0}`")]
+	InvalidKey(String),
+	/// An input or paste rule pattern is not a valid regular expression, or
+	/// an input rule pattern is not anchored to the caret with `$`.
+	#[error("invalid rule pattern `{pattern}`: {reason}")]
+	InvalidPattern {
+		/// The pattern.
+		pattern: String,
+		/// What is wrong with it.
+		reason: String,
+	},
 }

@@ -41,6 +41,7 @@ lib0 = { default-features = false, version = "^0.16" }
 log = { default-features = false, version = "^0.4" }
 playwright-rs = { default-features = false, version = "^0.8" }
 proptest = { default-features = false, version = "^1" }
+regex-lite = { default-features = false, version = "^0.1" }
 rustc-hash = { default-features = false, version = "^2" }
 serde = { default-features = false, version = "^1" }
 serde_json = { default-features = false, version = "^1" }

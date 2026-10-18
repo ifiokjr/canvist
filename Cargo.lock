@@ -181,6 +181,8 @@ version = "0.1.0"
 dependencies = [
  "canvist_model",
  "proptest",
+ "regex-lite",
+ "rustc-hash",
  "thiserror 2.0.18",
  "unicode-segmentation",
 ]
