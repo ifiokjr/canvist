@@ -7,6 +7,7 @@ use canvist_model::Selection;
 
 use super::CommandResult;
 use super::insert::caret_after_removal;
+use crate::Caret;
 use crate::Direction;
 use crate::EditKind;
 use crate::EditorState;
@@ -73,7 +74,7 @@ fn delete_blocks(state: &mut EditorState, anchor: BlockId, head: BlockId) -> Com
 pub fn delete_backward(
 	state: &mut EditorState,
 	unit: Unit,
-	lines: &dyn LineNavigator,
+	lines: &mut dyn LineNavigator,
 ) -> CommandResult {
 	delete_by(state, Direction::Backward, unit, lines)
 }
@@ -83,7 +84,7 @@ pub fn delete_backward(
 pub fn delete_forward(
 	state: &mut EditorState,
 	unit: Unit,
-	lines: &dyn LineNavigator,
+	lines: &mut dyn LineNavigator,
 ) -> CommandResult {
 	delete_by(state, Direction::Forward, unit, lines)
 }
@@ -92,7 +93,7 @@ fn delete_by(
 	state: &mut EditorState,
 	direction: Direction,
 	unit: Unit,
-	lines: &dyn LineNavigator,
+	lines: &mut dyn LineNavigator,
 ) -> CommandResult {
 	let Some(caret) = state.selection().as_caret() else {
 		return delete_selection(state);
@@ -111,7 +112,12 @@ fn delete_by(
 		};
 	}
 
-	let Some(Stop::Text(target)) = motion::target(state.doc(), caret, direction, unit, lines)
+	let from_caret = Caret {
+		point: caret,
+		affinity: state.affinity(),
+	};
+	let Some((Stop::Text(target), _)) =
+		motion::target(state.doc(), from_caret, direction, unit, lines)?
 	else {
 		return Ok(None);
 	};

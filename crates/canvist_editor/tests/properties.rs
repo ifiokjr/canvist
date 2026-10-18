@@ -21,7 +21,6 @@ use canvist_model::Point;
 use canvist_model::Selection;
 use proptest::prelude::*;
 
-const LINES: ParagraphNavigator = ParagraphNavigator;
 const DIRECTIONS: [Direction; 2] = [Direction::Backward, Direction::Forward];
 const UNITS: [Unit; 4] = [Unit::Grapheme, Unit::Word, Unit::Line, Unit::Document];
 const MARKS: [&str; 4] = ["bold", "italic", "code", "link"];
@@ -114,8 +113,10 @@ fn point(doc: &Document, block: usize, offset: usize) -> Option<Point> {
 fn run(state: &mut EditorState, op: &Op) -> canvist_editor::CommandResult {
 	match op {
 		Op::Type(text) => commands::insert_text(state, text),
-		Op::Backspace(unit) => commands::delete_backward(state, UNITS[*unit], &LINES),
-		Op::Delete(unit) => commands::delete_forward(state, UNITS[*unit], &LINES),
+		Op::Backspace(unit) => {
+			commands::delete_backward(state, UNITS[*unit], &mut ParagraphNavigator)
+		}
+		Op::Delete(unit) => commands::delete_forward(state, UNITS[*unit], &mut ParagraphNavigator),
 		Op::Enter => commands::split_block(state),
 		Op::SplitItem(index) => commands::split_list_item(state, list(state, *index).item),
 		Op::Sink(index) => commands::sink_list_item(state, list(state, *index).item),
@@ -143,10 +144,21 @@ fn run(state: &mut EditorState, op: &Op) -> canvist_editor::CommandResult {
 			commands::insert_leaf(state, divider, Attrs::new())
 		}
 		Op::Move(direction, unit, extend) => {
-			motion::move_caret(state, DIRECTIONS[*direction], UNITS[*unit], *extend, &LINES)
+			motion::move_caret(
+				state,
+				DIRECTIONS[*direction],
+				UNITS[*unit],
+				*extend,
+				&mut ParagraphNavigator,
+			)
 		}
 		Op::Vertical(direction, extend) => {
-			motion::move_vertical(state, DIRECTIONS[*direction], *extend, &LINES)
+			motion::move_vertical(
+				state,
+				DIRECTIONS[*direction],
+				*extend,
+				&mut ParagraphNavigator,
+			)
 		}
 		Op::SelectAll => commands::select_all(state),
 		Op::SelectParent => commands::select_parent(state),

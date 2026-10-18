@@ -15,8 +15,6 @@ use support::mark;
 use support::render;
 use support::state;
 
-const LINES: ParagraphNavigator = ParagraphNavigator;
-
 #[test]
 fn typing_inserts_at_the_caret() {
 	let result = after("paragraph: he|o", |state| {
@@ -119,7 +117,7 @@ fn stored_marks_clear_when_the_caret_moves() {
 		canvist_editor::Direction::Backward,
 		Unit::Grapheme,
 		false,
-		&LINES,
+		&mut ParagraphNavigator,
 	)
 	.expect("move");
 
@@ -210,17 +208,17 @@ fn embeds_carry_marks_and_count_as_one_character() {
 		"paragraph: {bold:hi }{bold:{@mention id=ada}}|"
 	);
 
-	commands::delete_backward(&mut state, Unit::Grapheme, &LINES).expect("delete");
+	commands::delete_backward(&mut state, Unit::Grapheme, &mut ParagraphNavigator).expect("delete");
 	assert_eq!(render(&state), "paragraph: {bold:hi }|");
 }
 
 #[test]
 fn deleting_by_grapheme_removes_whole_clusters() {
 	let backward = after("paragraph: a👍🏽|b", |state| {
-		commands::delete_backward(state, Unit::Grapheme, &LINES)
+		commands::delete_backward(state, Unit::Grapheme, &mut ParagraphNavigator)
 	});
 	let forward = after("paragraph: a|🇬🇧b", |state| {
-		commands::delete_forward(state, Unit::Grapheme, &LINES)
+		commands::delete_forward(state, Unit::Grapheme, &mut ParagraphNavigator)
 	});
 
 	assert_eq!(backward, "paragraph: a|b");
@@ -230,16 +228,16 @@ fn deleting_by_grapheme_removes_whole_clusters() {
 #[test]
 fn deleting_by_word_skips_punctuation() {
 	let backward = after("paragraph: one, two|", |state| {
-		commands::delete_backward(state, Unit::Word, &LINES)
+		commands::delete_backward(state, Unit::Word, &mut ParagraphNavigator)
 	});
 	let mid = after("paragraph: one, |two", |state| {
-		commands::delete_backward(state, Unit::Word, &LINES)
+		commands::delete_backward(state, Unit::Word, &mut ParagraphNavigator)
 	});
 	let forward = after("paragraph: |one, two", |state| {
-		commands::delete_forward(state, Unit::Word, &LINES)
+		commands::delete_forward(state, Unit::Word, &mut ParagraphNavigator)
 	});
 	let spaces = after("paragraph:    |x", |state| {
-		commands::delete_backward(state, Unit::Word, &LINES)
+		commands::delete_backward(state, Unit::Word, &mut ParagraphNavigator)
 	});
 
 	assert_eq!(backward, "paragraph: one, |");
@@ -251,10 +249,10 @@ fn deleting_by_word_skips_punctuation() {
 #[test]
 fn deleting_to_the_line_boundary_uses_the_navigator() {
 	let backward = after("paragraph: one two|three", |state| {
-		commands::delete_backward(state, Unit::Line, &LINES)
+		commands::delete_backward(state, Unit::Line, &mut ParagraphNavigator)
 	});
 	let forward = after("paragraph: one|two", |state| {
-		commands::delete_forward(state, Unit::Line, &LINES)
+		commands::delete_forward(state, Unit::Line, &mut ParagraphNavigator)
 	});
 
 	assert_eq!(backward, "paragraph: |three");
@@ -268,7 +266,7 @@ fn deleting_to_the_document_start_merges_blocks() {
 		paragraph: one
 		paragraph: tw|o
 		",
-		|state| commands::delete_backward(state, Unit::Document, &LINES),
+		|state| commands::delete_backward(state, Unit::Document, &mut ParagraphNavigator),
 	);
 
 	assert_eq!(result, "paragraph: |o");

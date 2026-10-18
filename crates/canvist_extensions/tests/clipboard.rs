@@ -28,7 +28,7 @@ fn pasted(slice: Slice) -> serde_json::Value {
 	let mut typist = Typist::new();
 	typist
 		.editor
-		.paste(slice, &Env::headless(Duration::ZERO))
+		.paste(slice, &mut Env::headless(Duration::ZERO))
 		.expect("paste");
 	typist.snapshot()["doc"].clone()
 }

@@ -311,10 +311,10 @@ impl StarterKit {
 	/// let mut builder = Editor::builder();
 	/// let kit = StarterKit::add_all(&mut builder);
 	/// let mut editor = builder.build()?;
-	/// let env = Env::headless(std::time::Duration::ZERO);
+	/// let mut env = Env::headless(std::time::Duration::ZERO);
 	///
-	/// editor.insert_text("Hello", &env)?;
-	/// editor.run(&kit.bold.toggle(), &env)?;
+	/// editor.insert_text("Hello", &mut env)?;
+	/// editor.run(&kit.bold.toggle(), &mut env)?;
 	/// assert!(kit.bold.is_active(editor.state()));
 	/// # Ok::<(), canvist_editor::EditorError>(())
 	/// ```

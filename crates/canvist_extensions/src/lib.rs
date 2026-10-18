@@ -42,10 +42,10 @@
 //! let mut editor = Editor::builder()
 //! 	.extensions(StarterKit::default().extensions())
 //! 	.build()?;
-//! let env = Env::headless(Duration::ZERO);
+//! let mut env = Env::headless(Duration::ZERO);
 //!
 //! for text in ["#", " ", "H", "i"] {
-//! 	editor.insert_text(text, &env)?;
+//! 	editor.insert_text(text, &mut env)?;
 //! }
 //!
 //! let heading = editor.schema().block_type("heading");

@@ -14,6 +14,7 @@ use canvist_model::Schema;
 use canvist_model::Selection;
 use canvist_model::Step;
 
+use crate::Affinity;
 use crate::CommandResult;
 use crate::EditKind;
 use crate::EditorError;
@@ -92,6 +93,7 @@ struct Transient {
 	stored_marks: Option<MarkSet>,
 	composition: Option<Composition>,
 	goal: Option<f32>,
+	affinity: Affinity,
 }
 
 /// A document, its selection, and the transient state commands consult.
@@ -108,6 +110,7 @@ pub struct EditorState {
 	stored_marks: Option<MarkSet>,
 	composition: Option<Composition>,
 	goal: Option<f32>,
+	affinity: Affinity,
 }
 
 impl EditorState {
@@ -121,6 +124,7 @@ impl EditorState {
 			stored_marks: None,
 			composition: None,
 			goal: None,
+			affinity: Affinity::Downstream,
 		};
 
 		if state.doc.children(None).is_empty() {
@@ -166,6 +170,12 @@ impl EditorState {
 	#[must_use]
 	pub fn goal(&self) -> Option<f32> {
 		self.goal
+	}
+
+	/// Which visual line the caret belongs to at a soft wrap.
+	#[must_use]
+	pub fn affinity(&self) -> Affinity {
+		self.affinity
 	}
 
 	/// Release the document.
@@ -262,6 +272,7 @@ impl EditorState {
 			stored_marks: self.stored_marks.clone(),
 			composition: self.composition,
 			goal: self.goal,
+			affinity: self.affinity,
 		}
 	}
 
@@ -270,6 +281,7 @@ impl EditorState {
 		self.stored_marks = saved.stored_marks;
 		self.composition = saved.composition;
 		self.goal = saved.goal;
+		self.affinity = saved.affinity;
 	}
 
 	/// The one place where a commit becomes the new state.
@@ -303,7 +315,14 @@ impl EditorState {
 			Override::Default => None,
 		};
 
-		self.goal = effects.goal;
+		// A collaborator's edit that leaves the caret where it was keeps it on
+		// its visual line and column; any other change starts afresh.
+		let keeps_line = effects.origin == Origin::Remote && self.selection == selection_before;
+
+		if !keeps_line {
+			self.goal = effects.goal;
+			self.affinity = effects.affinity.unwrap_or_default();
+		}
 
 		Ok(Update {
 			commit,

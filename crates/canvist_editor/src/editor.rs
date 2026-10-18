@@ -40,13 +40,32 @@ use crate::context::AppliedRule;
 use crate::position;
 
 /// What the host knows about the moment an input event happened.
-#[derive(Clone, Copy)]
 pub struct Env<'a> {
 	/// When the event happened, on any monotonic clock. History groups
 	/// edits by it.
 	pub now: Duration,
-	/// Visual lines, from layout.
-	pub lines: &'a dyn LineNavigator,
+	lines: Option<&'a mut dyn LineNavigator>,
+	fallback: ParagraphNavigator,
+}
+
+impl<'a> Env<'a> {
+	/// An environment whose visual lines come from layout.
+	#[must_use]
+	pub fn new(now: Duration, lines: &'a mut dyn LineNavigator) -> Self {
+		Self {
+			now,
+			lines: Some(lines),
+			fallback: ParagraphNavigator,
+		}
+	}
+
+	/// The navigator for visual lines.
+	pub fn lines(&mut self) -> &mut dyn LineNavigator {
+		match &mut self.lines {
+			Some(lines) => &mut **lines,
+			None => &mut self.fallback,
+		}
+	}
 }
 
 impl Env<'static> {
@@ -55,7 +74,8 @@ impl Env<'static> {
 	pub const fn headless(now: Duration) -> Self {
 		Self {
 			now,
-			lines: &ParagraphNavigator,
+			lines: None,
+			fallback: ParagraphNavigator,
 		}
 	}
 }
@@ -293,11 +313,11 @@ impl Editor {
 	}
 
 	/// Run the commands bound to `press` until one applies.
-	pub fn handle_key(&mut self, press: KeyPress<'_>, env: &Env<'_>) -> CommandResult {
+	pub fn handle_key(&mut self, press: KeyPress<'_>, env: &mut Env<'_>) -> CommandResult {
 		let mut context = Context {
 			state: &mut self.state,
 			history: self.history.as_mut(),
-			lines: env.lines,
+			lines: env.lines(),
 			last_rule: self.last_rule.as_ref(),
 		};
 		let update = first_applying(self.registry.keymap.lookup(press), &mut context)?;
@@ -305,11 +325,11 @@ impl Editor {
 	}
 
 	/// Run `command`.
-	pub fn run(&mut self, command: &Command, env: &Env<'_>) -> CommandResult {
+	pub fn run(&mut self, command: &Command, env: &mut Env<'_>) -> CommandResult {
 		let mut context = Context {
 			state: &mut self.state,
 			history: self.history.as_mut(),
-			lines: env.lines,
+			lines: env.lines(),
 			last_rule: self.last_rule.as_ref(),
 		};
 		let update = command(&mut context)?;
@@ -317,7 +337,7 @@ impl Editor {
 	}
 
 	/// Type `text`, giving input rules the first chance to rewrite it.
-	pub fn insert_text(&mut self, text: &str, env: &Env<'_>) -> CommandResult {
+	pub fn insert_text(&mut self, text: &str, env: &mut Env<'_>) -> CommandResult {
 		if let Some(update) = self.apply_input_rules(text)? {
 			let finished = self.finish(Some(update), env.now)?;
 			self.last_rule = finished.as_ref().map(|update| {
@@ -375,20 +395,20 @@ impl Editor {
 	}
 
 	/// Undo the last group of changes.
-	pub fn undo(&mut self, env: &Env<'_>) -> CommandResult {
+	pub fn undo(&mut self, env: &mut Env<'_>) -> CommandResult {
 		let update = self.history.undo(&mut self.state)?;
 		self.finish(update, env.now)
 	}
 
 	/// Redo the last undone group.
-	pub fn redo(&mut self, env: &Env<'_>) -> CommandResult {
+	pub fn redo(&mut self, env: &mut Env<'_>) -> CommandResult {
 		let update = self.history.redo(&mut self.state)?;
 		self.finish(update, env.now)
 	}
 
 	/// Set the selection from a pointer or the host's own selection UI. The
 	/// next edit starts a new undo step.
-	pub fn select(&mut self, selection: Selection, env: &Env<'_>) -> CommandResult {
+	pub fn select(&mut self, selection: Selection, env: &mut Env<'_>) -> CommandResult {
 		self.history.close_group();
 		let update = commands::set_selection(&mut self.state, selection)?;
 		self.finish(update, env.now)
@@ -400,14 +420,14 @@ impl Editor {
 	}
 
 	/// Copy the selection and delete it.
-	pub fn cut(&mut self, env: &Env<'_>) -> Result<(Slice, Option<Update>), EditorError> {
+	pub fn cut(&mut self, env: &mut Env<'_>) -> Result<(Slice, Option<Update>), EditorError> {
 		let slice = commands::slice_selection(&self.state)?;
 		let update = commands::delete_selection(&mut self.state)?;
 		Ok((slice, self.finish(update, env.now)?))
 	}
 
 	/// Paste a slice over the selection, after the paste rules format it.
-	pub fn paste(&mut self, slice: Slice, env: &Env<'_>) -> CommandResult {
+	pub fn paste(&mut self, slice: Slice, env: &mut Env<'_>) -> CommandResult {
 		let mut slice = slice;
 		self.format_pasted(&mut slice)?;
 		let update = commands::replace_selection(&mut self.state, slice)?;
@@ -415,7 +435,7 @@ impl Editor {
 	}
 
 	/// Paste plain text: one paragraph per line, or verbatim inside code.
-	pub fn paste_text(&mut self, text: &str, env: &Env<'_>) -> CommandResult {
+	pub fn paste_text(&mut self, text: &str, env: &mut Env<'_>) -> CommandResult {
 		let in_code = position::text_range(self.state.doc(), self.state.selection())
 			.is_some_and(|range| self.in_code(range.from.block));
 
@@ -468,19 +488,19 @@ impl Editor {
 	}
 
 	/// Start or update IME preedit text.
-	pub fn set_composition(&mut self, text: &str, env: &Env<'_>) -> CommandResult {
+	pub fn set_composition(&mut self, text: &str, env: &mut Env<'_>) -> CommandResult {
 		let update = commands::set_composition(&mut self.state, text)?;
 		self.finish(update, env.now)
 	}
 
 	/// Commit the composed text.
-	pub fn commit_composition(&mut self, text: &str, env: &Env<'_>) -> CommandResult {
+	pub fn commit_composition(&mut self, text: &str, env: &mut Env<'_>) -> CommandResult {
 		let update = commands::commit_composition(&mut self.state, text)?;
 		self.finish(update, env.now)
 	}
 
 	/// Abandon the composition.
-	pub fn cancel_composition(&mut self, env: &Env<'_>) -> CommandResult {
+	pub fn cancel_composition(&mut self, env: &mut Env<'_>) -> CommandResult {
 		let update = commands::cancel_composition(&mut self.state)?;
 		self.finish(update, env.now)
 	}
@@ -489,7 +509,7 @@ impl Editor {
 	pub fn apply_remote(
 		&mut self,
 		steps: impl IntoIterator<Item = Step>,
-		env: &Env<'_>,
+		env: &mut Env<'_>,
 	) -> Result<Update, EditorError> {
 		let update = self
 			.state

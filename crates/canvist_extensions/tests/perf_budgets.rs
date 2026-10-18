@@ -110,7 +110,7 @@ fn editor_over(
 		.map_or(0, |text| text.len() / 2);
 	let caret = Selection::caret(Point::new(middle, offset - offset % 10));
 	editor
-		.select(caret, &Env::headless(Duration::ZERO))
+		.select(caret, &mut Env::headless(Duration::ZERO))
 		.expect("select");
 
 	(editor, kit)
@@ -162,7 +162,7 @@ fn heavy_formatting() -> Editor {
 }
 
 /// Measure a pair of keystrokes, returning the cost of one.
-fn per_keystroke(batch: u32, pair: impl FnMut(&mut Editor, &Env<'_>)) -> Duration {
+fn per_keystroke(batch: u32, pair: impl FnMut(&mut Editor, &mut Env<'_>)) -> Duration {
 	per_keystroke_in(large_editor(), batch, pair)
 }
 
@@ -170,18 +170,18 @@ fn per_keystroke(batch: u32, pair: impl FnMut(&mut Editor, &Env<'_>)) -> Duratio
 fn per_keystroke_in(
 	mut editor: Editor,
 	batch: u32,
-	mut pair: impl FnMut(&mut Editor, &Env<'_>),
+	mut pair: impl FnMut(&mut Editor, &mut Env<'_>),
 ) -> Duration {
 	let mut millis = 0;
 
 	median_per_call(batch, || {
 		millis += 1;
-		let env = Env::headless(Duration::from_millis(millis));
-		pair(&mut editor, &env);
+		let mut env = Env::headless(Duration::from_millis(millis));
+		pair(&mut editor, &mut env);
 	}) / 2
 }
 
-fn press(editor: &mut Editor, key: &str, env: &Env<'_>) {
+fn press(editor: &mut Editor, key: &str, env: &mut Env<'_>) {
 	std::hint::black_box(editor.handle_key(KeyPress::plain(key), env).expect("key"));
 }
 
@@ -245,7 +245,7 @@ fn enter_and_backspace_in_a_100k_block_document() {
 	);
 }
 
-fn type_and_delete(text: &'static str) -> impl FnMut(&mut Editor, &Env<'_>) {
+fn type_and_delete(text: &'static str) -> impl FnMut(&mut Editor, &mut Env<'_>) {
 	move |editor, env| {
 		std::hint::black_box(editor.insert_text(text, env).expect("type"));
 		press(editor, "Backspace", env);
@@ -297,11 +297,11 @@ fn per_can_check(commands: &[canvist_editor::Command]) -> Duration {
 			.map(|_| InlineText::plain(PARAGRAPH, MarkSet::empty()))
 			.collect()
 	});
-	let env = Env::headless(Duration::ZERO);
+	let mut env = Env::headless(Duration::ZERO);
 
 	median_per_call(50, || {
 		for command in commands {
-			std::hint::black_box(editor.can(command, &env).expect("can"));
+			std::hint::black_box(editor.can(command, &mut env).expect("can"));
 		}
 	}) / commands.len() as u32
 }

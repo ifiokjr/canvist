@@ -146,7 +146,7 @@ fn editor_with(outline: &str) -> (Editor, KitHandle) {
 		.expect("editor");
 
 	if let Some(selection) = selection {
-		editor.select(selection, &env()).expect("select");
+		editor.select(selection, &mut env()).expect("select");
 	}
 
 	(editor, kit)
@@ -167,7 +167,7 @@ fn fingerprint(editor: &Editor) -> (String, u64, Vec<(BlockId, u32)>) {
 #[test]
 fn typed_handles_run_commands_and_answer_queries() {
 	let (mut editor, kit) = editor_with("paragraph: ^ab|");
-	editor.run(&kit.toggle_bold(), &env()).expect("bold");
+	editor.run(&kit.toggle_bold(), &mut env()).expect("bold");
 
 	assert!(kit.is_bold(&editor));
 	assert_eq!(render(editor.state()), "paragraph: ^{bold:ab}|");
@@ -179,13 +179,13 @@ fn can_answers_without_changing_anything() {
 	let before = fingerprint(&editor);
 	let undo: Command = Arc::new(canvist_editor::undo);
 
-	assert_eq!(editor.can(&kit.toggle_bold(), &env()), Ok(true));
-	assert_eq!(editor.can(&undo, &env()), Ok(false));
+	assert_eq!(editor.can(&kit.toggle_bold(), &mut env()), Ok(true));
+	assert_eq!(editor.can(&undo, &mut env()), Ok(false));
 	assert_eq!(fingerprint(&editor), before, "a dry run leaves no trace");
 	assert!(!editor.can_undo());
 
-	editor.run(&kit.toggle_bold(), &env()).expect("bold");
-	assert_eq!(editor.can(&undo, &env()), Ok(true));
+	editor.run(&kit.toggle_bold(), &mut env()).expect("bold");
+	assert_eq!(editor.can(&undo, &mut env()), Ok(true));
 	assert!(editor.can_undo(), "a dry undo leaves the history alone");
 }
 
@@ -194,7 +194,7 @@ fn can_reports_commands_that_do_not_apply() {
 	let (mut editor, _) = editor_with("horizontalRule @");
 	let split = command(commands::split_block);
 
-	assert_eq!(editor.can(&split, &env()), Ok(false));
+	assert_eq!(editor.can(&split, &mut env()), Ok(false));
 }
 
 #[test]
@@ -208,13 +208,13 @@ fn chains_apply_as_one_undo_step() {
 		.chain()
 		.then(kit.toggle_bold())
 		.then(set_heading)
-		.run(&env())
+		.run(&mut env())
 		.expect("chain")
 		.expect("applied");
 
 	assert_eq!(update.commit.steps.len(), 2);
 	assert_eq!(render(editor.state()), "heading level=2: ^{bold:ab}|");
-	editor.undo(&env()).expect("undo");
+	editor.undo(&mut env()).expect("undo");
 	assert_eq!(render(editor.state()), "paragraph: ^ab|");
 }
 
@@ -234,24 +234,27 @@ fn chains_are_all_or_nothing() {
 		.chain()
 		.then(kit.toggle_bold())
 		.then(split_leaf.clone());
-	assert_eq!(chained.run(&env()), Ok(None));
+	assert_eq!(chained.run(&mut env()), Ok(None));
 	assert_eq!(
 		fingerprint(&editor),
 		before,
 		"a failed chain rolls back exactly"
 	);
-	assert_eq!(editor.chain().then(kit.toggle_bold()).can(&env()), Ok(true));
-	assert_eq!(editor.chain().then(split_leaf).can(&env()), Ok(false));
+	assert_eq!(
+		editor.chain().then(kit.toggle_bold()).can(&mut env()),
+		Ok(true)
+	);
+	assert_eq!(editor.chain().then(split_leaf).can(&mut env()), Ok(false));
 	assert_eq!(fingerprint(&editor), before);
 }
 
 #[test]
 fn undo_cannot_be_chained() {
 	let (mut editor, kit) = editor_with("paragraph: ^ab|");
-	editor.run(&kit.toggle_bold(), &env()).expect("bold");
+	editor.run(&kit.toggle_bold(), &mut env()).expect("bold");
 	let undo: Command = Arc::new(canvist_editor::undo);
 
-	assert_eq!(editor.chain().then(undo).run(&env()), Ok(None));
+	assert_eq!(editor.chain().then(undo).run(&mut env()), Ok(None));
 	assert!(kit.is_bold(&editor));
 }
 
@@ -313,7 +316,7 @@ fn handles_on_an_editor_without_the_extension_fail_at_run_time() {
 		}
 	}
 
-	let missing = other.run(&kit.toggle_bold(), &env());
+	let missing = other.run(&kit.toggle_bold(), &mut env());
 	assert!(matches!(
 		missing,
 		Err(EditorError::MissingType { name: "bold", .. })

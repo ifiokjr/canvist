@@ -101,7 +101,7 @@ fn every_command_runs_with_sample_arguments_and_rejects_missing_ones() {
 			.map(|arg| (arg.name, arg.ty.sample()))
 			.collect();
 		let built = typist.editor.command_named(command.name, &args);
-		let ran = built.and_then(|command| typist.editor.run(&command, &env()));
+		let ran = built.and_then(|command| typist.editor.run(&command, &mut env()));
 		assert!(ran.is_ok(), "{} runs: {ran:?}", command.name);
 
 		if command.args.iter().any(|arg| arg.default.is_none()) {
@@ -145,11 +145,11 @@ fn same_as_named(script: &str, typed: fn(&StarterKitHandles) -> Command, name: &
 	let (mut by_name, _) = typed_with(script);
 	by_handle
 		.editor
-		.run(&typed(&kit), &env())
+		.run(&typed(&kit), &mut env())
 		.expect("typed command");
 	by_name
 		.editor
-		.run_named(name, args, &env())
+		.run_named(name, args, &mut env())
 		.expect("named command");
 
 	assert_eq!(by_handle.snapshot(), by_name.snapshot(), "{name}");
@@ -253,8 +253,11 @@ fn can_and_chains_work_through_handles() {
 	let (mut typist, kit) = typed_with("text[Mod-a]");
 	let before = typist.snapshot();
 
-	assert_eq!(typist.editor.can(&kit.bold.toggle(), &env()), Ok(true));
-	assert_eq!(typist.editor.can(&kit.history.redo(), &env()), Ok(false));
+	assert_eq!(typist.editor.can(&kit.bold.toggle(), &mut env()), Ok(true));
+	assert_eq!(
+		typist.editor.can(&kit.history.redo(), &mut env()),
+		Ok(false)
+	);
 	assert_eq!(typist.snapshot(), before);
 
 	typist
@@ -262,7 +265,7 @@ fn can_and_chains_work_through_handles() {
 		.chain()
 		.then(kit.heading.set(HeadingLevel::H1))
 		.then(kit.bold.toggle())
-		.run(&env())
+		.run(&mut env())
 		.expect("chain");
 	assert_eq!(
 		kit.heading.level(typist.editor.state()),
@@ -272,7 +275,7 @@ fn can_and_chains_work_through_handles() {
 
 	typist
 		.editor
-		.run(&kit.history.undo(), &env())
+		.run(&kit.history.undo(), &mut env())
 		.expect("undo");
 	assert_eq!(typist.snapshot(), before, "the chain undoes as one step");
 }

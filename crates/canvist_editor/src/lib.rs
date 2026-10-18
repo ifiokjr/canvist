@@ -10,7 +10,10 @@
 //! - [`commands`]: plain functions such as typing, deleting by grapheme or
 //!   word, splitting and joining blocks, lists, marks, and paste.
 //! - [`motion`]: caret movement by grapheme, word, line, and document. Lines
-//!   come from a [`LineNavigator`], which the layout engine implements.
+//!   come from a [`LineNavigator`], which the layout engine implements and
+//!   hosts pass per event through [`Env::new`]; [`Env::headless`] falls back
+//!   to [`ParagraphNavigator`]. [`Caret`] carries the [`Affinity`] that
+//!   tells the two sides of a soft wrap apart.
 //! - [`Editor`]: the state plus [`History`], a [`Keymap`] with platform-aware
 //!   `Mod`, [`InputRule`]s, and [`PasteRule`]s, all contributed by
 //!   [`Extension`]s. [`BaseKeymap`] binds the platform's standard keys and
@@ -73,11 +76,11 @@
 //! }
 //!
 //! let mut editor = Editor::builder().extension(Paragraphs).extension(BaseKeymap).build()?;
-//! let env = Env::headless(Duration::ZERO);
+//! let mut env = Env::headless(Duration::ZERO);
 //!
-//! editor.insert_text("Hi", &env)?;
-//! editor.handle_key(KeyPress::plain("Enter"), &env)?;
-//! editor.undo(&env)?;
+//! editor.insert_text("Hi", &mut env)?;
+//! editor.handle_key(KeyPress::plain("Enter"), &mut env)?;
+//! editor.undo(&mut env)?;
 //!
 //! assert_eq!(editor.state().doc().plain_text(), "Hi");
 //! # Ok::<(), Box<dyn std::error::Error>>(())
@@ -91,10 +94,9 @@ mod error;
 mod extension;
 mod history;
 mod keymap;
-
 mod meta;
-
 pub mod motion;
+mod navigation;
 pub mod position;
 mod rules;
 mod spec;
@@ -102,7 +104,6 @@ mod state;
 mod structure;
 #[cfg(test)]
 mod testing;
-
 pub mod text;
 mod transaction;
 mod typed;
@@ -143,9 +144,15 @@ pub use meta::QueryMeta;
 pub use meta::ValueType;
 pub use meta::value_to_json;
 pub use motion::Direction;
-pub use motion::LineNavigator;
-pub use motion::ParagraphNavigator;
 pub use motion::Unit;
+pub use navigation::Affinity;
+pub use navigation::Caret;
+pub use navigation::LineEdge;
+pub use navigation::LineNavigator;
+pub use navigation::NavigationError;
+pub use navigation::ParagraphNavigator;
+pub use navigation::VerticalDirection;
+pub use navigation::VerticalMotion;
 pub use rules::DEFAULT_LOOKBACK;
 pub use rules::InputRule;
 pub use rules::Lookback;
