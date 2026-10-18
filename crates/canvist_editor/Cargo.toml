@@ -18,6 +18,7 @@ description = "Platform-agnostic editing engine for canvist: editor state, comma
 canvist_model = { workspace = true }
 regex-lite = { workspace = true, features = ["std", "string"] }
 rustc-hash = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 unicode-segmentation = { workspace = true }
 

@@ -239,3 +239,144 @@ impl StarterKit {
 		false
 	}
 }
+
+/// Typed handles for every extension [`StarterKit::add_all`] registered.
+/// A field exists only when its extension's Cargo feature is on, so code
+/// using a feature the app left out does not compile.
+#[derive(Clone, Copy, Debug)]
+pub struct StarterKitHandles {
+	/// Paragraphs.
+	pub paragraph: crate::ParagraphHandle,
+	/// Headings.
+	#[cfg(feature = "heading")]
+	pub heading: crate::HeadingHandle,
+	/// Block quotes.
+	#[cfg(feature = "blockquote")]
+	pub blockquote: crate::BlockquoteHandle,
+	/// Code blocks.
+	#[cfg(feature = "code-block")]
+	pub code_block: crate::CodeBlockHandle,
+	/// Hard line breaks.
+	#[cfg(feature = "hard-break")]
+	pub hard_break: crate::HardBreakHandle,
+	/// Horizontal rules.
+	#[cfg(feature = "horizontal-rule")]
+	pub horizontal_rule: crate::HorizontalRuleHandle,
+	/// Bullet lists.
+	#[cfg(feature = "bullet-list")]
+	pub bullet_list: crate::BulletListHandle,
+	/// Ordered lists.
+	#[cfg(feature = "ordered-list")]
+	pub ordered_list: crate::OrderedListHandle,
+	/// List items, shared by bullet and ordered lists.
+	#[cfg(feature = "list-item")]
+	pub list_item: crate::ListItemHandle,
+	/// Task lists and their items.
+	#[cfg(feature = "task-list")]
+	pub task_list: crate::TaskListHandle,
+	/// Bold.
+	#[cfg(feature = "bold")]
+	pub bold: crate::MarkHandle,
+	/// Italic.
+	#[cfg(feature = "italic")]
+	pub italic: crate::MarkHandle,
+	/// Underline.
+	#[cfg(feature = "underline")]
+	pub underline: crate::MarkHandle,
+	/// Strikethrough.
+	#[cfg(feature = "strike")]
+	pub strike: crate::MarkHandle,
+	/// Inline code.
+	#[cfg(feature = "code")]
+	pub code: crate::MarkHandle,
+	/// Links.
+	#[cfg(feature = "link")]
+	pub link: crate::LinkHandle,
+	/// Undo and redo.
+	#[cfg(feature = "history")]
+	pub history: crate::HistoryHandle,
+}
+
+impl StarterKit {
+	/// Register every compiled StarterKit extension with its default
+	/// configuration and return the typed handles. To configure or leave
+	/// out an extension, add extensions one by one with
+	/// [`EditorBuilder::add`](canvist_editor::EditorBuilder::add) instead.
+	///
+	/// ```
+	/// use canvist_editor::Editor;
+	/// use canvist_editor::Env;
+	/// use canvist_extensions::StarterKit;
+	///
+	/// let mut builder = Editor::builder();
+	/// let kit = StarterKit::add_all(&mut builder);
+	/// let mut editor = builder.build()?;
+	/// let env = Env::headless(std::time::Duration::ZERO);
+	///
+	/// editor.insert_text("Hello", &env)?;
+	/// editor.run(&kit.bold.toggle(), &env)?;
+	/// assert!(kit.bold.is_active(editor.state()));
+	/// # Ok::<(), canvist_editor::EditorError>(())
+	/// ```
+	pub fn add_all(builder: &mut canvist_editor::EditorBuilder) -> StarterKitHandles {
+		builder.add(Document);
+		builder.add(BaseKeymap);
+		builder.add(UndoInputRule);
+		#[cfg(feature = "trailing-node")]
+		builder.add(crate::TrailingNode);
+		#[cfg(feature = "code")]
+		let excludes = Self::default_marks();
+
+		StarterKitHandles {
+			paragraph: builder.add(Paragraph),
+			#[cfg(feature = "heading")]
+			heading: builder.add(crate::Heading::default()),
+			#[cfg(feature = "blockquote")]
+			blockquote: builder.add(crate::Blockquote),
+			#[cfg(feature = "code-block")]
+			code_block: builder.add(crate::CodeBlock),
+			#[cfg(feature = "hard-break")]
+			hard_break: builder.add(crate::HardBreak),
+			#[cfg(feature = "horizontal-rule")]
+			horizontal_rule: builder.add(crate::HorizontalRule),
+			#[cfg(feature = "bullet-list")]
+			bullet_list: builder.add(crate::BulletList),
+			#[cfg(feature = "ordered-list")]
+			ordered_list: builder.add(crate::OrderedList),
+			#[cfg(feature = "list-item")]
+			list_item: builder.add(crate::ListItem),
+			#[cfg(feature = "task-list")]
+			task_list: builder.add(crate::TaskList),
+			#[cfg(feature = "bold")]
+			bold: builder.add(crate::Bold),
+			#[cfg(feature = "italic")]
+			italic: builder.add(crate::Italic),
+			#[cfg(feature = "underline")]
+			underline: builder.add(crate::Underline),
+			#[cfg(feature = "strike")]
+			strike: builder.add(crate::Strike),
+			#[cfg(feature = "code")]
+			code: builder.add(crate::Code { excludes }),
+			#[cfg(feature = "link")]
+			link: builder.add(crate::Link::default()),
+			#[cfg(feature = "history")]
+			history: builder.add(crate::History),
+		}
+	}
+
+	/// The names of the compiled marks other than code, which code excludes.
+	#[cfg(feature = "code")]
+	fn default_marks() -> Vec<&'static str> {
+		let names = [
+			(cfg!(feature = "bold"), "bold"),
+			(cfg!(feature = "italic"), "italic"),
+			(cfg!(feature = "underline"), "underline"),
+			(cfg!(feature = "strike"), "strike"),
+			(cfg!(feature = "link"), "link"),
+		];
+		names
+			.into_iter()
+			.filter_map(|(on, name)| on.then_some(name))
+			.collect()
+	}
+}

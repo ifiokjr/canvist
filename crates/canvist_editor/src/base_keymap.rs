@@ -177,3 +177,21 @@ impl Extension for UndoInputRule {
 		)])
 	}
 }
+
+/// The standard keys add no commands of their own, so their handle is just
+/// the proof of registration.
+impl crate::TypedExtension for BaseKeymap {
+	type Handle = crate::Registration;
+
+	fn handle(&self, registration: crate::Registration) -> crate::Registration {
+		registration
+	}
+}
+
+impl crate::TypedExtension for UndoInputRule {
+	type Handle = crate::Registration;
+
+	fn handle(&self, registration: crate::Registration) -> crate::Registration {
+		registration
+	}
+}

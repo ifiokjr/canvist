@@ -131,7 +131,77 @@ impl RuleInput {
 #[derive(Clone)]
 pub struct InputRule {
 	pattern: Regex,
+	trigger: Trigger,
+	/// Whether the pattern starts with `^`: it can only match from the
+	/// start of the block.
+	anchored: bool,
+	/// Whether the pattern mentions `^` anywhere, as in `(?:^|\s)`: a
+	/// shortened haystack must then start at a word boundary.
+	uses_start: bool,
+	lookback: Lookback,
 	handler: RuleHandler,
+}
+
+/// How much text before the caret an unanchored rule searches. Regular
+/// expressions cost time per byte, so a rule that runs on a keystroke must
+/// look at a bounded amount of text whatever the paragraph's length.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Lookback {
+	/// At most this many bytes, widened to the nearest word boundary.
+	Bytes(u32),
+	/// The word before the caret, for matches that never contain spaces
+	/// (such as URLs), however long.
+	Word,
+}
+
+/// The default [`Lookback`]: enough for Markdown emphasis around a phrase.
+pub const DEFAULT_LOOKBACK: Lookback = Lookback::Bytes(64);
+
+/// The typed characters that can complete a rule's match, read from the
+/// end of its pattern. Skipping rules that cannot match keeps a keystroke
+/// from scanning hundreds of bytes per rule.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Trigger {
+	/// The pattern's end is too complex to read; always try it.
+	Any,
+	/// The pattern ends with `\s`.
+	Whitespace,
+	/// The pattern ends with this literal character.
+	Char(char),
+}
+
+impl Trigger {
+	/// Read the final atom of a `$`-anchored pattern.
+	fn of(pattern: &str) -> Self {
+		let body = pattern.strip_suffix('$').unwrap_or(pattern);
+
+		let whitespace = body.ends_with(r"\s") && !body.ends_with(r"\\s");
+
+		if whitespace || body.ends_with(r"[\s\n]") {
+			return Self::Whitespace;
+		}
+
+		let mut tail = body.chars().rev();
+		let (Some(last), before) = (tail.next(), tail.next()) else {
+			return Self::Any;
+		};
+		let escaped = before == Some('\\');
+
+		match (escaped, last) {
+			(true, last) if last.is_ascii_punctuation() => Self::Char(last),
+
+			(false, last) if !"\\.^$*+?()[]{}|".contains(last) => Self::Char(last),
+			_ => Self::Any,
+		}
+	}
+
+	fn accepts(self, typed: char) -> bool {
+		match self {
+			Self::Any => true,
+			Self::Whitespace => typed.is_whitespace(),
+			Self::Char(expected) => typed == expected,
+		}
+	}
 }
 
 impl std::fmt::Debug for InputRule {
@@ -168,8 +238,52 @@ impl InputRule {
 
 		Ok(Self {
 			pattern: compile(pattern)?,
+			trigger: Trigger::of(pattern),
+			anchored: pattern.starts_with('^'),
+			uses_start: pattern.contains('^'),
+			lookback: DEFAULT_LOOKBACK,
 			handler: Arc::new(handler),
 		})
+	}
+
+	/// Search a different amount of text before the caret. Rules anchored
+	/// at the start of the block (`^...$`) ignore this.
+	#[must_use]
+	pub fn lookback(mut self, lookback: Lookback) -> Self {
+		self.lookback = lookback;
+		self
+	}
+
+	/// Where in the haystack this rule's search starts, or `None` if the
+	/// rule cannot match there at all.
+	fn search_start(&self, input: &RuleInput) -> Option<usize> {
+		if self.anchored {
+			return (input.window == 0).then_some(0);
+		}
+
+		let before = &input.haystack[..input.haystack.len() - input.typed.len()];
+
+		let cut = match self.lookback {
+			Lookback::Word => before.rfind(char::is_whitespace).unwrap_or(0),
+			Lookback::Bytes(bytes) => before.len().saturating_sub(bytes as usize),
+		};
+
+		let at_block_start = cut == 0 && input.window == 0;
+
+		if at_block_start || !self.uses_start {
+			let mut cut = cut;
+
+			while !before.is_char_boundary(cut) {
+				cut += 1;
+			}
+
+			return Some(cut);
+		}
+
+		// Start on a whitespace character so `^` cannot match mid-word.
+		before[cut..]
+			.find(char::is_whitespace)
+			.map(|offset| cut + offset)
 	}
 
 	/// Replace the match (after any leading whitespace) with `replacement`,
@@ -226,14 +340,23 @@ impl InputRule {
 	/// Match against the text before the caret plus the typed text.
 	#[must_use]
 	pub fn find(&self, input: &RuleInput) -> Option<RuleMatch> {
-		// Most rules do not match; answering that is cheaper than capturing.
-		if !self.pattern.is_match(&input.haystack) {
+		let last = input.typed.chars().next_back()?;
+
+		if !self.trigger.accepts(last) {
 			return None;
 		}
 
-		let captures = self.pattern.captures(&input.haystack)?;
+		let start = self.search_start(input)?;
+		let haystack = &input.haystack[start..];
+
+		// Most rules do not match; answering that is cheaper than capturing.
+		if !self.pattern.is_match(haystack) {
+			return None;
+		}
+
+		let captures = self.pattern.captures(haystack)?;
 		let whole = captures.get(0)?;
-		let offset = |at: usize| input.window + at as u32;
+		let offset = |at: usize| input.window + (start + at) as u32;
 		let groups = (0..captures.len())
 			.map(|index| {
 				captures
@@ -419,5 +542,21 @@ impl PasteRule {
 		}
 
 		Ok(())
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[test]
+	fn reads_triggers_from_the_end_of_patterns() {
+		assert_eq!(Trigger::of(r"^(#{1,6})\s$"), Trigger::Whitespace);
+		assert_eq!(Trigger::of(r"^```([a-z]+)?[\s\n]$"), Trigger::Whitespace);
+		assert_eq!(Trigger::of(r"(?:^|\s)\*\*([^*]+)\*\*$"), Trigger::Char('*'));
+		assert_eq!(Trigger::of(r"(?:^|\s)_([^_]+)_$"), Trigger::Char('_'));
+		assert_eq!(Trigger::of(r"->$"), Trigger::Char('>'));
+		assert_eq!(Trigger::of(r"^(?:---|___\s)$"), Trigger::Any);
+		assert_eq!(Trigger::of(r"a.$"), Trigger::Any);
 	}
 }

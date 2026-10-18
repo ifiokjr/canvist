@@ -2,9 +2,14 @@
 
 use canvist_editor::Binding;
 use canvist_editor::Command;
+use canvist_editor::CommandSpec;
 use canvist_editor::EditorError;
 use canvist_editor::Extension;
+use canvist_editor::NodeKind;
+use canvist_editor::NodeMeta;
 use canvist_editor::Platform;
+use canvist_editor::Registration;
+use canvist_editor::TypedExtension;
 use canvist_editor::command;
 use canvist_editor::commands;
 use canvist_editor::embed_type;
@@ -19,17 +24,33 @@ use canvist_model::SchemaBuilder;
 #[derive(Clone, Copy, Debug, Default)]
 pub struct HardBreak;
 
-impl HardBreak {
-	fn insert(schema: &Schema) -> Result<Command, EditorError> {
-		let kind = embed_type(schema, "hardBreak", "hardBreak")?;
-		Ok(command(move |state| {
-			let embed = Embed {
-				kind,
-				attrs: Attrs::new(),
-			};
-			commands::insert_embed(state, embed)
-		}))
+/// Typed access to [`HardBreak`].
+#[derive(Clone, Copy, Debug)]
+pub struct HardBreakHandle {
+	_registration: Registration,
+}
+
+#[allow(
+	clippy::unused_self,
+	reason = "handle methods require proof of registration"
+)]
+impl HardBreakHandle {
+	/// Insert a line break at the selection.
+	#[must_use]
+	pub fn insert(self) -> Command {
+		insert()
 	}
+}
+
+fn insert() -> Command {
+	command(|state| {
+		let kind = embed_type(state.schema(), "hardBreak", "hardBreak")?;
+		let embed = Embed {
+			kind,
+			attrs: Attrs::new(),
+		};
+		commands::insert_embed(state, embed)
+	})
 }
 
 impl Extension for HardBreak {
@@ -41,12 +62,29 @@ impl Extension for HardBreak {
 		schema.embed(EmbedSpec::new("hardBreak"))
 	}
 
-	fn commands(&self, schema: &Schema) -> Result<Vec<(&'static str, Command)>, EditorError> {
-		Ok(vec![("setHardBreak", Self::insert(schema)?)])
+	fn nodes(&self) -> Vec<NodeMeta> {
+		vec![NodeMeta::new(NodeKind::Embed, "hardBreak")]
 	}
 
-	fn keymap(&self, schema: &Schema, _platform: Platform) -> Result<Vec<Binding>, EditorError> {
-		let insert = Self::insert(schema)?;
-		Ok(vec![("Shift-Enter", insert.clone()), ("Mod-Enter", insert)])
+	fn commands(&self, _schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {
+		Ok(vec![CommandSpec::simple(
+			"setHardBreak",
+			"Insert a line break at the selection.",
+			insert(),
+		)])
+	}
+
+	fn keymap(&self, _schema: &Schema, _platform: Platform) -> Result<Vec<Binding>, EditorError> {
+		Ok(vec![("Shift-Enter", insert()), ("Mod-Enter", insert())])
+	}
+}
+
+impl TypedExtension for HardBreak {
+	type Handle = HardBreakHandle;
+
+	fn handle(&self, registration: Registration) -> HardBreakHandle {
+		HardBreakHandle {
+			_registration: registration,
+		}
 	}
 }

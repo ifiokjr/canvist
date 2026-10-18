@@ -8,11 +8,14 @@ use canvist_model::SchemaBuilder;
 
 use crate::Command;
 use crate::CommandResult;
+use crate::CommandSpec;
 use crate::EditorError;
 use crate::EditorState;
 use crate::InputRule;
+use crate::NodeMeta;
 use crate::PasteRule;
 use crate::Platform;
+use crate::QuerySpec;
 use crate::Update;
 
 /// A key binding contributed by an extension.
@@ -40,9 +43,23 @@ pub trait Extension: Send + Sync {
 		schema
 	}
 
-	/// Named commands, runnable with [`Editor::run_named`](crate::Editor::run_named).
-	fn commands(&self, _schema: &Schema) -> Result<Vec<(&'static str, Command)>, EditorError> {
+	/// Named commands with typed arguments. They are what dynamic hosts
+	/// run with [`Editor::run_named`](crate::Editor::run_named), and their
+	/// metadata is what bindings generate typed APIs from.
+	fn commands(&self, _schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {
 		Ok(Vec::new())
+	}
+
+	/// Named questions about the state, such as whether a mark is active
+	/// or a block's attribute value.
+	fn queries(&self, _schema: &Schema) -> Result<Vec<QuerySpec>, EditorError> {
+		Ok(Vec::new())
+	}
+
+	/// The blocks, marks, and embeds [`Extension::schema`] registers, with
+	/// typed attributes, for generated bindings.
+	fn nodes(&self) -> Vec<NodeMeta> {
+		Vec::new()
 	}
 
 	/// Key bindings, in ProseMirror notation such as `Mod-b`.

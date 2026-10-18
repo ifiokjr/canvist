@@ -486,18 +486,22 @@ pub fn wrap_in_list(state: &mut EditorState, target: ListType) -> CommandResult 
 			tr.move_blocks((parent, range.start + 1, 1), (Some(entry_id), 0))?;
 		}
 
-		join_adjacent(tr, wrapper_id)?;
+		join_adjacent(tr, wrapper_id, range.start)?;
 		tr.set_selection(selection);
 		Ok(true)
 	})
 }
 
 /// Merge `list` with neighbouring lists of the same type.
-fn join_adjacent(tr: &mut EditorTransaction<'_>, list: BlockId) -> Result<(), EditorError> {
+/// `index` is where `list` sits among its siblings.
+fn join_adjacent(
+	tr: &mut EditorTransaction<'_>,
+	list: BlockId,
+	index: usize,
+) -> Result<(), EditorError> {
 	let doc = tr.doc();
 	let parent = parent_of(doc, list);
 	let kind = kind_of(doc, list);
-	let index = structure::index_of(doc, list)?;
 	let siblings = doc.children(parent);
 	let previous = index.checked_sub(1).map(|previous| siblings[previous]);
 	let next = siblings.get(index + 1).copied();

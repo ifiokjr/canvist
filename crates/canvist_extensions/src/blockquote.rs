@@ -2,30 +2,63 @@
 
 use canvist_editor::Binding;
 use canvist_editor::Command;
+use canvist_editor::CommandSpec;
 use canvist_editor::EditorError;
+use canvist_editor::EditorState;
 use canvist_editor::Extension;
 use canvist_editor::InputRule;
+use canvist_editor::NodeKind;
+use canvist_editor::NodeMeta;
 use canvist_editor::Platform;
-use canvist_editor::block_type;
+use canvist_editor::QuerySpec;
+use canvist_editor::Registration;
+use canvist_editor::RuleMatch;
+use canvist_editor::TypedExtension;
+use canvist_editor::ValueType;
 use canvist_editor::command;
 use canvist_editor::commands;
 use canvist_model::Attrs;
 use canvist_model::BlockSpec;
 use canvist_model::Schema;
 use canvist_model::SchemaBuilder;
+use canvist_model::Value;
+
+use crate::resolve;
 
 /// A `blockquote` container for any blocks. `> ` at the start of a block
 /// wraps it, and `Mod-Shift-b` toggles one.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Blockquote;
 
-impl Blockquote {
-	fn toggle(schema: &Schema) -> Result<Command, EditorError> {
-		let quote = block_type(schema, "blockquote", "blockquote")?;
-		Ok(command(move |state| {
-			commands::toggle_wrap(state, quote, Attrs::new())
-		}))
+/// Typed access to [`Blockquote`].
+#[derive(Clone, Copy, Debug)]
+pub struct BlockquoteHandle {
+	_registration: Registration,
+}
+
+#[allow(
+	clippy::unused_self,
+	reason = "handle methods require proof of registration"
+)]
+impl BlockquoteHandle {
+	/// Wrap the selected blocks in a quote, or lift them out of one.
+	#[must_use]
+	pub fn toggle(self) -> Command {
+		toggle()
 	}
+
+	/// Whether the selection is inside a quote.
+	#[must_use]
+	pub fn is_active(self, state: &EditorState) -> bool {
+		resolve::around(state, "blockquote").is_some()
+	}
+}
+
+fn toggle() -> Command {
+	command(|state| {
+		let quote = resolve::block(state, "blockquote", "blockquote")?;
+		commands::toggle_wrap(state, quote, Attrs::new())
+	})
 }
 
 impl Extension for Blockquote {
@@ -37,19 +70,48 @@ impl Extension for Blockquote {
 		schema.block(BlockSpec::container("blockquote", &["block"]))
 	}
 
-	fn commands(&self, schema: &Schema) -> Result<Vec<(&'static str, Command)>, EditorError> {
-		Ok(vec![("toggleBlockquote", Self::toggle(schema)?)])
+	fn nodes(&self) -> Vec<NodeMeta> {
+		vec![NodeMeta::new(NodeKind::Block, "blockquote")]
 	}
 
-	fn keymap(&self, schema: &Schema, _platform: Platform) -> Result<Vec<Binding>, EditorError> {
-		Ok(vec![("Mod-Shift-b", Self::toggle(schema)?)])
+	fn commands(&self, _schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {
+		let toggle_spec = CommandSpec::simple(
+			"toggleBlockquote",
+			"Wrap the selected blocks in a quote, or lift them out of one.",
+			toggle(),
+		);
+		Ok(vec![toggle_spec])
+	}
+
+	fn queries(&self, _schema: &Schema) -> Result<Vec<QuerySpec>, EditorError> {
+		let query = QuerySpec::new(
+			"isBlockquote",
+			"Whether the selection is inside a quote.",
+			ValueType::Bool,
+			|state, _| Ok(Value::Bool(resolve::around(state, "blockquote").is_some())),
+		);
+		Ok(vec![query])
+	}
+
+	fn keymap(&self, _schema: &Schema, _platform: Platform) -> Result<Vec<Binding>, EditorError> {
+		Ok(vec![("Mod-Shift-b", toggle())])
 	}
 
 	fn input_rules(&self, schema: &Schema) -> Result<Vec<InputRule>, EditorError> {
-		let quote = block_type(schema, self.name(), "blockquote")?;
-		let wrap = move |state: &mut canvist_editor::EditorState, _: &canvist_editor::RuleMatch| {
+		let quote = canvist_editor::block_type(schema, self.name(), "blockquote")?;
+		let wrap = move |state: &mut EditorState, _: &RuleMatch| {
 			commands::wrap_in(state, quote, Attrs::new())
 		};
 		Ok(vec![InputRule::wrap(r"^\s*>\s$", wrap)?])
+	}
+}
+
+impl TypedExtension for Blockquote {
+	type Handle = BlockquoteHandle;
+
+	fn handle(&self, registration: Registration) -> BlockquoteHandle {
+		BlockquoteHandle {
+			_registration: registration,
+		}
 	}
 }

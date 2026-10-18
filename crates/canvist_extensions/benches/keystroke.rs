@@ -19,8 +19,10 @@ use canvist_model::BlockId;
 use canvist_model::BlockTree;
 use canvist_model::Document;
 use canvist_model::InlineText;
+use canvist_model::Mark;
 use canvist_model::MarkSet;
 use canvist_model::Point;
+use canvist_model::Schema;
 use canvist_model::Selection;
 use divan::Bencher;
 use divan::black_box;
@@ -36,27 +38,76 @@ fn main() {
 /// A StarterKit editor over `blocks` paragraphs, with the caret inside the
 /// middle one.
 fn fixture(blocks: usize) -> Editor {
+	editor_over(|_| {
+		(0..blocks)
+			.map(|_| InlineText::plain(PARAGRAPH, MarkSet::empty()))
+			.collect()
+	})
+}
+
+/// One paragraph of about 100 KB.
+fn long_paragraph() -> Editor {
+	editor_over(|_| {
+		vec![InlineText::plain(
+			&PARAGRAPH.repeat(1_200),
+			MarkSet::empty(),
+		)]
+	})
+}
+
+/// One paragraph of 2,000 short runs cycling through bold, italic, code,
+/// and plain text.
+fn heavy_formatting() -> Editor {
+	editor_over(|schema| {
+		let names = ["bold", "italic", "code"];
+		let marks: Vec<MarkSet> = names
+			.iter()
+			.filter_map(|name| schema.mark_type(name))
+			.map(|kind| MarkSet::from_marks([Mark::new(kind)]))
+			.chain([MarkSet::empty()])
+			.collect();
+		let mut text = InlineText::new();
+
+		for index in 0..2_000 {
+			text.append(InlineText::plain(
+				"formatted ",
+				marks[index % marks.len()].clone(),
+			));
+		}
+
+		vec![text]
+	})
+}
+
+/// A StarterKit editor over the given paragraphs, with the caret inside
+/// the middle one.
+fn editor_over(paragraphs: impl FnOnce(&Schema) -> Vec<InlineText>) -> Editor {
 	let mut editor = Editor::builder()
 		.extensions(StarterKit::default().extensions())
 		.build_with(|schema, client| {
 			let paragraph = schema.default_text_block();
+			let texts = paragraphs(&schema);
 			let mut doc = Document::empty(schema, client);
-			let trees = (0..blocks)
-				.map(|index| {
+			let trees = texts
+				.into_iter()
+				.enumerate()
+				.map(|(index, text)| {
 					let id = BlockId::new(2, u32::try_from(index).expect("fits"));
-					BlockTree::text(
-						id,
-						paragraph,
-						InlineText::plain(PARAGRAPH, MarkSet::empty()),
-					)
+					BlockTree::text(id, paragraph, text)
 				})
 				.collect();
 			doc.transaction().insert_blocks(None, 0, trees)?;
 			Ok(doc)
 		})
 		.expect("fixture builds");
-	let middle = editor.state().doc().children(None)[blocks / 2];
-	let caret = Selection::caret(Point::new(middle, 10));
+	let blocks = editor.state().doc().children(None);
+	let middle = blocks[blocks.len() / 2];
+	let offset = editor
+		.state()
+		.doc()
+		.inline(middle)
+		.map_or(0, |text| text.len() / 2);
+	let caret = Selection::caret(Point::new(middle, offset - offset % 10));
 	editor.select(caret, &env(0)).expect("select");
 	editor
 }
@@ -149,4 +200,84 @@ fn state_commands_only(bencher: Bencher<'_, '_>, blocks: usize) {
 				.expect("delete"),
 		);
 	});
+}
+
+/// Type and delete a character in the middle of a 100 KB paragraph.
+#[divan::bench]
+fn type_in_a_long_paragraph(bencher: Bencher<'_, '_>) {
+	let mut editor = long_paragraph();
+	let mut now = 0;
+	bencher.bench_local(|| {
+		now += 1;
+		black_box(editor.insert_text(black_box("a"), &env(now)).expect("type"));
+		black_box(
+			editor
+				.handle_key(KeyPress::plain("Backspace"), &env(now))
+				.expect("backspace"),
+		);
+	});
+}
+
+/// Type and delete a space, which runs the input rules over the 500 bytes
+/// before the caret, in the middle of a 100 KB paragraph.
+#[divan::bench]
+fn space_in_a_long_paragraph(bencher: Bencher<'_, '_>) {
+	let mut editor = long_paragraph();
+	let mut now = 0;
+	bencher.bench_local(|| {
+		now += 1;
+		black_box(editor.insert_text(black_box(" "), &env(now)).expect("type"));
+		black_box(
+			editor
+				.handle_key(KeyPress::plain("Backspace"), &env(now))
+				.expect("backspace"),
+		);
+	});
+}
+
+/// Type and delete a character in a paragraph of 2,000 formatting runs.
+#[divan::bench]
+fn type_in_heavy_formatting(bencher: Bencher<'_, '_>) {
+	let mut editor = heavy_formatting();
+	let mut now = 0;
+	bencher.bench_local(|| {
+		now += 1;
+		black_box(editor.insert_text(black_box("a"), &env(now)).expect("type"));
+		black_box(
+			editor
+				.handle_key(KeyPress::plain("Backspace"), &env(now))
+				.expect("backspace"),
+		);
+	});
+}
+
+/// Ask whether bold can be toggled over a selected word, as a toolbar
+/// does on every selection change. Nothing changes.
+#[divan::bench(args = SIZES)]
+fn can_toggle_bold(bencher: Bencher<'_, '_>, blocks: usize) {
+	let mut builder = Editor::builder();
+	let kit = StarterKit::add_all(&mut builder);
+	let mut editor = builder
+		.build_with(|schema, client| {
+			let mut doc = Document::empty(schema.clone(), client);
+			let paragraph = schema.default_text_block();
+			let trees = (0..blocks)
+				.map(|index| {
+					let id = BlockId::new(2, u32::try_from(index).expect("fits"));
+					BlockTree::text(
+						id,
+						paragraph,
+						InlineText::plain(PARAGRAPH, MarkSet::empty()),
+					)
+				})
+				.collect();
+			doc.transaction().insert_blocks(None, 0, trees)?;
+			Ok(doc)
+		})
+		.expect("fixture builds");
+	let middle = editor.state().doc().children(None)[blocks / 2];
+	let word = Selection::text(Point::new(middle, 4), Point::new(middle, 9));
+	editor.select(word, &env(0)).expect("select");
+	let toggle = kit.bold.toggle();
+	bencher.bench_local(|| black_box(editor.can(&toggle, &env(0)).expect("can")));
 }

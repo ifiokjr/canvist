@@ -32,6 +32,20 @@ pub enum EditorError {
 		/// The missing type's name.
 		name: &'static str,
 	},
+	/// Two extensions registered a command or query with the same name.
+	#[error("two extensions register `{0}`")]
+	DuplicateName(String),
+	/// No extension registered a command or query with this name.
+	#[error("no command or query is named `{0}`")]
+	UnknownName(String),
+	/// Arguments did not match a command's or query's declaration.
+	#[error("invalid arguments for `{name}`: {reason}")]
+	InvalidArgs {
+		/// The command or query.
+		name: String,
+		/// What is wrong.
+		reason: String,
+	},
 	/// A key binding could not be parsed.
 	#[error("invalid key binding `{0}`")]
 	InvalidKey(String),

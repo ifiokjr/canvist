@@ -85,6 +85,15 @@ impl Composition {
 	}
 }
 
+/// Everything in an [`EditorState`] besides the document.
+#[derive(Clone, Debug)]
+struct Transient {
+	selection: Selection,
+	stored_marks: Option<MarkSet>,
+	composition: Option<Composition>,
+	goal: Option<f32>,
+}
+
 /// A document, its selection, and the transient state commands consult.
 ///
 /// Every change goes through one path: [`EditorState::change`] for local
@@ -211,6 +220,56 @@ impl EditorState {
 		let mut effects = Effects::new(kind, origin);
 		effects.selection = selection;
 		self.apply(commit, effects)
+	}
+
+	/// Whether `run` would apply, without changing anything: every step it
+	/// takes is rolled back through a model savepoint, which also restores
+	/// the document version and block revisions, so layout caches stay warm.
+	pub fn dry_run(
+		&mut self,
+		run: impl FnOnce(&mut Self) -> CommandResult,
+	) -> Result<bool, EditorError> {
+		let saved = self.transient();
+		let savepoint = self.doc.savepoint();
+		let outcome = run(self);
+		self.doc.rollback_to(savepoint)?;
+		self.restore(saved);
+		outcome.map(|update| update.is_some())
+	}
+
+	/// Run `run` all or nothing: if it does not apply, or fails, every change
+	/// it made is rolled back exactly.
+	pub fn atomic(&mut self, run: impl FnOnce(&mut Self) -> CommandResult) -> CommandResult {
+		let saved = self.transient();
+		let savepoint = self.doc.savepoint();
+		let outcome = run(self);
+
+		if let Ok(Some(update)) = outcome {
+			self.doc.release(savepoint);
+
+			return Ok(Some(update));
+		}
+
+		self.doc.rollback_to(savepoint)?;
+		self.restore(saved);
+		outcome
+	}
+
+	/// The state besides the document.
+	fn transient(&self) -> Transient {
+		Transient {
+			selection: self.selection,
+			stored_marks: self.stored_marks.clone(),
+			composition: self.composition,
+			goal: self.goal,
+		}
+	}
+
+	fn restore(&mut self, saved: Transient) {
+		self.selection = saved.selection;
+		self.stored_marks = saved.stored_marks;
+		self.composition = saved.composition;
+		self.goal = saved.goal;
 	}
 
 	/// The one place where a commit becomes the new state.

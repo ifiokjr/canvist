@@ -52,6 +52,14 @@ impl Typist {
 		Self::on(Platform::Other)
 	}
 
+	/// A typist for `editor`.
+	pub fn with(editor: Editor) -> Self {
+		Self {
+			editor,
+			now: Duration::ZERO,
+		}
+	}
+
 	/// A typist for a fresh StarterKit editor on `platform`.
 	pub fn on(platform: Platform) -> Self {
 		Self {

@@ -6,24 +6,36 @@
 
 use canvist_editor::Binding;
 use canvist_editor::Command;
+use canvist_editor::CommandSpec;
 use canvist_editor::EditorError;
+use canvist_editor::EditorState;
 use canvist_editor::Extension;
 use canvist_editor::InputRule;
+use canvist_editor::NodeKind;
+use canvist_editor::NodeMeta;
 use canvist_editor::PasteRule;
 use canvist_editor::Platform;
+use canvist_editor::QuerySpec;
+use canvist_editor::Registration;
+use canvist_editor::TypedExtension;
+use canvist_editor::ValueType;
 use canvist_editor::command;
 use canvist_editor::commands;
 use canvist_editor::mark_type;
 use canvist_model::Mark;
 use canvist_model::MarkSpec;
-use canvist_model::MarkTypeId;
 use canvist_model::Schema;
 use canvist_model::SchemaBuilder;
+use canvist_model::Value;
+
+use crate::resolve;
 
 /// Everything that distinguishes one simple mark from another.
+#[derive(Debug)]
 struct MarkDef {
 	name: &'static str,
-	command: &'static str,
+	/// Command and query names: toggle, set, unset, and the active query.
+	names: [&'static str; 4],
 	keys: &'static [&'static str],
 	/// Input rule patterns; group 1 is the text to format.
 	input: &'static [&'static str],
@@ -31,26 +43,95 @@ struct MarkDef {
 	paste: &'static [&'static str],
 }
 
-fn toggle(kind: MarkTypeId) -> Command {
-	command(move |state| commands::toggle_mark(state, &Mark::new(kind)))
+/// Typed access to a mark extension such as [`Bold`].
+#[derive(Clone, Copy, Debug)]
+pub struct MarkHandle {
+	def: &'static MarkDef,
+	_registration: Registration,
+}
+
+impl MarkHandle {
+	/// Add the mark to the selection, or remove it if every selected
+	/// character has it. At a caret, it applies to the next typed text.
+	#[must_use]
+	pub fn toggle(self) -> Command {
+		self.def.toggle()
+	}
+
+	/// Add the mark to the selection.
+	#[must_use]
+	pub fn set(self) -> Command {
+		self.def.set()
+	}
+
+	/// Remove the mark from the selection.
+	#[must_use]
+	pub fn unset(self) -> Command {
+		self.def.unset()
+	}
+
+	/// Whether the mark is active at the selection.
+	#[must_use]
+	pub fn is_active(self, state: &EditorState) -> bool {
+		resolve::mark_active(state, self.def.name)
+	}
 }
 
 impl MarkDef {
-	fn kind(&self, schema: &Schema) -> Result<MarkTypeId, EditorError> {
-		mark_type(schema, self.name, self.name)
+	fn toggle(&'static self) -> Command {
+		command(move |state| {
+			let kind = resolve::mark(state, self.name, self.name)?;
+			commands::toggle_mark(state, &Mark::new(kind))
+		})
 	}
 
-	fn commands(&self, schema: &Schema) -> Result<Vec<(&'static str, Command)>, EditorError> {
-		Ok(vec![(self.command, toggle(self.kind(schema)?))])
+	fn set(&'static self) -> Command {
+		command(move |state| {
+			let kind = resolve::mark(state, self.name, self.name)?;
+			commands::set_mark(state, &Mark::new(kind))
+		})
 	}
 
-	fn keymap(&self, schema: &Schema) -> Result<Vec<Binding>, EditorError> {
-		let kind = self.kind(schema)?;
-		Ok(self.keys.iter().map(|&key| (key, toggle(kind))).collect())
+	fn unset(&'static self) -> Command {
+		command(move |state| {
+			let kind = resolve::mark(state, self.name, self.name)?;
+			commands::unset_mark(state, kind)
+		})
+	}
+
+	fn node(&self) -> Vec<NodeMeta> {
+		vec![NodeMeta::new(NodeKind::Mark, self.name)]
+	}
+
+	fn commands(&'static self) -> Vec<CommandSpec> {
+		let [toggle, set, unset, _] = self.names;
+		vec![
+			CommandSpec::simple(
+				toggle,
+				"Add the mark to the selection, or remove it if every selected character has it.",
+				self.toggle(),
+			),
+			CommandSpec::simple(set, "Add the mark to the selection.", self.set()),
+			CommandSpec::simple(unset, "Remove the mark from the selection.", self.unset()),
+		]
+	}
+
+	fn queries(&'static self) -> Vec<QuerySpec> {
+		let name = self.name;
+		vec![QuerySpec::new(
+			self.names[3],
+			"Whether the mark is active at the selection.",
+			ValueType::Bool,
+			move |state, _| Ok(Value::Bool(resolve::mark_active(state, name))),
+		)]
+	}
+
+	fn keymap(&'static self) -> Vec<Binding> {
+		self.keys.iter().map(|&key| (key, self.toggle())).collect()
 	}
 
 	fn input_rules(&self, schema: &Schema) -> Result<Vec<InputRule>, EditorError> {
-		let kind = self.kind(schema)?;
+		let kind = mark_type(schema, self.name, self.name)?;
 		self.input
 			.iter()
 			.map(|pattern| InputRule::mark(pattern, kind))
@@ -58,18 +139,25 @@ impl MarkDef {
 	}
 
 	fn paste_rules(&self, schema: &Schema) -> Result<Vec<PasteRule>, EditorError> {
-		let kind = self.kind(schema)?;
+		let kind = mark_type(schema, self.name, self.name)?;
 		self.paste
 			.iter()
 			.map(|pattern| PasteRule::mark(pattern, kind))
 			.collect()
 	}
+
+	fn handle(&'static self, registration: Registration) -> MarkHandle {
+		MarkHandle {
+			def: self,
+			_registration: registration,
+		}
+	}
 }
 
 #[cfg(any(test, feature = "bold"))]
-const BOLD: MarkDef = MarkDef {
+static BOLD: MarkDef = MarkDef {
 	name: "bold",
-	command: "toggleBold",
+	names: ["toggleBold", "setBold", "unsetBold", "isBold"],
 	keys: &["Mod-b"],
 	input: &[
 		r"(?:^|\s)\*\*([^*\s](?:[^*]*[^*\s])?)\*\*$",
@@ -82,9 +170,9 @@ const BOLD: MarkDef = MarkDef {
 };
 
 #[cfg(any(test, feature = "italic"))]
-const ITALIC: MarkDef = MarkDef {
+static ITALIC: MarkDef = MarkDef {
 	name: "italic",
-	command: "toggleItalic",
+	names: ["toggleItalic", "setItalic", "unsetItalic", "isItalic"],
 	keys: &["Mod-i"],
 	input: &[
 		r"(?:^|\s)\*([^*\s](?:[^*]*[^*\s])?)\*$",
@@ -97,50 +185,72 @@ const ITALIC: MarkDef = MarkDef {
 };
 
 #[cfg(any(test, feature = "underline"))]
-const UNDERLINE: MarkDef = MarkDef {
+static UNDERLINE: MarkDef = MarkDef {
 	name: "underline",
-	command: "toggleUnderline",
+	names: [
+		"toggleUnderline",
+		"setUnderline",
+		"unsetUnderline",
+		"isUnderline",
+	],
 	keys: &["Mod-u"],
 	input: &[],
 	paste: &[],
 };
 
 #[cfg(any(test, feature = "strike"))]
-const STRIKE: MarkDef = MarkDef {
+static STRIKE: MarkDef = MarkDef {
 	name: "strike",
-	command: "toggleStrike",
+	names: ["toggleStrike", "setStrike", "unsetStrike", "isStrike"],
 	keys: &["Mod-Shift-s"],
 	input: &[r"(?:^|\s)~~([^~\s](?:[^~]*[^~\s])?)~~$"],
 	paste: &[r"(?:^|\s)~~([^~\s](?:[^~]*[^~\s])?)~~"],
 };
 
 #[cfg(any(test, feature = "code"))]
-const CODE: MarkDef = MarkDef {
+static CODE: MarkDef = MarkDef {
 	name: "code",
-	command: "toggleCode",
+	names: ["toggleCode", "setCode", "unsetCode", "isCode"],
 	keys: &["Mod-e"],
 	input: &[r"(?:^|\s)`([^`\s](?:[^`]*[^`\s])?)`$"],
 	paste: &[r"(?:^|\s)`([^`\s](?:[^`]*[^`\s])?)`"],
 };
 
-/// Implements [`Extension`] for a mark type by delegating to its
-/// [`MarkDef`]; only the schema spec differs per type.
+/// Implements [`Extension`] and [`TypedExtension`] for a mark type by
+/// delegating to its [`MarkDef`]; only the schema spec differs per type.
 macro_rules! delegate_to_def {
+	($type:ty, $def:expr) => {
+		impl TypedExtension for $type {
+			type Handle = MarkHandle;
+
+			fn handle(&self, registration: Registration) -> MarkHandle {
+				$def.handle(registration)
+			}
+		}
+	};
 	($def:expr) => {
 		fn name(&self) -> &'static str {
 			$def.name
 		}
 
-		fn commands(&self, schema: &Schema) -> Result<Vec<(&'static str, Command)>, EditorError> {
-			$def.commands(schema)
+		fn nodes(&self) -> Vec<NodeMeta> {
+			$def.node()
+		}
+
+		fn commands(&self, _schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {
+			Ok($def.commands())
+		}
+
+		fn queries(&self, _schema: &Schema) -> Result<Vec<QuerySpec>, EditorError> {
+			Ok($def.queries())
 		}
 
 		fn keymap(
 			&self,
-			schema: &Schema,
+			_schema: &Schema,
 			_platform: Platform,
 		) -> Result<Vec<Binding>, EditorError> {
-			$def.keymap(schema)
+			Ok($def.keymap())
 		}
 
 		fn input_rules(&self, schema: &Schema) -> Result<Vec<InputRule>, EditorError> {
@@ -167,6 +277,9 @@ impl Extension for Bold {
 	}
 }
 
+#[cfg(feature = "bold")]
+delegate_to_def!(Bold, BOLD);
+
 /// Italic text: `Mod-i`, `*text*`, or `_text_`.
 #[cfg(feature = "italic")]
 #[derive(Clone, Copy, Debug, Default)]
@@ -180,6 +293,9 @@ impl Extension for Italic {
 		schema.mark(MarkSpec::new("italic"))
 	}
 }
+
+#[cfg(feature = "italic")]
+delegate_to_def!(Italic, ITALIC);
 
 /// Underlined text: `Mod-u`.
 #[cfg(feature = "underline")]
@@ -195,6 +311,9 @@ impl Extension for Underline {
 	}
 }
 
+#[cfg(feature = "underline")]
+delegate_to_def!(Underline, UNDERLINE);
+
 /// Struck-through text: `Mod-Shift-s` or `~~text~~`.
 #[cfg(feature = "strike")]
 #[derive(Clone, Copy, Debug, Default)]
@@ -208,6 +327,9 @@ impl Extension for Strike {
 		schema.mark(MarkSpec::new("strike"))
 	}
 }
+
+#[cfg(feature = "strike")]
+delegate_to_def!(Strike, STRIKE);
 
 /// Inline code: `Mod-e` or `` `text` ``.
 ///
@@ -230,6 +352,9 @@ impl Extension for Code {
 	}
 }
 
+#[cfg(feature = "code")]
+delegate_to_def!(Code, CODE);
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -246,7 +371,7 @@ mod tests {
 			.build()
 			.expect("valid schema");
 
-		for def in [BOLD, ITALIC, UNDERLINE, STRIKE, CODE] {
+		for def in [&BOLD, &ITALIC, &UNDERLINE, &STRIKE, &CODE] {
 			assert!(def.input_rules(&schema).is_ok(), "{}", def.name);
 			assert!(def.paste_rules(&schema).is_ok(), "{}", def.name);
 		}

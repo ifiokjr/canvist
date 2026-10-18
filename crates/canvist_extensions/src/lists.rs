@@ -19,9 +19,12 @@
 use canvist_editor::Binding;
 use canvist_editor::Command;
 use canvist_editor::CommandResult;
+use canvist_editor::CommandSpec;
 use canvist_editor::EditorError;
 use canvist_editor::EditorState;
+use canvist_editor::QuerySpec;
 use canvist_editor::RuleMatch;
+use canvist_editor::ValueType;
 use canvist_editor::command;
 use canvist_editor::commands;
 use canvist_editor::commands::ListType;
@@ -30,6 +33,7 @@ use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::BlockTypeId;
 use canvist_model::Schema;
+use canvist_model::Value;
 
 /// Every list and item pair canvist knows, by TipTap name.
 const LIST_TYPES: [(&str, &str); 3] = [
@@ -64,32 +68,82 @@ pub(crate) fn list_type(
 	})
 }
 
-/// A command toggling `target`, converting any other known list.
-pub(crate) fn toggle(schema: &Schema, target: ListType) -> Command {
-	let known = known_lists(schema);
-	command(move |state| commands::toggle_list(state, target, &known))
+/// A command toggling the list `types` names, converting any other known
+/// list. Types resolve when it runs.
+pub(crate) fn toggle(extension: &'static str, types: (&'static str, &'static str)) -> Command {
+	command(move |state| {
+		let target = list_type(state.schema(), extension, types)?;
+		let known = known_lists(state.schema());
+		commands::toggle_list(state, target, &known)
+	})
 }
 
-/// Enter, Tab, Shift-Tab, and Backspace inside items of type `item`.
-pub(crate) fn item_bindings(item: BlockTypeId) -> Vec<Binding> {
+/// An item command for items named `item`, resolving the type when it runs.
+pub(crate) fn item_command(
+	extension: &'static str,
+	item: &'static str,
+	run: fn(&mut EditorState, BlockTypeId) -> CommandResult,
+) -> Command {
+	command(move |state| {
+		let kind = canvist_editor::block_type(state.schema(), extension, item)?;
+		run(state, kind)
+	})
+}
+
+/// Enter, Tab, Shift-Tab, and Backspace inside items named `item`.
+pub(crate) fn item_bindings(extension: &'static str, item: &'static str) -> Vec<Binding> {
 	vec![
 		(
 			"Enter",
-			command(move |state| commands::split_list_item(state, item)),
+			item_command(extension, item, commands::split_list_item),
 		),
 		(
 			"Tab",
-			command(move |state| commands::sink_list_item(state, item)),
+			item_command(extension, item, commands::sink_list_item),
 		),
 		(
 			"Shift-Tab",
-			command(move |state| commands::lift_list_item(state, item)),
+			item_command(extension, item, commands::lift_list_item),
 		),
 		(
 			"Backspace",
-			command(move |state| commands::join_list_item_backward(state, item)),
+			item_command(extension, item, commands::join_list_item_backward),
 		),
 	]
+}
+
+/// The split, sink, and lift commands for items named `item`, under
+/// `names` (for example `splitListItem`, `sinkListItem`, `liftListItem`).
+pub(crate) fn item_specs(
+	extension: &'static str,
+	item: &'static str,
+	names: [&'static str; 3],
+) -> Vec<CommandSpec> {
+	let [split, sink, lift] = names;
+	vec![
+		CommandSpec::simple(
+			split,
+			"Split the item at the caret.",
+			item_command(extension, item, commands::split_list_item),
+		),
+		CommandSpec::simple(
+			sink,
+			"Nest the selected items in the item before them.",
+			item_command(extension, item, commands::sink_list_item),
+		),
+		CommandSpec::simple(
+			lift,
+			"Lift the selected items one level.",
+			item_command(extension, item, commands::lift_list_item),
+		),
+	]
+}
+
+/// A query answering whether the selection is inside a `list` block.
+pub(crate) fn inside_query(name: &'static str, list: &'static str, doc: &'static str) -> QuerySpec {
+	QuerySpec::new(name, doc, ValueType::Bool, move |state, _| {
+		Ok(Value::Bool(crate::resolve::around(state, list).is_some()))
+	})
 }
 
 /// The item of type `item` holding the caret, and that item's list.

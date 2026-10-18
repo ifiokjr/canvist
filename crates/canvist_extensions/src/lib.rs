@@ -73,7 +73,7 @@ mod history;
 #[cfg(feature = "horizontal-rule")]
 mod horizontal_rule;
 #[cfg(feature = "link")]
-pub mod link;
+mod link;
 
 #[cfg(feature = "list-item")]
 mod list_item;
@@ -91,6 +91,7 @@ mod marks;
 mod ordered_list;
 
 mod paragraph;
+mod resolve;
 mod starter_kit;
 #[cfg(feature = "task-list")]
 mod task_list;
@@ -99,38 +100,72 @@ mod trailing_node;
 
 #[cfg(feature = "blockquote")]
 pub use blockquote::Blockquote;
+#[cfg(feature = "blockquote")]
+pub use blockquote::BlockquoteHandle;
 #[cfg(feature = "bullet-list")]
 pub use bullet_list::BulletList;
+#[cfg(feature = "bullet-list")]
+pub use bullet_list::BulletListHandle;
 #[cfg(feature = "code-block")]
 pub use code_block::CodeBlock;
+#[cfg(feature = "code-block")]
+pub use code_block::CodeBlockHandle;
 #[cfg(feature = "hard-break")]
 pub use hard_break::HardBreak;
+#[cfg(feature = "hard-break")]
+pub use hard_break::HardBreakHandle;
 #[cfg(feature = "heading")]
 pub use heading::Heading;
+#[cfg(feature = "heading")]
+pub use heading::HeadingHandle;
+#[cfg(feature = "heading")]
+pub use heading::HeadingLevel;
 #[cfg(feature = "history")]
 pub use history::History;
+#[cfg(feature = "history")]
+pub use history::HistoryHandle;
 #[cfg(feature = "horizontal-rule")]
 pub use horizontal_rule::HorizontalRule;
+#[cfg(feature = "horizontal-rule")]
+pub use horizontal_rule::HorizontalRuleHandle;
 #[cfg(feature = "link")]
 pub use link::Link;
+#[cfg(feature = "link")]
+pub use link::LinkHandle;
 #[cfg(feature = "list-item")]
 pub use list_item::ListItem;
+#[cfg(feature = "list-item")]
+pub use list_item::ListItemHandle;
 #[cfg(feature = "bold")]
 pub use marks::Bold;
 #[cfg(feature = "code")]
 pub use marks::Code;
 #[cfg(feature = "italic")]
 pub use marks::Italic;
+#[cfg(any(
+	feature = "bold",
+	feature = "italic",
+	feature = "underline",
+	feature = "strike",
+	feature = "code"
+))]
+pub use marks::MarkHandle;
 #[cfg(feature = "strike")]
 pub use marks::Strike;
 #[cfg(feature = "underline")]
 pub use marks::Underline;
 #[cfg(feature = "ordered-list")]
 pub use ordered_list::OrderedList;
+#[cfg(feature = "ordered-list")]
+pub use ordered_list::OrderedListHandle;
 pub use paragraph::Document;
 pub use paragraph::Paragraph;
+pub use paragraph::ParagraphHandle;
 pub use starter_kit::StarterKit;
+pub use starter_kit::StarterKitHandles;
 #[cfg(feature = "task-list")]
 pub use task_list::TaskList;
+#[cfg(feature = "task-list")]
+pub use task_list::TaskListHandle;
 #[cfg(feature = "trailing-node")]
 pub use trailing_node::TrailingNode;

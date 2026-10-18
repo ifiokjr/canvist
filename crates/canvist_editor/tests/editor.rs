@@ -7,22 +7,26 @@ use std::time::Duration;
 use canvist_editor::BaseKeymap;
 use canvist_editor::Binding;
 use canvist_editor::CommandResult;
+use canvist_editor::CommandSpec;
 use canvist_editor::EditKind;
 use canvist_editor::Editor;
 use canvist_editor::EditorError;
 use canvist_editor::EditorState;
 use canvist_editor::Env;
 use canvist_editor::Extension;
+use canvist_editor::Field;
 use canvist_editor::HistoryConfig;
 use canvist_editor::InputRule;
 use canvist_editor::KeyPress;
 use canvist_editor::Modifiers;
 use canvist_editor::PasteRule;
 use canvist_editor::Platform;
+use canvist_editor::QuerySpec;
 use canvist_editor::Slice;
 use canvist_editor::UndoHistory;
 use canvist_editor::UndoInputRule;
 use canvist_editor::Update;
+use canvist_editor::ValueType;
 use canvist_editor::block_type;
 use canvist_editor::command;
 use canvist_editor::commands;
@@ -51,14 +55,45 @@ impl Extension for TestKit {
 		Ok(vec![("Mod-z", std::sync::Arc::new(undo))])
 	}
 
-	fn commands(
-		&self,
-		schema: &Schema,
-	) -> Result<Vec<(&'static str, canvist_editor::Command)>, EditorError> {
+	fn commands(&self, schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {
 		let bold = mark_type(schema, self.name(), "bold")?;
 		let toggle =
 			command(move |state| commands::toggle_mark(state, &canvist_model::Mark::new(bold)));
-		Ok(vec![("toggleBold", toggle)])
+		let heading = block_type(schema, self.name(), "heading")?;
+		let set_heading = CommandSpec::new(
+			"setHeading",
+			"Turn the selection into a heading.",
+			move |args| {
+				let attrs = Attrs::new().with("level", args.int("level")?);
+				Ok(command(move |state| {
+					commands::set_block_type(state, heading, &attrs)
+				}))
+			},
+		)
+		.arg(Field::required(
+			"level",
+			ValueType::IntRange { min: 1, max: 6 },
+			"The heading level.",
+		));
+
+		Ok(vec![
+			CommandSpec::simple("toggleBold", "Toggle bold.", toggle),
+			set_heading,
+		])
+	}
+
+	fn queries(&self, schema: &Schema) -> Result<Vec<QuerySpec>, EditorError> {
+		let bold = mark_type(schema, self.name(), "bold")?;
+		Ok(vec![QuerySpec::new(
+			"isBold",
+			"Whether bold is active.",
+			ValueType::Bool,
+			move |state, _| {
+				Ok(canvist_model::Value::Bool(commands::is_mark_active(
+					state, bold,
+				)))
+			},
+		)])
 	}
 
 	fn input_rules(&self, schema: &Schema) -> Result<Vec<InputRule>, EditorError> {
@@ -487,13 +522,36 @@ fn compositions_flow_through_history_as_one_step() {
 }
 
 #[test]
-fn named_commands_run_and_unknown_names_do_nothing() {
+fn named_commands_check_their_arguments() {
 	let mut editor = editor("paragraph: ^ab|");
-	editor.run_named("toggleBold", &at(0)).expect("bold");
+	let none = Attrs::new();
+	editor.run_named("toggleBold", &none, &at(0)).expect("bold");
 
 	assert_eq!(render(editor.state()), "paragraph: ^{bold:ab}|");
-	assert!(editor.command("toggleBold").is_some());
-	assert_eq!(editor.run_named("nope", &at(0)), Ok(None));
+	assert_eq!(
+		editor.query("isBold", &none),
+		Ok(canvist_model::Value::Bool(true))
+	);
+	assert!(matches!(
+		editor.run_named("nope", &none, &at(0)),
+		Err(EditorError::UnknownName(_))
+	));
+	assert!(matches!(
+		editor.query("nope", &none),
+		Err(EditorError::UnknownName(_))
+	));
+
+	let missing = editor.run_named("setHeading", &none, &at(0));
+	let out_of_range = editor.run_named("setHeading", &Attrs::new().with("level", 9), &at(0));
+	let unknown = editor.run_named("toggleBold", &Attrs::new().with("x", 1), &at(0));
+	assert!(matches!(missing, Err(EditorError::InvalidArgs { .. })));
+	assert!(matches!(out_of_range, Err(EditorError::InvalidArgs { .. })));
+	assert!(matches!(unknown, Err(EditorError::InvalidArgs { .. })));
+
+	editor
+		.run_named("setHeading", &Attrs::new().with("level", 3), &at(0))
+		.expect("heading");
+	assert_eq!(render(editor.state()), "heading level=3: ^{bold:ab}|");
 }
 
 #[test]
@@ -573,4 +631,29 @@ fn missing_types_and_bad_bindings_fail_the_build() {
 		bad_key.err(),
 		Some(EditorError::InvalidKey("Hyper-x".to_owned()))
 	);
+}
+
+#[test]
+fn rules_look_back_a_bounded_distance() {
+	let long = "x".repeat(70);
+	let mut far = editor("paragraph: |");
+	type_text(&mut far, &format!("**{long}**"), 0);
+	let mut near = editor("paragraph: |");
+	type_text(&mut near, "word **bold**", 0);
+
+	assert_eq!(
+		render(far.state()),
+		format!("paragraph: **{long}**|"),
+		"past the 64-byte lookback"
+	);
+	assert_eq!(render(near.state()), "paragraph: word {bold:bold}|");
+}
+
+#[test]
+fn block_start_rules_ignore_text_past_the_window() {
+	let mut editor = editor("paragraph: |");
+	type_text(&mut editor, &"y".repeat(600), 0);
+	type_text(&mut editor, " ## ", 10_000);
+
+	assert!(render(editor.state()).starts_with("paragraph: "));
 }
