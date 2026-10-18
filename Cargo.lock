@@ -4081,7 +4081,7 @@ dependencies = [
  "arc-swap",
  "async-lock",
  "async-trait",
- "dashmap 6.1.0",
+ "dashmap 6.2.1",
  "fastrand",
  "serde",
  "serde_json",
