@@ -1,0 +1,89 @@
+---
+source: crates/canvist_layout/tests/snapshots.rs
+expression: "layout(&starter_kit(), 320.0).dump()"
+---
+row 1.0 heading y=0 h=21.13 x=0 w=320
+  line 0..13 y=0 h=21.125 base=16.3125 w=164.74
+    ltr x=0 w=101.38 "Release "
+    ltr x=101.38 w=63.36 "notes"
+row 1.1 paragraph y=45.13 h=72 x=0 w=320
+  line 0..34 soft y=0 h=24 base=16.796875 w=314.88
+    ltr x=0 w=67.2 "Plain, "
+    ltr x=67.2 w=42.24 "bold"
+    ltr x=109.44 w=19.2 ", "
+    ltr x=128.64 w=32.64 "code"
+    ltr x=161.28 w=9.6 " "
+    ltr x=170.88 w=38.4 "and "
+    ltr x=209.28 w=19.2 "a "
+    ltr x=228.48 w=38.4 "link"
+    ltr x=266.88 w=9.6 " "
+    ltr x=276.48 w=48 "with "
+  line 34..40 y=24 h=24 base=16.796875 w=38.4
+    ltr embed x=0 w=38.4 "￼"
+    ltr break x=38.4 w=0 "￼"
+  line 40..55 y=48 h=24 base=16.796875 w=144
+    ltr x=0 w=57.6 "after "
+    ltr x=57.6 w=38.4 "the "
+    ltr x=96 w=48 "break"
+row 1.4 paragraph y=137.13 h=24 x=22.4 w=281.6
+  line 0..5 y=0 h=24 base=16.796875 w=48
+    ltr x=0 w=48 "first"
+row 1.7 paragraph y=165.13 h=24 x=44.8 w=243.2
+  line 0..6 y=0 h=24 base=16.796875 w=57.6
+    ltr x=0 w=57.6 "nested"
+row 1.9 paragraph y=193.13 h=24 x=22.4 w=281.6
+  line 0..6 y=0 h=24 base=16.796875 w=57.6
+    ltr x=0 w=57.6 "second"
+row 1.c paragraph y=237.13 h=24 x=22.4 w=281.6
+  line 0..5 y=0 h=24 base=16.796875 w=48
+    ltr x=0 w=48 "three"
+row 1.e paragraph y=265.13 h=24 x=22.4 w=281.6
+  line 0..4 y=0 h=24 base=16.796875 w=38.4
+    ltr x=0 w=38.4 "four"
+row 1.h paragraph y=309.13 h=24 x=22.4 w=281.6
+  line 0..4 y=0 h=24 base=16.796875 w=38.4
+    ltr x=0 w=38.4 "done"
+row 1.j paragraph y=337.13 h=24 x=22.4 w=281.6
+  line 0..4 y=0 h=24 base=16.796875 w=38.4
+    ltr x=0 w=38.4 "todo"
+row 1.l paragraph y=385.13 h=48 x=19 w=301
+  line 0..32 soft y=0 h=24 base=16.796875 w=297.6
+    ltr x=0 w=67.2 "Quoted "
+    ltr x=67.2 w=48 "text "
+    ltr x=115.2 w=48 "that "
+    ltr x=163.2 w=28.8 "is "
+    ltr x=192 w=48 "long "
+    ltr x=240 w=67.2 "enough "
+  line 32..40 y=24 h=24 base=16.796875 w=76.8
+    ltr x=0 w=28.8 "to "
+    ltr x=28.8 w=48 "wrap."
+row 1.m codeBlock y=457.13 h=81.61 x=0 w=320
+  line 0..12 y=0 h=19.203125 base=13.4375 w=84.48
+    ltr x=0 w=23.04 "fn "
+    ltr x=23.04 w=53.76 "main() "
+    ltr x=76.8 w=7.68 "{"
+    ltr break x=84.48 w=0 "\n"
+  line 12..29 y=19.203125 h=19.203125 base=13.4375 w=176.64
+    ltr tab x=0 w=61.44 "\t"
+    ltr x=61.44 w=61.44 "println!"
+    ltr x=122.88 w=53.76 "(\"hi\");"
+    ltr break x=176.64 w=0 "\n"
+  line 29..30 y=38.40625 h=19.203125 base=13.4375 w=7.68
+    ltr x=0 w=7.68 "}"
+row 1.n horizontalRule y=570.73 h=1 x=0 w=320
+row 1.o image y=603.73 h=80 x=0 w=320
+row 1.p paragraph y=699.73 h=24 x=0 w=320
+  line 0..0 y=0 h=24 base=16.796875 w=0
+span 1.2 bulletList rows=2..=4 y=137.13 h=80 x=0 w=320
+span 1.3 listItem rows=2..=3 y=137.13 h=52 x=22.4 w=281.6 marker=Bullet#1
+span 1.5 bulletList rows=3..=3 y=165.13 h=24 x=22.4 w=281.6
+span 1.6 listItem rows=3..=3 y=165.13 h=24 x=44.8 w=243.2 marker=Bullet#1
+span 1.8 listItem rows=4..=4 y=193.13 h=24 x=22.4 w=281.6 marker=Bullet#2
+span 1.a orderedList rows=5..=6 y=237.13 h=52 x=0 w=320
+span 1.b listItem rows=5..=5 y=237.13 h=24 x=22.4 w=281.6 marker=Ordered#3
+span 1.d listItem rows=6..=6 y=265.13 h=24 x=22.4 w=281.6 marker=Ordered#4
+span 1.f taskList rows=7..=8 y=309.13 h=52 x=0 w=320
+span 1.g taskItem rows=7..=7 y=309.13 h=24 x=22.4 w=281.6 marker=Task#1
+span 1.i taskItem rows=8..=8 y=337.13 h=24 x=22.4 w=281.6 marker=Task#2
+span 1.k blockquote rows=9..=9 y=385.13 h=48 x=0 w=320
+height 723.7344

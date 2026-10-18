@@ -206,7 +206,10 @@ version = "0.1.0"
 dependencies = [
  "canvist_model",
  "icu_segmenter",
+ "insta",
+ "proptest",
  "rustc-hash",
+ "serde_json",
  "thiserror 2.0.18",
  "unicode-bidi",
 ]

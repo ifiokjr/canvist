@@ -21,5 +21,10 @@ rustc-hash = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 unicode-bidi = { version = "^0.3", default-features = false, features = ["hardcoded-data", "std"] }
 
+[dev-dependencies]
+insta = { workspace = true }
+proptest = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+
 [lints]
 workspace = true
