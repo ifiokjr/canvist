@@ -19,6 +19,7 @@ in
       deno
       dprint
       extra.knope
+      extra.monostyle
       mdbook
       nixfmt
       rustup
@@ -162,6 +163,14 @@ in
       description = "Run documentation tests.";
       binary = "bash";
     };
+    "test:perf" = {
+      exec = ''
+        set -e
+        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --test perf_budgets -- --ignored --test-threads=1 --nocapture
+      '';
+      description = "Fail when a hot path exceeds its performance budget (release mode; CANVIST_PERF_SLACK scales budgets).";
+      binary = "bash";
+    };
     "test:playwright" = {
       exec = ''
         set -e
@@ -212,11 +221,20 @@ in
       description = "Run cargo-deny checks for security advisories and license compliance.";
       binary = "bash";
     };
+    "lint:style" = {
+      exec = ''
+        set -e
+        monostyle check crates/canvist_model --fail-under 90
+      '';
+      description = "Require readability and complexity scores of at least 90 for the v2 crates.";
+      binary = "bash";
+    };
     "lint:all" = {
       exec = ''
         set -e
         lint:clippy
         lint:format
+        lint:style
         deny:check
       '';
       description = "Run all checks.";

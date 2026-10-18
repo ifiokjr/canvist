@@ -32,8 +32,11 @@ jobs:
         with:
           deno-version: v2.x
 
+      # `deno run npm:playwright install` hangs on CI runners; npx installs the
+      # same browser build into the shared ms-playwright cache that the deno tests use.
       - name: install playwright browser
-        run: deno run -A npm:playwright@1.58 install --with-deps ${{ matrix.browser }}
+        timeout-minutes: 10
+        run: npx --yes playwright@1.58 install --with-deps ${{ matrix.browser }}
 
       - name: run playwright tests
         run: |
@@ -70,7 +73,8 @@ jobs:
         run: wasm-pack build crates/canvist_wasm --target web --out-dir ../../packages/canvist/wasm
 
       - name: install playwright webkit
-        run: deno run -A npm:playwright@1.58 install --with-deps webkit
+        timeout-minutes: 10
+        run: npx --yes playwright@1.58 install --with-deps webkit
 
       - name: run playwright tests
         run: |
