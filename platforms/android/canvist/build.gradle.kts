@@ -17,6 +17,11 @@ android {
         consumerProguardFiles("consumer-rules.pro")
     }
 
+    // `-PcanvistTestBuildType=release` runs the instrumented tests against an
+    // optimised, non-debuggable build, which is what the FFI performance
+    // numbers should come from.
+    testBuildType = providers.gradleProperty("canvistTestBuildType").getOrElse("debug")
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

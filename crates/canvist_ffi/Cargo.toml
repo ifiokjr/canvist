@@ -36,3 +36,7 @@ uniffi = { workspace = true }
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "round_trip"
+harness = false
