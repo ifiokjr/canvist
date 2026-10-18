@@ -22,14 +22,19 @@ fi
 cd "$flutter_dir/example"
 "${flutter[@]}" pub get
 
+# One entrypoint means one build, install and launch per device. Each extra
+# `_test.dart` file relaunches the app, and on CI simulators a relaunch can
+# hang `simctl` until the job times out.
+entrypoint=integration_test/canvist_test.dart
+
 for platform in ${CANVIST_FLUTTER_PLATFORMS:-$default_platforms}; do
 	case "$platform" in
 	ios)
-		"${flutter[@]}" test integration_test -d "$("$platforms_dir/apple/simulator.sh")"
+		"${flutter[@]}" test "$entrypoint" -d "$("$platforms_dir/apple/simulator.sh")"
 		;;
 	android)
 		# shellcheck disable=SC2016 # Expanded by the inner shell.
-		"$platforms_dir/android/emulator.sh" bash -c '"$@" test integration_test -d "$ANDROID_SERIAL"' _ "${flutter[@]}"
+		"$platforms_dir/android/emulator.sh" bash -c 'entrypoint=$1; shift; "$@" test "$entrypoint" -d "$ANDROID_SERIAL"' _ "$entrypoint" "${flutter[@]}"
 		;;
 	*)
 		echo "Unknown platform '$platform' (expected ios or android)" >&2

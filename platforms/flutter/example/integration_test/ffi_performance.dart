@@ -1,20 +1,20 @@
 import 'package:canvist_flutter/canvist_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:integration_test/integration_test.dart';
 
-/// Measures one Dart → Rust round trip with the same workload as
-/// `crates/canvist_ffi/benches/round_trip.rs`, so the difference is the cost
-/// of the flutter_rust_bridge binding. Results are printed as `PERF dart …`
-/// lines; the assertions only guard against a broken measurement.
+/// Registers a test that measures one Dart → Rust round trip with the same
+/// workload as `crates/canvist_ffi/benches/round_trip.rs`, so the difference is
+/// the cost of the flutter_rust_bridge binding. Results are printed as
+/// `PERF dart …` lines; the assertions only guard against a broken
+/// measurement.
 ///
-/// Debug builds run Dart in JIT mode, so for representative numbers run this
-/// file in profile mode on an Android emulator or a device:
-/// `flutter drive --profile --driver test_driver/integration_test.dart --target integration_test/ffi_performance_test.dart`.
-void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  setUpAll(RustLib.init);
-
+/// This is a library rather than a `_test.dart` entrypoint: every entrypoint
+/// makes `flutter test integration_test` build, install and launch the app
+/// again, and on CI simulators that relaunch can hang. `canvist_test.dart`
+/// registers it. Debug builds run Dart in JIT mode, so for representative
+/// numbers run in profile mode on an Android emulator or a device:
+/// `flutter drive --profile --driver test_driver/integration_test.dart --target integration_test/canvist_test.dart`.
+void ffiPerformanceTests() {
   test('insert_text and text round trips', () {
     const warmup = 1000;
     const samples = 200;

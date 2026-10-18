@@ -128,7 +128,7 @@ Every binding runs the same micro-benchmark: per sample, a fresh handle gets 100
 | Rust baseline          | `cargo bench -p canvist_ffi --bench round_trip`                                                                                                                                                                                         |
 | Swift (release)        | `cd platforms/apple && xcodebuild test -scheme Canvist -configuration Release -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:CanvistTests/FFIPerformanceTests`                                                  |
 | Kotlin (release)       | `cd platforms/android && ./gradlew :canvist:connectedAndroidTest -PcanvistTestBuildType=release -Pandroid.testInstrumentationRunnerArguments.class=io.github.ifiokjr.canvist.FfiPerformanceTest`, then `adb logcat -d -s CanvistPerf:I` |
-| Dart (profile, device) | `cd platforms/flutter/example && fvm flutter drive --profile --driver test_driver/integration_test.dart --target integration_test/ffi_performance_test.dart`                                                                            |
+| Dart (profile, device) | `cd platforms/flutter/example && fvm flutter drive --profile --driver test_driver/integration_test.dart --target integration_test/canvist_test.dart`                                                                                    |
 
 The regular test suites also run these benchmarks in debug builds and print `PERF` lines. The assertions only guard against a broken measurement; they never fail on slow hardware.
 

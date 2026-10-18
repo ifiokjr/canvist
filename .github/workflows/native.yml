@@ -54,10 +54,14 @@ jobs:
         with:
           path: platforms/flutter/.fvmrc
 
+      # Per-step timeouts make a hung simulator or emulator fail fast with logs
+      # instead of running into the job timeout.
       - name: test swift package and sample app
+        timeout-minutes: 25
         run: platforms/apple/test.sh
 
       - name: test flutter on ios
+        timeout-minutes: 20
         run: platforms/flutter/test.sh
         env:
           CANVIST_FLUTTER_PLATFORMS: ios
@@ -110,6 +114,7 @@ jobs:
           path: platforms/flutter/.fvmrc
 
       - name: check flutter_rust_bridge bindings are up to date
+        timeout-minutes: 15
         working-directory: platforms/flutter
         run: |
           flutter pub get
@@ -117,9 +122,11 @@ jobs:
           git diff --exit-code -- lib/src/rust rust/src
 
       - name: build android library
+        timeout-minutes: 15
         run: platforms/android/build.sh
 
       - name: test on emulator
+        timeout-minutes: 35
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
