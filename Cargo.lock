@@ -188,6 +188,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "canvist_extensions"
+version = "0.1.0"
+dependencies = [
+ "canvist_editor",
+ "canvist_model",
+ "divan",
+ "insta",
+ "proptest",
+ "serde_json",
+]
+
+[[package]]
 name = "canvist_model"
 version = "0.1.0"
 dependencies = [

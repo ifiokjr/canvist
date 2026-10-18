@@ -1,0 +1,18 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"# Title⏎- item⏎⏎text[Mod-a]⌫\")"
+---
+{
+  "doc": [
+    {
+      "attrs": {
+        "level": 1
+      },
+      "type": "heading"
+    },
+    {
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0@0"
+}

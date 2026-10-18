@@ -1,0 +1,34 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"see https://canvist.dev, then type\")"
+---
+{
+  "doc": [
+    {
+      "content": [
+        {
+          "text": "see ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "attrs": {
+                "href": "https://canvist.dev"
+              },
+              "type": "link"
+            }
+          ],
+          "text": "https://canvist.dev",
+          "type": "text"
+        },
+        {
+          "text": ", then type",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0@34"
+}

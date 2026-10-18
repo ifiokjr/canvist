@@ -146,6 +146,24 @@ pub fn wrap_in(state: &mut EditorState, kind: BlockTypeId, attrs: Attrs) -> Comm
 	})
 }
 
+/// Enter in an empty text block inside a container (such as a quote):
+/// lift the block out instead of adding another empty line.
+pub fn lift_empty_block(state: &mut EditorState) -> CommandResult {
+	let Some(caret) = state.selection().as_caret() else {
+		return Ok(None);
+	};
+	let doc = state.doc();
+	let empty = doc
+		.inline(caret.block)
+		.is_some_and(canvist_model::InlineText::is_empty);
+	let container = parent_of(doc, caret.block).filter(|_| empty);
+	let Some((container, index)) = container.zip(doc.index_in_parent(caret.block)) else {
+		return Ok(None);
+	};
+
+	lift_from(state, container, index..index + 1)
+}
+
 /// Lift the selected sibling blocks out of their container.
 pub fn lift_block(state: &mut EditorState) -> CommandResult {
 	let Some((Some(container), range)) = selected_siblings(state) else {

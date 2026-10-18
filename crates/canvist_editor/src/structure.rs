@@ -260,12 +260,16 @@ pub(crate) fn merge_text(
 	let target_parent = parent_of(doc, target);
 	let source_parent = parent_of(doc, source);
 	let source_kind = kind_of(doc, source).ok_or(StepError::UnknownBlock(source))?;
-	let target_index = index_of(doc, target)?;
 	let source_index = index_of(doc, source)?;
+	let adjacent = target_parent == source_parent
+		&& source_index
+			.checked_sub(1)
+			.is_some_and(|previous| doc.children(source_parent)[previous] == target);
 
-	if target_parent == source_parent && source_index == target_index + 1 {
+	if adjacent {
 		tr.join(target, source)?;
 	} else if allows(doc, target_parent, source_kind) {
+		let target_index = index_of(doc, target)?;
 		tr.move_blocks(
 			(source_parent, source_index, 1),
 			(target_parent, target_index + 1),
@@ -278,6 +282,7 @@ pub(crate) fn merge_text(
 			offset: meet.offset,
 			content,
 		})?;
+
 		remove(tr, source)?;
 	}
 

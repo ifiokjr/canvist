@@ -306,11 +306,14 @@ pub fn join_list_item_backward(state: &mut EditorState, item: BlockTypeId) -> Co
 	};
 	let doc = state.doc();
 	let item_id = parent_of(doc, caret.block).filter(|&id| kind_of(doc, id) == Some(item));
-	let first_child = doc.index_in_parent(caret.block) == Some(0);
-
-	let (Some(item_id), true, 0) = (item_id, first_child, caret.offset) else {
+	let Some(item_id) = item_id.filter(|_| caret.offset == 0) else {
 		return Ok(None);
 	};
+
+	if doc.children(Some(item_id)).first() != Some(&caret.block) {
+		return Ok(None);
+	}
+
 	let Some(list) = parent_of(doc, item_id) else {
 		return Ok(None);
 	};
@@ -426,8 +429,12 @@ fn convert_list(
 	})
 }
 
-/// Wrap the selected sibling blocks in a new `target` list, one item each.
-fn wrap_in_list(state: &mut EditorState, target: ListType) -> CommandResult {
+/// Wrap the selected sibling blocks in a new `target` list, one item each,
+/// joining it with neighbouring lists of the same type. Text blocks the item
+/// does not accept become its default text block. Unlike [`toggle_list`],
+/// this nests a new list when the selection is already inside one, which is
+/// what typing `- ` in a list item means.
+pub fn wrap_in_list(state: &mut EditorState, target: ListType) -> CommandResult {
 	let selection = state.selection();
 	let doc = state.doc();
 	let Some((first, last)) = selection_ends(doc, selection) else {

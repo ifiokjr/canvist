@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 72de7e2975f14ab6ef11530bb921655b4819659ea58431f93dca9b63768e3a15 # shrinks to tokens = ["["]
+cc 60fc9ab4d2a7bad8ce1b9526ffe6487c0227a46a581b15d9c627cf53f13f49c9 # shrinks to tokens = ["a", "[Mod-z]"]
+cc 6634aeca9d531e2438aebd13836dbea7977815e47f0751a3565ed7339c08821e # shrinks to tokens = ["#", " ", "⌫"]

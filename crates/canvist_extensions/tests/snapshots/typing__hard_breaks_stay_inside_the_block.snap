@@ -1,0 +1,25 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"one[Shift-Enter]two\")"
+---
+{
+  "doc": [
+    {
+      "content": [
+        {
+          "text": "one",
+          "type": "text"
+        },
+        {
+          "type": "hardBreak"
+        },
+        {
+          "text": "two",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0@9"
+}
