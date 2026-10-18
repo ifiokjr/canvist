@@ -11,6 +11,7 @@ use canvist_model::Selection;
 use canvist_model::StepMap;
 use canvist_model::Transaction;
 
+use crate::Affinity;
 use crate::Composition;
 
 /// What kind of edit an update made.
@@ -155,6 +156,7 @@ pub(crate) struct Effects {
 	pub(crate) stored_marks: Override<Option<MarkSet>>,
 	pub(crate) composition: Override<Option<Composition>>,
 	pub(crate) goal: Option<f32>,
+	pub(crate) affinity: Option<Affinity>,
 }
 
 impl Effects {
@@ -166,6 +168,7 @@ impl Effects {
 			stored_marks: Override::Default,
 			composition: Override::Default,
 			goal: None,
+			affinity: None,
 		}
 	}
 }
@@ -224,6 +227,12 @@ impl<'doc> EditorTransaction<'doc> {
 	/// Keep a horizontal goal for the next vertical caret move.
 	pub fn set_goal(&mut self, goal: f32) {
 		self.effects.goal = Some(goal);
+	}
+
+	/// Set which line the caret belongs to at a soft wrap. Without it, the
+	/// caret becomes [`Affinity::Downstream`].
+	pub fn set_affinity(&mut self, affinity: Affinity) {
+		self.effects.affinity = Some(affinity);
 	}
 
 	/// Override the kind recorded in history.

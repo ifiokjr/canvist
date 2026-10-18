@@ -21,7 +21,7 @@ pub struct Context<'a> {
 	/// The undo history.
 	pub history: &'a mut dyn History,
 	/// Visual line information from layout.
-	pub lines: &'a dyn LineNavigator,
+	pub lines: &'a mut dyn LineNavigator,
 	/// The input rule that produced the last update, if nothing happened
 	/// since.
 	pub(crate) last_rule: Option<&'a AppliedRule>,

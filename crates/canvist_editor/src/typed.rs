@@ -149,7 +149,7 @@ impl Editor {
 
 	/// Whether `command` would apply right now. Nothing changes: not the
 	/// document, its version or block revisions, the selection, or history.
-	pub fn can(&mut self, command: &Command, env: &Env<'_>) -> Result<bool, EditorError> {
+	pub fn can(&mut self, command: &Command, env: &mut Env<'_>) -> Result<bool, EditorError> {
 		let mut history = self.detached_history(true);
 		let last_rule = self.last_rule.as_ref();
 
@@ -157,7 +157,7 @@ impl Editor {
 			command(&mut Context {
 				state,
 				history: &mut history,
-				lines: env.lines,
+				lines: env.lines(),
 				last_rule,
 			})
 		})
@@ -185,7 +185,7 @@ impl Editor {
 	/// Run the command an extension registered as `name` with `args`. This
 	/// is the runtime-checked path for dynamic hosts; Rust code uses the
 	/// typed handles instead.
-	pub fn run_named(&mut self, name: &str, args: &Attrs, env: &Env<'_>) -> CommandResult {
+	pub fn run_named(&mut self, name: &str, args: &Attrs, env: &mut Env<'_>) -> CommandResult {
 		let command = self.command_named(name, args)?;
 		self.run(&command, env)
 	}
@@ -245,7 +245,7 @@ impl Chain<'_> {
 	}
 
 	/// Run every command in order, as one update.
-	pub fn run(self, env: &Env<'_>) -> CommandResult {
+	pub fn run(self, env: &mut Env<'_>) -> CommandResult {
 		let Self { editor, commands } = self;
 		let mut history = editor.detached_history(false);
 		let update = editor
@@ -259,7 +259,7 @@ impl Chain<'_> {
 	}
 
 	/// Whether every command would apply in order. Nothing changes.
-	pub fn can(self, env: &Env<'_>) -> Result<bool, EditorError> {
+	pub fn can(self, env: &mut Env<'_>) -> Result<bool, EditorError> {
 		let Self { editor, commands } = self;
 		let mut history = editor.detached_history(true);
 
@@ -275,7 +275,7 @@ fn run_all(
 	commands: &[Command],
 	state: &mut EditorState,
 	history: &mut dyn History,
-	env: &Env<'_>,
+	env: &mut Env<'_>,
 ) -> CommandResult {
 	let mut combined: Option<Update> = None;
 
@@ -283,7 +283,7 @@ fn run_all(
 		let mut context = Context {
 			state,
 			history,
-			lines: env.lines,
+			lines: env.lines(),
 			last_rule: None,
 		};
 

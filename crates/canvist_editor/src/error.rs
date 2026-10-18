@@ -19,6 +19,9 @@ pub enum EditorError {
 	/// The extensions produced an invalid schema.
 	#[error(transparent)]
 	Schema(#[from] SchemaError),
+	/// Layout could not answer a line or vertical motion question.
+	#[error(transparent)]
+	Navigation(#[from] crate::NavigationError),
 	/// The initial content did not fit the schema.
 	#[error(transparent)]
 	Json(#[from] JsonError),

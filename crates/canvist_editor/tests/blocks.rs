@@ -13,14 +13,12 @@ use support::mark;
 use support::render;
 use support::state;
 
-const LINES: ParagraphNavigator = ParagraphNavigator;
-
 fn backspace(state: &mut canvist_editor::EditorState) -> canvist_editor::CommandResult {
-	commands::delete_backward(state, Unit::Grapheme, &LINES)
+	commands::delete_backward(state, Unit::Grapheme, &mut ParagraphNavigator)
 }
 
 fn delete(state: &mut canvist_editor::EditorState) -> canvist_editor::CommandResult {
-	commands::delete_forward(state, Unit::Grapheme, &LINES)
+	commands::delete_forward(state, Unit::Grapheme, &mut ParagraphNavigator)
 }
 
 #[test]

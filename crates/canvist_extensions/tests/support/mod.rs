@@ -111,41 +111,41 @@ impl Typist {
 	}
 
 	fn text(&mut self, text: &str) {
-		let env = Env::headless(self.now);
+		let mut env = Env::headless(self.now);
 		self.editor
-			.insert_text(text, &env)
+			.insert_text(text, &mut env)
 			.expect("typing never fails");
 	}
 
 	/// Press a binding such as `Mod-Shift-z`.
 	pub fn chord(&mut self, chord: &str) {
 		let (key, modifiers) = parse_binding(chord, self.editor.platform()).expect("valid chord");
-		let env = Env::headless(self.now);
+		let mut env = Env::headless(self.now);
 		self.editor
-			.handle_key(KeyPress::new(&key, modifiers), &env)
+			.handle_key(KeyPress::new(&key, modifiers), &mut env)
 			.expect("keys never fail");
 	}
 
 	/// Paste plain text.
 	pub fn paste(&mut self, text: &str) {
 		self.now += Duration::from_millis(10);
-		let env = Env::headless(self.now);
+		let mut env = Env::headless(self.now);
 		self.editor
-			.paste_text(text, &env)
+			.paste_text(text, &mut env)
 			.expect("pasting never fails");
 	}
 
 	/// Undo or redo until there is nothing left, returning how many steps
 	/// it took.
 	pub fn unwind(&mut self, redo: bool) -> usize {
-		let env = Env::headless(self.now);
+		let mut env = Env::headless(self.now);
 		let mut steps = 0;
 
 		loop {
 			let update = if redo {
-				self.editor.redo(&env)
+				self.editor.redo(&mut env)
 			} else {
-				self.editor.undo(&env)
+				self.editor.undo(&mut env)
 			};
 
 			if update.expect("history steps apply").is_none() {

@@ -108,7 +108,7 @@ fn editor_over(paragraphs: impl FnOnce(&Schema) -> Vec<InlineText>) -> Editor {
 		.inline(middle)
 		.map_or(0, |text| text.len() / 2);
 	let caret = Selection::caret(Point::new(middle, offset - offset % 10));
-	editor.select(caret, &env(0)).expect("select");
+	editor.select(caret, &mut env(0)).expect("select");
 	editor
 }
 
@@ -123,10 +123,14 @@ fn type_and_backspace(bencher: Bencher<'_, '_>, blocks: usize) {
 	let mut now = 0;
 	bencher.bench_local(|| {
 		now += 1;
-		black_box(editor.insert_text(black_box("a"), &env(now)).expect("type"));
 		black_box(
 			editor
-				.handle_key(KeyPress::plain("Backspace"), &env(now))
+				.insert_text(black_box("a"), &mut env(now))
+				.expect("type"),
+		);
+		black_box(
+			editor
+				.handle_key(KeyPress::plain("Backspace"), &mut env(now))
 				.expect("backspace"),
 		);
 	});
@@ -139,10 +143,14 @@ fn space_and_backspace(bencher: Bencher<'_, '_>, blocks: usize) {
 	let mut now = 0;
 	bencher.bench_local(|| {
 		now += 1;
-		black_box(editor.insert_text(black_box(" "), &env(now)).expect("type"));
 		black_box(
 			editor
-				.handle_key(KeyPress::plain("Backspace"), &env(now))
+				.insert_text(black_box(" "), &mut env(now))
+				.expect("type"),
+		);
+		black_box(
+			editor
+				.handle_key(KeyPress::plain("Backspace"), &mut env(now))
 				.expect("backspace"),
 		);
 	});
@@ -155,12 +163,12 @@ fn arrow_left_and_right(bencher: Bencher<'_, '_>, blocks: usize) {
 	bencher.bench_local(|| {
 		black_box(
 			editor
-				.handle_key(KeyPress::plain("ArrowLeft"), &env(0))
+				.handle_key(KeyPress::plain("ArrowLeft"), &mut env(0))
 				.expect("left"),
 		);
 		black_box(
 			editor
-				.handle_key(KeyPress::plain("ArrowRight"), &env(0))
+				.handle_key(KeyPress::plain("ArrowRight"), &mut env(0))
 				.expect("right"),
 		);
 	});
@@ -175,12 +183,12 @@ fn enter_and_backspace(bencher: Bencher<'_, '_>, blocks: usize) {
 		now += 1;
 		black_box(
 			editor
-				.handle_key(KeyPress::plain("Enter"), &env(now))
+				.handle_key(KeyPress::plain("Enter"), &mut env(now))
 				.expect("enter"),
 		);
 		black_box(
 			editor
-				.handle_key(KeyPress::plain("Backspace"), &env(now))
+				.handle_key(KeyPress::plain("Backspace"), &mut env(now))
 				.expect("backspace"),
 		);
 	});
@@ -192,11 +200,11 @@ fn enter_and_backspace(bencher: Bencher<'_, '_>, blocks: usize) {
 fn state_commands_only(bencher: Bencher<'_, '_>, blocks: usize) {
 	let editor = fixture(blocks);
 	let mut state = editor.state().clone();
-	let lines = canvist_editor::ParagraphNavigator;
+	let mut lines = canvist_editor::ParagraphNavigator;
 	bencher.bench_local(|| {
 		black_box(commands::insert_text(&mut state, black_box("a")).expect("type"));
 		black_box(
-			commands::delete_backward(&mut state, canvist_editor::Unit::Grapheme, &lines)
+			commands::delete_backward(&mut state, canvist_editor::Unit::Grapheme, &mut lines)
 				.expect("delete"),
 		);
 	});
@@ -209,10 +217,14 @@ fn type_in_a_long_paragraph(bencher: Bencher<'_, '_>) {
 	let mut now = 0;
 	bencher.bench_local(|| {
 		now += 1;
-		black_box(editor.insert_text(black_box("a"), &env(now)).expect("type"));
 		black_box(
 			editor
-				.handle_key(KeyPress::plain("Backspace"), &env(now))
+				.insert_text(black_box("a"), &mut env(now))
+				.expect("type"),
+		);
+		black_box(
+			editor
+				.handle_key(KeyPress::plain("Backspace"), &mut env(now))
 				.expect("backspace"),
 		);
 	});
@@ -226,10 +238,14 @@ fn space_in_a_long_paragraph(bencher: Bencher<'_, '_>) {
 	let mut now = 0;
 	bencher.bench_local(|| {
 		now += 1;
-		black_box(editor.insert_text(black_box(" "), &env(now)).expect("type"));
 		black_box(
 			editor
-				.handle_key(KeyPress::plain("Backspace"), &env(now))
+				.insert_text(black_box(" "), &mut env(now))
+				.expect("type"),
+		);
+		black_box(
+			editor
+				.handle_key(KeyPress::plain("Backspace"), &mut env(now))
 				.expect("backspace"),
 		);
 	});
@@ -242,10 +258,14 @@ fn type_in_heavy_formatting(bencher: Bencher<'_, '_>) {
 	let mut now = 0;
 	bencher.bench_local(|| {
 		now += 1;
-		black_box(editor.insert_text(black_box("a"), &env(now)).expect("type"));
 		black_box(
 			editor
-				.handle_key(KeyPress::plain("Backspace"), &env(now))
+				.insert_text(black_box("a"), &mut env(now))
+				.expect("type"),
+		);
+		black_box(
+			editor
+				.handle_key(KeyPress::plain("Backspace"), &mut env(now))
 				.expect("backspace"),
 		);
 	});
@@ -277,7 +297,7 @@ fn can_toggle_bold(bencher: Bencher<'_, '_>, blocks: usize) {
 		.expect("fixture builds");
 	let middle = editor.state().doc().children(None)[blocks / 2];
 	let word = Selection::text(Point::new(middle, 4), Point::new(middle, 9));
-	editor.select(word, &env(0)).expect("select");
+	editor.select(word, &mut env(0)).expect("select");
 	let toggle = kit.bold.toggle();
-	bencher.bench_local(|| black_box(editor.can(&toggle, &env(0)).expect("can")));
+	bencher.bench_local(|| black_box(editor.can(&toggle, &mut env(0)).expect("can")));
 }

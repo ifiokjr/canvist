@@ -1,19 +1,21 @@
 //! Selection motion: by grapheme, word, line, and document, plus vertical
-//! motion through a [`LineNavigator`].
-//!
-//! Lines are a layout concept, so the editor never computes them itself.
-//! `canvist_layout` implements [`LineNavigator`] from real line boxes; the
-//! [`ParagraphNavigator`] fallback treats every text block as one line, which
-//! is enough for headless tests and servers.
+//! motion. Line and vertical motion ask a [`LineNavigator`], because only
+//! layout knows where visual lines are.
 
 use canvist_model::BlockId;
 use canvist_model::Document;
 use canvist_model::Point;
 use canvist_model::Selection;
 
+use crate::Affinity;
+use crate::Caret;
 use crate::CommandResult;
 use crate::EditKind;
+use crate::EditorError;
 use crate::EditorState;
+use crate::LineEdge;
+use crate::LineNavigator;
+use crate::VerticalDirection;
 use crate::position;
 use crate::position::Stop;
 use crate::text;
@@ -40,71 +42,23 @@ pub enum Unit {
 	Document,
 }
 
-/// Answers questions about visual lines, which only layout knows.
-pub trait LineNavigator {
-	/// The start (`Backward`) or end (`Forward`) of the visual line holding
-	/// `point`.
-	fn line_boundary(&self, doc: &Document, point: Point, direction: Direction) -> Point;
-
-	/// The point on the line above (`Backward`) or below (`Forward`) closest
-	/// to the horizontal position `goal`, or to `point`'s own position when
-	/// `goal` is `None`. Returns the point and the goal to keep for the next
-	/// vertical move, or `None` on the first or last line.
-	fn vertical(
-		&self,
-		doc: &Document,
-		point: Point,
-		direction: Direction,
-		goal: Option<f32>,
-	) -> Option<(Point, f32)>;
-}
-
-/// A [`LineNavigator`] that treats each text block as a single line and
-/// measures horizontal position in grapheme columns.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct ParagraphNavigator;
-
-impl LineNavigator for ParagraphNavigator {
-	fn line_boundary(&self, doc: &Document, point: Point, direction: Direction) -> Point {
-		match direction {
-			Direction::Backward => Point::new(point.block, 0),
-			Direction::Forward => position::end_of(doc, point.block),
-		}
-	}
-
-	fn vertical(
-		&self,
-		doc: &Document,
-		point: Point,
-		direction: Direction,
-		goal: Option<f32>,
-	) -> Option<(Point, f32)> {
-		let current = doc.inline(point.block)?.as_str();
-		let goal = goal.unwrap_or_else(|| text::column(current, point.offset) as f32);
-
-		let next = match direction {
-			Direction::Backward => doc.prev_text_block(point.block),
-			Direction::Forward => doc.next_text_block(point.block),
-		}?;
-
-		let next_text = doc.inline(next)?.as_str();
-		let offset = text::offset_at_column(next_text, goal.max(0.0) as usize);
-
-		Some((Point::new(next, offset), goal))
-	}
-}
-
-/// Where moving one `unit` in `direction` from `point` lands. Crossing a
-/// block boundary lands at the adjacent text block or atomic block.
-#[must_use]
+/// Where moving one `unit` in `direction` from `from` lands, and the
+/// affinity the caret has there. Crossing a block boundary lands at the
+/// adjacent text block or atomic block.
 pub fn target(
 	doc: &Document,
-	point: Point,
+	from: Caret,
 	direction: Direction,
 	unit: Unit,
-	lines: &dyn LineNavigator,
-) -> Option<Stop> {
-	let content = doc.inline(point.block)?.as_str();
+	lines: &mut dyn LineNavigator,
+) -> Result<Option<(Stop, Affinity)>, EditorError> {
+	let point = from.point;
+	let Some(content) = doc
+		.inline(point.block)
+		.map(canvist_model::InlineText::as_str)
+	else {
+		return Ok(None);
+	};
 	let len = content.len() as u32;
 
 	let within = match (unit, direction) {
@@ -116,18 +70,36 @@ pub fn target(
 		(Unit::Word, Direction::Forward) => {
 			text::next_word(content, point.offset).or((point.offset < len).then_some(len))
 		}
-		(Unit::Line, _) => {
-			let boundary = lines.line_boundary(doc, point, direction);
-			return (boundary != point).then_some(Stop::Text(boundary));
+		(Unit::Line, _) => return line_edge(doc, from, direction, lines),
+		(Unit::Document, _) => {
+			let boundary = document_boundary(doc, point, direction);
+			return Ok(boundary.map(|stop| (stop, Affinity::Downstream)));
 		}
-		(Unit::Document, _) => return document_boundary(doc, point, direction),
 	};
-
-	match (within, direction) {
+	let stop = match (within, direction) {
 		(Some(offset), _) => Some(Stop::Text(Point::new(point.block, offset))),
 		(None, Direction::Backward) => position::prev_stop(doc, point.block),
 		(None, Direction::Forward) => position::next_stop(doc, point.block),
-	}
+	};
+
+	Ok(stop.map(|stop| (stop, Affinity::Downstream)))
+}
+
+/// The start or end of the visual line, or `None` if the caret is there.
+fn line_edge(
+	doc: &Document,
+	from: Caret,
+	direction: Direction,
+	lines: &mut dyn LineNavigator,
+) -> Result<Option<(Stop, Affinity)>, EditorError> {
+	let edge = match direction {
+		Direction::Backward => LineEdge::Start,
+		Direction::Forward => LineEdge::End,
+	};
+	let caret = lines.line_edge(doc, from, edge)?;
+	let moved = caret.point != from.point || caret.affinity != from.affinity;
+
+	Ok(moved.then_some((Stop::Text(caret.point), caret.affinity)))
 }
 
 fn document_boundary(doc: &Document, point: Point, direction: Direction) -> Option<Stop> {
@@ -150,10 +122,10 @@ pub fn move_caret(
 	direction: Direction,
 	unit: Unit,
 	extend: bool,
-	lines: &dyn LineNavigator,
+	lines: &mut dyn LineNavigator,
 ) -> CommandResult {
 	let doc = state.doc();
-
+	let mut affinity = Affinity::Downstream;
 	let next = match state.selection() {
 		Selection::Text { anchor, head } => {
 			let collapse = !extend && anchor != head && unit == Unit::Grapheme;
@@ -161,14 +133,21 @@ pub fn move_caret(
 			if collapse {
 				collapse_range(doc, state.selection(), direction)
 			} else {
-				let stop = target(doc, head, direction, unit, lines);
-				stop.and_then(|stop| text_motion(doc, anchor, stop, direction, extend))
+				let from = Caret {
+					point: head,
+					affinity: state.affinity(),
+				};
+				let found = target(doc, from, direction, unit, lines)?;
+				found.and_then(|(stop, landed)| {
+					affinity = landed;
+					text_motion(doc, anchor, stop, direction, extend)
+				})
 			}
 		}
 		Selection::Blocks { anchor, head } => leave_blocks(doc, anchor, head, direction),
 	};
 
-	select(state, next)
+	select(state, next, affinity)
 }
 
 fn collapse_range(doc: &Document, selection: Selection, direction: Direction) -> Option<Selection> {
@@ -260,16 +239,24 @@ pub fn move_vertical(
 	state: &mut EditorState,
 	direction: Direction,
 	extend: bool,
-	lines: &dyn LineNavigator,
+	lines: &mut dyn LineNavigator,
 ) -> CommandResult {
 	let Selection::Text { anchor, head } = state.selection() else {
 		return move_caret(state, direction, Unit::Grapheme, extend, lines);
 	};
-	let doc = state.doc();
+	let from = Caret {
+		point: head,
+		affinity: state.affinity(),
+	};
+	let vertical = match direction {
+		Direction::Backward => VerticalDirection::Up,
+		Direction::Forward => VerticalDirection::Down,
+	};
 
-	let Some((point, goal)) = lines.vertical(doc, head, direction, state.goal()) else {
+	let Some(motion) = lines.vertical(state.doc(), from, vertical, state.goal())? else {
 		return move_caret(state, direction, Unit::Document, extend, lines);
 	};
+	let point = motion.caret.point;
 	let selection = if extend {
 		Selection::text(anchor, point)
 	} else {
@@ -278,18 +265,28 @@ pub fn move_vertical(
 
 	state.change(EditKind::Selection, |tr| {
 		tr.set_selection(selection);
-		tr.set_goal(goal);
+		tr.set_goal(motion.goal_x);
+		tr.set_affinity(motion.caret.affinity);
 		Ok(true)
 	})
 }
 
-fn select(state: &mut EditorState, selection: Option<Selection>) -> CommandResult {
-	let Some(selection) = selection.filter(|&selection| selection != state.selection()) else {
+fn select(
+	state: &mut EditorState,
+	selection: Option<Selection>,
+	affinity: Affinity,
+) -> CommandResult {
+	let unchanged = selection.is_none_or(|selection| selection == state.selection());
+
+	if unchanged && affinity == state.affinity() {
 		return Ok(None);
-	};
+	}
+
+	let selection = selection.unwrap_or_else(|| state.selection());
 
 	state.change(EditKind::Selection, |tr| {
 		tr.set_selection(selection);
+		tr.set_affinity(affinity);
 		Ok(true)
 	})
 }

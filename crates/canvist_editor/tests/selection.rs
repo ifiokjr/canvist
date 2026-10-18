@@ -2,32 +2,40 @@
 
 mod support;
 
+use canvist_editor::Affinity;
+use canvist_editor::Caret;
 use canvist_editor::Direction;
+use canvist_editor::EditorError;
 use canvist_editor::EditorState;
+use canvist_editor::LineEdge;
+use canvist_editor::LineNavigator;
+use canvist_editor::NavigationError;
 use canvist_editor::ParagraphNavigator;
 use canvist_editor::Unit;
+use canvist_editor::VerticalDirection;
+use canvist_editor::VerticalMotion;
 use canvist_editor::commands;
 use canvist_editor::motion;
+use canvist_model::Document;
+use canvist_model::Point;
 use support::after;
 use support::dedent;
 use support::render;
 use support::state;
-
-const LINES: ParagraphNavigator = ParagraphNavigator;
 
 fn step(
 	direction: Direction,
 	unit: Unit,
 	extend: bool,
 ) -> impl FnOnce(&mut EditorState) -> canvist_editor::CommandResult {
-	move |state| motion::move_caret(state, direction, unit, extend, &LINES)
+	move |state| motion::move_caret(state, direction, unit, extend, &mut ParagraphNavigator)
 }
 
 fn vertical(
 	direction: Direction,
 	extend: bool,
 ) -> impl FnOnce(&mut EditorState) -> canvist_editor::CommandResult {
-	move |state| motion::move_vertical(state, direction, extend, &LINES)
+	move |state| motion::move_vertical(state, direction, extend, &mut ParagraphNavigator)
 }
 
 #[test]
@@ -141,12 +149,18 @@ fn motion_at_the_document_edge_does_nothing() {
 			Direction::Backward,
 			Unit::Grapheme,
 			false,
-			&LINES
+			&mut ParagraphNavigator
 		),
 		Ok(None)
 	);
 	assert_eq!(
-		motion::move_caret(&mut home, Direction::Backward, Unit::Line, false, &LINES),
+		motion::move_caret(
+			&mut home,
+			Direction::Backward,
+			Unit::Line,
+			false,
+			&mut ParagraphNavigator
+		),
 		Ok(None)
 	);
 }
@@ -401,9 +415,189 @@ fn select_blocks_requires_siblings() {
 fn set_selection_repairs_offsets_and_ignores_no_ops() {
 	let mut state = state("paragraph: é|");
 	let block = state.doc().first_text_block().expect("text");
-	let inside_char = canvist_model::Selection::caret(canvist_model::Point::new(block, 1));
+	let inside_char = canvist_model::Selection::caret(Point::new(block, 1));
 	commands::set_selection(&mut state, inside_char).expect("repair");
 
 	assert_eq!(render(&state), "paragraph: |é");
 	assert_eq!(commands::set_selection(&mut state, inside_char), Ok(None));
+}
+
+/// Soft-wraps every text block into lines of `width` bytes, so the offset
+/// where two lines meet is ambiguous without an affinity.
+struct Wrapped {
+	width: u32,
+}
+
+impl Wrapped {
+	fn line(&self, doc: &Document, at: Caret) -> (u32, u32) {
+		let len = doc
+			.inline(at.point.block)
+			.map_or(0, canvist_model::InlineText::len);
+		let offset = at.point.offset;
+		let upstream =
+			at.affinity == Affinity::Upstream && offset > 0 && offset.is_multiple_of(self.width);
+		let index = if upstream {
+			offset / self.width - 1
+		} else {
+			offset / self.width
+		};
+		let start = (index * self.width).min(len);
+
+		(start, (start + self.width).min(len))
+	}
+}
+
+impl LineNavigator for Wrapped {
+	fn vertical(
+		&mut self,
+		doc: &Document,
+		from: Caret,
+		direction: VerticalDirection,
+		goal_x: Option<f32>,
+	) -> Result<Option<VerticalMotion>, NavigationError> {
+		let (start, end) = self.line(doc, from);
+		let len = doc
+			.inline(from.point.block)
+			.map_or(0, canvist_model::InlineText::len);
+		let goal_x = goal_x.unwrap_or((from.point.offset - start) as f32);
+		let line_start = match direction {
+			VerticalDirection::Up if start > 0 => start - self.width,
+			VerticalDirection::Down if end < len => end,
+			_ => return Ok(None),
+		};
+		let offset = (line_start + (goal_x as u32).min(self.width)).min(len);
+		let affinity = if offset > line_start && offset.is_multiple_of(self.width) {
+			Affinity::Upstream
+		} else {
+			Affinity::Downstream
+		};
+		let caret = Caret {
+			point: Point::new(from.point.block, offset),
+			affinity,
+		};
+
+		Ok(Some(VerticalMotion { caret, goal_x }))
+	}
+
+	fn line_edge(
+		&mut self,
+		doc: &Document,
+		at: Caret,
+		edge: LineEdge,
+	) -> Result<Caret, NavigationError> {
+		let (start, end) = self.line(doc, at);
+		let len = doc
+			.inline(at.point.block)
+			.map_or(0, canvist_model::InlineText::len);
+
+		Ok(match edge {
+			LineEdge::Start => Caret::new(Point::new(at.point.block, start)),
+			LineEdge::End if end < len => {
+				Caret {
+					point: Point::new(at.point.block, end),
+					affinity: Affinity::Upstream,
+				}
+			}
+			LineEdge::End => Caret::new(Point::new(at.point.block, end)),
+		})
+	}
+}
+
+struct Unmeasurable;
+
+impl LineNavigator for Unmeasurable {
+	fn vertical(
+		&mut self,
+		_: &Document,
+		_: Caret,
+		_: VerticalDirection,
+		_: Option<f32>,
+	) -> Result<Option<VerticalMotion>, NavigationError> {
+		Err(NavigationError::new(&"font not loaded"))
+	}
+
+	fn line_edge(&mut self, _: &Document, _: Caret, _: LineEdge) -> Result<Caret, NavigationError> {
+		Err(NavigationError::new(&"font not loaded"))
+	}
+}
+
+#[test]
+fn line_end_at_a_soft_wrap_stays_on_its_line() {
+	let mut wrapped = Wrapped { width: 4 };
+	let mut state = state("paragraph: a|bcdefghij");
+
+	motion::move_caret(
+		&mut state,
+		Direction::Forward,
+		Unit::Line,
+		false,
+		&mut wrapped,
+	)
+	.expect("end");
+	assert_eq!(render(&state), "paragraph: abcd|efghij");
+	assert_eq!(state.affinity(), Affinity::Upstream);
+
+	// The upstream caret is still on the first line, so Home goes to 0
+	// rather than staying at the start of the second line.
+	motion::move_caret(
+		&mut state,
+		Direction::Backward,
+		Unit::Line,
+		false,
+		&mut wrapped,
+	)
+	.expect("home");
+	assert_eq!(render(&state), "paragraph: |abcdefghij");
+	assert_eq!(state.affinity(), Affinity::Downstream);
+}
+
+#[test]
+fn typing_resets_affinity_to_downstream() {
+	let mut wrapped = Wrapped { width: 4 };
+	let mut state = state("paragraph: a|bcdefghij");
+
+	motion::move_caret(
+		&mut state,
+		Direction::Forward,
+		Unit::Line,
+		false,
+		&mut wrapped,
+	)
+	.expect("end");
+	commands::insert_text(&mut state, "x").expect("type");
+
+	assert_eq!(state.affinity(), Affinity::Downstream);
+}
+
+#[test]
+fn vertical_motion_keeps_its_goal_across_short_lines() {
+	let mut wrapped = Wrapped { width: 4 };
+	let mut state = state("paragraph: abc|defghij");
+
+	motion::move_vertical(&mut state, Direction::Forward, false, &mut wrapped).expect("down");
+	assert_eq!(render(&state), "paragraph: abcdefg|hij");
+	assert_eq!(state.goal(), Some(3.0));
+
+	motion::move_vertical(&mut state, Direction::Forward, false, &mut wrapped).expect("down");
+	assert_eq!(render(&state), "paragraph: abcdefghij|");
+	assert_eq!(state.goal(), Some(3.0));
+}
+
+#[test]
+fn navigator_errors_reach_the_caller() {
+	let mut state = state("paragraph: ab|c");
+
+	let line = motion::move_caret(
+		&mut state,
+		Direction::Forward,
+		Unit::Line,
+		false,
+		&mut Unmeasurable,
+	);
+	let vertical = motion::move_vertical(&mut state, Direction::Forward, false, &mut Unmeasurable);
+
+	let expected = EditorError::Navigation(NavigationError::new(&"font not loaded"));
+	assert_eq!(line, Err(expected.clone()));
+	assert_eq!(vertical, Err(expected));
+	assert_eq!(render(&state), "paragraph: ab|c");
 }
