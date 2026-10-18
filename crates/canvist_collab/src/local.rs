@@ -55,30 +55,38 @@ pub(crate) struct Local<'a, 'txn> {
 	/// Whether the commit changes at most one child list, in which case the
 	/// document's child indices are also valid while translating its steps.
 	pub(crate) single_structural: bool,
+	/// Blocks whose current document text is exactly the text each of the
+	/// commit's steps on them saw, so offsets can convert from it directly.
+	pub(crate) settled: FxHashSet<BlockId>,
 	/// Containers whose type changed while holding hidden children, which
 	/// the new type may allow.
 	pub(crate) retyped: Vec<BlockId>,
 }
 
-impl Local<'_, '_> {
+impl<'a> Local<'a, '_> {
 	/// Translate one step, given the inverse the model recorded for it.
 	pub(crate) fn step(&mut self, step: &Step, inverse: &Step) -> Result<(), CollabError> {
 		if is_inline(step) {
-			self.inline_step(step)
+			self.inline_step(step, inverse)
 		} else {
 			self.block_step(step, inverse)
 		}
 	}
 
 	/// Translate a step that edits the text of one block.
-	fn inline_step(&mut self, step: &Step) -> Result<(), CollabError> {
+	fn inline_step(&mut self, step: &Step, inverse: &Step) -> Result<(), CollabError> {
 		match step {
 			Step::InsertInline {
 				block,
 				offset,
 				content,
 			} => self.insert_inline(*block, *offset, content),
-			Step::RemoveInline { block, range } => self.remove_inline(*block, range),
+			Step::RemoveInline { block, range } => {
+				let Step::InsertInline { content, .. } = inverse else {
+					return Err(CollabError::Diverged);
+				};
+				self.remove_inline(*block, range.start, content)
+			}
 			Step::AddMark { block, range, mark } => {
 				let format = values::add_mark_format(self.schema, mark);
 				self.format(*block, range, format)
@@ -151,23 +159,15 @@ impl Local<'_, '_> {
 		tree::children_of(&self.map(parent)?, &*self.txn).ok_or(CollabError::NotShared(parent))
 	}
 
-	/// UTF-16 positions in `text` for each UTF-8 offset in `offsets`.
-	fn utf16<const N: usize>(
-		&self,
-		block: BlockId,
-		text: &TextRef,
-		offsets: [u32; N],
-	) -> Result<[u32; N], CollabError> {
-		let chunks = Chunks::read(text, &*self.txn);
-		let mut converted = [0; N];
+	/// How to convert UTF-8 offsets in `block` for the step being translated.
+	fn offsets(&self, block: BlockId, text: &TextRef) -> Offsets<'a> {
+		let doc: &'a Document = self.doc;
+		let current = doc.inline(block).filter(|_| self.settled.contains(&block));
 
-		for (slot, offset) in converted.iter_mut().zip(offsets) {
-			*slot = chunks
-				.utf16_index(offset)
-				.ok_or(CollabError::Offset { block, offset })?;
+		match current {
+			Some(inline) => Offsets::Model(inline.as_str()),
+			None => Offsets::Shared(Chunks::read(text, &*self.txn)),
 		}
-
-		Ok(converted)
 	}
 
 	fn insert_inline(
@@ -177,15 +177,23 @@ impl Local<'_, '_> {
 		content: &InlineText,
 	) -> Result<(), CollabError> {
 		let text = self.text(block)?;
-		let [at] = self.utf16(block, &text, [offset])?;
+		let at = self.offsets(block, &text).utf16(block, offset)?;
 		text::insert_inline(&text, self.txn, at, self.schema, content);
 		Ok(())
 	}
 
-	fn remove_inline(&mut self, block: BlockId, range: &Range<u32>) -> Result<(), CollabError> {
+	/// Remove what `removed`, the step's inverse content, holds, starting at
+	/// `start`. Its length in UTF-16 is the length of that content, so only
+	/// the start needs converting.
+	fn remove_inline(
+		&mut self,
+		block: BlockId,
+		start: u32,
+		removed: &InlineText,
+	) -> Result<(), CollabError> {
 		let text = self.text(block)?;
-		let [start, end] = self.utf16(block, &text, [range.start, range.end])?;
-		text.remove_range(self.txn, start, end - start);
+		let at = self.offsets(block, &text).utf16(block, start)?;
+		text.remove_range(self.txn, at, text::utf16_len(removed.as_str()));
 		Ok(())
 	}
 
@@ -196,7 +204,9 @@ impl Local<'_, '_> {
 		format: Format,
 	) -> Result<(), CollabError> {
 		let text = self.text(block)?;
-		let [start, end] = self.utf16(block, &text, [range.start, range.end])?;
+		let offsets = self.offsets(block, &text);
+		let start = offsets.utf16(block, range.start)?;
+		let end = offsets.utf16(block, range.end)?;
 		text.format(self.txn, start, end - start, format);
 		Ok(())
 	}
@@ -208,17 +218,12 @@ impl Local<'_, '_> {
 		runs: &[(u32, MarkSet)],
 	) -> Result<(), CollabError> {
 		let text = self.text(block)?;
-		let chunks = Chunks::read(&text, &*self.txn);
+		let offsets = self.offsets(block, &text);
 		let mut start = offset;
 
 		for (len, marks) in runs {
 			let end = start + len;
-			let utf16 = |offset| {
-				chunks
-					.utf16_index(offset)
-					.ok_or(CollabError::Offset { block, offset })
-			};
-			let (from, to) = (utf16(start)?, utf16(end)?);
+			let (from, to) = (offsets.utf16(block, start)?, offsets.utf16(block, end)?);
 			text.format(
 				self.txn,
 				from,
@@ -353,11 +358,13 @@ impl Local<'_, '_> {
 		let start = self.insert_position(&array, parent, index);
 		let mut registration = Registration::default();
 
-		for (offset, tree) in (start..).zip(blocks) {
+		// Last to first at one position walks the array to it only once per
+		// block, never past the blocks just written.
+		for tree in blocks.iter().rev() {
 			tree::write(
 				self.txn,
 				self.schema,
-				(&array, offset, parent),
+				(&array, start, parent),
 				tree,
 				&mut registration,
 			)?;
@@ -413,8 +420,8 @@ impl Local<'_, '_> {
 		let start = self.insert_position(&target, to_parent, to_index);
 		let mut copies = Vec::new();
 
-		for (offset, snapshot) in (start..).zip(&snapshots) {
-			snapshot.write(self.txn, (&target, offset, to_parent), &mut copies)?;
+		for snapshot in snapshots.iter().rev() {
+			snapshot.write(self.txn, (&target, start, to_parent), &mut copies)?;
 		}
 
 		self.registry.rebind(copies);
@@ -491,6 +498,53 @@ impl Local<'_, '_> {
 			.take(range.len())
 			.collect()
 	}
+}
+
+/// The text a step's UTF-8 offsets refer to, for converting them to UTF-16.
+enum Offsets<'a> {
+	/// The document's own text, when it is what the step saw: converting is
+	/// a scan of the prefix, with no reads from yrs.
+	Model(&'a str),
+	/// The shared text, which mirrors the model as each step is translated.
+	Shared(Chunks),
+}
+
+impl Offsets<'_> {
+	fn utf16(&self, block: BlockId, offset: u32) -> Result<u32, CollabError> {
+		let converted = match self {
+			Self::Model(text) => text.get(..offset as usize).map(text::utf16_len),
+			Self::Shared(chunks) => chunks.utf16_index(offset),
+		};
+
+		converted.ok_or(CollabError::Offset { block, offset })
+	}
+}
+
+/// Blocks whose document text after `steps` is the text every step on them
+/// saw: in a commit without structural steps, the blocks exactly one step
+/// edits.
+pub(crate) fn settled(steps: &[Step]) -> FxHashSet<BlockId> {
+	let mut once = FxHashSet::default();
+	let mut again = FxHashSet::default();
+
+	for step in steps {
+		let block = match step {
+			Step::InsertInline { block, .. }
+			| Step::RemoveInline { block, .. }
+			| Step::AddMark { block, .. }
+			| Step::RemoveMark { block, .. }
+			| Step::RestoreMarks { block, .. } => *block,
+			Step::SetBlock { .. } => continue,
+			_ => return FxHashSet::default(),
+		};
+
+		if !once.insert(block) {
+			again.insert(block);
+		}
+	}
+
+	once.retain(|block| !again.contains(block));
+	once
 }
 
 /// Whether `step` edits the text of a single block.

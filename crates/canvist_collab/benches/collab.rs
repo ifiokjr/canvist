@@ -6,6 +6,9 @@
 //!   mirror it into the model. Budget: 20 µs.
 //! - `initial_load`: join a 10,000-paragraph document from its full state.
 //!
+//! The keystroke benchmarks type into one paragraph throughout, so it grows
+//! over a run; converting offsets costs `O(paragraph length)` by design.
+//!
 //! Run with `cargo bench -p canvist_collab`.
 
 use std::cell::RefCell;
@@ -26,7 +29,7 @@ use canvist_model::Schema;
 use divan::Bencher;
 use divan::black_box;
 
-const SIZES: [usize; 2] = [100, 10_000];
+const SIZES: [usize; 3] = [100, 10_000, 100_000];
 const PARAGRAPH: &str =
 	"The quick brown fox jumps over the lazy dog, again and again, until the line wraps.";
 

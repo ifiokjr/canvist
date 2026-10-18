@@ -199,11 +199,12 @@ fn write_elements(
 	elements: &[Element],
 	copies: &mut Copies,
 ) -> Result<(), CollabError> {
-	for (offset, element) in (0_u32..).zip(elements) {
+	// Last to first at the front, so no insert walks the array.
+	for element in elements.iter().rev() {
 		match element {
-			Element::Block(snapshot) => snapshot.write(txn, (array, offset, parent), copies)?,
+			Element::Block(snapshot) => snapshot.write(txn, (array, 0, parent), copies)?,
 			Element::Any(any) => {
-				array.insert(txn, offset, any.clone());
+				array.insert(txn, 0, any.clone());
 			}
 		}
 	}

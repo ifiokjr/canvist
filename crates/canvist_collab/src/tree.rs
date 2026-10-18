@@ -267,14 +267,9 @@ pub(crate) fn write(
 			let array: ArrayRef = map.insert(txn, keys::CHILDREN, ArrayPrelim::default());
 			block.children = branch_id(&array);
 
-			for (offset, child) in (0_u32..).zip(children) {
-				write(
-					txn,
-					schema,
-					(&array, offset, Some(tree.id)),
-					child,
-					registration,
-				)?;
+			// Last to first at the front, so no insert walks the array.
+			for child in children.iter().rev() {
+				write(txn, schema, (&array, 0, Some(tree.id)), child, registration)?;
 			}
 		}
 		TreeContent::Leaf => {}

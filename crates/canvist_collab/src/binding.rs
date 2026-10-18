@@ -161,12 +161,14 @@ impl Binding {
 
 		let mut registration = Registration::default();
 
-		for (index, &block) in (0_u32..).zip(doc.children(None)) {
+		// Inserting at the front never walks the array, so writing the blocks
+		// last to first keeps seeding linear in the document's size.
+		for &block in doc.children(None).iter().rev() {
 			let tree = doc.tree(block).ok_or(CollabError::NotShared(block))?;
 			tree::write(
 				&mut txn,
 				&self.schema,
-				(&self.root, index, None),
+				(&self.root, 0, None),
 				&tree,
 				&mut registration,
 			)?;
@@ -262,6 +264,7 @@ impl Binding {
 			registry: &mut self.registry,
 			doc,
 			single_structural: structural <= 1,
+			settled: crate::local::settled(&commit.steps),
 			retyped: Vec::new(),
 		};
 
