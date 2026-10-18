@@ -19,6 +19,7 @@ in
       deno
       dprint
       extra.knope
+      extra.monostyle
       mdbook
       nixfmt
       rustup
@@ -171,11 +172,20 @@ in
       description = "Run cargo-deny checks for security advisories and license compliance.";
       binary = "bash";
     };
+    "lint:style" = {
+      exec = ''
+        set -e
+        monostyle check crates/canvist_model --fail-under 90
+      '';
+      description = "Require readability and complexity scores of at least 90 for the v2 crates.";
+      binary = "bash";
+    };
     "lint:all" = {
       exec = ''
         set -e
         lint:clippy
         lint:format
+        lint:style
         deny:check
       '';
       description = "Run all checks.";
