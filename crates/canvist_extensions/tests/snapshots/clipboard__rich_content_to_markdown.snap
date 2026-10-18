@@ -1,0 +1,25 @@
+---
+source: crates/canvist_extensions/tests/clipboard.rs
+expression: "clipboard::to_markdown(typist.editor.schema(), &slice)"
+---
+# Title
+
+Some **bold**, *italic*, ~~gone~~, `code` and under text\
+next line
+
+- one
+  - two
+
+1. first
+
+> quoted
+
+```rust
+let x = 1;
+```
+
+- [x] done
+
+---
+
+see [https://canvist.dev](https://canvist.dev) now

@@ -269,6 +269,7 @@ fn inline_from_json(schema: &Schema, nodes: &[Json]) -> Result<InlineText, JsonE
 					name: name.to_owned(),
 				}
 			})?;
+
 			let attrs = attrs_from_json(node.get("attrs"));
 			InlineText::embed(Embed { kind, attrs }, marks)
 		};

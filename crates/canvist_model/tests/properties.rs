@@ -167,6 +167,7 @@ fn location(doc: &Document, block: BlockId) -> (Option<BlockId>, usize) {
 
 fn format(doc: &Document, (block, range): (BlockId, Range<u32>), mark: usize, add: bool) -> Step {
 	let kind = doc.schema().marks()[mark].id;
+
 	if add {
 		return Step::AddMark {
 			block,
@@ -174,6 +175,7 @@ fn format(doc: &Document, (block, range): (BlockId, Range<u32>), mark: usize, ad
 			mark: Mark::new(kind),
 		};
 	}
+
 	Step::RemoveMark { block, range, kind }
 }
 
@@ -292,6 +294,7 @@ fn caret_survives(edits: &[Edit], seed: usize) -> Result<(), TestCaseError> {
 		}
 
 		let step = resolve(&mut doc, edit);
+
 		if let Ok(commit) = doc.apply_steps([step]) {
 			point = commit.map(point, Bias::After).point;
 		}
@@ -301,6 +304,7 @@ fn caret_survives(edits: &[Edit], seed: usize) -> Result<(), TestCaseError> {
 				!doc.contains(point.block),
 				"only removed blocks lose carets"
 			);
+
 			return Ok(());
 		};
 		prop_assert!(
@@ -314,8 +318,68 @@ fn caret_survives(edits: &[Edit], seed: usize) -> Result<(), TestCaseError> {
 	Ok(())
 }
 
+/// Everything a savepoint must restore: content, version, every block's
+/// revision, and the next id the document would allocate.
+fn fingerprint(doc: &Document) -> (serde_json::Value, u64, Vec<(BlockId, u32)>, Option<BlockId>) {
+	let mut revs: Vec<(BlockId, u32)> = doc.iter().map(|block| (block.id(), block.rev())).collect();
+	revs.sort_unstable();
+	let next = doc.clone().allocate_id().ok();
+	(doc.to_json(), doc.version(), revs, next)
+}
+
+fn apply_all(doc: &mut Document, edits: &[Edit]) {
+	for edit in edits {
+		if doc.first_text_block().is_none() {
+			return;
+		}
+
+		let step = resolve(doc, edit);
+		let _ = doc.apply_steps([step]);
+	}
+}
+
+/// Edit inside a savepoint (and a nested one, kept or reverted), then roll
+/// back: the document must match the fingerprint from before, exactly.
+fn savepoint_restores(
+	prefix: &[Edit],
+	outer: &[Edit],
+	inner: &[Edit],
+	keep_inner: bool,
+) -> Result<(), TestCaseError> {
+	let mut doc = support::paragraphs(3, "hello wörld");
+	apply_all(&mut doc, prefix);
+	let before = fingerprint(&doc);
+	let savepoint = doc.savepoint();
+	apply_all(&mut doc, outer);
+	let middle = fingerprint(&doc);
+	let nested = doc.savepoint();
+	apply_all(&mut doc, inner);
+
+	if keep_inner {
+		doc.release(nested);
+	} else {
+		doc.rollback_to(nested).expect("inner rollback");
+		prop_assert_eq!(&fingerprint(&doc), &middle, "inner rollback is exact");
+	}
+
+	doc.rollback_to(savepoint).expect("outer rollback");
+	support::assert_invariants(&doc);
+	prop_assert_eq!(fingerprint(&doc), before, "outer rollback is exact");
+	Ok(())
+}
+
 proptest! {
 	#![proptest_config(ProptestConfig { cases: 256, ..ProptestConfig::default() })]
+
+	#[test]
+	fn savepoints_roll_back_without_a_trace(
+		prefix in prop::collection::vec(edit(), 0..10),
+		outer in prop::collection::vec(edit(), 0..20),
+		inner in prop::collection::vec(edit(), 0..20),
+		keep_inner in any::<bool>(),
+	) {
+		savepoint_restores(&prefix, &outer, &inner, keep_inner)?;
+	}
 
 	#[test]
 	fn random_edits_preserve_invariants_and_undo_exactly(edits in prop::collection::vec(edit(), 1..60)) {

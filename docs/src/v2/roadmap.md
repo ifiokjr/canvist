@@ -21,13 +21,14 @@ toolchain spike (UniFFI, simulators) and logo: in parallel, now
 
 ## M1: editor engine (`canvist_editor`)
 
-- **Commands:** insert text, delete backward and forward (by grapheme, word, or line), split and join that know about lists, wrap and lift, toggle mark, set block type, select all, and cut, copy, and paste from HTML, Markdown, and plain text.
-- **Selection motion:** grapheme, word, line, and paragraph, plus block selection and a gap cursor around atoms.
-- **Keymaps:** per-platform, so `Mod` maps to Cmd on Apple and Ctrl elsewhere. Input rules and paste rules.
-- **History:** grouping by time and by kind of edit, plus selection restore.
-- **Typed extension API** (architecture Decision 8): typed handles in Rust, machine-readable command and attribute metadata for codegen, chaining, and `can()` dry runs. The core stays headless.
-- **Extension trait and the StarterKit:** paragraph, heading 1–6, blockquote, code block, hard break, horizontal rule, bullet, ordered, and task lists, bold, italic, underline, strike, code, link, undo/redo, trailing node, and drop cursor.
-- **Tests:** headless, scripted keystrokes with document snapshots, for example `type("## Hi⏎- one⏎two")`.
+- [x] **Commands:** insert text, delete backward and forward (by grapheme, word, line, or document), split and join that know about lists and quotes, wrap and lift, toggle mark, set block type, select all, and cut, copy, and paste from HTML, Markdown, and plain text.
+- [x] **Selection motion:** grapheme, word, line, and document, plus block selection. Atomic blocks are selected as a whole when the caret reaches them.
+- [ ] **Gap cursor** around atoms, for positions where text cannot go.
+- [x] **Keymaps:** per-platform, so `Mod` maps to Cmd on Apple and Ctrl elsewhere. Input rules and paste rules.
+- [x] **History:** grouping by time and by kind of edit, plus selection restore, behind a `History` trait the collaboration crate replaces.
+- [x] **Typed extension API** (architecture Decision 8): typed handles in Rust, machine-readable command, query, and attribute metadata for codegen, chaining, and `can()` dry runs on exact model savepoints. The core stays headless. TypeScript generation from the metadata is M3.
+- [x] **Extension trait and the StarterKit** (`canvist_extensions`): paragraph, heading 1–6, blockquote, code block, hard break, horizontal rule, bullet, ordered, and task lists, bold, italic, underline, strike, code, link, undo/redo, and trailing node, each behind a Cargo feature. The drop cursor moves to M3, because drag and drop belongs to the host.
+- [x] **Tests:** headless, scripted keystrokes with JSON snapshots, for example `type("## Hi⏎- one⏎two⇥")`, property tests that random commands and keystroke scripts keep every invariant and undo and redo exactly, `divan` benchmarks, and `perf_budgets` tests: a keystroke through the whole StarterKit costs about 0.65 µs at 100,000 blocks.
 
 ## M2: layout (`canvist_layout`)
 

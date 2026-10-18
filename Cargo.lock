@@ -323,6 +323,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "canvist_editor"
+version = "0.1.0"
+dependencies = [
+ "canvist_model",
+ "proptest",
+ "regex-lite",
+ "rustc-hash",
+ "serde_json",
+ "thiserror 2.0.18",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "canvist_extensions"
+version = "0.1.0"
+dependencies = [
+ "canvist_editor",
+ "canvist_model",
+ "divan",
+ "insta",
+ "proptest",
+ "serde_json",
+]
+
+[[package]]
 name = "canvist_ffi"
 version = "0.1.0"
 dependencies = [

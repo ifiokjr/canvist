@@ -1,0 +1,18 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: typist.snapshot()
+---
+{
+  "doc": [
+    {
+      "content": [
+        {
+          "text": "hello world",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0@11"
+}

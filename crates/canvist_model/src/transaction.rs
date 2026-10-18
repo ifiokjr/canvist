@@ -72,6 +72,12 @@ impl<'doc> Transaction<'doc> {
 		Ok(())
 	}
 
+	/// Allocate a fresh block id from the document's client, for blocks that
+	/// later steps in this transaction insert.
+	pub fn allocate_id(&mut self) -> Result<BlockId, StepError> {
+		self.doc.allocate_id()
+	}
+
 	/// Map a point from before the transaction to the current document.
 	#[must_use]
 	pub fn map(&self, point: Point, bias: Bias) -> Mapped {

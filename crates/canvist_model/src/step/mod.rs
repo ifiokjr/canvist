@@ -172,6 +172,8 @@ impl Applied {
 impl Step {
 	/// Apply this step to `doc`. On error the document is unchanged.
 	pub fn apply(self, doc: &mut Document) -> Result<Applied, StepError> {
+		doc.record_before(&self);
+
 		let applied = match self {
 			Self::InsertInline {
 				block,
@@ -231,6 +233,7 @@ impl Step {
 		}?;
 
 		doc.bump_version();
+		doc.record_inverse(&applied.inverse);
 		Ok(applied)
 	}
 }
