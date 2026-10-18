@@ -646,8 +646,7 @@ impl Transaction {
 	/// coalescing to merge multiple inverse transactions into a single group.
 	#[must_use]
 	pub fn compose(first: &Self, second: &Self) -> Self {
-		let mut ops =
-			Vec::with_capacity(first.operations.len() + second.operations.len());
+		let mut ops = Vec::with_capacity(first.operations.len() + second.operations.len());
 		ops.extend(first.operations.iter().cloned());
 		ops.extend(second.operations.iter().cloned());
 		Self { operations: ops }
@@ -965,7 +964,7 @@ mod tests {
 
 		// Styles should be restored to default (runs may be merged or separate).
 		let runs = doc.styled_runs();
-		for (text, style, _, _) in &runs {
+		for (text, style, ..) in &runs {
 			assert_eq!(
 				style.font_weight, None,
 				"after undo, run '{text}' should not be bold"

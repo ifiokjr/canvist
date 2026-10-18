@@ -6,8 +6,7 @@ Fix TypeScript editor wrapper and update types
 
 ### TypeScript editor fixes
 
-Port the same mouse interaction fixes from the demo HTML to the TypeScript
-editor wrapper (`packages/canvist/src/editor.ts`):
+Port the same mouse interaction fixes from the demo HTML to the TypeScript editor wrapper (`packages/canvist/src/editor.ts`):
 
 - **Double-click selection persistence** via `skipNextClick` flag
 - **Triple-click-and-drag** line-level selection with `selectionMode` tracking
@@ -17,6 +16,7 @@ editor wrapper (`packages/canvist/src/editor.ts`):
 ### Updated TypeScript types
 
 Added type definitions for new WASM APIs:
+
 - `setTextAlign(align)` / `textAlign` — text alignment control
 - `enableCollab()` / `collabEnabled` — collaboration session lifecycle
 - `collabEncodeState()` / `collabEncodeStateVector()` — state export

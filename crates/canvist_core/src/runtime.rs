@@ -151,7 +151,8 @@ impl EditorRuntime {
 		let cursor_pos = inverse_tx
 			.cursor_hint()
 			.unwrap_or(self.document.char_count());
-		self.selection = Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
+		self.selection =
+			Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
 		self.force_new_group = true;
 		true
 	}
@@ -177,7 +178,8 @@ impl EditorRuntime {
 		let cursor_pos = forward_tx
 			.cursor_hint()
 			.unwrap_or(self.document.char_count());
-		self.selection = Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
+		self.selection =
+			Selection::collapsed(Position::new(cursor_pos.min(self.document.char_count())));
 		self.force_new_group = true;
 		true
 	}
@@ -326,12 +328,8 @@ impl EditorRuntime {
 				};
 				(None, Invalidation::Selection)
 			}
-			ActionArgs::KeyDown {
-				key, modifiers, ..
-			} => self.handle_keydown(key, modifiers),
-			ActionArgs::Focus => {
-				(None, Invalidation::Selection)
-			}
+			ActionArgs::KeyDown { key, modifiers, .. } => self.handle_keydown(key, modifiers),
+			ActionArgs::Focus => (None, Invalidation::Selection),
 			ActionArgs::Blur => {
 				self.force_new_group = true;
 				(None, Invalidation::Selection)
@@ -428,17 +426,20 @@ impl EditorRuntime {
 			}
 			// Select all.
 			EditorKey::Character(ch) if ch == "a" && (modifiers.control || modifiers.meta) => {
-				self.selection =
-					Selection::range(Position::new(0), Position::new(doc_chars));
+				self.selection = Selection::range(Position::new(0), Position::new(doc_chars));
 				(None, Invalidation::Selection)
 			}
 			// Undo.
-			EditorKey::Character(ch) if ch == "z" && (modifiers.control || modifiers.meta) && !modifiers.shift => {
+			EditorKey::Character(ch)
+				if ch == "z" && (modifiers.control || modifiers.meta) && !modifiers.shift =>
+			{
 				self.undo();
 				(None, Invalidation::DocumentAndSelection)
 			}
 			// Redo.
-			EditorKey::Character(ch) if ch == "z" && (modifiers.control || modifiers.meta) && modifiers.shift => {
+			EditorKey::Character(ch)
+				if ch == "z" && (modifiers.control || modifiers.meta) && modifiers.shift =>
+			{
 				self.redo();
 				(None, Invalidation::DocumentAndSelection)
 			}
@@ -986,7 +987,7 @@ mod tests {
 		assert_eq!(runtime.document().plain_text(), "Hello world");
 
 		// After undo, all runs should be unstyled.
-		for (text, style, _, _) in runtime.document().styled_runs() {
+		for (text, style, ..) in runtime.document().styled_runs() {
 			assert_eq!(
 				style.font_weight, None,
 				"run '{text}' should be unstyled after undo"
@@ -1054,8 +1055,10 @@ mod tests {
 		// Redo format.
 		assert!(runtime.redo());
 		let runs = runtime.document().styled_runs();
-		assert!(runs.iter().any(|(_, s, _, _)| s.font_weight
-			== Some(crate::style::FontWeight::Bold)));
+		assert!(
+			runs.iter()
+				.any(|(_, s, ..)| s.font_weight == Some(crate::style::FontWeight::Bold))
+		);
 
 		// Redo " world".
 		assert!(runtime.redo());

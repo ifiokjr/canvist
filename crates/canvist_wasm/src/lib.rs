@@ -41,8 +41,13 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 
 use crate::canvas_renderer::Canvas2dRenderer;
-
-use crate::layout_bridge::{LayoutConstants, ParagraphLayoutInfo, PARAGRAPH_SPACING, layout_paragraphs, find_para_and_line_for_offset, build_fragments, hit_x_on_line_ext};
+use crate::layout_bridge::LayoutConstants;
+use crate::layout_bridge::PARAGRAPH_SPACING;
+use crate::layout_bridge::ParagraphLayoutInfo;
+use crate::layout_bridge::build_fragments;
+use crate::layout_bridge::find_para_and_line_for_offset;
+use crate::layout_bridge::hit_x_on_line_ext;
+use crate::layout_bridge::layout_paragraphs;
 
 /// The main editor handle exposed to JavaScript.
 ///
@@ -4670,16 +4675,14 @@ impl CanvistEditor {
 	/// Returns default colours if not customised.
 	#[wasm_bindgen]
 	pub fn get_token_color(&self, kind: &str) -> Vec<u8> {
-		let (r, g, b, a) = self.token_colors.get(kind).copied().unwrap_or(
-			match kind {
-				"word" => (212, 212, 212, 255),        // light gray
-				"number" => (181, 206, 168, 255),      // green
-				"punctuation" => (150, 150, 150, 255), // dim gray
-				"whitespace" => (0, 0, 0, 0),          // invisible
-				"newline" => (0, 0, 0, 0),             // invisible
-				_ => (212, 212, 212, 255),
-			}
-		);
+		let (r, g, b, a) = self.token_colors.get(kind).copied().unwrap_or(match kind {
+			"word" => (212, 212, 212, 255),        // light gray
+			"number" => (181, 206, 168, 255),      // green
+			"punctuation" => (150, 150, 150, 255), // dim gray
+			"whitespace" => (0, 0, 0, 0),          // invisible
+			"newline" => (0, 0, 0, 0),             // invisible
+			_ => (212, 212, 212, 255),
+		});
 		vec![r, g, b, a]
 	}
 
@@ -9143,7 +9146,8 @@ impl CanvistEditor {
 			ignore_whitespace,
 			min_count,
 			max_count,
-		) as f64 / total as f64
+		) as f64
+			/ total as f64
 	}
 
 	/// Ratio of groups constrained to an inclusive occurrence-count range.
@@ -9164,7 +9168,8 @@ impl CanvistEditor {
 			ignore_whitespace,
 			min_count,
 			max_count,
-		) as f64 / total_groups as f64
+		) as f64
+			/ total_groups as f64
 	}
 
 	/// Ratio of groups whose occurrence size equals `count`.
@@ -9222,7 +9227,8 @@ impl CanvistEditor {
 			ignore_whitespace,
 			1,
 			max_count,
-		) as f64 / total_groups as f64
+		) as f64
+			/ total_groups as f64
 	}
 
 	/// Ratio of lines belonging to groups whose occurrence size equals `count`.
@@ -9722,8 +9728,7 @@ impl CanvistEditor {
 		if let Some(style) = pending {
 			let char_count = text.chars().count();
 			let sel = Selection::range(Position::new(offset), Position::new(offset + char_count));
-			self.runtime
-				.apply_operation(Operation::format(sel, style));
+			self.runtime.apply_operation(Operation::format(sel, style));
 		}
 		self.is_modified = true;
 	}
@@ -9816,9 +9821,7 @@ impl CanvistEditor {
 					})
 					.sum();
 				if offset <= global + para_len {
-					self.runtime
-						.document_mut()
-						.set_paragraph_block_type(i, bt);
+					self.runtime.document_mut().set_paragraph_block_type(i, bt);
 					break;
 				}
 				global += para_len;
@@ -11570,19 +11573,16 @@ impl CanvistEditor {
 					let local_sel_end = line_sel_end - para.global_char_start;
 
 					let x_start = (lc.padding_x + content_x_origin)
-						+ line.x_offset + x_offset_in_para_line(
-						&renderer,
-						para,
-						line.start_offset,
-						local_sel_start,
-					);
+						+ line.x_offset
+						+ x_offset_in_para_line(
+							&renderer,
+							para,
+							line.start_offset,
+							local_sel_start,
+						);
 					let x_end = (lc.padding_x + content_x_origin)
-						+ line.x_offset + x_offset_in_para_line(
-						&renderer,
-						para,
-						line.start_offset,
-						local_sel_end,
-					);
+						+ line.x_offset
+						+ x_offset_in_para_line(&renderer, para, line.start_offset, local_sel_end);
 
 					let y = lc.padding_y + para.y_offset + line.y - sy;
 					renderer.fill_rect(
@@ -11599,7 +11599,8 @@ impl CanvistEditor {
 				{
 					if let Some(last_line) = para.layout.lines.last() {
 						let x = (lc.padding_x + content_x_origin)
-							+ last_line.x_offset + last_line.width;
+							+ last_line.x_offset
+							+ last_line.width;
 						let y = lc.padding_y + para.y_offset + last_line.y - sy;
 						renderer.fill_rect(Rect::new(x, y, 4.0, last_line.height), selection_color);
 					}
@@ -12054,19 +12055,11 @@ impl CanvistEditor {
 						let local = ch_off.saturating_sub(para.global_char_start);
 						let next_local = local + 1;
 						let cx = (lc.padding_x + content_x_origin)
-							+ line.x_offset + x_offset_in_para_line(
-							&renderer,
-							para,
-							line.start_offset,
-							local,
-						);
+							+ line.x_offset
+							+ x_offset_in_para_line(&renderer, para, line.start_offset, local);
 						let cx2 = (lc.padding_x + content_x_origin)
-							+ line.x_offset + x_offset_in_para_line(
-							&renderer,
-							para,
-							line.start_offset,
-							next_local,
-						);
+							+ line.x_offset
+							+ x_offset_in_para_line(&renderer, para, line.start_offset, next_local);
 						let cy = lc.padding_y + para.y_offset + line.y - sy;
 						let marker_color = Color::new(*mr, *mg, *mb, *ma);
 						renderer.fill_rect(Rect::new(cx, cy, cx2 - cx, line.height), marker_color);
@@ -12082,12 +12075,8 @@ impl CanvistEditor {
 				if let Some(line) = para.layout.lines.get(li) {
 					let local = offset.saturating_sub(para.global_char_start);
 					let cx = (lc.padding_x + content_x_origin)
-						+ line.x_offset + x_offset_in_para_line(
-						&renderer,
-						para,
-						line.start_offset,
-						local,
-					);
+						+ line.x_offset
+						+ x_offset_in_para_line(&renderer, para, line.start_offset, local);
 					let cy = lc.padding_y + para.y_offset + line.y - sy;
 					let collab_color = Color::new(*cr, *cg, *cb, 220);
 					// Draw cursor line.
@@ -12117,12 +12106,8 @@ impl CanvistEditor {
 					if let Some(line) = para.layout.lines.get(li) {
 						let local = offset.saturating_sub(para.global_char_start);
 						let cx = (lc.padding_x + content_x_origin)
-							+ line.x_offset + x_offset_in_para_line(
-							&renderer,
-							para,
-							line.start_offset,
-							local,
-						);
+							+ line.x_offset
+							+ x_offset_in_para_line(&renderer, para, line.start_offset, local);
 						let cy = lc.padding_y + para.y_offset + line.y - sy;
 						renderer.fill_rect(
 							Rect::new(cx, cy, self.cursor_width, line.height),

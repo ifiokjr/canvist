@@ -80,8 +80,8 @@ sendToPeer(state);
 
 // Apply updates from peers.
 onPeerUpdate((update) => {
-  editor.collabApplyUpdate(update);
-  editor.render();
+	editor.collabApplyUpdate(update);
+	editor.render();
 });
 ```
 
