@@ -176,6 +176,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "canvist_editor"
+version = "0.1.0"
+dependencies = [
+ "canvist_model",
+ "proptest",
+ "thiserror 2.0.18",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "canvist_model"
 version = "0.1.0"
 dependencies = [
