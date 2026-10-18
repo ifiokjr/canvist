@@ -4,9 +4,7 @@
 
 ## Overview
 
-This crate defines the abstract rendering interface that platform backends
-implement. The core editor in `canvist_core` produces layout information,
-and a `Renderer` turns that into pixels.
+This crate defines the abstract rendering interface that platform backends implement. The core editor in `canvist_core` produces layout information, and a `Renderer` turns that into pixels.
 
 ## Traits
 
@@ -17,20 +15,36 @@ and a `Renderer` turns that into pixels.
 ## Implementing a backend
 
 ```rust
-use canvist_render::{Canvas, Rect, Renderer, Viewport};
-use canvist_core::{Color, Style};
+use canvist_core::Color;
+use canvist_core::Style;
+use canvist_render::Canvas;
+use canvist_render::Rect;
+use canvist_render::Renderer;
+use canvist_render::Viewport;
 
-struct MyCanvas { viewport: Viewport }
+struct MyCanvas {
+	viewport: Viewport,
+}
 
 impl Canvas for MyCanvas {
-    fn fill_rect(&mut self, rect: Rect, color: Color) { /* draw */ }
-    fn draw_text(&mut self, x: f32, y: f32, text: &str, style: &Style) { /* draw */ }
-    fn clear(&mut self, color: Color) { /* clear */ }
+	fn fill_rect(&mut self, rect: Rect, color: Color) { /* draw */
+	}
+
+	fn draw_text(&mut self, x: f32, y: f32, text: &str, style: &Style) { /* draw */
+	}
+
+	fn clear(&mut self, color: Color) { /* clear */
+	}
 }
 
 impl Renderer for MyCanvas {
-    fn viewport(&self) -> &Viewport { &self.viewport }
-    fn set_viewport(&mut self, vp: Viewport) { self.viewport = vp; }
+	fn viewport(&self) -> &Viewport {
+		&self.viewport
+	}
+
+	fn set_viewport(&mut self, vp: Viewport) {
+		self.viewport = vp;
+	}
 }
 ```
 

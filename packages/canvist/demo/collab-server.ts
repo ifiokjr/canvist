@@ -60,7 +60,9 @@ function handleWebSocket(socket: WebSocket, room: string) {
 	console.log(`[${room}] ${peerId} joined (${rooms.get(room)!.size} peers)`);
 
 	// Send initial peer count.
-	socket.send(JSON.stringify({ type: "peer_count", count: rooms.get(room)!.size }));
+	socket.send(
+		JSON.stringify({ type: "peer_count", count: rooms.get(room)!.size }),
+	);
 	broadcastPeerCount(room);
 
 	socket.addEventListener("message", (event) => {
@@ -71,7 +73,9 @@ function handleWebSocket(socket: WebSocket, room: string) {
 
 	socket.addEventListener("close", () => {
 		rooms.get(room)?.delete(peer);
-		console.log(`[${room}] ${peerId} left (${rooms.get(room)?.size ?? 0} peers)`);
+		console.log(
+			`[${room}] ${peerId} left (${rooms.get(room)?.size ?? 0} peers)`,
+		);
 		if (rooms.get(room)?.size === 0) {
 			rooms.delete(room);
 		} else {
@@ -107,7 +111,9 @@ Deno.serve({ port }, (req) => {
 		const upgrade = req.headers.get("upgrade") || "";
 
 		if (upgrade.toLowerCase() !== "websocket") {
-			return new Response(`Room "${room}": connect via WebSocket`, { status: 400 });
+			return new Response(`Room "${room}": connect via WebSocket`, {
+				status: 400,
+			});
 		}
 
 		const { socket, response } = Deno.upgradeWebSocket(req);

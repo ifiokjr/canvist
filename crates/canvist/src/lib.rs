@@ -70,15 +70,15 @@ pub mod prelude {
 	// Document model.
 	pub use canvist_core::Color;
 	pub use canvist_core::Document;
+	// Runtime and events.
+	pub use canvist_core::EditorEvent;
+	pub use canvist_core::EditorRuntime;
 	pub use canvist_core::FontWeight;
+	pub use canvist_core::Invalidation;
 	pub use canvist_core::NodeId;
 	pub use canvist_core::Position;
 	pub use canvist_core::Selection;
 	pub use canvist_core::Style;
-	// Runtime and events.
-	pub use canvist_core::EditorEvent;
-	pub use canvist_core::EditorRuntime;
-	pub use canvist_core::Invalidation;
 	// Operations.
 	pub use canvist_core::operation::Operation;
 	pub use canvist_core::operation::Transaction;
