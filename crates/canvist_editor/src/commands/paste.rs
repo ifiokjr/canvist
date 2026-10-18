@@ -5,7 +5,6 @@ use canvist_model::BlockId;
 use canvist_model::BlockTree;
 use canvist_model::BlockTypeId;
 use canvist_model::Document;
-use canvist_model::InlineText;
 use canvist_model::Point;
 use canvist_model::Selection;
 use canvist_model::TreeContent;
@@ -97,9 +96,9 @@ fn fresh_ids(tr: &mut EditorTransaction<'_>, tree: BlockTree) -> Result<BlockTre
 /// A slice taken apart: the open text at either end and the whole blocks
 /// between them.
 struct Parts {
-	head: Option<InlineText>,
+	head: Option<BlockTree>,
 	middle: Vec<BlockTree>,
-	tail: Option<InlineText>,
+	tail: Option<BlockTree>,
 }
 
 impl Parts {
@@ -121,11 +120,10 @@ impl Parts {
 	}
 }
 
-/// Remove the text block at `index` and return its text, if it is one.
-fn take_open(blocks: &mut Vec<BlockTree>, index: usize) -> Option<InlineText> {
-	let text = blocks.get(index).and_then(inline_of).cloned()?;
-	blocks.remove(index);
-	Some(text)
+/// Remove the block at `index` if it is a text block.
+fn take_open(blocks: &mut Vec<BlockTree>, index: usize) -> Option<BlockTree> {
+	blocks.get(index).and_then(inline_of)?;
+	Some(blocks.remove(index))
 }
 
 fn paste_at(
@@ -159,14 +157,16 @@ fn paste_blocks(
 		return Ok(None);
 	};
 	let head_empty = parts.head.is_none() && caret.offset == 0;
+	let keep_tail = parts.tail.is_some();
 	let after = tr.split(caret, kind, attrs)?;
 
 	if let Some(head) = parts.head {
-		insert_at(tr, caret, head)?;
+		adopt_type(tr, caret.block, head.kind, head.attrs.clone())?;
+		insert_at(tr, caret, inline_of(&head).cloned().unwrap_or_default())?;
 	}
 
 	let end = match parts.tail {
-		Some(tail) => insert_at(tr, after, tail)?,
+		Some(tail) => insert_at(tr, after, inline_of(&tail).cloned().unwrap_or_default())?,
 		None => after,
 	};
 
@@ -182,28 +182,32 @@ fn paste_blocks(
 		structure::remove(tr, caret.block)?;
 	}
 
-	settle_caret(tr, end, after, last_text).map(Some)
+	if keep_tail {
+		return Ok(Some(end));
+	}
+
+	settle_caret(tr, after, last_text).map(Some)
 }
 
-/// Keep the caret after the pasted tail text, or, when the tail half is
-/// empty, drop it and end at the last pasted text block instead.
+/// When the slice ended in whole blocks, the caret goes after them: into
+/// the tail half, or, if that is empty, to the end of the last pasted text
+/// block, dropping the empty half.
 fn settle_caret(
 	tr: &mut EditorTransaction<'_>,
-	end: Point,
 	after: Point,
 	last_text: Option<BlockId>,
 ) -> Result<Point, EditorError> {
 	let tail_empty = position::text_len(tr.doc(), after.block) == 0;
-	let Some(last) = last_text.filter(|_| tail_empty && end == after) else {
-		return Ok(end);
+	let Some(last) = last_text.filter(|_| tail_empty) else {
+		return Ok(after);
 	};
 
 	structure::remove(tr, after.block)?;
 	Ok(position::end_of(tr.doc(), last))
 }
 
-/// Retype an empty target block to match pasted text, e.g. pasting part of
-/// a heading into an empty paragraph makes a heading.
+/// Retype an empty target block to match the pasted text that fills it,
+/// e.g. pasting part of a heading into an empty paragraph makes a heading.
 fn adopt_type(
 	tr: &mut EditorTransaction<'_>,
 	block: BlockId,

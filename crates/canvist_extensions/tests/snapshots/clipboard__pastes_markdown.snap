@@ -1,0 +1,288 @@
+---
+source: crates/canvist_extensions/tests/clipboard.rs
+expression: pasted(slice)
+---
+[
+  {
+    "attrs": {
+      "level": 2
+    },
+    "content": [
+      {
+        "text": "Notes",
+        "type": "text"
+      }
+    ],
+    "type": "heading"
+  },
+  {
+    "content": [
+      {
+        "text": "Some ",
+        "type": "text"
+      },
+      {
+        "marks": [
+          {
+            "type": "italic"
+          }
+        ],
+        "text": "emphasis",
+        "type": "text"
+      },
+      {
+        "text": ", ",
+        "type": "text"
+      },
+      {
+        "marks": [
+          {
+            "type": "bold"
+          }
+        ],
+        "text": "strong",
+        "type": "text"
+      },
+      {
+        "text": ", ",
+        "type": "text"
+      },
+      {
+        "marks": [
+          {
+            "type": "strike"
+          }
+        ],
+        "text": "struck",
+        "type": "text"
+      },
+      {
+        "text": ", ",
+        "type": "text"
+      },
+      {
+        "marks": [
+          {
+            "type": "code"
+          }
+        ],
+        "text": "code",
+        "type": "text"
+      },
+      {
+        "text": ", and a ",
+        "type": "text"
+      },
+      {
+        "marks": [
+          {
+            "attrs": {
+              "href": "https://canvist.dev"
+            },
+            "type": "link"
+          }
+        ],
+        "text": "link",
+        "type": "text"
+      },
+      {
+        "text": ". Soft break and hard",
+        "type": "text"
+      },
+      {
+        "type": "hardBreak"
+      },
+      {
+        "text": "break.",
+        "type": "text"
+      }
+    ],
+    "type": "paragraph"
+  },
+  {
+    "content": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "listItem"
+      },
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "marks": [
+                  {
+                    "attrs": {
+                      "href": "x"
+                    },
+                    "type": "link"
+                  }
+                ],
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          },
+          {
+            "content": [
+              {
+                "content": [
+                  {
+                    "content": [
+                      {
+                        "text": "nested",
+                        "type": "text"
+                      }
+                    ],
+                    "type": "paragraph"
+                  }
+                ],
+                "type": "listItem"
+              }
+            ],
+            "type": "bulletList"
+          }
+        ],
+        "type": "listItem"
+      }
+    ],
+    "type": "bulletList"
+  },
+  {
+    "attrs": {
+      "start": 3
+    },
+    "content": [
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "text": "three",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "listItem"
+      },
+      {
+        "content": [
+          {
+            "content": [
+              {
+                "text": "four",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "listItem"
+      }
+    ],
+    "type": "orderedList"
+  },
+  {
+    "content": [
+      {
+        "attrs": {
+          "checked": false
+        },
+        "content": [
+          {
+            "content": [
+              {
+                "text": "task",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "taskItem"
+      },
+      {
+        "attrs": {
+          "checked": true
+        },
+        "content": [
+          {
+            "content": [
+              {
+                "text": "done",
+                "type": "text"
+              }
+            ],
+            "type": "paragraph"
+          }
+        ],
+        "type": "taskItem"
+      }
+    ],
+    "type": "taskList"
+  },
+  {
+    "content": [
+      {
+        "content": [
+          {
+            "text": "quoted lines",
+            "type": "text"
+          }
+        ],
+        "type": "paragraph"
+      }
+    ],
+    "type": "blockquote"
+  },
+  {
+    "attrs": {
+      "language": "js"
+    },
+    "content": [
+      {
+        "text": "const x = 1;",
+        "type": "text"
+      }
+    ],
+    "type": "codeBlock"
+  },
+  {
+    "type": "horizontalRule"
+  },
+  {
+    "content": [
+      {
+        "text": "snake_case_word and 2",
+        "type": "text"
+      },
+      {
+        "marks": [
+          {
+            "type": "italic"
+          }
+        ],
+        "text": "3",
+        "type": "text"
+      },
+      {
+        "text": "4",
+        "type": "text"
+      }
+    ],
+    "type": "paragraph"
+  }
+]

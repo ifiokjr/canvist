@@ -58,8 +58,11 @@
 mod blockquote;
 #[cfg(feature = "bullet-list")]
 mod bullet_list;
+#[cfg(feature = "clipboard")]
+pub mod clipboard;
 #[cfg(feature = "code-block")]
 mod code_block;
+
 #[cfg(feature = "hard-break")]
 mod hard_break;
 
@@ -71,6 +74,7 @@ mod history;
 mod horizontal_rule;
 #[cfg(feature = "link")]
 pub mod link;
+
 #[cfg(feature = "list-item")]
 mod list_item;
 #[cfg(any(feature = "list-item", feature = "task-list"))]
@@ -85,6 +89,7 @@ mod lists;
 mod marks;
 #[cfg(feature = "ordered-list")]
 mod ordered_list;
+
 mod paragraph;
 mod starter_kit;
 #[cfg(feature = "task-list")]
