@@ -106,10 +106,6 @@ pub(crate) struct MeasureCache {
 }
 
 impl MeasureCache {
-	#[expect(
-		dead_code,
-		reason = "the display list, the next layer of this stack, is the caller"
-	)]
 	pub(crate) fn fonts(&self) -> &FontBook {
 		&self.fonts
 	}

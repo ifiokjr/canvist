@@ -1,11 +1,20 @@
-//! Snapshot tests of layout trees, all with the deterministic [`FixedMeasurer`](canvist_layout::FixedMeasurer).
+//! Snapshot tests of layout trees, display lists, and server renderers, all
+//! with the deterministic [`FixedMeasurer`](canvist_layout::FixedMeasurer).
 
 #![allow(clippy::float_cmp, reason = "layout with the fixed measurer is exact")]
 
 mod support;
 
+use std::sync::Arc;
+
+use canvist_layout::DisplayOptions;
+use canvist_layout::HtmlOptions;
+use canvist_layout::Theme;
+use canvist_layout::to_html;
+use canvist_layout::to_svg;
 use canvist_model::Document;
 use serde_json::json;
+use support::describe;
 use support::doc;
 use support::layout;
 use support::paragraphs;
@@ -72,6 +81,36 @@ fn paragraphs_wrap_greedily() {
 #[test]
 fn starter_kit_layout_tree() {
 	insta::assert_snapshot!(layout(&starter_kit(), STARTER_KIT_WIDTH).dump());
+}
+
+#[test]
+fn starter_kit_display_list() {
+	let doc = starter_kit();
+	let layout = layout(&doc, STARTER_KIT_WIDTH);
+	let list = layout.display_list(&DisplayOptions::viewport(0.0, layout.height()));
+
+	insta::assert_snapshot!(describe(&list));
+}
+
+#[test]
+fn starter_kit_svg() {
+	let doc = starter_kit();
+	let layout = layout(&doc, STARTER_KIT_WIDTH);
+	let list = layout.display_list(&DisplayOptions::viewport(0.0, layout.height()));
+
+	insta::assert_snapshot!(to_svg(&list));
+}
+
+#[test]
+fn starter_kit_html() {
+	let html = to_html(
+		&starter_kit(),
+		&Arc::new(Theme::starter_kit()),
+		&HtmlOptions::new(STARTER_KIT_WIDTH),
+	);
+
+	insta::assert_snapshot!("starter_kit_html", html.html);
+	insta::assert_snapshot!("starter_kit_css", html.css.replace('}', "}\n"));
 }
 
 #[test]

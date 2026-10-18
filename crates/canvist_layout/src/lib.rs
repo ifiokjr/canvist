@@ -1,6 +1,7 @@
 //! # `canvist_layout`
 //!
-//! Incremental text and block layout for the canvist editor.
+//! Incremental text and block layout for the canvist editor, and the display
+//! list every painter consumes.
 //!
 //! - A [`Theme`] maps block types, marks, and embeds to styles. Rules are
 //!   data, keyed by schema names, so extensions contribute their own.
@@ -14,12 +15,18 @@
 //! - Geometry queries: [`DocumentLayout::hit_test`],
 //!   [`DocumentLayout::caret_rect`], [`DocumentLayout::selection_rects`], and
 //!   the [`LayoutNavigator`] the editor uses for vertical caret motion.
+//! - [`DisplayList`]: positioned text runs, rectangles, decorations, and
+//!   node-view slots, with [`DisplayList::damage`] for dirty rectangles.
+//! - Server rendering: [`to_svg`] paints a display list, and [`to_html`]
+//!   writes semantic HTML plus CSS that wraps lines exactly where the canvas
+//!   does. See the [CSS contract](https://github.com/ifiokjr/canvist/blob/main/docs/src/v2/ssr-css-contract.md).
 //!
 //! # Example
 //!
 //! ```
 //! use std::sync::Arc;
 //!
+//! use canvist_layout::DisplayOptions;
 //! use canvist_layout::DocumentLayout;
 //! use canvist_layout::FixedMeasurer;
 //! use canvist_layout::LayoutOptions;
@@ -43,6 +50,9 @@
 //!
 //! // 14 characters at 9.6 px do not fit in 80 px, so the paragraph wraps.
 //! assert_eq!(layout.line_count(block), Some(2));
+//!
+//! let display = layout.display_list(&DisplayOptions::viewport(0.0, 600.0));
+//! assert!(canvist_layout::to_svg(&display).contains("Hello, "));
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
@@ -53,11 +63,20 @@ mod style;
 mod text;
 mod theme;
 
+mod display;
 mod document;
 mod navigate;
+mod render;
 
 use canvist_model::BlockId;
 use canvist_model::Point;
+pub use display::DecorationKind;
+pub use display::DisplayItem;
+pub use display::DisplayList;
+pub use display::DisplayOptions;
+pub use display::RectKind;
+pub use display::SlotKind;
+pub use display::TextRun;
 pub use document::Damage;
 pub use document::DocumentLayout;
 pub use document::LayoutOptions;
@@ -78,6 +97,10 @@ pub use navigate::LayoutNavigator;
 pub use navigate::LineEdge;
 pub use navigate::VerticalDirection;
 pub use navigate::VerticalMotion;
+pub use render::HtmlDocument;
+pub use render::HtmlOptions;
+pub use render::to_html;
+pub use render::to_svg;
 pub use style::BlockStyle;
 pub use theme::AttrBinding;
 pub use theme::BlockPatch;

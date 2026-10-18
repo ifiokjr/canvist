@@ -8,10 +8,6 @@ use canvist_model::Commit;
 use canvist_model::Document;
 
 use self::heights::Heights;
-#[expect(
-	unused_imports,
-	reason = "the display list, the next layer of this stack, is the caller"
-)]
 pub(crate) use self::query::Origin;
 use self::rows::Flat;
 pub(crate) use self::rows::Marker;
@@ -539,10 +535,6 @@ impl DocumentLayout {
 		&self.styles
 	}
 
-	#[expect(
-		dead_code,
-		reason = "the display list, the next layer of this stack, is the caller"
-	)]
 	pub(crate) fn cache(&self) -> &MeasureCache {
 		&self.cache
 	}
