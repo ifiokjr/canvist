@@ -35,6 +35,8 @@ pub enum EditKind {
 	Paste,
 	/// An input rule rewrote the text before the caret.
 	InputRule,
+	/// A collaborator's change, whose original kind is not known locally.
+	Remote,
 }
 
 impl EditKind {

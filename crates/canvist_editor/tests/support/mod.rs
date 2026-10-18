@@ -37,14 +37,15 @@ use canvist_model::MarkSet;
 use canvist_model::MarkSpec;
 use canvist_model::Point;
 use canvist_model::Schema;
+use canvist_model::SchemaBuilder;
 use canvist_model::Selection;
 use canvist_model::TreeContent;
 use canvist_model::Value;
 
-/// A StarterKit-shaped schema with TipTap's names.
-pub fn schema() -> Arc<Schema> {
+/// Register a StarterKit-shaped set of types with TipTap's names.
+pub fn specs(builder: SchemaBuilder) -> SchemaBuilder {
 	let item_content = &["paragraph", "bulletList", "orderedList", "taskList"];
-	let schema = Schema::builder()
+	builder
 		.block(BlockSpec::text("paragraph"))
 		.block(BlockSpec::text("heading").attrs(Attrs::new().with("level", 1)))
 		.block(BlockSpec::text("codeBlock"))
@@ -67,15 +68,21 @@ pub fn schema() -> Arc<Schema> {
 		.mark(MarkSpec::new("link").inclusive(false))
 		.embed(EmbedSpec::new("mention"))
 		.embed(EmbedSpec::new("hardBreak"))
-		.build();
-	Arc::new(schema.expect("the test schema is valid"))
 }
 
-/// Parse an outline into an editor state with its selection.
-pub fn state(outline: &str) -> EditorState {
-	let schema = schema();
+/// The schema [`specs`] describes.
+pub fn schema() -> Arc<Schema> {
+	Arc::new(
+		specs(Schema::builder())
+			.build()
+			.expect("the test schema is valid"),
+	)
+}
+
+/// Parse an outline into a document of `schema` and the selection it marks.
+pub fn parse(schema: &Arc<Schema>, outline: &str) -> (Document, Option<Selection>) {
 	let mut parser = Parser {
-		schema: &schema,
+		schema,
 		next_id: 0,
 		anchor: None,
 		head: None,
@@ -86,7 +93,12 @@ pub fn state(outline: &str) -> EditorState {
 	doc.transaction()
 		.insert_blocks(None, 0, roots)
 		.expect("the outline is valid for the schema");
-	let selection = parser.selection();
+	(doc, parser.selection())
+}
+
+/// Parse an outline into an editor state with its selection.
+pub fn state(outline: &str) -> EditorState {
+	let (doc, selection) = parse(&schema(), outline);
 	let mut state = EditorState::new(doc).expect("outline state");
 
 	if let Some(selection) = selection {
@@ -391,8 +403,13 @@ fn render_block(state: &EditorState, id: BlockId, depth: usize, out: &mut Vec<St
 	line.push_str(&render_attrs(block.attrs(), &spec.attrs));
 
 	if let Content::Inline(text) = block.content() {
-		line.push_str(": ");
-		line.push_str(&render_inline(state, block, text));
+		let rendered = render_inline(state, block, text);
+		line.push(':');
+
+		if !rendered.is_empty() {
+			line.push(' ');
+			line.push_str(&rendered);
+		}
 	}
 
 	if let Selection::Blocks { anchor, head } = state.selection() {
