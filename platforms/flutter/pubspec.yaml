@@ -1,0 +1,14 @@
+name: canvist_flutter
+description: Flutter binding for the canvist Rust core, built by a Dart build hook through flutter_rust_bridge.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter_rust_bridge: 2.13.0
+  flutter_rust_bridge_hooks: 2.13.0
+
+dev_dependencies:
+  lints: ^6.0.0

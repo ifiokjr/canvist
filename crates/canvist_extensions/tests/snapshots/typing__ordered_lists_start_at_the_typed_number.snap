@@ -1,0 +1,48 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"3. third⏎fourth\")"
+---
+{
+  "doc": [
+    {
+      "attrs": {
+        "start": 3
+      },
+      "content": [
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "text": "third",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "listItem"
+        },
+        {
+          "content": [
+            {
+              "content": [
+                {
+                  "text": "fourth",
+                  "type": "text"
+                }
+              ],
+              "type": "paragraph"
+            }
+          ],
+          "type": "listItem"
+        }
+      ],
+      "type": "orderedList"
+    },
+    {
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0.1.0@6"
+}

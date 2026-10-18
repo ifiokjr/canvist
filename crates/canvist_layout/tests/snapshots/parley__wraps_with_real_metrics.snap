@@ -1,0 +1,20 @@
+---
+source: crates/canvist_layout/tests/parley.rs
+expression: "layout(&[\"The quick brown fox jumps over the lazy dog, twice over.\"],\n180.0).dump()"
+---
+row 1.0 paragraph y=0 h=72 x=0 w=180
+  line 0..20 soft y=0 h=24 base=17.28125 w=141.01
+    ltr x=0 w=30.59 "The "
+    ltr x=30.59 w=42.56 "quick "
+    ltr x=73.15 w=47.01 "brown "
+    ltr x=120.16 w=25.33 "fox "
+  line 20..45 soft y=24 h=24 base=17.28125 w=169.49
+    ltr x=0 w=47.17 "jumps "
+    ltr x=47.17 w=34.43 "over "
+    ltr x=81.6 w=26.85 "the "
+    ltr x=108.45 w=30.94 "lazy "
+    ltr x=139.39 w=34.58 "dog, "
+  line 45..56 y=48 h=24 base=17.28125 w=74.43
+    ltr x=0 w=41.2 "twice "
+    ltr x=41.2 w=33.23 "over."
+height 72

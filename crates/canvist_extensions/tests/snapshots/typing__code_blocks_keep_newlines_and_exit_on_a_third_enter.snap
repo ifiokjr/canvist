@@ -1,0 +1,42 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"```rust fn⏎main⏎⏎⏎after **not code**\")"
+---
+{
+  "doc": [
+    {
+      "attrs": {
+        "language": "rust"
+      },
+      "content": [
+        {
+          "text": "fn\nmain",
+          "type": "text"
+        }
+      ],
+      "type": "codeBlock"
+    },
+    {
+      "content": [
+        {
+          "text": "after ",
+          "type": "text"
+        },
+        {
+          "marks": [
+            {
+              "type": "bold"
+            }
+          ],
+          "text": "not code",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 1@14"
+}

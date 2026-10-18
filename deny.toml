@@ -9,6 +9,14 @@ exclude = ["canvist_book", "canvist_test"]
 [advisories]
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
+ignore = [
+	# `smallstr` is unmaintained; it is a dependency of `yrs` (still in 0.28) with no maintained
+	# replacement upstream. Informational only, no known vulnerability.
+	{ id = "RUSTSEC-2026-0215", reason = "transitive via yrs, no upstream alternative yet" },
+	# `ttf-parser` is unmaintained; it only enters through `fontdue` in the v1 `canvist_render`
+	# crate, which the v2 roadmap deletes (M9).
+	{ id = "RUSTSEC-2026-0192", reason = "transitive via fontdue in the v1 renderer slated for removal" },
+]
 
 [licenses]
 allow = [
@@ -23,6 +31,7 @@ allow = [
 	"BSL-1.0",
 	"CC0-1.0",
 	"MIT-0",
+	"MPL-2.0",
 	"Unicode-DFS-2016",
 	"OpenSSL",
 ]

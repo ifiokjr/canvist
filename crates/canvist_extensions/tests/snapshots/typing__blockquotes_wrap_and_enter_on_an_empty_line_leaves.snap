@@ -1,0 +1,35 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"> quoted⏎⏎after\")"
+---
+{
+  "doc": [
+    {
+      "content": [
+        {
+          "content": [
+            {
+              "text": "quoted",
+              "type": "text"
+            }
+          ],
+          "type": "paragraph"
+        }
+      ],
+      "type": "blockquote"
+    },
+    {
+      "content": [
+        {
+          "text": "after",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 1@5"
+}

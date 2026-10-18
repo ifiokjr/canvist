@@ -1,0 +1,45 @@
+# XcodeGen spec for the sample app. Generate the project with `xcodegen`
+# (the `test:ios` devenv script does this for you).
+name: CanvistExample
+options:
+  bundleIdPrefix: io.github.ifiokjr.canvist
+  deploymentTarget:
+    iOS: "17.0"
+packages:
+  Canvist:
+    path: ..
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_STYLE: Automatic
+targets:
+  CanvistExample:
+    type: application
+    platform: iOS
+    sources: [CanvistExample]
+    dependencies:
+      - package: Canvist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.ifiokjr.canvist.example
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_CFBundleDisplayName: Canvist
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+  CanvistExampleUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [CanvistExampleUITests]
+    dependencies:
+      - target: CanvistExample
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.ifiokjr.canvist.example.uitests
+        GENERATE_INFOPLIST_FILE: true
+schemes:
+  CanvistExample:
+    build:
+      targets:
+        CanvistExample: all
+    test:
+      targets: [CanvistExampleUITests]

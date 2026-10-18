@@ -1,0 +1,36 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"abcdef⏎x⏎123456↑↑X\")"
+---
+{
+  "doc": [
+    {
+      "content": [
+        {
+          "text": "abcdefX",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "content": [
+        {
+          "text": "x",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "content": [
+        {
+          "text": "123456",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0@7"
+}

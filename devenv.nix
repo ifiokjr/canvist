@@ -19,6 +19,7 @@ in
       deno
       dprint
       extra.knope
+      extra.monostyle
       mdbook
       nixfmt
       rustup
@@ -27,6 +28,7 @@ in
     ]
     ++ lib.optionals stdenv.isDarwin [
       coreutils
+      xcodegen
     ];
 
   enterShell = ''
@@ -96,6 +98,46 @@ in
       description = "Build the WASM package for the web.";
       binary = "bash";
     };
+    "build:ios" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/apple/build.sh"
+      '';
+      description = "Build CanvistFFI.xcframework and the Swift bindings (macOS only).";
+      binary = "bash";
+    };
+    "build:android" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/android/build.sh"
+      '';
+      description = "Build libcanvist_ffi.so with cargo-ndk and the Kotlin bindings.";
+      binary = "bash";
+    };
+    "test:ios" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/apple/test.sh"
+      '';
+      description = "Run the Swift package and sample app tests on an iOS Simulator (macOS only).";
+      binary = "bash";
+    };
+    "test:android" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/android/test.sh"
+      '';
+      description = "Run the Android library and sample app instrumented tests on an emulator.";
+      binary = "bash";
+    };
+    "test:flutter" = {
+      exec = ''
+        set -e
+        "$DEVENV_ROOT/platforms/flutter/test.sh"
+      '';
+      description = "Run the Flutter integration tests on an iOS Simulator and an Android emulator.";
+      binary = "bash";
+    };
     "test:all" = {
       exec = ''
         set -e
@@ -119,6 +161,14 @@ in
         cargo test --doc --workspace --exclude canvist_wasm --exclude canvist_test
       '';
       description = "Run documentation tests.";
+      binary = "bash";
+    };
+    "test:perf" = {
+      exec = ''
+        set -e
+        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --test perf_budgets -- --ignored --test-threads=1 --nocapture
+      '';
+      description = "Fail when a hot path exceeds its performance budget (release mode; CANVIST_PERF_SLACK scales budgets).";
       binary = "bash";
     };
     "test:playwright" = {
@@ -171,11 +221,24 @@ in
       description = "Run cargo-deny checks for security advisories and license compliance.";
       binary = "bash";
     };
+    "lint:style" = {
+      exec = ''
+        set -e
+        monostyle check crates/canvist_model --fail-under 90
+        monostyle check crates/canvist_layout --fail-under 90
+        monostyle check crates/canvist_editor --fail-under 90
+        monostyle check crates/canvist_extensions --fail-under 90
+        monostyle check crates/canvist_collab --fail-under 90
+      '';
+      description = "Require readability and complexity scores of at least 90 for the v2 crates.";
+      binary = "bash";
+    };
     "lint:all" = {
       exec = ''
         set -e
         lint:clippy
         lint:format
+        lint:style
         deny:check
       '';
       description = "Run all checks.";

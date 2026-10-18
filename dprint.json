@@ -48,7 +48,12 @@
 		".bin/",
 		".local-cache/",
 		"**/pkg/",
-		"**/*.t.md"
+		"**/*.t.md",
+		"platforms/flutter/rust/src/frb_generated.rs",
+		"platforms/flutter/example/android/**",
+		"platforms/flutter/example/ios/**",
+		"platforms/apple/.build/**",
+		"platforms/android/**/build/**"
 	],
 	"plugins": [
 		"https://plugins.dprint.dev/typescript-0.95.13.wasm",

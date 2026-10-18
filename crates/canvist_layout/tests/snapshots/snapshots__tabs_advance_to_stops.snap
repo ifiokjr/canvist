@@ -1,0 +1,18 @@
+---
+source: crates/canvist_layout/tests/snapshots.rs
+expression: "layout(&doc, 600.0).dump()"
+---
+row 1.0 paragraph y=0 h=24 x=0 w=600
+  line 0..10 y=0 h=24 base=16.796875 w=240
+    ltr x=0 w=9.6 "a"
+    ltr tab x=9.6 w=67.2 "\t"
+    ltr x=76.8 w=19.2 "bb"
+    ltr tab x=96 w=57.6 "\t"
+    ltr x=153.6 w=28.8 "ccc"
+    ltr tab x=182.4 w=48 "\t"
+    ltr x=230.4 w=9.6 "d"
+row 1.1 paragraph y=36 h=24 x=0 w=600
+  line 0..9 y=0 h=24 base=16.796875 w=153.6
+    ltr tab x=0 w=76.8 "\t"
+    ltr x=76.8 w=76.8 "indented"
+height 60

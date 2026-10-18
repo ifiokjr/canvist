@@ -5,8 +5,11 @@
 
 use canvist_core::Color;
 use canvist_core::Style;
-use canvist_core::layout::{LayoutConfig, LayoutLine, TextFragment, TextMeasure, layout_paragraph};
-
+use canvist_core::layout::LayoutConfig;
+use canvist_core::layout::LayoutLine;
+use canvist_core::layout::TextFragment;
+use canvist_core::layout::TextMeasure;
+use canvist_core::layout::layout_paragraph;
 
 pub(crate) struct LayoutConstants {
 	/// Horizontal padding from canvas edge to content area (pixels).
@@ -168,7 +171,8 @@ pub(crate) fn layout_paragraphs(
 
 		// For headings, override the layout config with a larger font size.
 		let para_layout_config = if bt != canvist_core::BlockType::Body {
-			let heading_size = bt.default_font_size() * (layout_config.default_style.font_size.unwrap_or(16.0) / 16.0);
+			let heading_size = bt.default_font_size()
+				* (layout_config.default_style.font_size.unwrap_or(16.0) / 16.0);
 			let heading_style = layout_config.default_style.clone().font_size(heading_size);
 			LayoutConfig {
 				max_width: layout_config.max_width,
@@ -192,10 +196,7 @@ pub(crate) fn layout_paragraphs(
 		});
 
 		// Advance y_offset for next paragraph.
-		let para_height = result
-			.last()
-			.map(|p| p.layout.total_height)
-			.unwrap_or(0.0);
+		let para_height = result.last().map(|p| p.layout.total_height).unwrap_or(0.0);
 		y_offset += para_height;
 		// Add paragraph spacing (except after the last paragraph, but it
 		// doesn't matter — it just adds trailing space).

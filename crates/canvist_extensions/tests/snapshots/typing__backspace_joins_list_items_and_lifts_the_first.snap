@@ -1,0 +1,21 @@
+---
+source: crates/canvist_extensions/tests/typing.rs
+expression: "typed(\"- one⏎two←←←⌫⌫⌫⌫⌫\")"
+---
+{
+  "doc": [
+    {
+      "content": [
+        {
+          "text": "two",
+          "type": "text"
+        }
+      ],
+      "type": "paragraph"
+    },
+    {
+      "type": "paragraph"
+    }
+  ],
+  "selection": "caret 0@0"
+}

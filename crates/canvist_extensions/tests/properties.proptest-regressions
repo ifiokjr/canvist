@@ -1,0 +1,21 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 72de7e2975f14ab6ef11530bb921655b4819659ea58431f93dca9b63768e3a15 # shrinks to tokens = ["["]
+cc 60fc9ab4d2a7bad8ce1b9526ffe6487c0227a46a581b15d9c627cf53f13f49c9 # shrinks to tokens = ["a", "[Mod-z]"]
+cc 6634aeca9d531e2438aebd13836dbea7977815e47f0751a3565ed7339c08821e # shrinks to tokens = ["#", " ", "⌫"]
+cc 55d8c10b50716028789f382330d7e2cca4e6a0cdc2081b851bd3fbc148cf731d # shrinks to tokens = ["a", "[Mod-Alt-c]", "[Mod-Shift-9]"]
+cc e571bbfd813016006ae4ea25a1d28f69c5f5fafaffb5667b3cde23ab2af6d18d # shrinks to tokens = [" "]
+cc 364937710a897b783d43a64018ed2cdcd9efb92e857f59ad52e3b401203de884 # shrinks to tokens = ["_", "#", "a", "a", "a", "a", "_", "⏎", "[Mod-Shift-8]", "[Mod-b]", "a", "a", "←", "a", "[Shift-ArrowUp]", "a"]
+cc 03d92b16b97cd3141d69ae2fea9638402233d03630ae5cd01f954e5dd73e625e # shrinks to tokens = [" ", "[Mod-Alt-1]", "[Mod-Alt-1]", "a", "↑", "-", "→", "⏎"]
+cc f6b465d9fea9002f6850890c1e78ccceec5cfb1ae4db7f536023ff1779089eb0 # shrinks to tokens = ["[Mod-i]", "[Mod-b]", " ", "*"]
+cc 6969594ace0a081d0eb1057555412b7dbfc5a84a738829608d7ae9570a7738ec # shrinks to tokens = ["[Mod-e]", "[Shift-Enter]"]
+cc c565acb70078bfe587bfc262a77066e309f835cdbdacd1aafb791a41986fb777 # shrinks to tokens = ["[Mod-e]", "a", "`", "[Shift-Enter]", "#"]
+cc 9d89378a25fe1b005a36b65ec3a04886bc24c0e1bf6b93739a0416419478cebc # shrinks to tokens = ["[Mod-Shift-8]", "#", "a", "a", "→", "[Mod-Shift-7]", "→", "a", "[Mod-Shift-8]"]
+cc e80613b9ee760b643731ee355c8387b76aee8508935ee3a923e235c1c1a1fc7d # shrinks to tokens = ["[Mod-b]", "*", "[Shift-Enter]", "a"]
+cc 0273c9780a36be871f7b7fe34709a861c27b4522599f28965bdfefee9d981bcf # shrinks to tokens = [" ", "#", "↑", "#", "[Mod-Alt-1]"]
+cc 5bfc0c5e68a4c1278b85cd5acd92c845db80d614743c5e17614b8429901bdcc4 # shrinks to tokens = ["[Mod-e]", "[Shift-Enter]", "`", "`", "a"]
+cc d40ca7985bdb4f87de8955dada42e1279dd6a3f4b8cd97f833562e3776a8ff1d # shrinks to tokens = ["[Mod-e]", "#", "[Mod-b]", "#", "a", "`", "a", "[Mod-b]", "[Shift-Enter]", "a"]
