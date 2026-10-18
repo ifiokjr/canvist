@@ -122,6 +122,14 @@ in
       description = "Run documentation tests.";
       binary = "bash";
     };
+    "test:perf" = {
+      exec = ''
+        set -e
+        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --test perf_budgets -- --ignored --test-threads=1 --nocapture
+      '';
+      description = "Fail when a hot path exceeds its performance budget (release mode; CANVIST_PERF_SLACK scales budgets).";
+      binary = "bash";
+    };
     "test:playwright" = {
       exec = ''
         set -e

@@ -55,6 +55,29 @@ jobs:
         run: test:all
         shell: devenv shell -c -- bash -e {0}
 
+  perf:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    env:
+      # Shared runners are slower and noisier than a developer machine.
+      CANVIST_PERF_SLACK: "2"
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: performance budgets
+        run: test:perf
+        shell: devenv shell -c -- bash -e {0}
+
+      - name: benchmarks compile
+        run: cargo bench --workspace --exclude canvist_wasm --exclude canvist_test --no-run
+        shell: devenv shell -c -- bash -e {0}
+
   build:
     timeout-minutes: 60
     runs-on: ubuntu-latest

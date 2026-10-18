@@ -172,9 +172,20 @@ These budgets are enforced by benchmarks and checked in CI once each host exists
 
 For reference, the best public number the research found is Lexical issue #7422: about 1.8 ms per keystroke at 5,000 paragraphs, spent copying state.
 
+## Performance is a first-class primitive
+
+Every change is judged on speed as well as correctness. The rules for every pull request:
+
+1. **Budgets are tests.** Each hot path has a budget in the table above and a release-mode test in `tests/perf_budgets.rs` in its crate. `test:perf` runs these tests and the `perf` CI job fails when one is over budget. New hot paths get a budget test in the same PR that introduces them.
+2. **Benchmarks accompany code.** A PR that adds or changes a hot path adds or extends `divan` benchmarks at realistic sizes: 100, 10k, and 100k blocks, long paragraphs, and heavy formatting.
+3. **Numbers in the description.** The PR description reports before and after benchmark numbers for every hot path it touches. A regression of more than 5% needs a written justification, or it doesn't merge.
+4. **Complexity is part of the design.** Anything that runs per keystroke, per frame, or per visible line must be independent of document size, or bounded by the viewport. Structural edits may cost `O(siblings)`, never `O(document)`, without a recorded reason.
+5. **Measure the real thing.** Each host adds end-to-end latency measurements (keystroke to paint, scroll, open) and a typing-burst stress test before it ships.
+
 ## Quality gates
 
 - `cargo nextest`, doc tests, and property tests for every crate. Every step kind is checked for invariants, for undo restoring the original exactly, and for failed steps changing nothing.
+- `test:perf`: release-mode budget tests, which fail CI when a hot path regresses past its budget.
 - `monostyle check --fail-under 90` for both readability and complexity on every v2 crate (`lint:style`).
 - `clippy` (pedantic) and `dprint`.
 - Platform end-to-end suites: Playwright for the web, including the SSR → hydrate pixel diff; XCTest on the iOS Simulator; androidx.test on an emulator; Flutter `integration_test`.
