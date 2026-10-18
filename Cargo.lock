@@ -224,6 +224,7 @@ dependencies = [
 name = "canvist_layout"
 version = "0.1.0"
 dependencies = [
+ "canvist_editor",
  "canvist_model",
  "divan",
  "icu_segmenter",
