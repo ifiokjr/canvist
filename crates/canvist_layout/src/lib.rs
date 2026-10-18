@@ -13,7 +13,7 @@
 //!   [`Commit`](canvist_model::Commit) touched.
 //! - Geometry queries: [`DocumentLayout::hit_test`],
 //!   [`DocumentLayout::caret_rect`], [`DocumentLayout::selection_rects`], and
-//!   the [`LineNavigator`] the editor uses for vertical caret motion.
+//!   the [`LayoutNavigator`] the editor uses for vertical caret motion.
 //!
 //! # Example
 //!
@@ -76,7 +76,6 @@ pub use measure::SegmentRequest;
 pub use measure::TextMeasurer;
 pub use navigate::LayoutNavigator;
 pub use navigate::LineEdge;
-pub use navigate::LineNavigator;
 pub use navigate::VerticalDirection;
 pub use navigate::VerticalMotion;
 pub use style::BlockStyle;

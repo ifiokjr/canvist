@@ -16,7 +16,6 @@ use canvist_layout::FixedMeasurer;
 use canvist_layout::LayoutError;
 use canvist_layout::LayoutOptions;
 use canvist_layout::LineEdge;
-use canvist_layout::LineNavigator;
 use canvist_layout::MeasureBatch;
 use canvist_layout::MeasureOutput;
 use canvist_layout::TextMeasurer;

@@ -1,9 +1,9 @@
 //! Vertical caret motion and line boundaries for the editor engine.
 //!
 //! The editor owns grapheme and word motion; anything that depends on where
-//! lines wrap goes through [`LineNavigator`], which [`DocumentLayout`]
-//! implements via [`DocumentLayout::navigator`]. Headless editor tests can
-//! implement the trait with a fake.
+//! lines wrap goes through a [`LayoutNavigator`], from
+//! [`DocumentLayout::navigator`]. The editor engine defines the navigation
+//! trait it calls, so it stays free of layout; hosts adapt this type to it.
 
 use canvist_model::Document;
 use canvist_model::Point;
@@ -44,25 +44,8 @@ pub struct VerticalMotion {
 	pub goal_x: f32,
 }
 
-/// Line-aware caret motion.
-pub trait LineNavigator {
-	/// Move one visual line up or down from `from`, aiming at `goal_x`
-	/// (document pixels; `None` uses the caret's own position). Returns
-	/// `Ok(None)` at the first or last line of the document. Leaf blocks such
-	/// as images are skipped.
-	fn vertical(
-		&mut self,
-		from: Caret,
-		direction: VerticalDirection,
-		goal_x: Option<f32>,
-	) -> Result<Option<VerticalMotion>, LayoutError>;
-
-	/// The start or end of the visual line holding `at`.
-	fn line_edge(&mut self, at: Caret, edge: LineEdge) -> Result<Caret, LayoutError>;
-}
-
-/// A [`LineNavigator`] backed by a [`DocumentLayout`]. Blocks it moves into
-/// are laid out on demand, with one measurer call each.
+/// Line-aware caret motion backed by a [`DocumentLayout`]. Blocks it moves
+/// into are laid out on demand, with one measurer call each.
 pub struct LayoutNavigator<'a> {
 	layout: &'a mut DocumentLayout,
 	doc: &'a Document,
@@ -169,8 +152,12 @@ impl LayoutNavigator<'_> {
 	}
 }
 
-impl LineNavigator for LayoutNavigator<'_> {
-	fn vertical(
+impl LayoutNavigator<'_> {
+	/// Move one visual line up or down from `from`, aiming at `goal_x`
+	/// (document pixels; `None` uses the caret's own position). Returns
+	/// `Ok(None)` at the first or last line of the document. Leaf blocks such
+	/// as images are skipped.
+	pub fn vertical(
 		&mut self,
 		from: Caret,
 		direction: VerticalDirection,
@@ -198,7 +185,8 @@ impl LineNavigator for LayoutNavigator<'_> {
 		}))
 	}
 
-	fn line_edge(&mut self, at: Caret, edge: LineEdge) -> Result<Caret, LayoutError> {
+	/// The start or end of the visual line holding `at`.
+	pub fn line_edge(&mut self, at: Caret, edge: LineEdge) -> Result<Caret, LayoutError> {
 		let index = self.row(at)?;
 		let Some(layout) = self.layout.rows()[index].layout.as_ref() else {
 			return Ok(at);
