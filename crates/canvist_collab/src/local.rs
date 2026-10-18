@@ -159,6 +159,17 @@ impl<'a> Local<'a, '_> {
 		tree::children_of(&self.map(parent)?, &*self.txn).ok_or(CollabError::NotShared(parent))
 	}
 
+	/// Fail, rather than let yrs panic, when UTF-16 index `end` lies past the
+	/// end of `text`. That only happens if the document and the shared text
+	/// have diverged.
+	fn fits(&self, text: &TextRef, block: BlockId, end: u32) -> Result<(), CollabError> {
+		if end <= text.len(&*self.txn) {
+			Ok(())
+		} else {
+			Err(CollabError::Offset { block, offset: end })
+		}
+	}
+
 	/// How to convert UTF-8 offsets in `block` for the step being translated.
 	fn offsets(&self, block: BlockId, text: &TextRef) -> Offsets<'a> {
 		let doc: &'a Document = self.doc;
@@ -178,6 +189,7 @@ impl<'a> Local<'a, '_> {
 	) -> Result<(), CollabError> {
 		let text = self.text(block)?;
 		let at = self.offsets(block, &text).utf16(block, offset)?;
+		self.fits(&text, block, at)?;
 		text::insert_inline(&text, self.txn, at, self.schema, content);
 		Ok(())
 	}
@@ -193,7 +205,9 @@ impl<'a> Local<'a, '_> {
 	) -> Result<(), CollabError> {
 		let text = self.text(block)?;
 		let at = self.offsets(block, &text).utf16(block, start)?;
-		text.remove_range(self.txn, at, text::utf16_len(removed.as_str()));
+		let len = text::utf16_len(removed.as_str());
+		self.fits(&text, block, at + len)?;
+		text.remove_range(self.txn, at, len);
 		Ok(())
 	}
 
@@ -207,6 +221,7 @@ impl<'a> Local<'a, '_> {
 		let offsets = self.offsets(block, &text);
 		let start = offsets.utf16(block, range.start)?;
 		let end = offsets.utf16(block, range.end)?;
+		self.fits(&text, block, end)?;
 		text.format(self.txn, start, end - start, format);
 		Ok(())
 	}
@@ -224,6 +239,7 @@ impl<'a> Local<'a, '_> {
 		for (len, marks) in runs {
 			let end = start + len;
 			let (from, to) = (offsets.utf16(block, start)?, offsets.utf16(block, end)?);
+			self.fits(&text, block, to)?;
 			text.format(
 				self.txn,
 				from,
@@ -355,7 +371,7 @@ impl<'a> Local<'a, '_> {
 		blocks: &[BlockTree],
 	) -> Result<(), CollabError> {
 		let array = self.array(parent)?;
-		let start = self.insert_position(&array, parent, index);
+		let start = self.insert_position(&array, parent, index)?;
 		let mut registration = Registration::default();
 
 		// Last to first at one position walks the array to it only once per
@@ -382,7 +398,7 @@ impl<'a> Local<'a, '_> {
 		inverse: &Step,
 	) -> Result<(), CollabError> {
 		let array = self.array(parent)?;
-		let positions = self.shown_positions(&array, parent, index..index + count);
+		let positions = self.shown_positions(&array, parent, index..index + count)?;
 
 		for &position in positions.iter().rev() {
 			array.remove(self.txn, position);
@@ -401,7 +417,7 @@ impl<'a> Local<'a, '_> {
 		(to_parent, to_index): (Option<BlockId>, usize),
 	) -> Result<(), CollabError> {
 		let source = self.array(parent)?;
-		let positions = self.shown_positions(&source, parent, index..index + count);
+		let positions = self.shown_positions(&source, parent, index..index + count)?;
 		let snapshots: Vec<Snapshot> = positions
 			.iter()
 			.filter_map(|&position| {
@@ -417,7 +433,7 @@ impl<'a> Local<'a, '_> {
 		}
 
 		let target = self.array(to_parent)?;
-		let start = self.insert_position(&target, to_parent, to_index);
+		let start = self.insert_position(&target, to_parent, to_index)?;
 		let mut copies = Vec::new();
 
 		for snapshot in snapshots.iter().rev() {
@@ -442,10 +458,13 @@ impl<'a> Local<'a, '_> {
 			.block(block)
 			.is_some_and(|found| found.parent() == parent);
 
+		let array = self.array(parent)?;
+
 		if self.single_structural
 			&& same_parent
 			&& self.registry.is_mirrored(parent)
 			&& let Some(index) = self.doc.index_in_parent(block)
+			&& (index as u32) < array.len(&*self.txn)
 		{
 			return Ok(index as u32);
 		}
@@ -455,21 +474,27 @@ impl<'a> Local<'a, '_> {
 			.block(block)
 			.ok_or(CollabError::NotShared(block))?
 			.map;
-		let array = self.array(parent)?;
 		position_of(&array, &*self.txn, &map).ok_or(CollabError::NotShared(block))
 	}
 
 	/// The yrs index at which to insert before model child `index`.
-	fn insert_position(&self, array: &ArrayRef, parent: Option<BlockId>, index: usize) -> u32 {
-		if self.registry.is_mirrored(parent) {
-			return index as u32;
+	fn insert_position(
+		&self,
+		array: &ArrayRef,
+		parent: Option<BlockId>,
+		index: usize,
+	) -> Result<u32, CollabError> {
+		let len = array.len(&*self.txn);
+
+		if !self.registry.is_mirrored(parent) {
+			let shown = self.shown_positions(array, parent, index..index + 1)?;
+			return Ok(shown.first().copied().unwrap_or(len));
 		}
 
-		let shown = self.shown_positions(array, parent, index..index + 1);
-		shown
-			.first()
-			.copied()
-			.unwrap_or_else(|| array.len(&*self.txn))
+		let position = index as u32;
+		(position <= len)
+			.then_some(position)
+			.ok_or(CollabError::Diverged)
 	}
 
 	/// The yrs indices of the model children of `parent` in `range`.
@@ -478,12 +503,16 @@ impl<'a> Local<'a, '_> {
 		array: &ArrayRef,
 		parent: Option<BlockId>,
 		range: Range<usize>,
-	) -> Vec<u32> {
+	) -> Result<Vec<u32>, CollabError> {
 		if self.registry.is_mirrored(parent) {
-			return (range.start as u32..range.end as u32).collect();
+			if range.end > array.len(&*self.txn) as usize {
+				return Err(CollabError::Diverged);
+			}
+
+			return Ok((range.start as u32..range.end as u32).collect());
 		}
 
-		(0_u32..)
+		let positions = (0_u32..)
 			.zip(array.iter(&*self.txn))
 			.filter(|(_, item)| {
 				let Out::YMap(map) = item else {
@@ -496,7 +525,9 @@ impl<'a> Local<'a, '_> {
 			.map(|(position, _)| position)
 			.skip(range.start)
 			.take(range.len())
-			.collect()
+			.collect();
+
+		Ok(positions)
 	}
 }
 
