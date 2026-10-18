@@ -15,6 +15,7 @@ rust-version.workspace = true
 description = "Incremental text and block layout for the canvist editor: line breaking, bidi, hit testing, display lists, and SVG/HTML renderers"
 
 [dependencies]
+canvist_editor = { workspace = true, optional = true }
 canvist_model = { workspace = true }
 icu_segmenter = { version = "^2.3", default-features = false, features = ["compiled_data"] }
 parley = { version = "^0.12", default-features = false, features = ["std"], optional = true }
@@ -34,6 +35,7 @@ harness = false
 
 [features]
 default = []
+editor = ["dep:canvist_editor"]
 parley = ["dep:parley"]
 
 [lints]
