@@ -3,6 +3,7 @@
 - [Introduction](./readme.md)
 - [v2 Architecture](./v2/architecture.md)
 - [v2 Roadmap](./v2/roadmap.md)
+- [v2 SSR CSS Contract](./v2/ssr-css-contract.md)
 - [Research: Editor Landscape](./research/editor-landscape.md)
 - [v1 Architecture](./architecture.md)
 - [Getting Started](./getting-started.md)

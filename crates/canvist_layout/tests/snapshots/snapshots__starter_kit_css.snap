@@ -1,0 +1,38 @@
+---
+source: crates/canvist_layout/tests/snapshots.rs
+expression: "html.css.replace('}', \"}\\n\")"
+---
+.cv-doc{box-sizing:content-box;width:320px;margin:0;padding:0;font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;line-break:strict;hyphens:manual;text-align:start;text-indent:0;text-transform:none;word-spacing:0;tab-size:8;font-kerning:normal;font-variant:normal;font-variant-ligatures:normal;font-feature-settings:normal;font-variation-settings:normal;font-size-adjust:none;font-stretch:normal;text-rendering:auto;text-wrap:wrap;text-autospace:no-autospace;text-spacing-trim:space-all;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.cv-doc :where(*){margin:0;padding:0;border:0 solid transparent;font:inherit;color:inherit;background:none;text-decoration:none;list-style:none;vertical-align:baseline;white-space:inherit;letter-spacing:inherit;box-sizing:content-box}
+.cv-doc :where(.cv-b){display:flow-root}
+.cv-doc :where(.cv-e){display:inline-block;white-space:nowrap;text-indent:0}
+.cv-doc .cv-s0{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:19.2px;font-weight:700;font-style:normal;line-height:1.1;color:#2e2b29;letter-spacing:0px;}
+.cv-doc .cv-s1{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;}
+.cv-doc .cv-s2{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;padding:0px 16px 0px 22.4px;}
+.cv-doc .cv-s3{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;}
+.cv-doc .cv-s4{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;}
+.cv-doc .cv-s5{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;padding:0px 16px 0px 22.4px;}
+.cv-doc .cv-s6{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;padding:0px 16px 0px 22.4px;}
+.cv-doc .cv-s7{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;padding:0px 16px 0px 22.4px;}
+.cv-doc .cv-s8{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;padding:0px 0px 0px 16px;border-left:3px solid #d6d3d1;}
+.cv-doc .cv-s9{font-family:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;font-size:12.8px;font-weight:400;font-style:normal;line-height:1.5;color:#ffffff;letter-spacing:0px;padding:12px 16px 12px 16px;background-color:#2e2b29;border-radius:8px;}
+.cv-doc .cv-s10{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;height:1px;background-color:#e5e3e1;}
+.cv-doc .cv-s11{font-family:Inter, ui-sans-serif, system-ui, sans-serif;font-size:16px;font-weight:400;font-style:normal;line-height:1.5;color:#2e2b29;letter-spacing:0px;}
+.cv-doc .cv-mk,.cv-doc .cv-mk-t{position:relative}
+.cv-doc .cv-mk::before{position:absolute;top:0;right:100%;margin-right:6.4px;white-space:nowrap;}
+.cv-doc .cv-mk-o{counter-increment:cv-n}
+.cv-doc .cv-mk-o::before{content:counter(cv-n) "."}
+.cv-doc .cv-mk-b0::before{content:"•"}
+.cv-doc .cv-mk-b1::before{content:"◦"}
+.cv-doc .cv-mk-b2::before{content:"▪"}
+.cv-doc .cv-check{appearance:none;-webkit-appearance:none;position:absolute;right:100%;margin:0 6.4px 0 0;width:14px;height:14px;box-sizing:border-box;border:1px solid #8a8580;border-radius:3px;background:none}
+.cv-doc .cv-check:checked{background:#2e2b29}
+.cv-doc .cv-m-bold{font-weight:700;}
+.cv-doc .cv-m-italic{font-style:italic;}
+.cv-doc .cv-m-underline{text-decoration-line:underline;text-decoration-style:solid;}
+.cv-doc .cv-m-strike{text-decoration-line:line-through;text-decoration-style:solid;}
+.cv-doc .cv-m-code{font-family:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;font-size:0.85em;background-color:#eeeeff;}
+.cv-doc .cv-m-link{color:#6a00f5;text-decoration-line:underline;text-decoration-style:solid;}
+.cv-doc .cv-m-highlight{background-color:#faf594;}
+.cv-doc .cv-m-textStyle{}
+.cv-doc .cv-e-mention{color:#6a00f5;background-color:#eeeeff;}

@@ -2,11 +2,16 @@
 
 #![allow(dead_code)]
 
+use std::fmt::Write;
 use std::sync::Arc;
 
+use canvist_layout::DisplayItem;
+use canvist_layout::DisplayList;
 use canvist_layout::DocumentLayout;
 use canvist_layout::FixedMeasurer;
 use canvist_layout::LayoutOptions;
+use canvist_layout::Rect;
+use canvist_layout::TextRun;
 use canvist_layout::Theme;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
@@ -110,6 +115,56 @@ pub fn layout(doc: &Document, width: f32) -> DocumentLayout {
 		.layout_all(doc, &mut FixedMeasurer::new())
 		.expect("the fixed measurer honours the contract");
 	layout
+}
+
+/// A compact, stable description of a display list, one line per item.
+pub fn describe(list: &DisplayList) -> String {
+	let mut out = String::new();
+
+	for item in &list.items {
+		let line = describe_item(list, item);
+		writeln!(out, "{line}").expect("writing to a String cannot fail");
+	}
+
+	out
+}
+
+/// One display item, without the trailing newline.
+fn describe_item(list: &DisplayList, item: &DisplayItem) -> String {
+	match item {
+		DisplayItem::Rect {
+			rect, color, kind, ..
+		} => format!("rect {kind:?} {} {color}", describe_rect(rect)),
+		DisplayItem::Text(run) => describe_text(list, run),
+		DisplayItem::Decoration {
+			kind, x, y, width, ..
+		} => format!("line {kind:?} x={} y={} w={}", r(*x), r(*y), r(*width)),
+		DisplayItem::Slot {
+			kind, rect, offset, ..
+		} => {
+			let offset = offset
+				.map(|offset| format!(" @{offset}"))
+				.unwrap_or_default();
+			format!("slot {kind:?} {}{offset}", describe_rect(rect))
+		}
+	}
+}
+
+/// A rectangle as `x y {width}x{height}`, rounded.
+fn describe_rect(rect: &Rect) -> String {
+	let size = format!("{}x{}", r(rect.width), r(rect.height));
+	format!("{} {} {size}", r(rect.x), r(rect.y))
+}
+
+/// A text run with its position, width, and font.
+fn describe_text(list: &DisplayList, run: &TextRun) -> String {
+	let font = &list.fonts[run.font.index()];
+	let italic = if font.italic { " italic" } else { "" };
+	let rtl = if run.rtl { " rtl" } else { "" };
+	let position = format!("x={} base={} w={}", r(run.x), r(run.baseline), r(run.width));
+	let style = format!("{}px/{}{italic}{rtl}", font.size, font.weight);
+
+	format!("text {:?} {position} {style}", run.text())
 }
 
 /// Round to 1/100 px for stable snapshots.

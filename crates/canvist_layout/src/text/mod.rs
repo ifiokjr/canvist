@@ -18,10 +18,6 @@ use self::items::Item;
 pub(crate) use self::items::ItemContext;
 pub(crate) use self::items::ItemKind;
 use self::items::Itemized;
-#[expect(
-	unused_imports,
-	reason = "the display list, the next layer of this stack, is the caller"
-)]
 pub(crate) use self::items::is_newline;
 pub(crate) use self::items::slice;
 use crate::FontId;

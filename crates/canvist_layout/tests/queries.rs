@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use canvist_layout::Affinity;
 use canvist_layout::Caret;
+use canvist_layout::DisplayOptions;
 use canvist_layout::DocumentLayout;
 use canvist_layout::FixedMeasurer;
 use canvist_layout::LayoutError;
@@ -392,6 +393,7 @@ fn incremental_relayout_touches_one_block() {
 	let mut measurer = FixedMeasurer::new();
 	let mut layout = DocumentLayout::new(&doc, theme, LayoutOptions::new(WIDTH));
 	layout.layout_all(&doc, &mut measurer).expect("measured");
+	let before = layout.display_list(&DisplayOptions::viewport(0.0, VIEWPORT));
 	let second = doc.children(None)[1];
 
 	let mut transaction = doc.transaction();
@@ -403,12 +405,22 @@ fn incremental_relayout_touches_one_block() {
 	let update = layout
 		.ensure(&doc, &mut measurer, 0.0, VIEWPORT)
 		.expect("measured");
+	let after = layout.display_list(&DisplayOptions::viewport(0.0, VIEWPORT));
 
 	assert_eq!(damage.rects.len(), 1);
 	assert_eq!(damage.from_y, None);
 	assert_eq!(update.laid_out, 1);
 	assert_eq!(update.measurer_calls, 1);
 	assert_eq!(layout.dump(), support::layout(&doc, WIDTH).dump());
+
+	let changed = after.damage(&before);
+	let rect = layout.block_rect(second).expect("block");
+	assert!(!changed.is_empty());
+	assert!(
+		changed
+			.iter()
+			.all(|damage| damage.y >= rect.y && damage.bottom() <= rect.bottom())
+	);
 }
 
 #[test]
@@ -496,6 +508,31 @@ fn stale_layouts_report_out_of_sync() {
 		layout.layout_all(&doc, &mut FixedMeasurer::new()),
 		Err(LayoutError::OutOfSync(_))
 	));
+}
+
+#[test]
+fn display_lists_carry_selection_and_caret() {
+	let hello = "hello";
+	let doc = paragraphs(&["hello world"]);
+	let layout = layout(&doc, WIDE);
+	let block = doc.children(None)[0];
+	let end_of_hello = Point::new(block, offset(hello));
+	let options = DisplayOptions::viewport(0.0, 100.0)
+		.selection(Selection::text(Point::new(block, 0), end_of_hello))
+		.caret(Caret::new(end_of_hello));
+	let list = layout.display_list(&options);
+	let described = support::describe(&list);
+
+	assert!(
+		described.contains("rect Selection 0 0 48x24"),
+		"{described}"
+	);
+	assert!(
+		described
+			.trim_end()
+			.ends_with("rect Caret 47 0 2x24 #2e2b29"),
+		"{described}"
+	);
 }
 
 #[test]

@@ -72,10 +72,6 @@ impl BlockStyle {
 pub(crate) struct StyleId(u32);
 
 impl StyleId {
-	#[expect(
-		dead_code,
-		reason = "the display list, the next layer of this stack, is the caller"
-	)]
 	/// The style's position in its [`Styles`].
 	pub(crate) const fn index(self) -> u32 {
 		self.0
@@ -269,10 +265,6 @@ impl Styles {
 		style
 	}
 
-	#[expect(
-		dead_code,
-		reason = "the display list, the next layer of this stack, is the caller"
-	)]
 	/// Every interned style with its id, in interning order.
 	pub(crate) fn all(&self) -> impl Iterator<Item = (StyleId, &BlockStyle)> {
 		self.resolved
@@ -288,10 +280,6 @@ impl Styles {
 	}
 
 	/// The HTML tag for a mark type, if the theme has a rule for it.
-	#[expect(
-		dead_code,
-		reason = "the display list, the next layer of this stack, is the caller"
-	)]
 	pub(crate) fn mark_tag(&self, kind: canvist_model::MarkTypeId) -> Option<&Arc<str>> {
 		self.mark_rule(kind).map(|rule| &rule.tag)
 	}
