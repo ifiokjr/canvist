@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256" role="img" aria-label="canvist">
+  <title>canvist</title>
+  <defs>
+    <path id="p" d="M43.89 15.61A20 20 0 1 0 43.89 43.39A4.5 4.5 0 0 0 37.41 37.14A11 11 0 1 1 37.41 21.86A4.5 4.5 0 0 0 43.89 15.61Z"/>
+    <path id="b" d="M49.89 16.11A20 20 0 1 0 49.89 43.89A4.5 4.5 0 0 0 43.41 37.64A11 11 0 1 1 43.41 22.36A4.5 4.5 0 0 0 49.89 16.11Z"/>
+    <path id="y" d="M46.39 21.11A20 20 0 1 0 46.39 48.89A4.5 4.5 0 0 0 39.91 42.64A11 11 0 1 1 39.91 27.36A4.5 4.5 0 0 0 46.39 21.11Z"/>
+    <clipPath id="cp"><use href="#p"/></clipPath>
+    <clipPath id="cb"><use href="#b"/></clipPath>
+  </defs>
+  <use href="#y" fill="#FFB511"/>
+  <use href="#p" fill="#FF48B0"/>
+  <use href="#b" fill="#0078BF"/>
+  <use href="#y" fill="#FFCAB5" clip-path="url(#cp)"/>
+  <use href="#y" fill="#FFD8C3" clip-path="url(#cb)"/>
+  <use href="#p" fill="#FF9EEB" clip-path="url(#cb)"/>
+  <g clip-path="url(#cp)"><use href="#y" fill="#FFE3EC" clip-path="url(#cb)"/></g>
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="256" height="256" role="img" aria-label="canvist">
+  <title>canvist</title>
+  <path fill="#FFC53D" d="M28 13h29v11H28zM7 26.5h50v11H7zM7 40h29v11H7z"/>
+  <path fill="#16161D" d="M26.2 7.5h3.6V24h-3.6z"/>
+  <circle cx="28" cy="7.5" r="5" fill="#16161D"/>
+  <path fill="#16161D" d="M34.2 40h3.6V56.5h-3.6z"/>
+  <circle cx="36" cy="56.5" r="5" fill="#16161D"/>
+</svg>
