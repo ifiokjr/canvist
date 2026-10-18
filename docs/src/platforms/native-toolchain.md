@@ -115,7 +115,7 @@ cd platforms/flutter && cargo bin flutter_rust_bridge_codegen generate
 `.github/workflows/native.yml` runs two jobs:
 
 - **ios (simulator)** on `macos-latest`: `platforms/apple/test.sh`, then the Flutter integration tests on iOS.
-- **android (emulator)** on `ubuntu-latest` with KVM: checks the flutter_rust_bridge output is current, builds with cargo-ndk, then runs the Android instrumented tests and the Flutter integration tests on an API 35 `x86_64` emulator.
+- **android (emulator)** on `ubuntu-24.04` with KVM: checks the flutter_rust_bridge output is current, builds with cargo-ndk, then runs the Android instrumented tests and the Flutter integration tests on an API 35 `x86_64` emulator.
 
 A full run takes 10-20 minutes, dominated by emulator boot and Gradle. To keep unrelated pull requests fast, the workflow runs on a pull request only when it touches the native surface (`crates/canvist_ffi`, `platforms/`, `Cargo.toml`/`Cargo.lock`, `rust-toolchain.toml` or the workflow), and its jobs are not required checks. The tradeoff is that a core change which breaks the native build is caught after merge rather than before, so the workflow also runs on every push to `main` and nightly (which also catches runner image and toolchain drift). Once `canvist_ffi` depends on the core crates, widen the path filter to `crates/**`, or make the jobs required if they stay fast enough.
 

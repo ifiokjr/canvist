@@ -72,7 +72,9 @@ jobs:
   android:
     name: android (emulator)
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    # Pinned: `ubuntu-latest` moves to 26.04 from 2026-10-19 and the emulator
+    # setup (KVM, x86_64 image) is only verified on 24.04.
+    runs-on: ubuntu-24.04
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
