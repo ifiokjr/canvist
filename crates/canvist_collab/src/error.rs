@@ -51,6 +51,9 @@ pub enum CollabError {
 	/// A peer denied access to the document.
 	#[error("permission denied: {0}")]
 	PermissionDenied(String),
+	/// The server closed the document for this connection.
+	#[error("the server closed the document: {0}")]
+	Closed(String),
 	/// A message type this session does not understand.
 	#[error("unsupported message type {0}")]
 	UnsupportedMessage(u8),

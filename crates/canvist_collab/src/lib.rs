@@ -119,17 +119,38 @@
 //!
 //! [`Binding::undo`] and [`Binding::redo`] use a yrs `UndoManager` that only
 //! tracks local commits, so undoing never reverts a collaborator's work.
-//! [`Track`] controls how commits group into undo steps.
+//! [`Track`] controls how commits group into undo steps. The binding also
+//! implements [`History`], the trait an editor uses to swap local history for
+//! shared history.
+//!
+//! # Syncing and presence
+//!
+//! A [`SyncSession`] speaks the y-sync protocol (sync step 1, step 2, and
+//! updates) plus awareness, over any transport: the host passes it the
+//! binary messages it receives and sends the ones it returns. Use
+//! [`Framing::YWebsocket`] for y-websocket servers and
+//! [`Framing::Hocuspocus`] for Hocuspocus, which adds a document name and an
+//! authentication step.
+//!
+//! [`Presence`] publishes this peer's [`User`] and selection through Yjs
+//! awareness, encoding carets as Yjs relative positions so they stay on
+//! their characters while others type, and resolves other peers' carets into
+//! [`Collaborator`]s for rendering. The state uses y-prosemirror's shape
+//! (`user` and `cursor: { anchor, head }`), so JavaScript cursor plugins read
+//! it too.
 
 mod binding;
 mod claims;
 mod error;
+mod history;
 pub mod keys;
 mod local;
+mod presence;
 mod registry;
 mod remote;
 mod reorder;
 mod snapshot;
+mod sync;
 
 mod text;
 mod tree;
@@ -139,4 +160,11 @@ pub use binding::Binding;
 pub use binding::Encoding;
 pub use binding::Track;
 pub use error::CollabError;
+pub use history::History;
+pub use presence::Collaborator;
+pub use presence::Presence;
+pub use presence::User;
+pub use sync::Framing;
+pub use sync::Received;
+pub use sync::SyncSession;
 pub use yrs;
