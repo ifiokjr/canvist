@@ -1,1 +1,2 @@
 msrv = "1.93.0"
+doc-valid-idents = ["..", "ProseMirror", "TipTap", "WebAssembly", "JavaScript", "TypeScript"]

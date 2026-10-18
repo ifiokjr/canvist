@@ -1,0 +1,31 @@
+[package]
+name = "canvist_model"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_model"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["text-editor", "rich-text", "document-model", "crdt"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "Block-based rich-text document model for the canvist editor: schema, inline mark runs, invertible steps, and transactions"
+
+[dependencies]
+rustc-hash = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+divan = { workspace = true }
+proptest = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "model"
+harness = false
+
+[lints]
+workspace = true
