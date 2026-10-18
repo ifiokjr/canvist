@@ -25,6 +25,7 @@ toolchain spike (UniFFI, simulators) and logo: in parallel, now
 - **Selection motion:** grapheme, word, line, and paragraph, plus block selection and a gap cursor around atoms.
 - **Keymaps:** per-platform, so `Mod` maps to Cmd on Apple and Ctrl elsewhere. Input rules and paste rules.
 - **History:** grouping by time and by kind of edit, plus selection restore.
+- **Typed extension API** (architecture Decision 8): typed handles in Rust, machine-readable command and attribute metadata for codegen, chaining, and `can()` dry runs. The core stays headless.
 - **Extension trait and the StarterKit:** paragraph, heading 1–6, blockquote, code block, hard break, horizontal rule, bullet, ordered, and task lists, bold, italic, underline, strike, code, link, undo/redo, trailing node, and drop cursor.
 - **Tests:** headless, scripted keystrokes with document snapshots, for example `type("## Hi⏎- one⏎two")`.
 
@@ -43,6 +44,7 @@ toolchain spike (UniFFI, simulators) and logo: in parallel, now
 - Input through `EditContext` with a hidden-textarea fallback, IME on every major input method, clipboard, and drag and drop.
 - An accessibility mirror DOM.
 - `@canvist/core` (vanilla DOM), `@canvist/react`, `@canvist/vue`, and `@canvist/ssr`.
+- TypeScript types generated from extension metadata. The editor's type is inferred from its extensions, so calling an unregistered extension's command is a compile error. A type-level test suite (`tsc --noEmit` with expected errors) enforces this.
 - **Playwright:** functional suites, a keystroke-to-paint benchmark (Event Timing API), a typing-burst stress test, the SSR → hydrate no-jank pixel diff, and mobile web emulation.
 - Examples: vanilla, React (Vite), Vue, Next.js SSR, and Nuxt SSR.
 

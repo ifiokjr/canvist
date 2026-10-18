@@ -136,6 +136,25 @@ An extension contributes any of:
 
 In Rust, each extension sits behind a Cargo feature in a "kit" crate, so code you don't register isn't compiled in. JavaScript and Dart can add commands, keymaps, and node views at runtime. Schema items stay compiled in, which keeps documents verifiable.
 
+## Decision 8: headless, with typed plugin APIs
+
+canvist ships no toolbar, menus, or other UI. Every capability an extension adds is reachable through explicit calls:
+
+- commands;
+- `can` checks (would this command run right now?);
+- active-state queries (is bold active? what level is this heading?);
+- attribute getters.
+
+Apps build their own buttons, bubble menus, and slash menus on top of those calls. Nothing happens by magic.
+
+These calls are typed, so using an extension you didn't register fails to compile:
+
+- **Rust:** registering an extension returns a typed handle (`let bold = builder.add(Bold::default())`), and its commands can only be called through that handle.
+- **TypeScript:** the editor's type is inferred from the extensions array. `editor.commands.toggleBold()`, `editor.isActive("bold")`, and `editor.commands.setBlock("heading", { level: 2 })` type-check only when the matching extension is registered, and attribute values are checked too. An agent or a developer gets a compile error rather than a silent no-op.
+- **Swift, Kotlin, and Dart:** the same handle-per-extension pattern, generated as far as each language allows.
+
+To make this automatic, every extension declares machine-readable metadata. It lists the extension's commands with their argument and return types, its queries, its block, mark, and embed names, and its attribute schemas. Each binding generates its types from that metadata, and tests check the metadata against the real commands.
+
 ## Performance budgets
 
 These budgets are enforced by benchmarks and checked in CI once each host exists.
