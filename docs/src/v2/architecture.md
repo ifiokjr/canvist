@@ -180,30 +180,58 @@ These calls are typed, so using an extension you didn't register fails to compil
 
 To make this automatic, every extension declares machine-readable metadata. It lists the extension's commands with their argument and return types, its queries, its block, mark, and embed names, and its attribute schemas. Each binding generates its types from that metadata, and tests check the metadata against the real commands.
 
+## Decision 9: headless core libraries
+
+**What:** the document model and the editing engine run with no UI at all, on a server, in a script, or in a test, from Rust, TypeScript, and Dart:
+
+- **Rust:** `canvist_headless` is one entry point over the model, the editor, and the extensions. An `Engine` holds the registered extensions and their typed handles. It is built once per process and is `Send + Sync`. Each `Doc` is one document with its editor and is `Send`. A `Doc` loads and exports ProseMirror/TipTap JSON, HTML, Markdown, and plain text, runs commands against an explicit selection, and takes and restores snapshots.
+  - The `collab` feature makes a `Doc` a Yjs peer: it joins from Yjs state, merges updates in any order, answers y-sync messages as a server would, and reports content in the shared state that its schema rejects.
+  - The `ssr` feature renders the HTML and SVG the canvas would paint, through `canvist_layout` and `parley` with a bundled font.
+  - The default build pulls in neither layout nor parley, nor yrs.
+- **TypeScript:** a wasm-bindgen package over `canvist_headless` with no `web-sys` and no DOM, loadable in Node, Deno, and Bun. Its types come from the extension metadata (Decision 8).
+- **Dart:** a pure Dart package, `canvist`, over `canvist_headless` through `flutter_rust_bridge` with no Flutter dependency, so it runs under `dart run` and `dart compile exe`. The Flutter plugin, `canvist_flutter`, builds on it.
+
+**Why:**
+
+- **Content lives on servers.** Apps import Markdown, sanitize pasted HTML, migrate stored TipTap JSON, render previews, and persist collaborative documents. They need the same schema and the same commands the editor uses, not a second implementation that drifts from it.
+- **One core keeps every language identical.** All three bindings wrap the same Rust, so the bindings themselves are thin. A language-neutral conformance suite (`conformance/`) states the contract: an input document, a script of operations, and the expected output. Every binding runs it in CI, so a document transformed in Dart comes out byte for byte as it does in Rust.
+- **Explicit selections replace layout.** Commands only need a selection, and a server has no caret to move by lines. Positions cross language boundaries as a block path plus a UTF-16 offset (Decision 3's edge unit), so fixtures and bindings never see UTF-8 byte offsets or block ids.
+- **A collaborating server must not keep a second copy.** `Editor::apply_external` lets the collaboration binding integrate updates into the editor's own document, so a shared document costs one model, and applying a remote keystroke costs about 2 µs at 10,000 paragraphs.
+
+**What it costs:**
+
+- **Each `Doc` builds its own editor.** It registers its keymap, rules, and commands from the engine's extensions, which takes about 60 µs for the StarterKit. Sharing one registry between documents would remove this, and needs an `Arc` inside `canvist_editor`. It is not worth doing until document creation shows up in a profile.
+- **A canvist document always has a block.** Joining an empty shared document writes one empty paragraph into it, untracked by undo. A server should seed the shared document itself (`Doc::share`) before clients connect, as y-websocket servers that persist documents do.
+
 ## Performance budgets
 
 These budgets are enforced by benchmarks and checked in CI once each host exists.
 
-| Metric                                            | Budget                                      | Today                |
-| ------------------------------------------------- | ------------------------------------------- | -------------------- |
-| Apply one keystroke (model), 100k blocks          | < 2 µs                                      | 0.29 µs              |
-| Enter / Backspace across blocks, 100k blocks      | < 100 µs                                    | 45 µs                |
-| Keystroke in a 100 KB paragraph                   | < 5 µs                                      | 0.94 µs              |
-| Relayout one edited paragraph, 10k or 100k blocks | < 100 µs                                    | 2.5 µs               |
-| Relayout after a keystroke in a 100 KB paragraph  | < 100 µs                                    | 25 µs                |
-| Relayout after Enter, 10k / 100k blocks ¹         | < 200 µs / < 2 ms                           | 83 µs / 1.4 ms       |
-| Hit test / caret rectangle                        | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
-| Display list for one screen                       | < 100 µs                                    | 5 µs                 |
-| Scroll one screen into unmeasured blocks          | < 1 ms                                      | 53 µs                |
-| Mirror a keystroke into a Yjs update, 100k blocks | < 20 µs                                     | 1.9 µs               |
-| Apply a collaborator's keystroke, 100k blocks     | < 20 µs                                     | 2.7 µs               |
-| Mirror Enter into yrs, 10k blocks²                | < 150 µs                                    | 45 µs                |
-| Apply a collaborator's Enter, 10k blocks²         | < 400 µs                                    | 114 µs               |
-| Join a 10k-paragraph document from Yjs state      | < 50 ms                                     | 24 ms                |
-| Keystroke → paint on the web (Event Timing), p95  | < 8 ms                                      | (M3)                 |
-| Typing burst: 1,000 key events in one task        | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
-| Open a 10k-paragraph document → first paint       | < 50 ms                                     | layout 0.6 ms (M2)   |
-| Web bundle (core + StarterKit), gzipped           | < 350 KB                                    | (M3)                 |
+| Metric                                             | Budget                                      | Today                |
+| -------------------------------------------------- | ------------------------------------------- | -------------------- |
+| Apply one keystroke (model), 100k blocks           | < 2 µs                                      | 0.29 µs              |
+| Enter / Backspace across blocks, 100k blocks       | < 100 µs                                    | 45 µs                |
+| Keystroke in a 100 KB paragraph                    | < 5 µs                                      | 0.94 µs              |
+| Relayout one edited paragraph, 10k or 100k blocks  | < 100 µs                                    | 2.5 µs               |
+| Relayout after a keystroke in a 100 KB paragraph   | < 100 µs                                    | 25 µs                |
+| Relayout after Enter, 10k / 100k blocks ¹          | < 200 µs / < 2 ms                           | 83 µs / 1.4 ms       |
+| Hit test / caret rectangle                         | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
+| Display list for one screen                        | < 100 µs                                    | 5 µs                 |
+| Scroll one screen into unmeasured blocks           | < 1 ms                                      | 53 µs                |
+| Mirror a keystroke into a Yjs update, 100k blocks  | < 20 µs                                     | 1.9 µs               |
+| Apply a collaborator's keystroke, 100k blocks      | < 20 µs                                     | 2.7 µs               |
+| Mirror Enter into yrs, 10k blocks²                 | < 150 µs                                    | 45 µs                |
+| Apply a collaborator's Enter, 10k blocks²          | < 400 µs                                    | 114 µs               |
+| Join a 10k-paragraph document from Yjs state       | < 50 ms                                     | 24 ms                |
+| Headless: load 10k paragraphs (Markdown / JSON)    | < 50 ms / < 50 ms                           | 10 ms / 17 ms        |
+| Headless: export 10k paragraphs (JSON / MD / HTML) | < 50 / 25 / 25 ms                           | 19 / 7 / 2.4 ms      |
+| Headless: run one command, 10k paragraphs          | < 2 µs                                      | 0.21 µs              |
+| Headless: create a StarterKit document             | < 250 µs                                    | 56 µs                |
+| Headless: apply one Yjs keystroke, 10k paragraphs  | < 20 µs                                     | 2.3 µs               |
+| Keystroke → paint on the web (Event Timing), p95   | < 8 ms                                      | (M3)                 |
+| Typing burst: 1,000 key events in one task         | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
+| Open a 10k-paragraph document → first paint        | < 50 ms                                     | layout 0.6 ms (M2)   |
+| Web bundle (core + StarterKit), gzipped            | < 350 KB                                    | (M3)                 |
 
 For reference, the best public number the research found is Lexical issue #7422: about 1.8 ms per keystroke at 5,000 paragraphs, spent copying state.
 

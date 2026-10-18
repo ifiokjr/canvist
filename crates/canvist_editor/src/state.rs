@@ -232,6 +232,23 @@ impl EditorState {
 		self.apply(commit, effects)
 	}
 
+	/// Let `change` edit the document directly and fold the commit it
+	/// returns into the state, as [`EditorState::apply_steps`] does for steps.
+	///
+	/// This is for code that must own the edit itself, such as a
+	/// collaboration binding integrating a Yjs update into the document it
+	/// tracks. `change` must return the commit of exactly the steps it
+	/// applied, and must leave the document unchanged when it fails.
+	pub fn apply_external<E: From<EditorError>>(
+		&mut self,
+		kind: EditKind,
+		origin: Origin,
+		change: impl FnOnce(&mut Document) -> Result<Commit, E>,
+	) -> Result<Update, E> {
+		let commit = change(&mut self.doc)?;
+		Ok(self.apply(commit, Effects::new(kind, origin))?)
+	}
+
 	/// Whether `run` would apply, without changing anything: every step it
 	/// takes is rolled back through a model savepoint, which also restores
 	/// the document version and block revisions, so layout caches stay warm.

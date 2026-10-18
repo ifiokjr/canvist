@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use canvist_model::BlockTree;
 use canvist_model::BlockTypeId;
+use canvist_model::Commit;
 use canvist_model::Document;
 use canvist_model::Schema;
 use canvist_model::Selection;
@@ -516,6 +517,31 @@ impl Editor {
 			.apply_steps(steps, EditKind::Remote, Origin::Remote, None)?;
 		self.last_rule = None;
 		self.history.record(&update, env.now);
+		Ok(update)
+	}
+
+	/// Let `change` edit the document directly, as a collaborator's change.
+	///
+	/// A collaboration binding uses this to integrate Yjs updates into the
+	/// editor's own document instead of a second copy. `change` must return
+	/// the commit of exactly the steps it applied and leave the document
+	/// unchanged when it fails. An empty commit is not recorded in history,
+	/// so mirroring a local change that needed no follow-up keeps undo
+	/// intact.
+	pub fn apply_external<E: From<EditorError>>(
+		&mut self,
+		env: &mut Env<'_>,
+		change: impl FnOnce(&mut Document) -> Result<Commit, E>,
+	) -> Result<Update, E> {
+		let update = self
+			.state
+			.apply_external(EditKind::Remote, Origin::Remote, change)?;
+
+		if update.doc_changed() {
+			self.last_rule = None;
+			self.history.record(&update, env.now);
+		}
+
 		Ok(update)
 	}
 
