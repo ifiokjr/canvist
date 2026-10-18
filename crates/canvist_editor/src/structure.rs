@@ -29,6 +29,12 @@ pub(crate) fn kind_of(doc: &Document, id: BlockId) -> Option<BlockTypeId> {
 	doc.block(id).map(canvist_model::Block::kind)
 }
 
+/// The type and attributes of block `id`.
+pub(crate) fn type_of(doc: &Document, id: BlockId) -> Option<(BlockTypeId, Attrs)> {
+	doc.block(id)
+		.map(|block| (block.kind(), block.attrs().clone()))
+}
+
 /// Whether `parent` (`None` is the root) may hold a block of `kind`.
 pub(crate) fn allows(doc: &Document, parent: Option<BlockId>, kind: BlockTypeId) -> bool {
 	let parent_kind = match parent {
@@ -168,6 +174,40 @@ pub(crate) fn lift(
 	}
 
 	Ok(())
+}
+
+/// Whether children `range` of `parent` can be wrapped in a `kind` block.
+pub(crate) fn can_wrap(
+	doc: &Document,
+	parent: Option<BlockId>,
+	range: &Range<usize>,
+	kind: BlockTypeId,
+) -> bool {
+	let children = doc.children(parent);
+
+	allows(doc, parent, kind)
+		&& children.get(range.clone()).is_some_and(|wrapped| {
+			wrapped.iter().all(|&child| {
+				kind_of(doc, child)
+					.is_some_and(|child| doc.schema().allows_child(Some(kind), child))
+			})
+		})
+}
+
+/// Wrap children `range` of `parent` in a new `kind` block with `attrs`,
+/// returning the wrapper. The caller checks [`can_wrap`].
+pub(crate) fn wrap(
+	tr: &mut EditorTransaction<'_>,
+	parent: Option<BlockId>,
+	range: Range<usize>,
+	kind: BlockTypeId,
+	attrs: Attrs,
+) -> Result<BlockId, EditorError> {
+	let wrapper = fresh_block(tr, kind)?.with_attrs(attrs);
+	let id = wrapper.id;
+	tr.insert_blocks(parent, range.start, vec![wrapper])?;
+	tr.move_blocks((parent, range.start + 1, range.len()), (Some(id), 0))?;
+	Ok(id)
 }
 
 /// Remove block `id` and its descendants.
@@ -348,5 +388,27 @@ mod tests {
 		assert_eq!(state.doc().plain_text(), "inutro");
 		assert_eq!(state.doc().children(None).len(), 1);
 		assert_eq!(update.selection, Selection::caret(Point::new(ids[0], 2)));
+	}
+
+	#[test]
+	fn lifting_the_middle_of_a_container_splits_it() {
+		let mut state = testing::nested_state();
+		let quote = state.schema().block_type("blockquote").expect("quote");
+		state
+			.change(EditKind::Structure, |tr| {
+				let wrapper = wrap(tr, None, 0..3, quote, Attrs::new())?;
+				lift(tr, wrapper, 1..2)?;
+				Ok(true)
+			})
+			.expect("valid lift");
+
+		let kinds: Vec<_> = state
+			.doc()
+			.children(None)
+			.iter()
+			.filter_map(|&id| kind_of(state.doc(), id))
+			.map(|kind| state.schema().block(kind).name.to_string())
+			.collect();
+		assert_eq!(kinds, ["blockquote", "bulletList", "blockquote"]);
 	}
 }

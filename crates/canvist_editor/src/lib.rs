@@ -7,8 +7,8 @@
 //! - [`EditorState`]: the document, the selection, stored marks, and IME
 //!   composition, changed only through [`EditorState::change`] and
 //!   [`EditorState::apply_steps`].
-//! - [`commands`]: plain functions such as typing, deleting by grapheme,
-//!   word, or line, marks, IME composition, and selection.
+//! - [`commands`]: plain functions such as typing, deleting by grapheme or
+//!   word, splitting and joining blocks, lists, marks, and paste.
 //! - [`motion`]: caret movement by grapheme, word, line, and document. Lines
 //!   come from a [`LineNavigator`], which the layout engine implements.
 //!
@@ -21,8 +21,6 @@
 //! use std::sync::Arc;
 //!
 //! use canvist_editor::EditorState;
-//! use canvist_editor::ParagraphNavigator;
-//! use canvist_editor::Unit;
 //! use canvist_editor::commands;
 //! use canvist_model::BlockSpec;
 //! use canvist_model::Document;
@@ -31,11 +29,11 @@
 //! let schema = Arc::new(Schema::builder().block(BlockSpec::text("paragraph")).build()?);
 //! let mut state = EditorState::new(Document::new(schema, 1))?;
 //!
-//! commands::insert_text(&mut state, "Hello wrold")?;
-//! commands::delete_backward(&mut state, Unit::Word, &ParagraphNavigator)?;
+//! commands::insert_text(&mut state, "Hello")?;
+//! commands::split_block(&mut state)?;
 //! commands::insert_text(&mut state, "world")?;
 //!
-//! assert_eq!(state.doc().plain_text(), "Hello world");
+//! assert_eq!(state.doc().plain_text(), "Hello\nworld");
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
@@ -52,6 +50,7 @@ pub mod text;
 mod transaction;
 
 pub use commands::CommandResult;
+pub use commands::Slice;
 pub use error::EditorError;
 pub use motion::Direction;
 pub use motion::LineNavigator;
