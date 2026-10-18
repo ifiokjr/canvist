@@ -1,6 +1,7 @@
 [workspace]
 members = [
 	"crates/canvist",
+	"crates/canvist_collab",
 	"crates/canvist_core",
 	"crates/canvist_editor",
 	"crates/canvist_extensions",
@@ -15,6 +16,7 @@ members = [
 ]
 default-members = [
 	"crates/canvist",
+	"crates/canvist_collab",
 	"crates/canvist_core",
 	"crates/canvist_editor",
 	"crates/canvist_extensions",
@@ -37,7 +39,7 @@ include = ["src/**/*.rs", "Cargo.toml", "readme.md", "license"]
 license = "Unlicense"
 readme = "readme.md"
 repository = "https://github.com/ifiokjr/canvist"
-rust-version = "1.93.0"
+rust-version = "1.95.0"
 
 [workspace.dependencies]
 divan = { default-features = false, version = "^0.1" }
@@ -63,10 +65,11 @@ wasm-bindgen = { default-features = false, version = "^0.2" }
 wasm-bindgen-futures = { default-features = false, version = "^0.4" }
 wasm-bindgen-test = { default-features = false, version = "^0.3" }
 web-sys = { default-features = false, version = "^0.3" }
-yrs = { default-features = false, version = "^0.25" }
+yrs = { default-features = false, version = "^0.28" }
 
 # Internal crates
 canvist = { path = "./crates/canvist", version = "0.1.0" }
+canvist_collab = { path = "./crates/canvist_collab", version = "0.1.0" }
 canvist_core = { path = "./crates/canvist_core", version = "0.1.0" }
 canvist_editor = { path = "./crates/canvist_editor", version = "0.1.0" }
 canvist_extensions = { path = "./crates/canvist_extensions", version = "0.1.0" }

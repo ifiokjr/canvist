@@ -1,0 +1,33 @@
+[package]
+name = "canvist_collab"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_collab"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["text-editor", "collaboration", "crdt", "yjs", "yrs"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "Yjs collaboration for canvist documents: a step-to-yrs binding, the y-sync protocol, awareness, and shared undo"
+
+[dependencies]
+canvist_model = { workspace = true }
+rustc-hash = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+yrs = { workspace = true }
+
+[dev-dependencies]
+divan = { workspace = true }
+proptest = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "collab"
+harness = false
+
+[lints]
+workspace = true

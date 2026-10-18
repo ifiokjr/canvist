@@ -65,6 +65,8 @@ mod theme;
 
 mod display;
 mod document;
+#[cfg(feature = "editor")]
+mod editor;
 mod navigate;
 mod render;
 

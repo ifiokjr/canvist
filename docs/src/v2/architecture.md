@@ -81,11 +81,12 @@ A `Transaction` applies steps atomically and can roll back. If any step fails, t
   - Apps that don't collaborate shouldn't pay for yrs in wasm size or startup time. M3 measures that cost.
   - The 1:1 step mapping makes the mirror a translation, not a reconciliation.
 - **This is a known risk.** If the binding turns out to need diffing anywhere, revisit the decision.
-- **`Split` loses concurrent edits.** If a peer types in the tail of a block while another peer splits it, the tail is re-created in a new `Y.Text` and the peer's insert is lost. Every Yjs editor shares this limitation. M4 adds a test that measures it.
+- **`Split` loses concurrent edits.** If a peer edits the tail of a block while another peer splits it, the tail is re-created in a new `Y.Text` and the edit lands on the deleted original. M4 measured it (`canvist_collab/tests/concurrent_split.rs`): inserted text survives but moves to the end of the first block, while deletions and formatting in the tail are lost. Edits before the split point are unaffected. Every Yjs editor shares this limitation.
+- **Moving a block deletes and copies it.** yrs 0.28 has no move, so text typed concurrently into a moved block is lost, and when two peers move the same block at once every peer keeps the copy with the smallest yrs item id and deletes the others.
 
 ## Decision 3: UTF-8 offsets inside, UTF-16 at the edges
 
-The model uses UTF-8 byte offsets, validated to fall on character boundaries, because Rust strings are UTF-8 and slicing them is free. JavaScript hosts and the `yrs` binding (`OffsetKind::Utf16`, which JavaScript Yjs peers require) convert offsets at the boundary. Converting within one block costs `O(block length)`. Grapheme-cluster rules for caret movement live in `canvist_editor`, not the model.
+The model uses UTF-8 byte offsets, validated to fall on character boundaries, because Rust strings are UTF-8 and slicing them is free. JavaScript hosts and the `yrs` binding convert offsets at the boundary. The binding sets `OffsetKind::Utf16`: the setting only changes how yrs reads indices locally (the wire format always counts UTF-16), but yrs's sticky indexes, which awareness carets use, mix units under `OffsetKind::Bytes`. Converting within one block costs `O(block length)`. Grapheme-cluster rules for caret movement live in `canvist_editor`, not the model.
 
 ## Decision 4: the host measures text, Rust lays it out
 
@@ -194,6 +195,11 @@ These budgets are enforced by benchmarks and checked in CI once each host exists
 | Hit test / caret rectangle                        | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
 | Display list for one screen                       | < 100 µs                                    | 5 µs                 |
 | Scroll one screen into unmeasured blocks          | < 1 ms                                      | 53 µs                |
+| Mirror a keystroke into a Yjs update, 100k blocks | < 20 µs                                     | 1.9 µs               |
+| Apply a collaborator's keystroke, 100k blocks     | < 20 µs                                     | 2.7 µs               |
+| Mirror Enter into yrs, 10k blocks²                | < 150 µs                                    | 45 µs                |
+| Apply a collaborator's Enter, 10k blocks²         | < 400 µs                                    | 114 µs               |
+| Join a 10k-paragraph document from Yjs state      | < 50 ms                                     | 24 ms                |
 | Keystroke → paint on the web (Event Timing), p95  | < 8 ms                                      | (M3)                 |
 | Typing burst: 1,000 key events in one task        | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
 | Open a 10k-paragraph document → first paint       | < 50 ms                                     | layout 0.6 ms (M2)   |
@@ -202,6 +208,8 @@ These budgets are enforced by benchmarks and checked in CI once each host exists
 For reference, the best public number the research found is Lexical issue #7422: about 1.8 ms per keystroke at 5,000 paragraphs, spent copying state.
 
 ¹ **Recorded exception: Enter grows with the document.** Layout re-flattens only the root-level subtrees a structural commit changed and reuses every other block's row and layout. But rows are stored in one array, so splicing a row in shifts the index of every row after it. That work is plain memory moves and integer updates, with no hashing, styling, or measuring, and costs about 10 ns per row. Chunked row storage would make it `O(log n)`, and is the follow-up if documents grow past 100k blocks.
+
+² Structural edits cost `O(siblings)`: yrs computes an array event's delta by walking the whole array (Yjs does the same) and walks to an insertion index. Budgets use 10,000 root blocks, where the array stays in cache. At 100,000 the walk is bound by memory latency and varies about 14 times between machines (0.9 ms for a remote Enter on CI's x86 runners, 13 ms on Apple silicon).
 
 Layout's numbers use the deterministic `FixedMeasurer`, so they measure layout itself. Measuring with the browser or `parley` adds the host's own cost, but only for words the cache hasn't seen.
 

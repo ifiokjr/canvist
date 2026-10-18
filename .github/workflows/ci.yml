@@ -71,7 +71,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: performance budgets
-        run: test:perf
+        # `devenv shell` does not pass the job's environment through, so the
+        # slack is set inside the command it runs.
+        run: CANVIST_PERF_SLACK=${{ env.CANVIST_PERF_SLACK }} test:perf
         shell: devenv shell -c -- bash -e {0}
 
       - name: benchmarks compile

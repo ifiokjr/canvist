@@ -58,8 +58,7 @@ impl Canvas2dRenderer {
 		self.ctx.set_font(&Self::css_font(style));
 		self.ctx
 			.measure_text(text)
-			.map(|m| m.width() as f32)
-			.unwrap_or(0.0)
+			.map_or(0.0, |m| m.width() as f32)
 	}
 }
 
@@ -102,7 +101,7 @@ impl Canvas for Canvas2dRenderer {
 				let mut buf = [0u8; 4];
 				let s = ch.encode_utf8(&mut buf);
 				let _ = self.ctx.fill_text(s, cx, f64::from(y));
-				let w = self.ctx.measure_text(s).map(|m| m.width()).unwrap_or(0.0);
+				let w = self.ctx.measure_text(s).map_or(0.0, |m| m.width());
 				cx += w + f64::from(resolved.letter_spacing);
 			}
 		} else {
