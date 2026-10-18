@@ -6,34 +6,62 @@
 //!   data, keyed by schema names, so extensions contribute their own.
 //! - A [`TextMeasurer`] measures text for the host platform. Layout batches
 //!   every missing measurement of a relayout into one call and caches results
-//!   by (font, segment). [`FixedMeasurer`] is a deterministic measurer for
-//!   tests and headless editing.
-//! - Text layout breaks lines at UAX #14 opportunities with CSS `pre-wrap`
-//!   rules, orders bidi text with UAX #9, and relays out only the lines
-//!   around an edit.
+//!   by (font, segment).
+//! - [`DocumentLayout`] breaks lines (UAX #14, CSS `pre-wrap` rules), orders
+//!   bidi text (UAX #9), stacks blocks with their containers, estimates the
+//!   height of blocks outside the viewport, and relays out only the blocks a
+//!   [`Commit`](canvist_model::Commit) touched.
+//! - Geometry queries: [`DocumentLayout::hit_test`],
+//!   [`DocumentLayout::caret_rect`], [`DocumentLayout::selection_rects`], and
+//!   the [`LineNavigator`] the editor uses for vertical caret motion.
+//!
+//! # Example
+//!
+//! ```
+//! use std::sync::Arc;
+//!
+//! use canvist_layout::DocumentLayout;
+//! use canvist_layout::FixedMeasurer;
+//! use canvist_layout::LayoutOptions;
+//! use canvist_layout::Theme;
+//! use canvist_model::BlockSpec;
+//! use canvist_model::Document;
+//! use canvist_model::MarkSet;
+//! use canvist_model::Point;
+//! use canvist_model::Schema;
+//!
+//! let schema = Arc::new(Schema::builder().block(BlockSpec::text("paragraph")).build()?);
+//! let mut doc = Document::new(schema, 1);
+//! let block = doc.first_text_block().expect("new documents have one block");
+//! let mut transaction = doc.transaction();
+//! transaction.insert_text(Point::new(block, 0), "Hello, layout!", MarkSet::empty())?;
+//! transaction.commit();
+//!
+//! let mut measurer = FixedMeasurer::new();
+//! let mut layout = DocumentLayout::new(&doc, Arc::new(Theme::starter_kit()), LayoutOptions::new(80.0));
+//! layout.layout_all(&doc, &mut measurer)?;
+//!
+//! // 14 characters at 9.6 px do not fit in 80 px, so the paragraph wraps.
+//! assert_eq!(layout.line_count(block), Some(2));
+//! # Ok::<(), Box<dyn std::error::Error>>(())
+//! ```
 
 mod font;
 mod geometry;
-#[expect(
-	dead_code,
-	reason = "document layout, the next layer of this stack, is the caller"
-)]
 mod measure;
-#[expect(
-	dead_code,
-	reason = "document layout, the next layer of this stack, is the caller"
-)]
 mod style;
-#[expect(
-	dead_code,
-	unused_imports,
-	reason = "document layout, the next layer of this stack, is the caller"
-)]
 mod text;
 mod theme;
 
+mod document;
+mod navigate;
+
 use canvist_model::BlockId;
 use canvist_model::Point;
+pub use document::Damage;
+pub use document::DocumentLayout;
+pub use document::LayoutOptions;
+pub use document::ViewportUpdate;
 pub use font::FontBook;
 pub use font::FontId;
 pub use font::FontMetrics;
@@ -46,6 +74,11 @@ pub use measure::MeasureBatch;
 pub use measure::MeasureOutput;
 pub use measure::SegmentRequest;
 pub use measure::TextMeasurer;
+pub use navigate::LayoutNavigator;
+pub use navigate::LineEdge;
+pub use navigate::LineNavigator;
+pub use navigate::VerticalDirection;
+pub use navigate::VerticalMotion;
 pub use style::BlockStyle;
 pub use theme::AttrBinding;
 pub use theme::BlockPatch;
@@ -133,7 +166,7 @@ pub enum LayoutError {
 	MissingMeasurement,
 	/// The layout refers to a block the document no longer has, or whose
 	/// content kind changed: a commit was not passed to
-	/// `DocumentLayout::apply`.
+	/// [`DocumentLayout::apply`].
 	#[error("block {0} is out of sync with the document; apply every commit to the layout")]
 	OutOfSync(BlockId),
 }

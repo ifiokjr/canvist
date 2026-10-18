@@ -1,0 +1,21 @@
+---
+source: crates/canvist_layout/tests/snapshots.rs
+expression: "layout(&doc, 150.0).dump()"
+---
+row 1.0 paragraph y=0 h=96 x=0 w=150
+  line 0..26 soft y=0 h=24 base=16.796875 w=115.2
+    ltr x=0 w=67.2 "Family "
+    ltr x=67.2 w=57.6 "👨\u{200d}👩\u{200d}👧 "
+  line 26..42 soft y=24 h=24 base=16.796875 w=124.8
+    ltr x=0 w=38.4 "and "
+    ltr x=38.4 w=48 "cafe\u{301} "
+    ltr x=86.4 w=48 "with "
+  line 42..65 soft y=48 h=24 base=16.796875 w=121.6
+    ltr x=0 w=57.6 "flags "
+    ltr x=57.6 w=32 "🇳🇬"
+    ltr x=89.6 w=41.6 "🇬🇧 "
+  line 65..83 y=72 h=24 base=16.796875 w=112
+    ltr x=0 w=38.4 "and "
+    ltr x=38.4 w=48 "skin "
+    ltr x=86.4 w=25.6 "👍🏽."
+height 96

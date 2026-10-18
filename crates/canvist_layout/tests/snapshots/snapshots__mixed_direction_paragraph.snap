@@ -1,0 +1,31 @@
+---
+source: crates/canvist_layout/tests/snapshots.rs
+expression: "layout(&doc, 220.0).dump()"
+---
+row 1.0 paragraph y=0 h=72 x=0 w=220
+  line 0..26 soft y=0 h=24 base=16.796875 w=192
+    ltr x=0 w=38.4 "The "
+    ltr x=38.4 w=48 "word "
+    rtl x=86.4 w=48 "مرحبا"
+    ltr x=134.4 w=9.6 " "
+    ltr x=144 w=57.6 "means "
+  line 26..47 soft y=24 h=24 base=16.796875 w=192
+    ltr x=0 w=67.2 "hello, "
+    ltr x=67.2 w=38.4 "and "
+    ltr x=105.6 w=38.4 "123 "
+    ltr x=144 w=57.6 "stays "
+  line 47..51 y=48 h=24 base=16.796875 w=38.4
+    ltr x=0 w=38.4 "LTR."
+row 1.1 paragraph y=84 h=48 x=0 w=220
+  line 0..27 soft y=0 h=24 base=16.796875 w=201.6
+    rtl x=8.8 w=28.8 "ثم "
+    rtl x=37.6 w=19.2 "\" "
+    ltr x=56.8 w=57.6 "hello "
+    ltr x=114.4 w=48 "world"
+    rtl x=162.4 w=9.6 "\""
+    rtl x=172 w=48 "قال: "
+  line 27..43 y=24 h=24 base=16.796875 w=105.6
+    rtl x=114.4 w=57.6 "انتهى."
+    rtl x=172 w=9.6 " "
+    ltr x=181.6 w=38.4 "2024"
+height 132
