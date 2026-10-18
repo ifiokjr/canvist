@@ -101,6 +101,28 @@ Line breaking, bidi, block layout, virtualization, hit testing, and caret geomet
 
 Measurements are cached per (font, text segment). One relayout needs at most one round trip to the host, never a call per word.
 
+How M2 implements it:
+
+- **The measuring contract.** Layout splits text into segments: a word plus its trailing spaces, cut wherever the font or bidi level changes. A host returns one advance per character for each segment, and the advances must sum to the width it paints the whole segment at. Layout reads those sums only at grapheme boundaries, so a host may split a ligature's width among its characters however it likes.
+- **Line breaking uses ICU4X (`icu_segmenter` 2.3), not `unicode-linebreak`,** for four reasons:
+  - ICU4X's options are defined as CSS's `line-break` and `word-break` values, so the HTML contract can name the same behaviour (`line-break: strict`).
+  - Firefox now breaks lines with ICU4X, and Chromium and WebKit use ICU, so the defaults agree with every engine apart from small tailorings. A `BreakOverride` hook covers those tailorings.
+  - It is maintained and tracks current Unicode. `unicode-linebreak` has not been released since 2023.
+  - `parley` already depends on it, so desktop builds carry one copy of the line-breaking data, not two.
+- **What it costs.** Line and grapheme data add about 23 KB gzipped to wasm. The dictionary and LSTM models for Thai, Lao, Khmer, and Burmese are left out.
+- **The measured size of each piece in wasm,** after `wasm-opt -Oz`, gzipped:
+
+  | Build                       | Raw    | Gzipped |
+  | --------------------------- | ------ | ------- |
+  | Model only                  | 85 KB  | 38 KB   |
+  | + layout and both renderers | 296 KB | 133 KB  |
+  | + the `parley` measurer     | 982 KB | 416 KB  |
+
+  `parley` alone would take most of the web's 350 KB budget. That confirms the browser measurer for the web, with `parley` as an opt-in feature for desktop and SSR.
+- **Typing stays local.** A keystroke keeps the block's old layout. Relayout then re-itemizes only the words around the edit, and re-breaks lines from the line before it. It stops as soon as a line starts where an old one did over unchanged text, because greedy line breaking depends only on where a line starts, so every later line is reused. A keystroke in the middle of a 100 KB paragraph costs about 25 µs. Bidi paragraphs, and edits that insert right-to-left text, lay out from scratch, because their levels depend on the whole paragraph.
+- **Structural edits stay local too.** A structural commit re-flattens only the root-level subtrees that its steps name, and splices them into place.
+- **Server rendering.** [The SSR CSS contract](./ssr-css-contract.md) lists what the HTML pins, and what the web host must do, so the HTML wraps exactly where the canvas does.
+
 ## Decision 5: a display list as the rendering contract
 
 Layout produces a `DisplayList` of positioned text runs, rectangles (selection, highlights, carets), decorations (underline, strike, squiggle), and placeholder slots for host-rendered node views. The display list is the only thing painters see:
@@ -111,6 +133,8 @@ Layout produces a `DisplayList` of positioned text runs, rectangles (selection, 
 - **vello** (desktop), **CoreGraphics** (iOS), **Android Canvas**, and **Flutter Canvas**.
 
 Custom node views, such as a React component inside the document, get a reserved rectangle in the display list. The host positions a real native or DOM view over it. That lets embeds stay ordinary components while text stays on the canvas.
+
+Items carry the block they belong to. `DisplayList::damage` compares two lists block by block and returns the rectangles to repaint. Painting those rectangles from the new list reproduces it exactly.
 
 ## Decision 6: one input state machine, native input adapters
 
@@ -159,18 +183,27 @@ To make this automatic, every extension declares machine-readable metadata. It l
 
 These budgets are enforced by benchmarks and checked in CI once each host exists.
 
-| Metric                                           | Budget                                      | Today                |
-| ------------------------------------------------ | ------------------------------------------- | -------------------- |
-| Apply one keystroke (model), 100k blocks         | < 2 µs                                      | 0.29 µs              |
-| Enter / Backspace across blocks, 100k blocks     | < 100 µs                                    | 45 µs                |
-| Keystroke in a 100 KB paragraph                  | < 5 µs                                      | 0.94 µs              |
-| Relayout one edited paragraph                    | < 100 µs                                    | (M2)                 |
-| Keystroke → paint on the web (Event Timing), p95 | < 8 ms                                      | (M3)                 |
-| Typing burst: 1,000 key events in one task       | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
-| Open a 10k-paragraph document → first paint      | < 50 ms                                     | (M2/M3)              |
-| Web bundle (core + StarterKit), gzipped          | < 350 KB                                    | (M3)                 |
+| Metric                                            | Budget                                      | Today                |
+| ------------------------------------------------- | ------------------------------------------- | -------------------- |
+| Apply one keystroke (model), 100k blocks          | < 2 µs                                      | 0.29 µs              |
+| Enter / Backspace across blocks, 100k blocks      | < 100 µs                                    | 45 µs                |
+| Keystroke in a 100 KB paragraph                   | < 5 µs                                      | 0.94 µs              |
+| Relayout one edited paragraph, 10k or 100k blocks | < 100 µs                                    | 2.5 µs               |
+| Relayout after a keystroke in a 100 KB paragraph  | < 100 µs                                    | 25 µs                |
+| Relayout after Enter, 10k / 100k blocks ¹         | < 200 µs / < 2 ms                           | 83 µs / 1.4 ms       |
+| Hit test / caret rectangle                        | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
+| Display list for one screen                       | < 100 µs                                    | 5 µs                 |
+| Scroll one screen into unmeasured blocks          | < 1 ms                                      | 53 µs                |
+| Keystroke → paint on the web (Event Timing), p95  | < 8 ms                                      | (M3)                 |
+| Typing burst: 1,000 key events in one task        | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
+| Open a 10k-paragraph document → first paint       | < 50 ms                                     | layout 0.6 ms (M2)   |
+| Web bundle (core + StarterKit), gzipped           | < 350 KB                                    | (M3)                 |
 
 For reference, the best public number the research found is Lexical issue #7422: about 1.8 ms per keystroke at 5,000 paragraphs, spent copying state.
+
+¹ **Recorded exception: Enter grows with the document.** Layout re-flattens only the root-level subtrees a structural commit changed and reuses every other block's row and layout. But rows are stored in one array, so splicing a row in shifts the index of every row after it. That work is plain memory moves and integer updates, with no hashing, styling, or measuring, and costs about 10 ns per row. Chunked row storage would make it `O(log n)`, and is the follow-up if documents grow past 100k blocks.
+
+Layout's numbers use the deterministic `FixedMeasurer`, so they measure layout itself. Measuring with the browser or `parley` adds the host's own cost, but only for words the cache hasn't seen.
 
 ## Performance is a first-class primitive
 

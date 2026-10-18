@@ -91,6 +91,8 @@ pub use geometry::Rect;
 pub use measure::FixedMeasurer;
 pub use measure::MeasureBatch;
 pub use measure::MeasureOutput;
+#[cfg(feature = "parley")]
+pub use measure::ParleyMeasurer;
 pub use measure::SegmentRequest;
 pub use measure::TextMeasurer;
 pub use navigate::LayoutNavigator;
