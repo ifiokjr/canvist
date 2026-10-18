@@ -1,0 +1,36 @@
+---
+source: crates/canvist_layout/tests/snapshots.rs
+expression: "layout(&doc, 120.0).dump()"
+---
+row 1.0 paragraph y=0 h=120 x=0 w=120
+  line 0..18 soft y=0 h=24 base=16.796875 w=96
+    ltr x=0 w=16 "日"
+    ltr x=16 w=16 "本"
+    ltr x=32 w=16 "語"
+    ltr x=48 w=16 "の"
+    ltr x=64 w=16 "文"
+    ltr x=80 w=16 "章"
+  line 18..39 soft y=24 h=24 base=16.796875 w=112
+    ltr x=0 w=32 "は、"
+    ltr x=32 w=16 "単"
+    ltr x=48 w=16 "語"
+    ltr x=64 w=16 "の"
+    ltr x=80 w=16 "間"
+    ltr x=96 w=16 "に"
+  line 39..60 soft y=48 h=24 base=16.796875 w=112
+    ltr x=0 w=16 "空"
+    ltr x=16 w=16 "白"
+    ltr x=32 w=16 "が"
+    ltr x=48 w=16 "あ"
+    ltr x=64 w=16 "り"
+    ltr x=80 w=16 "ま"
+    ltr x=96 w=16 "せ"
+  line 60..78 soft y=72 h=24 base=16.796875 w=96
+    ltr x=0 w=32 "ん。"
+    ltr x=32 w=16 "中"
+    ltr x=48 w=16 "文"
+    ltr x=64 w=16 "也"
+    ltr x=80 w=16 "一"
+  line 78..84 y=96 h=24 base=16.796875 w=32
+    ltr x=0 w=32 "样。"
+height 120

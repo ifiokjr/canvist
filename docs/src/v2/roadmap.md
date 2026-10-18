@@ -32,12 +32,12 @@ toolchain spike (UniFFI, simulators) and logo: in parallel, now
 
 ## M2: layout (`canvist_layout`)
 
-- The `TextMeasurer` trait, a `parley` measurer, and a deterministic test measurer.
-- Line breaking (UAX #14), bidi (UAX #9), and grapheme-aware hit testing.
-- Caret and selection rectangles, including in RTL and mixed-direction text.
-- Block layout with a per-`(id, rev, width)` cache, plus viewport virtualization with estimated heights.
-- The display list, and SVG and semantic HTML renderers for SSR.
-- **Benchmarks:** relayout after a keystroke, first layout of a 10k-paragraph document, and scrolling.
+- [x] The batched `TextMeasurer` trait, a `parley` measurer (behind a feature), and a deterministic test measurer.
+- [x] Line breaking (UAX #14), bidi (UAX #9), tabs, embeds, and grapheme-aware hit testing.
+- [x] Caret and selection rectangles, including in RTL and mixed-direction text, and a `LayoutNavigator` that adapts to the editor's navigation trait.
+- [x] Block layout cached by block, revision, style, and width, plus viewport virtualization with estimated heights and scroll anchoring.
+- [x] The display list with dirty rectangles, and SVG and semantic HTML renderers for SSR, with [a CSS contract](./ssr-css-contract.md).
+- [x] **Benchmarks and budget tests** at 100, 10k, and 100k blocks. A keystroke relayout takes 2.5 µs at any document size, and 25 µs in a 100 KB paragraph. A 10k-paragraph document reaches its first screen in 0.6 ms. Enter takes 83 µs at 10k blocks, and grows with the document by about 10 ns per row; chunked row storage is the follow-up.
 
 ## M3: web host (`canvist_web` + `@canvist/*` packages)
 

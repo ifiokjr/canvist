@@ -1,0 +1,14 @@
+---
+source: crates/canvist_layout/tests/snapshots.rs
+expression: "layout(&doc, 160.0).dump()"
+---
+row 1.0 paragraph y=0 h=48 x=0 w=160
+  line 0..26 soft y=0 h=24 base=16.796875 w=134.4
+    rtl x=16 w=38.4 "זהו "
+    rtl x=54.4 w=57.6 "עולם, "
+    rtl x=112 w=48 "שלום "
+  line 26..56 y=24 h=24 base=16.796875 w=153.6
+    rtl x=6.4 w=57.6 "בעברית"
+    rtl x=64 w=48 "ארוך "
+    rtl x=112 w=48 "משפט "
+height 48

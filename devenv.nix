@@ -225,6 +225,7 @@ in
       exec = ''
         set -e
         monostyle check crates/canvist_model --fail-under 90
+        monostyle check crates/canvist_layout --fail-under 90
         monostyle check crates/canvist_editor --fail-under 90
         monostyle check crates/canvist_extensions --fail-under 90
       '';

@@ -1,0 +1,54 @@
+---
+source: crates/canvist_layout/tests/snapshots.rs
+expression: describe(&list)
+---
+rect Border 0 385.13 3x48 #d6d3d1
+rect Background 0 457.13 320x81.61 #2e2b29
+rect Rule 0 570.73 320x1 #e5e3e1
+rect Highlight 128.64 51.04 32.64x13.6 #eeeeff
+rect Highlight 0 73.12 38.4x16 #eeeeff
+text "Release " x=0 base=16.31 w=101.38 19.2px/700
+text "notes" x=101.38 base=16.31 w=63.36 19.2px/700
+text "Plain, " x=0 base=61.92 w=67.2 16px/400
+text "bold" x=67.2 base=61.92 w=42.24 16px/700
+text ", " x=109.44 base=61.92 w=19.2 16px/400
+text "code" x=128.64 base=61.92 w=32.64 13.6px/400
+text "and " x=170.88 base=61.92 w=38.4 16px/400
+text "a " x=209.28 base=61.92 w=19.2 16px/400
+text "link" x=228.48 base=61.92 w=38.4 16px/400
+text "with " x=276.48 base=61.92 w=48 16px/400
+text "@ada" x=0 base=85.92 w=38.4 16px/400
+text "after " x=0 base=109.92 w=57.6 16px/400
+text "the " x=57.6 base=109.92 w=38.4 16px/400
+text "break" x=96 base=109.92 w=48 16px/400
+text "•" x=6.4 base=153.92 w=9.6 16px/400
+text "first" x=22.4 base=153.92 w=48 16px/400
+text "◦" x=28.8 base=181.92 w=9.6 16px/400
+text "nested" x=44.8 base=181.92 w=57.6 16px/400
+text "•" x=6.4 base=209.92 w=9.6 16px/400
+text "second" x=22.4 base=209.92 w=57.6 16px/400
+text "3." x=-3.2 base=253.92 w=19.2 16px/400
+text "three" x=22.4 base=253.92 w=48 16px/400
+text "4." x=-3.2 base=281.92 w=19.2 16px/400
+text "four" x=22.4 base=281.92 w=38.4 16px/400
+text "done" x=22.4 base=325.92 w=38.4 16px/400
+text "todo" x=22.4 base=353.92 w=38.4 16px/400
+text "Quoted " x=19 base=401.92 w=67.2 16px/400
+text "text " x=86.2 base=401.92 w=48 16px/400
+text "that " x=134.2 base=401.92 w=48 16px/400
+text "is " x=182.2 base=401.92 w=28.8 16px/400
+text "long " x=211 base=401.92 w=48 16px/400
+text "enough " x=259 base=401.92 w=67.2 16px/400
+text "to " x=19 base=425.92 w=28.8 16px/400
+text "wrap." x=47.8 base=425.92 w=48 16px/400
+text "fn " x=16 base=482.56 w=23.04 12.8px/400
+text "main() " x=39.04 base=482.56 w=53.76 12.8px/400
+text "{" x=92.8 base=482.56 w=7.68 12.8px/400
+text "println!" x=77.44 base=501.77 w=61.44 12.8px/400
+text "(\"hi\");" x=138.88 base=501.77 w=53.76 12.8px/400
+text "}" x=16 base=520.97 w=7.68 12.8px/400
+slot Block 0 603.73 320x80
+line Underline x=209.28 y=63.52 w=19.2
+line Underline x=228.48 y=63.52 w=38.4
+slot Checkbox { checked: true } 2 314.13 14x14
+slot Checkbox { checked: false } 2 342.13 14x14
