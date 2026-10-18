@@ -3,6 +3,7 @@
 
 #![allow(dead_code)]
 
+pub mod deno;
 pub mod ops;
 
 use std::sync::Arc;
@@ -22,6 +23,7 @@ use canvist_model::InlineText;
 use canvist_model::Mark;
 use canvist_model::MarkSet;
 use canvist_model::MarkSpec;
+use canvist_model::Point;
 use canvist_model::Schema;
 use canvist_model::Step;
 use canvist_model::Transaction;
@@ -103,6 +105,13 @@ impl Peer {
 		Some(commit)
 	}
 
+	/// Mirror a commit already applied to the document.
+	pub fn record(&mut self, commit: &Commit) {
+		self.binding
+			.apply_local(&mut self.doc, commit, Track::Step)
+			.expect("local commits translate");
+	}
+
 	/// Apply one step locally, if the model accepts it.
 	pub fn step(&mut self, step: Step) -> Option<Commit> {
 		self.edit(|transaction| transaction.step(step).is_ok())
@@ -181,6 +190,60 @@ pub fn starter(schema: &Arc<Schema>, client: u32) -> Document {
 		.expect("starter content is valid");
 	doc
 }
+
+/// The text of every text block, in order.
+pub fn texts(doc: &Document) -> Vec<String> {
+	doc.text_blocks()
+		.filter_map(Block::inline)
+		.map(|text| text.as_str().to_owned())
+		.collect()
+}
+
+/// The Rust side of the JavaScript compatibility tests, made concurrently
+/// with the scripted JavaScript edits in `tests/js/canvist.ts`: type in the
+/// title, bold the first list item, and split the last paragraph.
+pub fn concurrent_edits(doc: &mut Document) -> Vec<Commit> {
+	let schema = doc.schema().clone();
+	let title = doc.children(None)[0];
+	let list = doc.children(None)[2];
+	let one = doc.children(Some(doc.children(Some(list))[0]))[0];
+	let end = doc.children(None)[5];
+	let bold = Mark::new(schema.mark_type("bold").expect("bold"));
+	let paragraph = schema.default_text_block();
+	let mut commits = Vec::new();
+
+	let mut transaction = doc.transaction();
+	transaction
+		.insert_text(Point::new(title, 5), " 2026", MarkSet::empty())
+		.expect("type in the title");
+	commits.push(transaction.commit());
+
+	let mut transaction = doc.transaction();
+	transaction.add_mark(one, 0..3, bold).expect("bold one");
+	commits.push(transaction.commit());
+
+	let mut transaction = doc.transaction();
+	transaction
+		.split(Point::new(end, 1), paragraph, Attrs::new())
+		.expect("split the last paragraph");
+	commits.push(transaction.commit());
+	commits
+}
+
+/// The text blocks after `concurrent_edits` and the JavaScript edits merge.
+/// The mention JavaScript appended to `end` lands in `e`, because Rust split
+/// `end` concurrently and inserts into a split-off tail move to the split
+/// point.
+pub const MERGED: [&str; 8] = [
+	"Title 2026",
+	"bold é 🎉",
+	"one",
+	"two",
+	"from js",
+	"quoted",
+	"e\u{FFFC}",
+	"nd",
+];
 
 /// Messages in flight between peers, delivered in any order and sometimes
 /// twice.

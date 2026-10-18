@@ -409,12 +409,21 @@ impl Binding {
 		encoding: Encoding,
 	) -> Result<Vec<u8>, CollabError> {
 		let state_vector = StateVector::decode_v1(state_vector)?;
+		Ok(self.encode_diff_from(&state_vector, encoding))
+	}
+
+	/// Everything a peer at `state_vector` is missing.
+	pub(crate) fn encode_diff_from(
+		&self,
+		state_vector: &StateVector,
+		encoding: Encoding,
+	) -> Vec<u8> {
 		let txn = self.doc.transact();
 
-		Ok(match encoding {
-			Encoding::V1 => txn.encode_state_as_update_v1(&state_vector),
-			Encoding::V2 => txn.encode_state_as_update_v2(&state_vector),
-		})
+		match encoding {
+			Encoding::V1 => txn.encode_state_as_update_v1(state_vector),
+			Encoding::V2 => txn.encode_state_as_update_v2(state_vector),
+		}
 	}
 
 	/// The whole shared document as one update.
@@ -460,6 +469,10 @@ impl Binding {
 	/// Whether there is an undone step to redo.
 	pub fn can_redo(&self) -> bool {
 		self.undo.can_redo()
+	}
+
+	pub(crate) fn registry(&self) -> &Registry {
+		&self.registry
 	}
 
 	fn inbox(&self) -> std::sync::MutexGuard<'_, Vec<Record>> {
@@ -544,7 +557,7 @@ fn is_structural(step: &Step) -> bool {
 }
 
 /// Concatenate two commits made one after the other on `doc`.
-fn compose(mut first: Commit, second: Commit, doc: &Document) -> Commit {
+pub(crate) fn compose(mut first: Commit, second: Commit, doc: &Document) -> Commit {
 	first.steps.extend(second.steps);
 	first.inverses.extend(second.inverses);
 	first.maps.extend(second.maps);
