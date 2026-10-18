@@ -15,6 +15,12 @@
 //!   `Mod`, [`InputRule`]s, and [`PasteRule`]s, all contributed by
 //!   [`Extension`]s. [`BaseKeymap`] binds the platform's standard keys and
 //!   [`UndoInputRule`] lets Backspace take back an input rule.
+//! - A headless, typed API: [`EditorBuilder::add`] returns each extension's
+//!   typed handle; [`CommandSpec`] and [`QuerySpec`] give dynamic hosts
+//!   argument-checked named commands and queries; [`Editor::metadata`]
+//!   describes all of it for binding generators; and [`Editor::can`] and
+//!   [`Editor::chain`] dry-run or combine commands without side effects,
+//!   on top of the model's exact savepoints.
 //!
 //! Grapheme and word boundaries follow Unicode (UAX #29), and inline embeds
 //! behave as single atoms everywhere.
@@ -86,9 +92,12 @@ mod extension;
 mod history;
 mod keymap;
 
+mod meta;
+
 pub mod motion;
 pub mod position;
 mod rules;
+mod spec;
 mod state;
 mod structure;
 #[cfg(test)]
@@ -96,6 +105,7 @@ mod testing;
 
 pub mod text;
 mod transaction;
+mod typed;
 
 pub use base_keymap::BaseKeymap;
 pub use base_keymap::UndoInputRule;
@@ -124,20 +134,38 @@ pub use keymap::Keymap;
 pub use keymap::Modifiers;
 pub use keymap::Platform;
 pub use keymap::parse_binding;
+pub use meta::CommandMeta;
+pub use meta::ExtensionMeta;
+pub use meta::Field;
+pub use meta::NodeKind;
+pub use meta::NodeMeta;
+pub use meta::QueryMeta;
+pub use meta::ValueType;
+pub use meta::value_to_json;
 pub use motion::Direction;
 pub use motion::LineNavigator;
 pub use motion::ParagraphNavigator;
 pub use motion::Unit;
+pub use rules::DEFAULT_LOOKBACK;
 pub use rules::InputRule;
+pub use rules::Lookback;
 pub use rules::MarkAttrs;
 pub use rules::PasteRule;
 pub use rules::RULE_CONTEXT;
 pub use rules::RuleHandler;
 pub use rules::RuleInput;
 pub use rules::RuleMatch;
+pub use spec::Args;
+pub use spec::CommandBuilder;
+pub use spec::CommandSpec;
+pub use spec::QueryFn;
+pub use spec::QuerySpec;
 pub use state::Composition;
 pub use state::EditorState;
 pub use transaction::EditKind;
 pub use transaction::EditorTransaction;
 pub use transaction::Origin;
 pub use transaction::Update;
+pub use typed::Chain;
+pub use typed::Registration;
+pub use typed::TypedExtension;

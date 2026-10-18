@@ -13,6 +13,7 @@ use crate::InlineText;
 use crate::Schema;
 use crate::StepError;
 use crate::TreeContent;
+use crate::savepoint::SavepointLog;
 
 /// A rich-text document.
 ///
@@ -31,6 +32,8 @@ pub struct Document {
 	root: Vec<BlockId>,
 	ids: IdGenerator,
 	version: u64,
+	/// Open savepoints, innermost last.
+	pub(crate) savepoints: Vec<SavepointLog>,
 }
 
 impl Document {
@@ -58,6 +61,7 @@ impl Document {
 			root: Vec::new(),
 			ids: IdGenerator::new(client),
 			version: 0,
+			savepoints: Vec::new(),
 		}
 	}
 
@@ -276,6 +280,21 @@ impl Document {
 
 	pub(crate) fn observe_id(&mut self, id: BlockId) {
 		self.ids.observe(id);
+	}
+
+	pub(crate) fn ids(&self) -> &IdGenerator {
+		&self.ids
+	}
+
+	pub(crate) fn set_rev(&mut self, id: BlockId, rev: u32) {
+		if let Some(block) = self.blocks.get_mut(&id) {
+			block.rev = rev;
+		}
+	}
+
+	pub(crate) fn restore_counters(&mut self, version: u64, ids: IdGenerator) {
+		self.version = version;
+		self.ids = ids;
 	}
 
 	pub(crate) fn bump_version(&mut self) {

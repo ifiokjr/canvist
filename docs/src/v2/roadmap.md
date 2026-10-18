@@ -26,7 +26,7 @@ toolchain spike (UniFFI, simulators) and logo: in parallel, now
 - [ ] **Gap cursor** around atoms, for positions where text cannot go.
 - [x] **Keymaps:** per-platform, so `Mod` maps to Cmd on Apple and Ctrl elsewhere. Input rules and paste rules.
 - [x] **History:** grouping by time and by kind of edit, plus selection restore, behind a `History` trait the collaboration crate replaces.
-- [ ] **Typed extension API** (architecture Decision 8): typed handles in Rust, machine-readable command and attribute metadata for codegen, chaining, and `can()` dry runs. The core stays headless.
+- [x] **Typed extension API** (architecture Decision 8): typed handles in Rust, machine-readable command, query, and attribute metadata for codegen, chaining, and `can()` dry runs on exact model savepoints. The core stays headless. TypeScript generation from the metadata is M3.
 - [x] **Extension trait and the StarterKit** (`canvist_extensions`): paragraph, heading 1–6, blockquote, code block, hard break, horizontal rule, bullet, ordered, and task lists, bold, italic, underline, strike, code, link, undo/redo, and trailing node, each behind a Cargo feature. The drop cursor moves to M3, because drag and drop belongs to the host.
 - [x] **Tests:** headless, scripted keystrokes with JSON snapshots, for example `type("## Hi⏎- one⏎two⇥")`, property tests that random commands and keystroke scripts keep every invariant and undo and redo exactly, `divan` benchmarks, and `perf_budgets` tests: a keystroke through the whole StarterKit costs about 0.65 µs at 100,000 blocks.
 

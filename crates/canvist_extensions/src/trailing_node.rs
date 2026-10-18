@@ -40,3 +40,11 @@ impl Extension for TrailingNode {
 		})
 	}
 }
+
+impl canvist_editor::TypedExtension for TrailingNode {
+	type Handle = canvist_editor::Registration;
+
+	fn handle(&self, registration: canvist_editor::Registration) -> canvist_editor::Registration {
+		registration
+	}
+}

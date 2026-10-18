@@ -14,11 +14,13 @@ use rustc_hash::FxHashMap;
 
 use crate::Command;
 use crate::CommandResult;
+use crate::CommandSpec;
 use crate::Context;
 use crate::EditKind;
 use crate::EditorError;
 use crate::EditorState;
 use crate::Extension;
+use crate::ExtensionMeta;
 use crate::History;
 use crate::InputRule;
 use crate::KeyPress;
@@ -28,6 +30,7 @@ use crate::Origin;
 use crate::ParagraphNavigator;
 use crate::PasteRule;
 use crate::Platform;
+use crate::QuerySpec;
 use crate::RuleInput;
 use crate::Slice;
 use crate::UndoHistory;
@@ -68,12 +71,14 @@ impl std::fmt::Debug for Env<'_> {
 
 /// Everything the extensions contributed, resolved against the schema.
 #[derive(Default)]
-struct Registry {
+pub(crate) struct Registry {
 	extensions: Vec<Arc<dyn Extension>>,
 	keymap: Keymap,
 	input_rules: Vec<InputRule>,
 	paste_rules: Vec<PasteRule>,
-	commands: FxHashMap<&'static str, Command>,
+	pub(crate) commands: FxHashMap<&'static str, CommandSpec>,
+	pub(crate) queries: FxHashMap<&'static str, QuerySpec>,
+	pub(crate) metadata: Vec<ExtensionMeta>,
 	code_blocks: Vec<BlockTypeId>,
 }
 
@@ -90,7 +95,7 @@ impl Registry {
 				registry.keymap.bind(binding, platform, command)?;
 			}
 
-			registry.commands.extend(extension.commands(schema)?);
+			registry.describe(extension.as_ref(), schema)?;
 			registry.input_rules.extend(extension.input_rules(schema)?);
 			registry.paste_rules.extend(extension.paste_rules(schema)?);
 			registry.code_blocks.extend(extension.code_blocks(schema)?);
@@ -99,12 +104,45 @@ impl Registry {
 		registry.extensions = extensions;
 		Ok(registry)
 	}
+
+	/// Register an extension's commands and queries by name, refusing
+	/// names another extension already took, and record its metadata.
+	fn describe(&mut self, extension: &dyn Extension, schema: &Schema) -> Result<(), EditorError> {
+		let commands = extension.commands(schema)?;
+		let queries = extension.queries(schema)?;
+		let taken = |name: &str| EditorError::DuplicateName(name.to_owned());
+
+		self.metadata.push(ExtensionMeta {
+			name: extension.name(),
+			nodes: extension.nodes(),
+			commands: commands.iter().map(|spec| spec.meta().clone()).collect(),
+			queries: queries.iter().map(|spec| spec.meta().clone()).collect(),
+		});
+
+		for spec in commands {
+			let name = spec.meta().name;
+
+			if self.commands.insert(name, spec).is_some() {
+				return Err(taken(name));
+			}
+		}
+
+		for spec in queries {
+			let name = spec.meta().name;
+
+			if self.queries.insert(name, spec).is_some() {
+				return Err(taken(name));
+			}
+		}
+
+		Ok(())
+	}
 }
 
 /// Configures and builds an [`Editor`].
 #[derive(Default)]
 pub struct EditorBuilder {
-	extensions: Vec<Arc<dyn Extension>>,
+	pub(crate) extensions: Vec<Arc<dyn Extension>>,
 	platform: Platform,
 	client: u32,
 	history: Option<Box<dyn History>>,
@@ -200,11 +238,11 @@ impl EditorBuilder {
 /// and repaint. Every update passes through one place, which runs the
 /// extensions' fix-ups and records history.
 pub struct Editor {
-	state: EditorState,
-	history: Box<dyn History>,
-	registry: Registry,
+	pub(crate) state: EditorState,
+	pub(crate) history: Box<dyn History>,
+	pub(crate) registry: Registry,
 	platform: Platform,
-	last_rule: Option<AppliedRule>,
+	pub(crate) last_rule: Option<AppliedRule>,
 }
 
 impl std::fmt::Debug for Editor {
@@ -254,12 +292,6 @@ impl Editor {
 		self.history.can_redo()
 	}
 
-	/// A named command contributed by an extension.
-	#[must_use]
-	pub fn command(&self, name: &str) -> Option<&Command> {
-		self.registry.commands.get(name)
-	}
-
 	/// Run the commands bound to `press` until one applies.
 	pub fn handle_key(&mut self, press: KeyPress<'_>, env: &Env<'_>) -> CommandResult {
 		let mut context = Context {
@@ -281,20 +313,6 @@ impl Editor {
 			last_rule: self.last_rule.as_ref(),
 		};
 		let update = command(&mut context)?;
-		self.finish(update, env.now)
-	}
-
-	/// Run the command an extension registered as `name`. Unknown names do
-	/// nothing.
-	pub fn run_named(&mut self, name: &str, env: &Env<'_>) -> CommandResult {
-		let mut context = Context {
-			state: &mut self.state,
-			history: self.history.as_mut(),
-			lines: env.lines,
-			last_rule: self.last_rule.as_ref(),
-		};
-		let commands = self.registry.commands.get(name).map(std::slice::from_ref);
-		let update = first_applying(commands.unwrap_or_default(), &mut context)?;
 		self.finish(update, env.now)
 	}
 
@@ -483,7 +501,7 @@ impl Editor {
 
 	/// The single path every local update takes: extensions fix up the
 	/// state, and the result is recorded in history.
-	fn finish(&mut self, update: Option<Update>, now: Duration) -> CommandResult {
+	pub(crate) fn finish(&mut self, update: Option<Update>, now: Duration) -> CommandResult {
 		self.last_rule = None;
 
 		let Some(update) = update else {

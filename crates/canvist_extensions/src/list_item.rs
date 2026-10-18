@@ -1,15 +1,23 @@
 //! List items.
 
 use canvist_editor::Binding;
+use canvist_editor::Command;
+use canvist_editor::CommandSpec;
 use canvist_editor::EditorError;
 use canvist_editor::Extension;
+use canvist_editor::NodeKind;
+use canvist_editor::NodeMeta;
 use canvist_editor::Platform;
-use canvist_editor::block_type;
+use canvist_editor::Registration;
+use canvist_editor::TypedExtension;
+use canvist_editor::commands;
 use canvist_model::BlockSpec;
 use canvist_model::Schema;
 use canvist_model::SchemaBuilder;
 
 use crate::lists;
+
+const NAME: &str = "listItem";
 
 /// A `listItem` container for bullet and ordered lists. Enter splits it,
 /// Tab and Shift-Tab indent and outdent it, and Backspace at its start
@@ -17,20 +25,68 @@ use crate::lists;
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ListItem;
 
+/// Typed access to [`ListItem`].
+#[derive(Clone, Copy, Debug)]
+pub struct ListItemHandle {
+	_registration: Registration,
+}
+
+#[allow(
+	clippy::unused_self,
+	reason = "handle methods require proof of registration"
+)]
+impl ListItemHandle {
+	/// Split the item at the caret (Enter).
+	#[must_use]
+	pub fn split(self) -> Command {
+		lists::item_command(NAME, NAME, commands::split_list_item)
+	}
+
+	/// Nest the selected items in the item before them (Tab).
+	#[must_use]
+	pub fn sink(self) -> Command {
+		lists::item_command(NAME, NAME, commands::sink_list_item)
+	}
+
+	/// Lift the selected items one level (Shift-Tab).
+	#[must_use]
+	pub fn lift(self) -> Command {
+		lists::item_command(NAME, NAME, commands::lift_list_item)
+	}
+}
+
 impl Extension for ListItem {
 	fn name(&self) -> &'static str {
-		"listItem"
+		NAME
 	}
 
 	fn schema(&self, schema: SchemaBuilder) -> SchemaBuilder {
-		schema.block(BlockSpec::container("listItem", &["block"]).groups(&[]))
+		schema.block(BlockSpec::container(NAME, &["block"]).groups(&[]))
 	}
 
-	fn keymap(&self, schema: &Schema, _platform: Platform) -> Result<Vec<Binding>, EditorError> {
-		Ok(lists::item_bindings(block_type(
-			schema,
-			self.name(),
-			"listItem",
-		)?))
+	fn nodes(&self) -> Vec<NodeMeta> {
+		vec![NodeMeta::new(NodeKind::Block, NAME)]
+	}
+
+	fn commands(&self, _schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {
+		Ok(lists::item_specs(
+			NAME,
+			NAME,
+			["splitListItem", "sinkListItem", "liftListItem"],
+		))
+	}
+
+	fn keymap(&self, _schema: &Schema, _platform: Platform) -> Result<Vec<Binding>, EditorError> {
+		Ok(lists::item_bindings(NAME, NAME))
+	}
+}
+
+impl TypedExtension for ListItem {
+	type Handle = ListItemHandle;
+
+	fn handle(&self, registration: Registration) -> ListItemHandle {
+		ListItemHandle {
+			_registration: registration,
+		}
 	}
 }

@@ -60,6 +60,8 @@ mod id;
 mod inline;
 mod json;
 mod mark;
+mod savepoint;
+
 mod schema;
 mod selection;
 mod step;
@@ -85,6 +87,7 @@ pub use inline::RunRef;
 pub use json::JsonError;
 pub use mark::Mark;
 pub use mark::MarkSet;
+pub use savepoint::Savepoint;
 pub use schema::BlockSpec;
 pub use schema::BlockType;
 pub use schema::BlockTypeId;

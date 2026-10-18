@@ -53,6 +53,7 @@ fn median_per_call(batch: u32, mut run: impl FnMut()) -> Duration {
 			for _ in 0..batch {
 				run();
 			}
+
 			start.elapsed() / batch
 		})
 		.collect();

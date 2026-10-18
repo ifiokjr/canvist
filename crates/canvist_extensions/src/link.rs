@@ -2,13 +2,22 @@
 
 use canvist_editor::Command;
 use canvist_editor::CommandResult;
+use canvist_editor::CommandSpec;
 use canvist_editor::EditKind;
 use canvist_editor::EditorError;
 use canvist_editor::EditorState;
 use canvist_editor::Extension;
+use canvist_editor::Field;
 use canvist_editor::InputRule;
+use canvist_editor::Lookback;
+use canvist_editor::NodeKind;
+use canvist_editor::NodeMeta;
 use canvist_editor::PasteRule;
+use canvist_editor::QuerySpec;
+use canvist_editor::Registration;
 use canvist_editor::RuleMatch;
+use canvist_editor::TypedExtension;
+use canvist_editor::ValueType;
 use canvist_editor::command;
 use canvist_editor::commands;
 use canvist_editor::mark_type;
@@ -21,6 +30,8 @@ use canvist_model::Schema;
 use canvist_model::SchemaBuilder;
 use canvist_model::Selection;
 use canvist_model::Value;
+
+use crate::resolve;
 
 /// A URL that does not swallow trailing punctuation.
 const URL: &str = r#"https?://[^\s<>"']*[^\s<>"'.,;:!?)\]]"#;
@@ -53,10 +64,80 @@ fn link(kind: MarkTypeId, href: &str) -> Mark {
 	Mark::with_attrs(kind, Attrs::new().with("href", href))
 }
 
-/// Link the selection to `href`, or update the link it already has.
-pub fn set_link(state: &mut EditorState, href: &str) -> CommandResult {
-	let kind = kind(state.schema())?;
-	commands::set_mark(state, &link(kind, href))
+/// Typed access to [`Link`].
+#[derive(Clone, Copy, Debug)]
+pub struct LinkHandle {
+	_registration: Registration,
+}
+
+#[allow(
+	clippy::unused_self,
+	reason = "handle methods require proof of registration"
+)]
+impl LinkHandle {
+	/// Link the selection to `href`, or update the link it already has. At a
+	/// caret, the next typed text is linked.
+	#[must_use]
+	pub fn set(self, href: &str) -> Command {
+		set(href)
+	}
+
+	/// Remove links from the selection.
+	#[must_use]
+	pub fn unset(self) -> Command {
+		unset()
+	}
+
+	/// The `href` of the link at the selection, if every selected character
+	/// shares one.
+	#[must_use]
+	pub fn href(self, state: &EditorState) -> Option<String> {
+		href(state)
+	}
+}
+
+fn set(href: &str) -> Command {
+	let href = href.to_owned();
+	command(move |state| {
+		let kind = resolve::mark(state, "link", "link")?;
+		commands::set_mark(state, &link(kind, &href))
+	})
+}
+
+fn unset() -> Command {
+	command(|state| {
+		let kind = resolve::mark(state, "link", "link")?;
+		commands::unset_mark(state, kind)
+	})
+}
+
+/// The link at the selection: the active marks at a caret, or the marks
+/// every selected character shares.
+fn href(state: &EditorState) -> Option<String> {
+	let kind = state.schema().mark_type("link")?;
+
+	if !commands::is_mark_active(state, kind) {
+		return None;
+	}
+
+	let marks = commands::active_marks(state);
+	let href = marks.get(kind)?.attrs.get("href")?.as_str()?;
+	Some(href.to_owned())
+}
+
+fn href_field(required: bool) -> Field {
+	let doc = "The link target.";
+
+	if required {
+		Field::required("href", ValueType::String, doc)
+	} else {
+		Field::optional(
+			"href",
+			ValueType::nullable(ValueType::String),
+			Value::Null,
+			doc,
+		)
+	}
 }
 
 /// Link the URL before the caret (leaving trailing punctuation outside the
@@ -88,12 +169,30 @@ impl Extension for Link {
 		schema.mark(MarkSpec::new("link").inclusive(false).attrs(attrs))
 	}
 
-	fn commands(&self, schema: &Schema) -> Result<Vec<(&'static str, Command)>, EditorError> {
-		let kind = kind(schema)?;
-		Ok(vec![(
-			"unsetLink",
-			command(move |state| commands::unset_mark(state, kind)),
-		)])
+	fn nodes(&self) -> Vec<NodeMeta> {
+		vec![NodeMeta::new(NodeKind::Mark, "link").attr(href_field(false))]
+	}
+
+	fn commands(&self, _schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {
+		let set_spec = CommandSpec::new(
+			"setLink",
+			"Link the selection to a URL, or update the link it already has.",
+			|args| Ok(set(args.string("href")?)),
+		);
+		Ok(vec![
+			set_spec.arg(href_field(true)),
+			CommandSpec::simple("unsetLink", "Remove links from the selection.", unset()),
+		])
+	}
+
+	fn queries(&self, _schema: &Schema) -> Result<Vec<QuerySpec>, EditorError> {
+		let query = QuerySpec::new(
+			"linkHref",
+			"The href of the link at the selection, or null.",
+			ValueType::nullable(ValueType::String),
+			|state, _| Ok(href(state).map_or(Value::Null, Value::from)),
+		);
+		Ok(vec![query])
 	}
 
 	fn input_rules(&self, schema: &Schema) -> Result<Vec<InputRule>, EditorError> {
@@ -103,9 +202,8 @@ impl Extension for Link {
 
 		let kind = kind(schema)?;
 		let pattern = format!(r"(?:^|\s)({URL})[.,;:!?)\]]*\s$");
-		Ok(vec![InputRule::new(&pattern, move |state, found| {
-			autolink(state, found, kind)
-		})?])
+		let rule = InputRule::new(&pattern, move |state, found| autolink(state, found, kind))?;
+		Ok(vec![rule.lookback(Lookback::Word)])
 	}
 
 	fn paste_rules(&self, schema: &Schema) -> Result<Vec<PasteRule>, EditorError> {
@@ -117,5 +215,15 @@ impl Extension for Link {
 		Ok(vec![PasteRule::mark_with(URL, kind, |url| {
 			Attrs::new().with("href", url)
 		})?])
+	}
+}
+
+impl TypedExtension for Link {
+	type Handle = LinkHandle;
+
+	fn handle(&self, registration: Registration) -> LinkHandle {
+		LinkHandle {
+			_registration: registration,
+		}
 	}
 }

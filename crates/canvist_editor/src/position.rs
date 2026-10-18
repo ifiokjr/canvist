@@ -205,8 +205,13 @@ pub fn sibling_range(
 			.copied();
 
 		if let Some(start) = start {
-			let start = doc.index_in_parent(start)?;
+			// One sibling scan when both ends are the same block (a caret).
 			let end = doc.index_in_parent(candidate)?;
+			let start = if start == candidate {
+				end
+			} else {
+				doc.index_in_parent(start)?
+			};
 
 			return (start <= end).then(|| (parent, start..end + 1));
 		}

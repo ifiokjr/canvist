@@ -3,13 +3,21 @@
 use canvist_editor::Binding;
 use canvist_editor::Command;
 use canvist_editor::CommandResult;
+use canvist_editor::CommandSpec;
 use canvist_editor::EditKind;
 use canvist_editor::EditorError;
 use canvist_editor::EditorState;
 use canvist_editor::Extension;
+use canvist_editor::Field;
 use canvist_editor::InputRule;
+use canvist_editor::NodeKind;
+use canvist_editor::NodeMeta;
 use canvist_editor::Platform;
+use canvist_editor::QuerySpec;
+use canvist_editor::Registration;
 use canvist_editor::RuleMatch;
+use canvist_editor::TypedExtension;
+use canvist_editor::ValueType;
 use canvist_editor::block_type;
 use canvist_editor::command;
 use canvist_editor::commands;
@@ -21,6 +29,8 @@ use canvist_model::Schema;
 use canvist_model::SchemaBuilder;
 use canvist_model::Selection;
 use canvist_model::Value;
+
+use crate::resolve;
 
 /// A `codeBlock` text block with a `language` attribute.
 ///
@@ -35,10 +45,78 @@ impl CodeBlock {
 	fn kind(schema: &Schema) -> Result<BlockTypeId, EditorError> {
 		block_type(schema, "codeBlock", "codeBlock")
 	}
+}
 
-	fn toggle(kind: BlockTypeId) -> Command {
-		command(move |state| commands::toggle_block_type(state, kind, &Attrs::new()))
+/// Typed access to [`CodeBlock`].
+#[derive(Clone, Copy, Debug)]
+pub struct CodeBlockHandle {
+	_registration: Registration,
+}
+
+#[allow(
+	clippy::unused_self,
+	reason = "handle methods require proof of registration"
+)]
+impl CodeBlockHandle {
+	/// Make the selected text blocks code in `language`, or paragraphs if
+	/// they already are code.
+	#[must_use]
+	pub fn toggle(self, language: Option<&str>) -> Command {
+		toggle(language)
 	}
+
+	/// Make the selected text blocks code in `language`.
+	#[must_use]
+	pub fn set(self, language: Option<&str>) -> Command {
+		set(language)
+	}
+
+	/// Whether the selection is in a code block.
+	#[must_use]
+	pub fn is_active(self, state: &EditorState) -> bool {
+		resolve::around(state, "codeBlock").is_some()
+	}
+
+	/// The language of the code block holding the selection.
+	#[must_use]
+	pub fn language(self, state: &EditorState) -> Option<String> {
+		language_at(state)
+	}
+}
+
+fn language_attrs(language: Option<&str>) -> Attrs {
+	Attrs::new().with("language", language.map_or(Value::Null, Value::from))
+}
+
+fn toggle(language: Option<&str>) -> Command {
+	let attrs = language_attrs(language);
+	command(move |state| {
+		let code = resolve::block(state, "codeBlock", "codeBlock")?;
+		commands::toggle_block_type(state, code, &attrs)
+	})
+}
+
+fn set(language: Option<&str>) -> Command {
+	let attrs = language_attrs(language);
+	command(move |state| {
+		let code = resolve::block(state, "codeBlock", "codeBlock")?;
+		commands::set_block_type(state, code, &attrs)
+	})
+}
+
+fn language_at(state: &EditorState) -> Option<String> {
+	let language = resolve::attr_around(state, "codeBlock", "language")?;
+	language.as_str().map(str::to_owned)
+}
+
+fn language_field() -> Field {
+	let ty = ValueType::nullable(ValueType::String);
+	Field::optional(
+		"language",
+		ty,
+		Value::Null,
+		"The code's language, such as `rust`.",
+	)
 }
 
 /// The caret, if it sits in a code block.
@@ -114,14 +192,47 @@ impl Extension for CodeBlock {
 		schema.block(BlockSpec::text("codeBlock").attrs(attrs))
 	}
 
-	fn commands(&self, schema: &Schema) -> Result<Vec<(&'static str, Command)>, EditorError> {
-		Ok(vec![("toggleCodeBlock", Self::toggle(Self::kind(schema)?))])
+	fn nodes(&self) -> Vec<NodeMeta> {
+		vec![NodeMeta::new(NodeKind::Block, "codeBlock").attr(language_field())]
+	}
+
+	fn commands(&self, _schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {
+		let toggle_spec = CommandSpec::new(
+			"toggleCodeBlock",
+			"Make the selected text blocks code, or paragraphs if they already are code.",
+			|args| Ok(toggle(args.optional_string("language")?)),
+		);
+		let set_spec = CommandSpec::new(
+			"setCodeBlock",
+			"Make the selected text blocks code in a language.",
+			|args| Ok(set(args.optional_string("language")?)),
+		);
+		Ok(vec![
+			toggle_spec.arg(language_field()),
+			set_spec.arg(language_field()),
+		])
+	}
+
+	fn queries(&self, _schema: &Schema) -> Result<Vec<QuerySpec>, EditorError> {
+		let is_code = QuerySpec::new(
+			"isCodeBlock",
+			"Whether the selection is in a code block.",
+			ValueType::Bool,
+			|state, _| Ok(Value::Bool(resolve::around(state, "codeBlock").is_some())),
+		);
+		let language = QuerySpec::new(
+			"codeBlockLanguage",
+			"The language of the code block holding the selection, or null.",
+			ValueType::nullable(ValueType::String),
+			|state, _| Ok(language_at(state).map_or(Value::Null, Value::from)),
+		);
+		Ok(vec![is_code, language])
 	}
 
 	fn keymap(&self, schema: &Schema, _platform: Platform) -> Result<Vec<Binding>, EditorError> {
 		let kind = Self::kind(schema)?;
 		Ok(vec![
-			("Mod-Alt-c", Self::toggle(kind)),
+			("Mod-Alt-c", toggle(None)),
 			("Enter", command(move |state| enter(state, kind))),
 			("Backspace", command(move |state| reset(state, kind))),
 		])
@@ -137,5 +248,15 @@ impl Extension for CodeBlock {
 
 	fn code_blocks(&self, schema: &Schema) -> Result<Vec<BlockTypeId>, EditorError> {
 		Ok(vec![Self::kind(schema)?])
+	}
+}
+
+impl TypedExtension for CodeBlock {
+	type Handle = CodeBlockHandle;
+
+	fn handle(&self, registration: Registration) -> CodeBlockHandle {
+		CodeBlockHandle {
+			_registration: registration,
+		}
 	}
 }
