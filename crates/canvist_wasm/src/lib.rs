@@ -5126,7 +5126,7 @@ impl CanvistEditor {
 			}
 		}
 		// Sort by offset descending so later ops don't shift earlier ones.
-		ops.sort_by(|a, b| b.offset.cmp(&a.offset));
+		ops.sort_by_key(|op| std::cmp::Reverse(op.offset));
 		for op in &ops {
 			match op.kind.as_str() {
 				"insert" => self.insert_text_at(op.offset, &op.text),
@@ -9305,7 +9305,7 @@ impl CanvistEditor {
 			}
 		}
 		let mut rows: Vec<(usize, usize)> = buckets.into_iter().collect();
-		rows.sort_by(|a, b| b.0.cmp(&a.0));
+		rows.sort_by_key(|row| std::cmp::Reverse(row.0));
 
 		let mut out = Vec::with_capacity(rows.len() * 2);
 		for (occurrence_count, group_count) in rows {
@@ -9340,7 +9340,7 @@ impl CanvistEditor {
 			}
 		}
 		let mut rows: Vec<(usize, usize)> = buckets.into_iter().collect();
-		rows.sort_by(|a, b| b.0.cmp(&a.0));
+		rows.sort_by_key(|row| std::cmp::Reverse(row.0));
 
 		let mut out = Vec::with_capacity(rows.len() * 2);
 		for (occurrence_count, group_count) in rows {
@@ -11819,8 +11819,7 @@ impl CanvistEditor {
 				.color(gt.r, gt.g, gt.b, gt.a)
 				.font_family("Inter, system-ui, monospace");
 
-			let mut line_number = 1u32;
-			for para in &paragraphs {
+			for (line_number, para) in (1u32..).zip(&paragraphs) {
 				let first_line = para.layout.lines.first();
 				if let Some(line) = first_line {
 					let y = lc.padding_y + para.y_offset + line.y - sy;
@@ -11850,7 +11849,6 @@ impl CanvistEditor {
 						}
 					}
 				}
-				line_number += 1;
 			}
 		}
 
