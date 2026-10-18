@@ -34,7 +34,7 @@ toolchain spike (UniFFI, simulators) and logo: in parallel, now
 
 - [x] The batched `TextMeasurer` trait, a `parley` measurer (behind a feature), and a deterministic test measurer.
 - [x] Line breaking (UAX #14), bidi (UAX #9), tabs, embeds, and grapheme-aware hit testing.
-- [x] Caret and selection rectangles, including in RTL and mixed-direction text, and a `LineNavigator` for the editor.
+- [x] Caret and selection rectangles, including in RTL and mixed-direction text, and a `LayoutNavigator` that adapts to the editor's navigation trait.
 - [x] Block layout cached by block, revision, style, and width, plus viewport virtualization with estimated heights and scroll anchoring.
 - [x] The display list with dirty rectangles, and SVG and semantic HTML renderers for SSR, with [a CSS contract](./ssr-css-contract.md).
 - [x] **Benchmarks and budget tests** at 100, 10k, and 100k blocks. A keystroke relayout takes 2.5 µs at any document size, and 25 µs in a 100 KB paragraph. A 10k-paragraph document reaches its first screen in 0.6 ms. Enter takes 83 µs at 10k blocks, and grows with the document by about 10 ns per row; chunked row storage is the follow-up.
