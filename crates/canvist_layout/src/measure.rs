@@ -19,8 +19,12 @@ use crate::FontSpec;
 use crate::LayoutError;
 
 mod fixed;
+#[cfg(feature = "parley")]
+mod parley;
 
 pub use fixed::FixedMeasurer;
+#[cfg(feature = "parley")]
+pub use parley::ParleyMeasurer;
 
 /// One segment to measure.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -67,7 +71,7 @@ pub struct MeasureOutput {
 }
 
 /// Measures text for layout. Implemented once per platform: the browser's
-/// `measureText` on the web, `parley` on desktop and for SSR,
+/// `measureText` on the web, [`ParleyMeasurer`] on desktop and for SSR,
 /// CoreText on iOS, and so on.
 pub trait TextMeasurer {
 	/// Measure a batch, appending results to `out`, which arrives empty.

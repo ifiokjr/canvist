@@ -17,14 +17,24 @@ description = "Incremental text and block layout for the canvist editor: line br
 [dependencies]
 canvist_model = { workspace = true }
 icu_segmenter = { version = "^2.3", default-features = false, features = ["compiled_data"] }
+parley = { version = "^0.12", default-features = false, features = ["std"], optional = true }
 rustc-hash = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 unicode-bidi = { version = "^0.3", default-features = false, features = ["hardcoded-data", "std"] }
 
 [dev-dependencies]
+divan = { workspace = true }
 insta = { workspace = true }
 proptest = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "layout"
+harness = false
+
+[features]
+default = []
+parley = ["dep:parley"]
 
 [lints]
 workspace = true
