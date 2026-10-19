@@ -28,8 +28,13 @@ use crate::LayoutError;
 use crate::measure::MeasureCache;
 use crate::measure::Measured;
 
-/// The last grapheme of `left` and the first of `right`, when the two touch:
+/// The end of `left` and the first grapheme of `right`, when the two touch:
 /// nothing but a space (which fonts can kern) between them.
+///
+/// The end is `left`'s last grapheme, or its last two when the last is a
+/// space: browsers measure a space on its own wider than it lays out
+/// beside text (Firefox by 19/60 px), so a space is measured in context
+/// and the pair's adjustment is the difference context makes.
 pub(crate) fn touching<'t>(
 	text: &'t str,
 	left: &Range<u32>,
@@ -47,10 +52,17 @@ pub(crate) fn touching<'t>(
 		return None;
 	}
 
-	let last = *grapheme_boundaries(left).iter().rev().nth(1)? as usize;
+	let boundaries = grapheme_boundaries(left);
+	let mut start = boundaries.iter().rev();
+	let last = *start.nth(1)? as usize;
+	let end = if left[last..].chars().all(is_space) {
+		*start.next()? as usize
+	} else {
+		last
+	};
 	let first = *grapheme_boundaries(right).get(1)? as usize;
 
-	Some((&left[last..], &right[..first]))
+	Some((&left[end..], &right[..first]))
 }
 
 /// A space a font can kern against the next letter: not a tab or a break.
@@ -179,8 +191,13 @@ mod tests {
 		assert_eq!(touching(text, &(0..3), &(3..6)), Some(("キ", "ス")));
 		assert_eq!(
 			touching(text, &(3..7), &(7..12)),
-			Some((" ", "w")),
-			"a space kerns with the letter after it"
+			Some(("ス ", "w")),
+			"a space kerns with the letter after it, measured after its own neighbour"
+		);
+		assert_eq!(
+			touching(" x", &(0..1), &(1..2)),
+			None,
+			"a lone space has no context"
 		);
 		assert_eq!(
 			touching("a\tb", &(0..2), &(2..3)),
