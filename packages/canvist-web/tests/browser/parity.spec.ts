@@ -235,6 +235,7 @@ for (const fixture of FIXTURES) {
 				max: result.report.max,
 				counts: result.report.counts,
 				worst: result.report.worst.slice(0, 12),
+				onsets: result.report.onsets,
 			};
 			await writeFile(
 				new URL(`${slug}.json`, folder),

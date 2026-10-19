@@ -29,6 +29,12 @@ export interface GeometryReport {
 	readonly counts: Readonly<Record<Delta["kind"], number>>;
 	/** The worst differences, largest first. */
 	readonly worst: readonly Delta[];
+	/**
+	 * Per block, the first caret stop in reading order that is off by more
+	 * than an eighth of a pixel: where a drift starts, which the worst list
+	 * hides once the drift carries on to the end of the line.
+	 */
+	readonly onsets: readonly Delta[];
 }
 
 /** A text position in the DOM for a UTF-16 offset in a block's model text. */
@@ -46,6 +52,8 @@ const ENCLOSING_SHARE = 0.9;
 const ENCLOSING_SAMPLE = 400;
 /** Differences up to this many CSS px are float noise, left out of the worst list. */
 const NOISE_PX = 1 / 64;
+/** Caret stops off by more than this many CSS px start a drift. */
+const ONSET_PX = 1 / 8;
 /** How many of the worst differences a report keeps. */
 const WORST_KEPT = 40;
 /** How much of a run's text labels its deltas. */
@@ -252,7 +260,12 @@ export function compare(
 		compareRun(run, comparison);
 	}
 
-	return { max: largest(deltas), counts, worst: worst(deltas) };
+	return {
+		max: largest(deltas),
+		counts,
+		worst: worst(deltas),
+		onsets: onsets(deltas),
+	};
 }
 
 /** Compare a block's box, then each of its graphemes, with the DOM's. */
@@ -447,6 +460,22 @@ function largest(deltas: readonly Delta[]): Record<DeltaKind, number> {
 	}
 
 	return max;
+}
+
+/** Each block's first caret stop off by more than {@link ONSET_PX}, in the order they were compared. */
+function onsets(deltas: readonly Delta[]): Delta[] {
+	const first = new Map<string, Delta>();
+
+	for (const delta of deltas) {
+		if (
+			delta.kind === "grapheme" && size(delta) > ONSET_PX &&
+			!first.has(delta.block)
+		) {
+			first.set(delta.block, delta);
+		}
+	}
+
+	return [...first.values()];
 }
 
 /** The largest differences above float noise, largest first. */
