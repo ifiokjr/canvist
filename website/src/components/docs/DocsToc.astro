@@ -1,0 +1,93 @@
+---
+import type { MarkdownHeading } from "astro";
+
+interface Props {
+	headings: readonly MarkdownHeading[];
+	/** `aside` is the sticky desktop column; `inline` is the collapsed list above the article. */
+	variant: "aside" | "inline";
+}
+
+const { headings, variant } = Astro.props;
+const titleId = `docs-toc-title-${variant}`;
+---
+
+{
+	headings.length > 0 && variant === "aside" && (
+		<aside class="docs-toc" aria-labelledby={titleId}>
+			<p class="docs-toc__title" id={titleId}>
+				On this page
+			</p>
+			<ul class="docs-toc__list" data-docs-toc>
+				{headings.map((heading) => (
+					<li data-depth={heading.depth}>
+						<a href={`#${heading.slug}`}>{heading.text}</a>
+					</li>
+				))}
+			</ul>
+		</aside>
+	)
+}
+
+{
+	headings.length > 0 && variant === "inline" && (
+		<details class="docs-toc-inline">
+			<summary>On this page</summary>
+			<ul class="docs-toc__list" data-docs-toc>
+				{headings.map((heading) => (
+					<li data-depth={heading.depth}>
+						<a href={`#${heading.slug}`}>{heading.text}</a>
+					</li>
+				))}
+			</ul>
+		</details>
+	)
+}
+
+<script>
+	/**
+	 * Scroll-spy: the current section is the last heading whose top has passed
+	 * a reading line just below the sticky docs bar.
+	 */
+	const links = [...document.querySelectorAll<HTMLAnchorElement>("[data-docs-toc] a")];
+	const headings = [...new Set(links.map((link) => decodeURIComponent(link.hash.slice(1))))]
+		.map((id) => document.getElementById(id))
+		.filter((heading): heading is HTMLElement => heading !== null);
+
+	let current: string | undefined;
+	let queued = false;
+
+	function activeId(): string | undefined {
+		const line = Math.min(innerHeight * 0.3, 160);
+		const atBottom = scrollY + innerHeight >= document.documentElement.scrollHeight - 2;
+		if (atBottom) return headings.at(-1)?.id;
+		let active: string | undefined;
+		for (const heading of headings) {
+			if (heading.getBoundingClientRect().top > line) break;
+			active = heading.id;
+		}
+		return active;
+	}
+
+	function update(): void {
+		queued = false;
+		const next = activeId();
+		if (next === current) return;
+		current = next;
+		for (const link of links) {
+			if (link.hash.slice(1) === next) link.setAttribute("aria-current", "true");
+			else link.removeAttribute("aria-current");
+		}
+	}
+
+	function schedule(): void {
+		if (queued) return;
+		queued = true;
+		requestAnimationFrame(update);
+	}
+
+	if (headings.length > 0) {
+		addEventListener("scroll", schedule, { passive: true });
+		addEventListener("resize", schedule, { passive: true });
+		update();
+	}
+</script>

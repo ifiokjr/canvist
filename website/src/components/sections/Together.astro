@@ -1,0 +1,105 @@
+---
+import ChipLabel from "../ChipLabel.astro";
+---
+
+<section class="chip together" data-chip="3" id="together" aria-labelledby="together-title" data-fan-chip>
+	<div class="chip-inner together__grid">
+		<div class="together__copy">
+			<p class="eyebrow">04 / Together</p>
+			<h2 id="together-title" class="section-title">Carets that meet in the middle.</h2>
+			<p class="lede chip-muted">
+				Collaboration is built on Yjs through yrs, the Rust port, so canvist talks to y-websocket, Hocuspocus and every JavaScript Yjs peer. Remote edits arrive as ordinary steps, and every caret's position is mapped through them, so nobody's cursor jumps.
+			</p>
+			<ul class="together__facts">
+				<li><span class="code-label">1.9 µs</span> to mirror a keystroke into a Yjs update</li>
+				<li><span class="code-label">2.7 µs</span> to apply a collaborator's keystroke</li>
+				<li><span class="code-label">100k</span> blocks in the document while doing it</li>
+			</ul>
+		</div>
+
+		<figure class="room" data-together>
+			<canvas class="room__canvas" data-together-canvas role="img" aria-label="Four carets, Ada, Kofi, Mei and you, move into the same sentence and type into it at once. Each insertion shifts the carets after it, and the sentence ends up as: Meet me at the big blue canvas tonight."></canvas>
+			<figcaption class="room__log code-label" data-together-log aria-hidden="true">
+				<span>4 people in this document</span>
+			</figcaption>
+			<p class="room__note code-label">Simulated in this page. The live version runs on canvist Sync.</p>
+		</figure>
+	</div>
+	<ChipLabel id="together" code="Apply a remote keystroke: 2.7 µs @ 100k blocks" />
+</section>
+
+<script>
+	import { mountTogether } from "../../scripts/together.ts";
+
+	const root = document.querySelector<HTMLElement>("[data-together]");
+	if (root) mountTogether(root);
+</script>
+
+<style>
+	.together__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+		gap: var(--s-7) var(--s-8);
+		align-items: center;
+	}
+
+	.together__copy {
+		display: grid;
+		gap: var(--s-5);
+	}
+
+	.together__facts {
+		display: grid;
+		gap: var(--s-2);
+		padding: 0;
+		list-style: none;
+	}
+
+	.together__facts li {
+		display: grid;
+		grid-template-columns: 4.5rem minmax(0, 1fr);
+		align-items: baseline;
+		gap: var(--s-3);
+	}
+
+	.together__facts .code-label {
+		font-weight: 600;
+		font-size: var(--t-small);
+	}
+
+	.room {
+		display: grid;
+		gap: var(--s-3);
+	}
+
+	.room__canvas {
+		width: 100%;
+		aspect-ratio: 16 / 10;
+		border-radius: var(--r-2);
+		background: var(--raised);
+		box-shadow: 0 24px 48px -32px color-mix(in oklab, var(--ink) 60%, transparent);
+	}
+
+	.room__log {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s-1) var(--s-4);
+		min-height: 1.5em;
+	}
+
+	.room__note {
+		color: var(--chip-muted);
+	}
+
+	@media (max-width: 64rem) {
+		.together__grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	@media (max-width: 36rem) {
+		.room__canvas {
+			aspect-ratio: 4 / 3.4;
+		}
+	}
+</style>
