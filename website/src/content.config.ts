@@ -5,7 +5,7 @@ import { repoPath } from "./lib/paths.ts";
 
 /**
  * The mdBook source in `docs/src`, rendered at `/docs`. The files carry no
- * frontmatter, so there is no schema; titles come from `summary.md` and each
+ * frontmatter, so there is no schema; titles come from `SUMMARY.md` and each
  * page's first heading (see `lib/docs-nav.ts`).
  */
 const docs = defineCollection({

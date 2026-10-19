@@ -8,7 +8,7 @@ const page = (path: string, body = "") => ({
 	body,
 });
 
-Deno.test("pages missing from summary.md still land in the sidebar, in their folder's group", () => {
+Deno.test("pages missing from SUMMARY.md still land in the sidebar, in their folder's group", () => {
 	const summary = parseSummary(
 		"- [Introduction](./readme.md)\n- [v2 Roadmap](./v2/roadmap.md)\n",
 	);

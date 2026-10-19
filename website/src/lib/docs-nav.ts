@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { docsRoute } from "./rehype-docs-links.ts";
 
 /**
- * The `/docs` sidebar, built from the mdBook `summary.md` so the book and the
+ * The `/docs` sidebar, built from the mdBook `SUMMARY.md` so the book and the
  * site share one table of contents.
  *
- * `summary.md` is a flat list, so the sidebar groups its entries by top-level
+ * `SUMMARY.md` is a flat list, so the sidebar groups its entries by top-level
  * folder, keeping summary order inside each group. Pages that exist in
  * `docs/src` but are missing from the summary still render: they join the end
  * of their folder's group, titled by their first `# Heading`.
@@ -66,7 +66,8 @@ const GROUP_RULES: readonly GroupRule[] = [
 
 const SUMMARY_ENTRY = /^\s*[-*]\s+\[([^\]]+)\]\(\.?\/?([^)\s]+\.md)\)/;
 
-export const SUMMARY_PATH = "summary.md";
+// mdBook only reads this exact name; on case-sensitive systems `summary.md` fails.
+export const SUMMARY_PATH = "SUMMARY.md";
 
 /** Reads `[Title](./path.md)` entries from mdBook's summary, in order. */
 export function parseSummary(markdown: string): Map<string, string> {
@@ -195,7 +196,7 @@ export function buildDocsNav(
 	return [...groups.values()].sort((a, b) => order(a.title) - order(b.title));
 }
 
-/** Reads the book's table of contents from `docs/src/summary.md` at `path`. */
+/** Reads the book's table of contents from `docs/src/SUMMARY.md` at `path`. */
 export function readSummary(path: string): Map<string, string> {
 	return parseSummary(readFileSync(path, "utf8"));
 }
