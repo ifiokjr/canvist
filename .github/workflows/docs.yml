@@ -68,7 +68,9 @@ jobs:
       # The web samples type-check against @canvist/web's sources.
       - name: build @canvist/web's wasm
         working-directory: packages/canvist-web
-        run: npm run build:wasm
+        run: |
+          npm ci
+          npm run build:wasm
 
       - name: check the samples
         run: deno run --allow-read --allow-write --allow-run --allow-env --allow-net docs/check-snippets.ts ts

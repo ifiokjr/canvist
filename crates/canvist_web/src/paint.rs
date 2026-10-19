@@ -409,7 +409,10 @@ impl Painter {
 		let spacing = run.letter_spacing.to_bits();
 
 		if self.state.letter_spacing != Some(spacing) {
-			text.set_letter_spacing(&format!("{}px", canvist_layout::css_number(run.letter_spacing)));
+			text.set_letter_spacing(&format!(
+				"{}px",
+				canvist_layout::css_number(run.letter_spacing)
+			));
 			self.state.letter_spacing = Some(spacing);
 		}
 
