@@ -30,6 +30,11 @@ const SAME_FACE_TOLERANCE = 0.05;
 
 /** Letter sequences that fonts commonly draw as one ligature glyph, longest first. */
 const LIGATURE_CANDIDATES = ["ffi", "ffl", "ff", "fi", "fl", "fj", "ft", "Th"];
+/** A space then letters that fonts with Times's metrics kern together. */
+const SPACE_PAIRS = [" A", " T", " Y", " V", " W"];
+/** How far, in CSS px at the probe size, a space pair must kern to count. */
+const SPACE_KERN_TOLERANCE = 0.5;
+
 /** The font size ligatures are probed at, in CSS px: large, so whole-pixel DOM rectangles barely round. */
 const LIGATURE_PROBE_PX = 200;
 /**
@@ -140,19 +145,23 @@ export class CanvasMeasurer implements HostMeasurer {
 		const match = /^(\S+ \S+ \S+px) (.+)$/.exec(css);
 
 		if (match === null) {
-			return { font: css, domWidths: false, ligatures: [] };
+			return { font: css, domWidths: false, ligatures: [], spacesApart: false };
 		}
 
 		const face = this.#face(css, match);
 
-		return { ...face, ligatures: this.#ligatures(face.font, css) };
+		return {
+			...face,
+			ligatures: this.#ligatures(face.font, css),
+			spacesApart: this.#spacesApart(face.font, css),
+		};
 	}
 
 	/** The canvas font that draws `css`'s face, and whether its widths come from the DOM. */
 	#face(
 		css: string,
 		match: RegExpExecArray,
-	): Omit<Resolution, "ligatures"> {
+	): Pick<Resolution, "font" | "domWidths"> {
 		const [, prefix = "", list = ""] = match;
 		const dom = this.#domWidth(css, RESOLUTION_SAMPLE);
 		const families = splitFamilies(list);
@@ -235,7 +244,7 @@ export class CanvasMeasurer implements HostMeasurer {
 			const joined = JOINING.test(segment);
 			const domWidths = this.#resolution(id).domWidths;
 
-			this.#pushAdvances(segment, joined, out, this.#resolution(id).ligatures);
+			this.#pushAdvances(segment, joined, out, this.#resolution(id));
 
 			if (joined || domWidths) {
 				const canvas = this.#context.measureText(segment).width;
@@ -269,10 +278,16 @@ export class CanvasMeasurer implements HostMeasurer {
 		segment: string,
 		joined: boolean,
 		out: number[],
-		ligatures: readonly Ligature[],
+		resolution: Resolution,
 	): void {
 		if (!joined) {
-			this.#advances(segment, out, ligatures);
+			const pieces = resolution.spacesApart
+				? splitAtSpaces(segment)
+				: [segment];
+
+			for (const piece of pieces) {
+				this.#advances(piece, out, resolution.ligatures);
+			}
 
 			return;
 		}
@@ -494,6 +509,55 @@ export class CanvasMeasurer implements HostMeasurer {
 	}
 
 	/**
+	 * Whether the DOM lays out `css` without the kerning `canvasFont`'s
+	 * canvas applies between a space and the letter after it. Browsers
+	 * shape a run across its spaces only when they see the font kern them,
+	 * and engines disagree on that, so both are measured at a large size.
+	 */
+	#spacesApart(canvasFont: string, css: string): boolean {
+		const texts = SPACE_PAIRS.flatMap((pair) => [pair, pair.slice(1)]);
+		const dom = this.#domWidths(atSize(css, LIGATURE_PROBE_PX), [
+			" ",
+			...texts,
+		]);
+		this.#context.font = atSize(canvasFont, LIGATURE_PROBE_PX);
+		this.#font = "";
+		const canvas = (text: string) => this.#context.measureText(text).width;
+		const space = dom[0] ?? 0;
+
+		return SPACE_PAIRS.some((pair, index) => {
+			const domKern = (dom[1 + 2 * index] ?? 0) - space -
+				(dom[2 + 2 * index] ?? 0);
+			const canvasKern = canvas(pair) - canvas(" ") - canvas(pair.slice(1));
+
+			return Math.abs(canvasKern) > SPACE_KERN_TOLERANCE &&
+				Math.abs(domKern) < SPACE_KERN_TOLERANCE;
+		});
+	}
+
+	/** The widths the DOM lays each of `texts` out at in `font`, in one layout pass. */
+	#domWidths(font: string, texts: readonly string[]): number[] {
+		const document = this.#document;
+		const host = document.createElement("div");
+		host.setAttribute("aria-hidden", "true");
+		host.style.cssText =
+			"position:absolute;left:0;top:0;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none";
+		const rows = texts.map((text) => {
+			const row = document.createElement("div");
+			row.style.cssText =
+				`font:${font};white-space:pre;width:max-content;font-kerning:normal;font-variant:normal;letter-spacing:0;word-spacing:0`;
+			row.textContent = text;
+			host.append(row);
+			return row;
+		});
+		document.body.append(host);
+		const widths = rows.map((row) => row.getBoundingClientRect().width);
+		host.remove();
+
+		return widths;
+	}
+
+	/**
 	 * The sequences `canvasFont` draws as ligatures, found by comparing caret
 	 * edges inside each candidate in the DOM (in `css`) with the canvas's, at
 	 * a large size so whole-pixel rectangles barely round.
@@ -598,6 +662,13 @@ interface Resolution {
 	readonly domWidths: boolean;
 	/** The sequences the face draws as ligatures, and where the DOM puts carets inside them. */
 	readonly ligatures: readonly Ligature[];
+	/**
+	 * Whether the DOM shapes words apart from the spaces between them while
+	 * canvas kerns across them: Firefox, with a font that kerns a space
+	 * against the next letter. Segments are then measured in pieces split
+	 * at spaces.
+	 */
+	readonly spacesApart: boolean;
 }
 
 /**
@@ -650,6 +721,11 @@ export function splitLigatures(
 		});
 		index = last + 1;
 	}
+}
+
+/** `segment` in runs of spaces and runs of everything else, in order. */
+export function splitAtSpaces(segment: string): string[] {
+	return segment.match(/[ \u00a0]+|[^ \u00a0]+/gu) ?? [segment];
 }
 
 /** `font` (a CSS `font` shorthand) at `size` CSS px. */

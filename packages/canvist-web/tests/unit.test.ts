@@ -6,7 +6,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { fontFaceCss, stack } from "../src/fonts.ts";
-import { splitFamilies, splitLigatures } from "../src/measure.ts";
+import {
+	splitAtSpaces,
+	splitFamilies,
+	splitLigatures,
+} from "../src/measure.ts";
 
 describe("splitFamilies", () => {
 	it("splits on commas outside quotes", () => {
@@ -40,6 +44,20 @@ describe("splitLigatures", () => {
 		]);
 
 		assert.deepEqual(edges, [3, 6, 12, 16]);
+	});
+});
+
+describe("splitAtSpaces", () => {
+	it("keeps runs of spaces apart from the words around them", () => {
+		assert.deepEqual(splitAtSpaces("To, "), ["To,", " "]);
+		assert.deepEqual(splitAtSpaces("a  b\u00a0c"), [
+			"a",
+			"  ",
+			"b",
+			"\u00a0",
+			"c",
+		]);
+		assert.deepEqual(splitAtSpaces(""), [""]);
 	});
 });
 
