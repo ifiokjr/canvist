@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Rich-text clipboard paste and integration tests
+# Rich-text clipboard paste and integration tests
 
 ### Rich-text paste
 

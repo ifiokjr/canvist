@@ -296,13 +296,16 @@ impl Room {
 		Ok(true)
 	}
 
-	/// Merge `peer`'s awareness `update` and broadcast what changed to every
-	/// peer, the sender included, as y-websocket servers do.
+	/// Merge `peer`'s awareness `update` and broadcast what changed to the
+	/// other peers. Unlike the reference y-websocket server, the sender does
+	/// not get its own state back: clients ignore it, and with carets moving
+	/// on every keystroke it was a third of a typing peer's traffic.
+	/// Transports send a keepalive to quiet sockets instead.
 	pub fn apply_awareness(&self, peer: PeerId, update: AwarenessUpdate) {
 		let mut state = self.lock();
 
 		if let Some(accepted) = state.awareness.apply(peer, update) {
-			self.send(None, protocol::awareness(accepted));
+			self.send(Some(peer), protocol::awareness(accepted));
 		}
 	}
 
@@ -361,10 +364,23 @@ impl Room {
 		force_compact: bool,
 	) -> Result<(), StoreError> {
 		let _persisting = self.persisting.lock().await;
-		let pending = std::mem::take(&mut self.lock().pending);
+		let (pending, rows) = self.take_rows();
 
-		if !pending.is_empty() {
-			self.append(store, pending).await?;
+		if !rows.is_empty() {
+			let batch: Vec<(&DocumentKey, &[u8])> =
+				rows.iter().map(|row| (&self.key, row.as_slice())).collect();
+
+			match store.append_batch(&batch).await {
+				Ok(appended) => {
+					if let Some(rows) = appended.get(&self.key) {
+						self.record_rows(*rows);
+					}
+				}
+				Err(error) => {
+					self.requeue(pending);
+					return Err(error);
+				}
+			}
 		}
 
 		let rows = self.lock().stored_rows;
@@ -376,48 +392,56 @@ impl Room {
 		Ok(())
 	}
 
-	/// Store `pending` as merged rows of at most [`MERGE_CHUNK`] updates.
-	/// Merging is quadratic in yrs, so a backlog (after a store outage, say)
-	/// is merged in chunks rather than all at once.
-	async fn append(&self, store: &Store, pending: Vec<Vec<u8>>) -> Result<(), StoreError> {
-		for (index, chunk) in pending.chunks(MERGE_CHUNK).enumerate() {
-			if let Err(error) = self.append_chunk(store, chunk).await {
-				// Rows that did reach the store apply again on load, which is
-				// harmless: Yjs updates are idempotent.
-				self.requeue(pending[index * MERGE_CHUNK..].to_vec());
-				return Err(error);
-			}
-		}
-
-		Ok(())
+	/// Claim the room for a batched flush, unless another persist (an
+	/// eviction or shutdown) holds it. The guard keeps compaction exclusive.
+	pub(super) fn try_claim(&self) -> Option<tokio::sync::MutexGuard<'_, ()>> {
+		self.persisting.try_lock().ok()
 	}
 
-	async fn append_chunk(&self, store: &Store, chunk: &[Vec<u8>]) -> Result<(), StoreError> {
-		let rows = match yrs::merge_updates_v1(chunk) {
-			Ok(merged) => vec![merged],
-			Err(error) => {
-				tracing::error!(document = %self.key, %error, "merging pending updates failed; storing them one by one");
-				chunk.to_vec()
-			}
-		};
+	/// Take the queued updates, and the rows to store for them: chunks of at
+	/// most [`MERGE_CHUNK`] merged into one, or the updates one by one if a
+	/// chunk does not merge. Merging is quadratic in yrs, so a backlog (after
+	/// a store outage, say) is merged in chunks rather than all at once.
+	pub(super) fn take_rows(&self) -> (Vec<Vec<u8>>, Vec<Vec<u8>>) {
+		let pending = std::mem::take(&mut self.lock().pending);
+		let rows = pending
+			.chunks(MERGE_CHUNK)
+			.flat_map(|chunk| {
+				yrs::merge_updates_v1(chunk).map_or_else(
+					|error| {
+						tracing::error!(document = %self.key, %error, "merging pending updates failed; storing them one by one");
+						chunk.to_vec()
+					},
+					|merged| vec![merged],
+				)
+			})
+			.collect();
 
-		for row in &rows {
-			let seq = store.append(&self.key, row).await?;
-			self.lock().record_append(seq);
-		}
+		(pending, rows)
+	}
 
-		Ok(())
+	/// Note rows a batched flush stored.
+	pub(super) fn record_rows(&self, rows: crate::store::AppendedRows) {
+		let mut state = self.lock();
+		state.last_seq = state.last_seq.max(rows.last_seq);
+		state.stored_rows += rows.rows;
+	}
+
+	/// Update rows in the store since the last snapshot.
+	pub(super) fn stored_rows(&self) -> usize {
+		self.lock().stored_rows
 	}
 
 	/// Put updates that failed to store back at the front of the queue.
-	fn requeue(&self, mut updates: Vec<Vec<u8>>) {
+	pub(super) fn requeue(&self, mut updates: Vec<Vec<u8>>) {
 		let mut state = self.lock();
 		updates.append(&mut state.pending);
 		state.pending = updates;
 	}
 
-	/// Fold the stored updates into a snapshot of the current state.
-	async fn compact(&self, store: &Store) -> Result<(), StoreError> {
+	/// Fold the stored updates into a snapshot of the current state. The
+	/// caller holds the persist claim.
+	pub(super) async fn compact(&self, store: &Store) -> Result<(), StoreError> {
 		let (snapshot, through) = {
 			let state = self.lock();
 			let snapshot = state
@@ -474,10 +498,5 @@ impl RoomState {
 		if changes.editors.len() < MAX_EDITORS {
 			changes.editors.insert(editor.clone());
 		}
-	}
-
-	fn record_append(&mut self, seq: i64) {
-		self.last_seq = seq;
-		self.stored_rows += 1;
 	}
 }

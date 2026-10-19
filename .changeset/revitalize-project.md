@@ -1,9 +1,11 @@
 ---
-canvist: minor
+canvist_v1: minor
 canvist_core: minor
 canvist_render: minor
 canvist_wasm: minor
 ---
+
+# Revive canvist as a canvas editor with a Rust core, wasm renderer, and CI
 
 ### Features
 

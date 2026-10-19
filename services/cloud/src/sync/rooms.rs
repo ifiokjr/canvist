@@ -26,6 +26,14 @@ use crate::names::DocumentKey;
 use crate::store::Store;
 use crate::store::StoreError;
 
+/// A room claimed by a batched flush, with what it is writing.
+struct Claim<'a> {
+	room: &'a Arc<Room>,
+	_guard: tokio::sync::MutexGuard<'a, ()>,
+	pending: Vec<Vec<u8>>,
+	rows: Vec<Vec<u8>>,
+}
+
 /// Rooms persisted at once by the flush loop.
 const FLUSH_CONCURRENCY: usize = 16;
 
@@ -123,36 +131,94 @@ impl Rooms {
 
 	/// One pass of the flush loop at `now`.
 	pub async fn tick(&self, now: Instant) {
-		let rooms = self.snapshot();
+		let (idle, active): (Vec<_>, Vec<_>) = self
+			.snapshot()
+			.into_iter()
+			.partition(|room| room.is_idle(now, self.config.idle_eviction));
 
-		stream::iter(rooms)
-			.for_each_concurrent(FLUSH_CONCURRENCY, |room| self.visit(room, now))
+		stream::iter(idle)
+			.for_each_concurrent(
+				FLUSH_CONCURRENCY,
+				|room| async move { self.evict(&room).await },
+			)
+			.await;
+		self.flush(&active).await;
+
+		for room in &active {
+			let due = room.take_due_changes(
+				now,
+				self.config.webhook_debounce,
+				self.config.webhook_max_wait,
+			);
+
+			if let Some(changes) = due {
+				self.webhooks.notify(room.key(), &changes);
+			}
+		}
+	}
+
+	/// Write every dirty room's queued updates in one store transaction, so
+	/// the store sees a constant four writes a second however many documents
+	/// are being edited, then compact the rooms that crossed the threshold.
+	async fn flush(&self, rooms: &[Arc<Room>]) {
+		let claims: Vec<Claim<'_>> = rooms
+			.iter()
+			.filter(|room| room.is_dirty())
+			.filter_map(|room| {
+				let guard = room.try_claim()?;
+				let (pending, rows) = room.take_rows();
+				Some(Claim {
+					room,
+					_guard: guard,
+					pending,
+					rows,
+				})
+			})
+			.collect();
+
+		if claims.is_empty() {
+			return;
+		}
+
+		let batch: Vec<(&DocumentKey, &[u8])> = claims
+			.iter()
+			.flat_map(|claim| {
+				claim
+					.rows
+					.iter()
+					.map(|row| (claim.room.key(), row.as_slice()))
+			})
+			.collect();
+
+		match self.store.append_batch(&batch).await {
+			Ok(appended) => {
+				for claim in &claims {
+					if let Some(rows) = appended.get(claim.room.key()) {
+						claim.room.record_rows(*rows);
+					}
+				}
+			}
+			Err(error) => {
+				tracing::warn!(rooms = claims.len(), %error, "persisting failed; retrying next tick");
+				for claim in claims {
+					claim.room.requeue(claim.pending);
+				}
+				return;
+			}
+		}
+
+		stream::iter(claims)
+			.for_each_concurrent(FLUSH_CONCURRENCY, |claim| self.compact_if_due(claim))
 			.await;
 	}
 
-	async fn visit(&self, room: Arc<Room>, now: Instant) {
-		if room.is_idle(now, self.config.idle_eviction) {
-			self.evict(&room).await;
-		} else {
-			self.flush(&room, now).await;
-		}
-	}
-
-	async fn flush(&self, room: &Room, now: Instant) {
-		if room.is_dirty()
-			&& let Err(error) = room
-				.persist(&self.store, self.config.compact_after, false)
-				.await
-		{
-			tracing::warn!(document = %room.key(), %error, "persisting failed; retrying next tick");
+	async fn compact_if_due(&self, claim: Claim<'_>) {
+		if claim.room.stored_rows() < self.config.compact_after {
+			return;
 		}
 
-		if let Some(changes) = room.take_due_changes(
-			now,
-			self.config.webhook_debounce,
-			self.config.webhook_max_wait,
-		) {
-			self.webhooks.notify(room.key(), &changes);
+		if let Err(error) = claim.room.compact(&self.store).await {
+			tracing::warn!(document = %claim.room.key(), %error, "compaction failed; retrying later");
 		}
 	}
 

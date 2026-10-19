@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Remove all unwrap()/expect() calls from production code
+# Remove all unwrap()/expect() calls from production code
 
 Eliminated every `unwrap()` and `expect()` call from all three production crates (`canvist_core`, `canvist_render`, `canvist_wasm`), replacing them with safe alternatives:
 

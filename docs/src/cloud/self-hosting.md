@@ -84,7 +84,7 @@ To bill your own customers through Stripe, set the `STRIPE_*` variables on one s
 
 ## How documents are stored
 
-Changes are written behind, every flush interval, and folded into a snapshot once enough build up, when a document goes idle, and at shutdown. If the process dies between flushes, clients send the missing changes again when they reconnect, because every sync session starts by exchanging what each side lacks.
+Changes are written behind: every flush interval, all edited documents are saved in one transaction, and folded into a snapshot once enough build up, when a document goes idle, and at shutdown. If the process dies between flushes, clients send the missing changes again when they reconnect, because every sync session starts by exchanging what each side lacks.
 
 On `SIGTERM`, the server stops reporting ready, asks every client to reconnect (close code `1012`), and saves every loaded document. Give it at least 15 seconds before a hard kill.
 
@@ -94,12 +94,13 @@ Each instance holds the documents it serves in memory, so every client of one do
 
 What one instance handles, measured on Apple silicon:
 
-| Measure                                 | Measured |
-| --------------------------------------- | -------- |
-| One keystroke to the last of 100 peers  | 0.6 ms   |
-| Applying one keystroke                  | 1.5 µs   |
-| Memory per idle connection              | 17 KiB   |
-| Memory per loaded 50-paragraph document | 132 KiB  |
-| 10,000 paragraphs, Markdown to HTML     | 14 ms    |
+| Measure                                   | Measured |
+| ----------------------------------------- | -------- |
+| One keystroke to the last of 100 peers    | 0.6 ms   |
+| Applying one keystroke                    | 1.5 µs   |
+| Saving 1,000 edited documents to Postgres | 20 ms    |
+| Memory per idle connection                | 17 KiB   |
+| Memory per loaded 50-paragraph document   | 132 KiB  |
+| 10,000 paragraphs, Markdown to HTML       | 14 ms    |
 
 A loaded document costs about 2.4 KiB per block, plus 10 KiB. Documents stay in memory only while someone is connected, so memory follows concurrent documents, not total ones.

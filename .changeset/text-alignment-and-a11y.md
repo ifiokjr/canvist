@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Add text alignment support and accessibility DOM
+# Add text alignment support and accessibility DOM
 
 ### Features
 

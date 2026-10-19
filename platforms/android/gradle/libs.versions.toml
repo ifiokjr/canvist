@@ -2,6 +2,7 @@
 agp = "9.4.1"
 kotlin = "2.4.21"
 jna = "5.19.1"
+maven-publish = "0.37.0"
 androidx-activity = "1.13.0"
 androidx-annotation = "1.11.0"
 androidx-compose-bom = "2026.09.00"
@@ -23,3 +24,4 @@ androidx-test-runner = { module = "androidx.test:runner", version.ref = "android
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+maven-publish = { id = "com.vanniktech.maven.publish", version.ref = "maven-publish" }

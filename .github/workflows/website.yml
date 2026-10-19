@@ -69,10 +69,27 @@ jobs:
         env:
           CI: "true"
 
-      - name: lighthouse
-        run: npx --yes @lhci/cli@0.15.1 autorun
-        env:
-          LHCI_BUILD_CONTEXT__CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
+      # Lighthouse on the production build. Desktop must hit every target
+      # (95+ in each category, LCP under 1.5 s, CLS 0); mobile must hit the
+      # scores and CLS, and reports LCP over 1.5 s as a warning.
+      - name: lighthouse (desktop)
+        run: deno task lighthouse:desktop
+
+      - name: lighthouse (mobile)
+        if: success() || failure()
+        run: deno task lighthouse:mobile
+
+      - name: lighthouse scores
+        if: success() || failure()
+        run: deno task lighthouse:summary
+
+      - name: upload lighthouse reports
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: website/lighthouse-reports
+          if-no-files-found: ignore
 
       - name: upload reports
         if: failure()
@@ -82,7 +99,6 @@ jobs:
           path: |
             website/playwright-report
             website/test-results
-            website/.lighthouseci
 
   image:
     name: docker image

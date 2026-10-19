@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Add pending style for collapsed-cursor formatting and clean up WASM warnings
+# Add pending style for collapsed-cursor formatting and clean up WASM warnings
 
 ### Pending style
 

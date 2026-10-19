@@ -15,8 +15,8 @@ use crate::app::App;
 
 /// How often the server pings an idle connection.
 pub const PING_INTERVAL: Duration = Duration::from_secs(25);
-/// How often a paused session sends a keepalive, inside the 30 seconds
-/// after which y-websocket and Hocuspocus clients reconnect.
+/// How often quiet and paused sessions are sent a keepalive, inside the 30
+/// seconds after which y-websocket and Hocuspocus clients reconnect.
 pub const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
 /// Silence after which a connection is considered dead.
 pub const DEAD_AFTER: Duration = Duration::from_secs(70);
@@ -54,16 +54,25 @@ pub async fn close(sink: &mut Sink, code: u16, reason: &'static str) {
 	let _ = sink.close().await;
 }
 
-/// Tracks liveness for the ping loop.
+/// Silence toward a peer after which it gets a keepalive. With the
+/// keepalive check every [`KEEPALIVE_INTERVAL`], a peer never waits more
+/// than 25 seconds for a message, inside the 30 seconds after which
+/// y-websocket and Hocuspocus clients give up and reconnect.
+pub const QUIET_AFTER: Duration = Duration::from_secs(15);
+
+/// Tracks traffic in both directions: silence from the peer means it is
+/// dead, silence toward it means it needs a keepalive.
 #[derive(Debug)]
 pub struct Liveness {
 	last_seen: Instant,
+	last_sent: Instant,
 }
 
 impl Default for Liveness {
 	fn default() -> Self {
 		Self {
 			last_seen: Instant::now(),
+			last_sent: Instant::now(),
 		}
 	}
 }
@@ -72,6 +81,16 @@ impl Liveness {
 	/// Note that the peer sent something.
 	pub fn seen(&mut self) {
 		self.last_seen = Instant::now();
+	}
+
+	/// Note that the peer was sent something.
+	pub fn sent(&mut self) {
+		self.last_sent = Instant::now();
+	}
+
+	/// Whether the peer has been sent nothing for [`QUIET_AFTER`].
+	pub fn is_quiet(&self) -> bool {
+		self.last_sent.elapsed() >= QUIET_AFTER
 	}
 
 	/// Whether the peer has been silent too long.

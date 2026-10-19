@@ -1,6 +1,8 @@
 ---
-"canvist": patch
+website: feat
 ---
+
+# Add the canvist website, deployed to Railway
 
 Add canvist's website in `website/`: an Astro site with the landing page, preview pricing with a monthly-active-document calculator, the Sync, Convert and History service pages, and a `/docs` section that renders `docs/src` with Pagefind search.
 

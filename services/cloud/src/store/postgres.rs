@@ -13,6 +13,8 @@ use deadpool_postgres::RecyclingMethod;
 use tokio_postgres::NoTls;
 
 use super::Admit;
+use super::Appended;
+use super::AppendedRows;
 use super::DocumentSummary;
 use super::PendingConversions;
 use super::PendingDocument;
@@ -631,33 +633,68 @@ impl PgStore {
 		})
 	}
 
-	pub(super) async fn append(&self, key: &DocumentKey, update: &[u8]) -> Result<i64, StoreError> {
+	/// Two statements for the whole batch: upsert the documents (each
+	/// once, as `ON CONFLICT DO UPDATE` may touch a row only once per
+	/// statement), then insert the updates in input order, so one
+	/// document's rows keep their order in `seq`.
+	pub(super) async fn append_batch(
+		&self,
+		rows: &[(&DocumentKey, &[u8])],
+	) -> Result<Appended, StoreError> {
+		let columns = BatchColumns::from(rows);
 		let mut client = self.pool.get().await?;
-		let ids = document_ids(key);
 		let transaction = client.transaction().await?;
 		transaction
 			.execute(
-				"INSERT INTO documents (project_id, environment, name) VALUES ($1, $2, $3)
-				ON CONFLICT DO NOTHING",
-				&ids.params(),
+				"INSERT INTO documents (project_id, environment, name)
+				SELECT DISTINCT * FROM unnest($1::text[], $2::text[], $3::text[])
+				ON CONFLICT (project_id, environment, name) DO UPDATE SET updated_at = now()",
+				&[&columns.projects, &columns.environments, &columns.names],
 			)
 			.await?;
-		let row = transaction
-			.query_one(
-				"INSERT INTO document_updates (project_id, environment, name, payload)
-				VALUES ($1, $2, $3, $4) RETURNING seq",
-				&[&ids.project, &ids.environment, &ids.name, &update],
-			)
-			.await?;
-		transaction
-			.execute(
-				"UPDATE documents SET updated_at = now()
-				WHERE project_id = $1 AND environment = $2 AND name = $3",
-				&ids.params(),
+		let inserted = transaction
+			.query(
+				"WITH inserted AS (
+					INSERT INTO document_updates (project_id, environment, name, payload)
+					SELECT p, e, n, b
+					FROM unnest($1::text[], $2::text[], $3::text[], $4::bytea[])
+						WITH ORDINALITY AS rows (p, e, n, b, position)
+					ORDER BY position
+					RETURNING project_id, environment, name, seq
+				)
+				SELECT project_id, environment, name, count(*), max(seq)
+				FROM inserted GROUP BY project_id, environment, name",
+				&[
+					&columns.projects,
+					&columns.environments,
+					&columns.names,
+					&columns.payloads,
+				],
 			)
 			.await?;
 		transaction.commit().await?;
-		Ok(row.get(0))
+
+		let mut appended = Appended::new();
+
+		for row in inserted {
+			let key = DocumentKey {
+				project: ProjectId::new(row.get::<_, String>(0)),
+				environment: Environment::parse(row.get(1))
+					.map_err(|_| StoreError::Config("stored environment".to_owned()))?,
+				name: DocumentName::parse(row.get(2))
+					.map_err(|_| StoreError::Config("stored document name".to_owned()))?,
+			};
+			let count: i64 = row.get(3);
+			appended.insert(
+				key,
+				AppendedRows {
+					rows: usize::try_from(count).unwrap_or_default(),
+					last_seq: row.get(4),
+				},
+			);
+		}
+
+		Ok(appended)
 	}
 
 	pub(super) async fn compact(
@@ -773,6 +810,28 @@ async fn read_terms(
 			})
 		}),
 	})
+}
+
+/// A batch of appends as parallel arrays, for `unnest`.
+struct BatchColumns<'a> {
+	projects: Vec<&'a str>,
+	environments: Vec<&'a str>,
+	names: Vec<&'a str>,
+	payloads: Vec<&'a [u8]>,
+}
+
+impl<'a> From<&'a [(&'a DocumentKey, &'a [u8])]> for BatchColumns<'a> {
+	fn from(rows: &'a [(&'a DocumentKey, &'a [u8])]) -> Self {
+		Self {
+			projects: rows.iter().map(|(key, _)| key.project.as_str()).collect(),
+			environments: rows
+				.iter()
+				.map(|(key, _)| key.environment.as_str())
+				.collect(),
+			names: rows.iter().map(|(key, _)| key.name.as_str()).collect(),
+			payloads: rows.iter().map(|(_, payload)| *payload).collect(),
+		}
+	}
 }
 
 /// A document key as query parameters.

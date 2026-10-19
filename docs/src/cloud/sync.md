@@ -74,7 +74,7 @@ Hocuspocus can open several documents on one socket. Each one authenticates with
 ## What Sync does for you
 
 - **Persistence.** Documents are stored and come back when anyone reconnects.
-- **Presence.** Awareness states (carets, names, colours) are relayed. One person can't overwrite another's state.
+- **Presence.** Awareness states (carets, names, colours) are relayed to everyone else, never echoed back to their sender. One person can't overwrite another's state. Quiet connections get a small keepalive every 15 seconds, so clients never hit their reconnect timeout.
 - **Schema checks.** Updates that write outside canvist's document structure are refused. A refused update never disconnects anyone: the client keeps editing, and the change just doesn't reach others.
 - **Webhooks.** A signed `document.updated` event after a document goes quiet. See [the API reference](./api.md#webhooks).
 - **Your server can join in.** Read, write, and convert stored documents over HTTP with your API key. See [Documents](./api.md#documents).

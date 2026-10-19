@@ -16,6 +16,6 @@
 
 - [ ] Added/updated tests
 - [ ] Benchmarks and `perf_budgets` tests cover new or changed hot paths (`test:perf` passes)
-- [ ] Added changeset (`knope document-change`)
+- [ ] Added a changeset (`mc change`, or `mc user-change` for changes people see on the website)
 - [ ] Documentation updated
 - [ ] `fix:all` passes locally

@@ -1,6 +1,10 @@
 ---
 "canvist_headless": minor
+"canvist-dart": minor
+canvist_flutter: minor
 ---
+
+# Add `canvist`, a pure Dart package, and rebuild `canvist_flutter` on it
 
 Add `canvist`, a pure Dart package (`platforms/dart`, no Flutter) over `canvist_headless`, and rebuild `canvist_flutter` on top of it.
 

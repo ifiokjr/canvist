@@ -116,8 +116,15 @@ html:has(.docs) {
 
 .docs-search-open__kbd {
 	margin-left: auto;
-	/* Fixed width: the script swaps "Ctrl K" for "⌘K" on Apple platforms without shifting layout. */
+	/*
+	 * A fixed box: the script swaps "Ctrl K" for "⌘K" on Apple platforms, and
+	 * "⌘" comes from a fallback font with different metrics. Neither may move
+	 * the layout.
+	 */
+	box-sizing: border-box;
 	width: 4.5em;
+	height: 1.75em;
+	line-height: 1;
 	text-align: center;
 }
 

@@ -3,6 +3,8 @@
 "canvist_editor": minor
 ---
 
+# Add `canvist_extensions`, the StarterKit, with one Cargo feature per extension
+
 Add `canvist_extensions`, the StarterKit, with each extension behind its own Cargo feature.
 
 - Nodes: `Document`, `Paragraph`, `Heading`, `Blockquote`, `CodeBlock`, `HardBreak`, `HorizontalRule`, `BulletList`, `OrderedList`, `ListItem`, and `TaskList`, with TipTap's names, key bindings, and Markdown-style input rules.

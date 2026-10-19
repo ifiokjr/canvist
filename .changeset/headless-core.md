@@ -4,6 +4,8 @@
 "canvist_collab": minor
 ---
 
+# Add `canvist_headless`, the document model and editing engine with no UI
+
 Add `canvist_headless`, the canvist document model and editing engine with no UI, for servers, scripts, and tests.
 
 - `Engine` registers extensions once (with typed handles) and is `Send + Sync`; each `Doc` is `Send`. Load and export ProseMirror/TipTap JSON, HTML, Markdown, and plain text, run typed or named commands against explicit selections, answer queries, paste, undo, and take `Snapshot`s.
