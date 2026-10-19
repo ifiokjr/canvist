@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import { repoPath } from "./paths.ts";
 import { docsRoute } from "./rehype-docs-links.ts";
 
 /**
@@ -14,14 +13,21 @@ import { docsRoute } from "./rehype-docs-links.ts";
 
 /** One page as the docs collection sees it. */
 export interface DocsPage {
-	/** Path inside `docs/src`, such as `v2/architecture.md`. */
+	/**
+	 * Docs path, such as `v2/architecture.md`. Readmes use a virtual one:
+	 * `crates/canvist_core.md` for `crates/canvist_core/readme.md`.
+	 */
 	path: string;
+	/** The file in the repository, for edit links. */
+	source: string;
 	/** The markdown body, used for the title and description fallbacks. */
 	body: string;
 }
 
 export interface DocsLink {
 	path: string;
+	/** The file in the repository, for edit links. */
+	source: string;
 	route: string;
 	/** The full title, used for `<title>` and the pager. */
 	title: string;
@@ -47,12 +53,14 @@ interface GroupRule {
 const GROUP_RULES: readonly GroupRule[] = [
 	{ title: "Guides", folders: ["", "guide"], trim: /^Guide:\s*/ },
 	{ title: "v2 design", folders: ["v2"], trim: /^v2\s+/ },
-	{ title: "Platforms", folders: ["platforms"] },
 	{
 		title: "canvist Cloud",
 		folders: ["cloud"],
 		trim: /^(canvist\s+)?Cloud:?\s+/i,
 	},
+	{ title: "Platforms", folders: ["platforms"] },
+	{ title: "Rust crates", folders: ["crates"] },
+	{ title: "Packages", folders: ["packages"] },
 	{ title: "Research", folders: ["research"], trim: /^Research:\s*/ },
 ];
 
@@ -76,7 +84,9 @@ export function parseSummary(markdown: string): Map<string, string> {
 function plainText(markdown: string): string {
 	return markdown
 		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-		.replace(/[`*_]/g, "")
+		.replace(/[`*]/g, "")
+		// Underscores mark emphasis only around words; `canvist_core` keeps its own.
+		.replace(/(^|[^\w])_([^_]+)_(?=[^\w]|$)/g, "$1$2")
 		.replace(/\s+/g, " ")
 		.trim();
 }
@@ -118,6 +128,16 @@ function titleCase(folder: string): string {
 	);
 }
 
+/** A page with no heading is named after its file; a readme after its crate or package. */
+function fallbackTitle(path: string): string {
+	const name = path.replace(/\.md$/, "");
+	const folder = folderOf(path);
+	if (folder === "crates" || folder === "packages") {
+		return name.slice(folder.length + 1);
+	}
+	return titleCase(name);
+}
+
 function ruleFor(folder: string): GroupRule {
 	return GROUP_RULES.find((rule) => rule.folders.includes(folder)) ??
 		{ title: titleCase(folder), folders: [folder] };
@@ -153,13 +173,14 @@ export function buildDocsNav(
 		if (page === undefined) continue;
 		const rule = ruleFor(folderOf(path));
 		const title = summary.get(path) ?? firstHeading(page.body) ??
-			titleCase(path.replace(/\.md$/, ""));
+			fallbackTitle(path);
 		const label = rule.trim === undefined
 			? title
 			: title.replace(rule.trim, "") || title;
 		const group = groups.get(rule.title) ?? { title: rule.title, links: [] };
 		const link: DocsLink = {
 			path,
+			source: page.source,
 			route: docsRoute(path),
 			title,
 			label,
@@ -174,9 +195,9 @@ export function buildDocsNav(
 	return [...groups.values()].sort((a, b) => order(a.title) - order(b.title));
 }
 
-/** Reads `docs/src/summary.md`, the book's table of contents. */
-export function readSummary(): Map<string, string> {
-	return parseSummary(readFileSync(repoPath("docs/src", SUMMARY_PATH), "utf8"));
+/** Reads the book's table of contents from `docs/src/summary.md` at `path`. */
+export function readSummary(path: string): Map<string, string> {
+	return parseSummary(readFileSync(path, "utf8"));
 }
 
 /** The sidebar in reading order, for previous and next links. */
@@ -184,5 +205,4 @@ export function flatten(groups: readonly DocsGroup[]): DocsLink[] {
 	return groups.flatMap((group) => group.links);
 }
 
-export const EDIT_BASE =
-	"https://github.com/ifiokjr/canvist/edit/main/docs/src/";
+export const EDIT_BASE = "https://github.com/ifiokjr/canvist/edit/main/";

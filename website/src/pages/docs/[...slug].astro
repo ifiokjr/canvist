@@ -3,20 +3,29 @@ import type { GetStaticPaths } from "astro";
 import { getCollection, render } from "astro:content";
 import { enhanceDocsHtml } from "../../components/docs/enhance-html.ts";
 import DocsLayout from "../../layouts/DocsLayout.astro";
-import { buildDocsNav, EDIT_BASE, firstParagraph, flatten, readSummary } from "../../lib/docs-nav.ts";
+import { buildDocsNav, EDIT_BASE, firstParagraph, flatten, readSummary, SUMMARY_PATH } from "../../lib/docs-nav.ts";
+import { repoPath } from "../../lib/paths.ts";
+import { readmeDocsPath } from "../../lib/rehype-docs-links.ts";
 
 export const getStaticPaths = (async () => {
-	const entries = await getCollection("docs");
+	// The book, plus crate and package readmes under virtual docs paths.
+	const book = (await getCollection("docs")).map((entry) => ({ entry, path: entry.id, source: `docs/src/${entry.id}` }));
+	const readmes = (await getCollection("readmes")).map((entry) => {
+		const path = readmeDocsPath(entry.id);
+		if (path === undefined) throw new Error(`${entry.id} is not a crate or package readme`);
+		return { entry, path, source: entry.id };
+	});
+	const pages = [...book, ...readmes];
 	const nav = buildDocsNav(
-		entries.map((entry) => ({ path: entry.id, body: entry.body ?? "" })),
-		readSummary(),
+		pages.map(({ entry, path, source }) => ({ path, source, body: entry.body ?? "" })),
+		readSummary(repoPath("docs/src", SUMMARY_PATH)),
 	);
 	const reading = flatten(nav);
 
 	return Promise.all(
 		reading.map(async (link, index) => {
-			const entry = entries.find((candidate) => candidate.id === link.path);
-			if (entry?.rendered === undefined) throw new Error(`docs/src/${link.path} did not render`);
+			const entry = pages.find((candidate) => candidate.path === link.path)?.entry;
+			if (entry?.rendered === undefined) throw new Error(`${link.source} did not render`);
 			const { headings } = await render(entry);
 			return {
 				params: { slug: link.route === "/docs" ? undefined : link.route.slice("/docs/".length) },
@@ -46,7 +55,7 @@ const { nav, link, html, headings, description, prev, next } = Astro.props;
 	headings={headings}
 	prev={prev}
 	next={next}
-	editUrl={EDIT_BASE + link.path}
+	editUrl={EDIT_BASE + link.source}
 >
 	<Fragment set:html={html} />
 </DocsLayout>

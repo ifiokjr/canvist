@@ -17,4 +17,16 @@ const docs = defineCollection({
 	}),
 });
 
-export const collections = { docs };
+/**
+ * Crate and package readmes, rendered at `/docs/crates/<name>` and
+ * `/docs/packages/<name>` so the API docs sit beside the book.
+ */
+const readmes = defineCollection({
+	loader: glob({
+		base: repoPath(""),
+		pattern: ["crates/*/readme.md", "packages/*/README.md"],
+		generateId: ({ entry }) => entry,
+	}),
+});
+
+export const collections = { docs, readmes };

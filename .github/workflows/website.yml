@@ -8,6 +8,9 @@ on:
     paths: &paths
       - "website/**"
       - "docs/src/**"
+      - "docs/book.toml"
+      - "crates/*/readme.md"
+      - "packages/*/README.md"
       - "assets/brand/**"
       - "packages/canvist/src/**"
       - "packages/canvist/wasm/**"
@@ -54,6 +57,9 @@ jobs:
       - name: build
         run: deno task build
 
+      - name: check links
+        run: deno task check:links
+
       - name: install playwright chromium
         timeout-minutes: 10
         run: node node_modules/@playwright/test/cli.js install --with-deps chromium
@@ -77,6 +83,26 @@ jobs:
             website/playwright-report
             website/test-results
             website/.lighthouseci
+
+  book:
+    name: mdbook build
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install mdbook
+        uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook@0.5.2
+
+      - name: build the book
+        # The site and the book render the same docs/src; both must build.
+        run: mdbook build docs
 
   visual:
     name: visual snapshots (macOS)
