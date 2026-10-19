@@ -660,7 +660,6 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		server.remove();
 		this.#canvas.style.display = "block";
 		this.#spacer.style.display = "";
-		this.#pixels = undefined;
 	}
 
 	/**
