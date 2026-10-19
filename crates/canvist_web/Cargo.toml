@@ -1,0 +1,35 @@
+[package]
+name = "canvist_web"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = false
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "The canvist web host: a Canvas2D editor over canvist_layout, measured by the browser so the canvas wraps exactly like server-rendered HTML"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+canvist_headless = { workspace = true, features = ["starter-kit"] }
+canvist_layout = { workspace = true, features = ["editor"] }
+js-sys = { workspace = true, features = ["std"] }
+rustc-hash = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+unicode-segmentation = { workspace = true }
+wasm-bindgen = { workspace = true, features = ["std"] }
+web-sys = { workspace = true, features = ["std", "CanvasRenderingContext2d", "ContextAttributes2d", "HtmlCanvasElement"] }
+
+[features]
+default = []
+# Collaborate over Yjs. Adds about 250 KB gzipped to the wasm module.
+collab = ["canvist_headless/collab"]
+
+[lints]
+workspace = true

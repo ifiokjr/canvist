@@ -15,7 +15,10 @@ pub(crate) use self::rows::Row;
 pub(crate) use self::rows::RowKind;
 pub(crate) use self::rows::Span;
 use crate::BreakOverride;
+use crate::FontId;
+use crate::FontSpec;
 use crate::LayoutError;
+use crate::MeasureStats;
 use crate::Rect;
 use crate::geometry::to_px;
 use crate::geometry::to_units;
@@ -47,6 +50,9 @@ pub struct LayoutOptions {
 	pub overscan: f32,
 	/// A host tailoring of UAX #14 break opportunities.
 	pub break_override: Option<BreakOverride>,
+	/// Device pixels per CSS pixel that border widths snap down to, as
+	/// browsers snap them, or `None` to keep exact widths.
+	pub border_scale: Option<f32>,
 }
 
 impl LayoutOptions {
@@ -57,6 +63,7 @@ impl LayoutOptions {
 			width,
 			overscan: 0.0,
 			break_override: None,
+			border_scale: None,
 		}
 	}
 
@@ -64,6 +71,13 @@ impl LayoutOptions {
 	#[must_use]
 	pub const fn overscan(mut self, overscan: f32) -> Self {
 		self.overscan = overscan;
+		self
+	}
+
+	/// Snap border widths to `scale` device pixels per CSS pixel.
+	#[must_use]
+	pub const fn border_scale(mut self, scale: f32) -> Self {
+		self.border_scale = Some(scale);
 		self
 	}
 
@@ -101,6 +115,19 @@ pub struct Damage {
 	pub from_y: Option<f32>,
 }
 
+/// What [`DocumentLayout::forget_fonts`] invalidated.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct FontInvalidation {
+	/// How many fonts lost their measurements.
+	pub fonts: usize,
+	/// How many measured blocks lost their layouts. Only these are laid out
+	/// again, and only once they are in a range passed to
+	/// [`DocumentLayout::ensure`].
+	pub blocks: usize,
+	/// The rectangles of those blocks before relayout, for repainting.
+	pub rects: Vec<Rect>,
+}
+
 /// The layout of a whole document.
 ///
 /// Text blocks are measured lazily: [`DocumentLayout::ensure`] lays out the
@@ -122,7 +149,8 @@ impl DocumentLayout {
 	#[must_use]
 	pub fn new(doc: &Document, theme: Arc<Theme>, options: LayoutOptions) -> Self {
 		let mut layout = Self {
-			styles: Styles::new(theme, doc.schema().clone()),
+			styles: Styles::new(theme, doc.schema().clone())
+				.with_border_scale(options.border_scale),
 			cache: MeasureCache::default(),
 			options,
 			flat: Flat::default(),
@@ -164,7 +192,22 @@ impl DocumentLayout {
 			return;
 		}
 
-		self.styles = Styles::new(theme, doc.schema().clone());
+		self.styles =
+			Styles::new(theme, doc.schema().clone()).with_border_scale(self.options.border_scale);
+		self.forget_layouts();
+		self.rebuild(doc);
+	}
+
+	/// Snap border widths to `scale` device pixels per CSS pixel, or stop
+	/// snapping them. Blocks lay out again on demand.
+	pub fn set_border_scale(&mut self, doc: &Document, scale: Option<f32>) {
+		if scale.map(f32::to_bits) == self.options.border_scale.map(f32::to_bits) {
+			return;
+		}
+
+		self.options.border_scale = scale;
+		let theme = self.styles.theme().clone();
+		self.styles = Styles::new(theme, doc.schema().clone()).with_border_scale(scale);
 		self.forget_layouts();
 		self.rebuild(doc);
 	}
@@ -176,6 +219,96 @@ impl DocumentLayout {
 	pub fn forget_measurements(&mut self) {
 		self.cache.forget_measurements();
 		self.forget_layouts();
+	}
+
+	/// Drop the measurements of every font `matches` selects, and the
+	/// layouts of only the blocks that use one of them. Call this when a web
+	/// font face finishes loading, with
+	/// `|font| font.uses_family(loaded_family)`: text measured with a
+	/// fallback face has the wrong width, but blocks in other fonts are still
+	/// right. Font ids stay the same, and invalidated blocks keep their
+	/// heights as estimates until [`DocumentLayout::ensure`] lays them out.
+	pub fn forget_fonts(&mut self, mut matches: impl FnMut(&FontSpec) -> bool) -> FontInvalidation {
+		let affected: Vec<bool> = self
+			.cache
+			.fonts()
+			.fonts()
+			.iter()
+			.map(&mut matches)
+			.collect();
+		let fonts: Vec<FontId> = affected
+			.iter()
+			.enumerate()
+			.filter(|(_, hit)| **hit)
+			.map(|(index, _)| FontId(index as u32))
+			.collect();
+		let mut invalidation = FontInvalidation {
+			fonts: fonts.len(),
+			..FontInvalidation::default()
+		};
+
+		if fonts.is_empty() {
+			return invalidation;
+		}
+
+		self.cache.forget_fonts(&fonts);
+		let uses = |layout: &text::TextLayout| {
+			layout
+				.styles
+				.iter()
+				.any(|style| affected.get(style.font.index()).copied().unwrap_or(false))
+		};
+		let mut markers = Vec::new();
+
+		for index in 0..self.flat.rows.len() {
+			markers.clear();
+			self.collect_markers(index, &mut markers);
+			let marker_font = markers.iter().any(|(style, _)| {
+				self.cache
+					.fonts()
+					.find(&self.styles.get(*style).text.font)
+					.is_some_and(|id| affected[id.index()])
+			});
+			let row = &self.flat.rows[index];
+			let stale_layout = row.layout.as_deref().is_some_and(uses);
+			let stale_previous = row
+				.previous
+				.as_ref()
+				.is_some_and(|previous| uses(&previous.layout));
+
+			if !(stale_layout || stale_previous || (marker_font && row.layout.is_some())) {
+				continue;
+			}
+
+			if row.layout.is_some() {
+				invalidation.blocks += 1;
+				invalidation.rects.push(self.row_rect(index));
+			}
+
+			let row = &mut self.flat.rows[index];
+			row.layout = None;
+			row.previous = None;
+		}
+
+		invalidation
+	}
+
+	/// Every font the layout has used, indexed by [`FontId::index`].
+	#[must_use]
+	pub fn fonts(&self) -> &crate::FontBook {
+		self.cache.fonts()
+	}
+
+	/// The measured vertical metrics of `font`, once it has been measured.
+	#[must_use]
+	pub fn font_metrics(&self, font: FontId) -> Option<crate::FontMetrics> {
+		self.cache.metrics(font)
+	}
+
+	/// Measurement cache hit rates and sizes.
+	#[must_use]
+	pub fn measure_stats(&self) -> MeasureStats {
+		self.cache.stats()
 	}
 
 	/// Change the content width. Every block is laid out again on demand;
@@ -348,6 +481,17 @@ impl DocumentLayout {
 	pub fn line_count(&self, id: BlockId) -> Option<usize> {
 		let index = self.row_index(id)?;
 		Some(self.flat.rows[index].layout.as_ref()?.lines.len())
+	}
+
+	/// The byte ranges of text block `id`'s laid-out lines, including each
+	/// line's trailing spaces and forced break, or `None` if it is not a
+	/// measured text block. Server renderers and tests compare where lines
+	/// break with this.
+	#[must_use]
+	pub fn line_ranges(&self, id: BlockId) -> Option<Vec<std::ops::Range<u32>>> {
+		let index = self.row_index(id)?;
+		let layout = self.flat.rows[index].layout.as_ref()?;
+		Some(layout.lines.iter().map(|line| line.range.clone()).collect())
 	}
 
 	/// Blocks with rows intersecting `top..bottom`, in document order.

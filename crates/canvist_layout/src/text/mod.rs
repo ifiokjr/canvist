@@ -23,6 +23,7 @@ pub(crate) use self::items::slice;
 use crate::FontId;
 use crate::FontMetrics;
 use crate::LayoutError;
+use crate::LineBox;
 use crate::geometry::snap;
 use crate::measure::MeasureCache;
 use crate::theme::TextStyle;
@@ -31,6 +32,7 @@ mod breaking;
 mod breaks;
 mod incremental;
 mod items;
+mod kerning;
 mod query;
 
 pub(crate) use self::incremental::Previous;
@@ -42,21 +44,13 @@ pub(crate) struct RunStyle {
 	pub(crate) style: TextStyle,
 	pub(crate) font: FontId,
 	pub(crate) metrics: FontMetrics,
+	pub(crate) line_box: LineBox,
 }
 
 impl RunStyle {
-	/// Height above and below the baseline of an inline box in this style,
-	/// per CSS 2.1 §10.8.1: the line height is split into half-leading above
-	/// the ascent and below the descent.
+	/// Height above and below the baseline of an inline box in this style.
 	pub(crate) fn line_box(&self) -> (f32, f32) {
-		let line_height = self.style.line_height_px();
-		let content = self.metrics.ascent + self.metrics.descent;
-		let half_leading = (line_height - content) / 2.0;
-
-		(
-			self.metrics.ascent + half_leading,
-			self.metrics.descent + half_leading,
-		)
+		(self.line_box.above, self.line_box.below)
 	}
 }
 
@@ -180,6 +174,8 @@ pub(crate) fn finish(
 		bidi,
 	} = itemized;
 	let mut items = items::measure_items(&text, drafts, &mut styles, cache)?;
+	let count = items.len();
+	kerning::apply(&text, &mut items, 0..count, cache)?;
 	let space = tab_space(&text, &styles[0], cache)?;
 	let tabs = breaking::TabStops {
 		interval: space * tab_size as f32,

@@ -141,7 +141,7 @@ fn carets(doc: &Document) -> Vec<Caret> {
 
 	for block in doc.text_blocks() {
 		let text = block.inline().map(InlineText::as_str).unwrap_or_default();
-		let boundaries = icu_boundaries(text);
+		let boundaries = grapheme_boundaries(text);
 
 		for offset in boundaries {
 			for affinity in [Affinity::Upstream, Affinity::Downstream] {
@@ -156,10 +156,13 @@ fn carets(doc: &Document) -> Vec<Caret> {
 	carets
 }
 
-fn icu_boundaries(text: &str) -> Vec<u32> {
-	icu_segmenter::GraphemeClusterSegmenter::new()
-		.segment_str(text)
-		.map(|offset| offset as u32)
+/// Grapheme boundaries with the segmenter the editor moves the caret with.
+fn grapheme_boundaries(text: &str) -> Vec<u32> {
+	use unicode_segmentation::UnicodeSegmentation;
+
+	text.grapheme_indices(true)
+		.map(|(offset, _)| offset as u32)
+		.chain(std::iter::once(text.len() as u32))
 		.collect()
 }
 

@@ -3,10 +3,12 @@
 use std::time::Duration;
 
 use canvist_editor::Command;
+use canvist_editor::CommandResult;
 use canvist_editor::Editor;
 use canvist_editor::EditorState;
 use canvist_editor::Env;
 use canvist_editor::KeyPress;
+use canvist_editor::LineNavigator;
 use canvist_editor::Update;
 use canvist_editor::commands;
 use canvist_editor::parse_binding;
@@ -49,9 +51,10 @@ use crate::position;
 /// ```
 pub struct Doc {
 	pub(crate) editor: Editor,
-	/// Logical time: one second per call, so each call is its own undo step
-	/// and results never depend on the wall clock.
-	ticks: u64,
+	/// The time of the last call. Calls without a host clock advance it by
+	/// one second, so each is its own undo step and results never depend on
+	/// the wall clock; [`Doc::edit`] moves it to the host's time.
+	clock: Duration,
 	#[cfg(feature = "collab")]
 	pub(crate) shared: Option<canvist_collab::Binding>,
 }
@@ -69,7 +72,7 @@ impl Doc {
 	pub(crate) fn new(editor: Editor) -> Self {
 		Self {
 			editor,
-			ticks: 0,
+			clock: Duration::ZERO,
 			#[cfg(feature = "collab")]
 			shared: None,
 		}
@@ -199,13 +202,20 @@ impl Doc {
 	/// object, or `null` for none. This is the path for bindings and
 	/// scripts; Rust code uses typed handles.
 	pub fn run_named(&mut self, name: &str, args: &Json) -> Result<bool, HeadlessError> {
-		let command = self.editor.command_named(name, &attrs(name, args)?)?;
+		let command = self.command_named(name, args)?;
 		self.run(&command)
+	}
+
+	/// The command an extension registered as `name`, with `args` (a JSON
+	/// object, or `null` for none) checked against its metadata, for hosts
+	/// that run it through [`Doc::edit`].
+	pub fn command_named(&self, name: &str, args: &Json) -> Result<Command, HeadlessError> {
+		Ok(self.editor.command_named(name, &attrs(name, args)?)?)
 	}
 
 	/// Whether the named command would apply. Nothing changes.
 	pub fn can_named(&mut self, name: &str, args: &Json) -> Result<bool, HeadlessError> {
-		let command = self.editor.command_named(name, &attrs(name, args)?)?;
+		let command = self.command_named(name, args)?;
 		self.can(&command)
 	}
 
@@ -305,10 +315,32 @@ impl Doc {
 		self.finish(update.as_ref())
 	}
 
-	/// A fresh environment, one logical second after the last.
+	/// Change the document through the editor with an interactive host's
+	/// clock and line navigator, and return the update so the host can lay
+	/// out again.
+	///
+	/// Keys such as `ArrowUp` and `End` then move by visual lines, and typing
+	/// groups into undo steps by real time. Like every other call, the update
+	/// passes on to collaborators. `now` never runs backwards: a time before
+	/// the last call's counts as that time.
+	pub fn edit(
+		&mut self,
+		now: Duration,
+		lines: &mut dyn LineNavigator,
+		change: impl FnOnce(&mut Editor, &mut Env<'_>) -> CommandResult,
+	) -> Result<Option<Update>, HeadlessError> {
+		self.clock = self.clock.max(now);
+		let mut env = Env::new(self.clock, lines);
+		let update = change(&mut self.editor, &mut env)?;
+		self.finish(update.as_ref())?;
+
+		Ok(update)
+	}
+
+	/// A fresh environment, one logical second after the last call.
 	pub(crate) fn env(&mut self) -> Env<'static> {
-		self.ticks += 1;
-		Env::headless(Duration::from_secs(self.ticks))
+		self.clock += Duration::from_secs(1);
+		Env::headless(self.clock)
 	}
 
 	/// Pass a local update on to collaborators, and report whether there

@@ -179,11 +179,16 @@ async function checkTypeScript(
 	await Deno.remove(dir, { recursive: true }).catch(() => {});
 	await Deno.mkdir(dir, { recursive: true });
 	const headless = join(ROOT, "packages/canvist-headless");
+	const web = join(ROOT, "packages/canvist-web");
 	await Deno.writeTextFile(
 		join(dir, "deno.json"),
 		JSON.stringify({
 			imports: {
 				"@canvist/headless": `${headless}/src/mod.ts`,
+				"@canvist/headless/extensions":
+					`${headless}/src/extensions.generated.ts`,
+				"@canvist/web": `${web}/src/mod.ts`,
+				"@canvist/web/fonts": `${web}/src/fonts.ts`,
 				// Workers import the module through their bundler; it is a WebAssembly.Module.
 				"@canvist/headless/wasm/canvist_headless_wasm_bg.wasm":
 					"./worker-wasm.ts",

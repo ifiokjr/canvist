@@ -170,6 +170,7 @@ pub(crate) fn prepare(
 	};
 	let (styles, drafts) =
 		items::itemize_window(context, base, inline, old.styles.clone(), &window);
+	request_edge_kerning(context, text, &old, edit, &plan, &drafts);
 
 	if slice(text, &plan.range).contains('\t') {
 		context.cache.request(styles[0].font, " ");
@@ -185,6 +186,54 @@ pub(crate) fn prepare(
 		styles,
 		drafts,
 	}))
+}
+
+/// Queue the kerning pairs between the window's first and last items and
+/// the old items either side of it, which [`splice_items`] kerns again.
+fn request_edge_kerning(
+	context: &mut ItemContext<'_>,
+	text: &str,
+	old: &TextLayout,
+	edit: TextEdit,
+	plan: &Plan,
+	drafts: &[DraftItem],
+) {
+	let as_draft = |item: &items::Item, delta: i64| {
+		let items::ItemKind::Text { font, .. } = item.kind else {
+			return None;
+		};
+
+		Some(DraftItem {
+			range: shift(item.range.start, delta)..shift(item.range.end, delta),
+			style: item.style,
+			level: item.level,
+			kind: items::DraftKind::Text(font),
+			break_after: item.break_after,
+		})
+	};
+	let before = plan
+		.items
+		.start
+		.checked_sub(1)
+		.and_then(|index| old.items.get(index))
+		.and_then(|item| as_draft(item, 0));
+	let after = old
+		.items
+		.get(plan.items.end)
+		.and_then(|item| as_draft(item, edit.delta()));
+	let mut joined = String::new();
+	let pairs = [
+		(before.as_ref(), drafts.first()),
+		(drafts.last(), after.as_ref()),
+	];
+
+	for (left, right) in pairs {
+		if let (Some(left), Some(right)) = (left, right)
+			&& let Some((font, pair)) = items::kerning_pair(text, left, right)
+		{
+			super::kerning::request(context.cache, font, pair, &mut joined);
+		}
+	}
 }
 
 /// Whether `old` can be patched into the layout of `text`: it was laid out
@@ -374,6 +423,10 @@ fn splice_items(
 
 	layout.text = text;
 	layout.styles = styles;
+	// Kern the window's items, and the item before it with the window's
+	// first one.
+	let kerned = replaced.start.saturating_sub(1)..replaced.start + inserted + 1;
+	super::kerning::apply(&layout.text, &mut layout.items, kerned, cache)?;
 
 	Ok((layout, by, replaced.start))
 }

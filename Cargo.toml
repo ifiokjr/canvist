@@ -13,6 +13,7 @@ members = [
 	"crates/canvist_render",
 	"crates/canvist_test",
 	"crates/canvist_wasm",
+	"crates/canvist_web",
 	"docs",
 	"platforms/dart/rust",
 	"services/cloud",
@@ -31,6 +32,7 @@ default-members = [
 	"crates/canvist_layout",
 	"crates/canvist_render",
 	"crates/canvist_wasm",
+	"crates/canvist_web",
 	"docs",
 	"services/cloud",
 ]
@@ -100,6 +102,7 @@ canvist_layout = { path = "./crates/canvist_layout", version = "0.1.0" }
 canvist_model = { path = "./crates/canvist_model", version = "0.1.0" }
 canvist_render = { path = "./crates/canvist_render", version = "0.1.0" }
 canvist_wasm = { path = "./crates/canvist_wasm", version = "0.1.0" }
+canvist_web = { path = "./crates/canvist_web", version = "0.1.0" }
 
 [workspace.metadata.bin]
 cargo-insta = { version = "1.46.3" }
@@ -170,3 +173,9 @@ opt-level = "s"
 [profile.wasm-release]
 inherits = "release"
 opt-level = "s"
+
+# The browser editor trades a little more: `opt-level = "z"` saves 25 KB
+# gzipped over "s" (`@canvist/web`'s `build:wasm`).
+[profile.wasm-web]
+inherits = "wasm-release"
+opt-level = "z"

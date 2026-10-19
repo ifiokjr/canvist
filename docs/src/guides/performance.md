@@ -24,6 +24,9 @@ Every number below has a budget, and a test fails the build when an operation go
 | Hit test / caret rectangle                         | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
 | Display list for one screen                        | < 100 µs                                    | 5 µs                 |
 | Scroll one screen into unmeasured blocks           | < 1 ms                                      | 53 µs                |
+| Relayout after a web font loads, 10k blocks        | < 200 µs                                    | 37 µs                |
+| Measure cache hit rate: resize / typing            | ≥ 99% / ≥ 85%                               | 100% / 93%           |
+| Measure cache memory per segment, per face         | ≤ 160 B                                     | 145 B                |
 | Mirror a keystroke into a Yjs update, 100k blocks  | < 20 µs                                     | 1.9 µs               |
 | Apply a collaborator's keystroke, 100k blocks      | < 20 µs                                     | 2.7 µs               |
 | Mirror Enter into Yjs, 10k blocks²                 | < 150 µs                                    | 45 µs                |
@@ -40,11 +43,13 @@ Every number below has a budget, and a test fails the build when an operation go
 | Keystroke → paint on the web (Event Timing), p95   | < 8 ms                                      | Coming soon          |
 | Typing burst: 1,000 key events in one task         | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
 | Open a 10k-paragraph document → first paint        | < 50 ms                                     | layout 0.6 ms        |
-| Web bundle (core + StarterKit), gzipped            | < 350 KB                                    | Coming soon          |
+| Web bundle (core + StarterKit), gzipped            | < 350 KB                                    | 379 KB ³             |
 
 ¹ Pressing Enter grows slowly with document size, about 10 ns per block, because every later line moves down one row. It stays well under a frame at 100,000 blocks.
 
 ² Structural edits, such as splitting or joining blocks, cost time in proportion to the number of blocks beside them, because Yjs walks the list of siblings. Budgets use 10,000 top-level blocks.
+
+³ Over budget. The editor's WebAssembly is 357 KB, its glue 7 KB, and its scripts 14 KB. Most of the module is the editing engine with every StarterKit extension, the Markdown and HTML codecs that paste and import need, and the Unicode tables for line breaking, bidi, and graphemes. Splitting the codecs and the regular-expression engine that input rules use into a module that loads on first paste is the next step.
 
 ## Keep your app fast
 

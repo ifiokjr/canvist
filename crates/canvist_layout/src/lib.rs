@@ -60,6 +60,7 @@
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
+mod breaks;
 mod font;
 mod geometry;
 mod measure;
@@ -74,6 +75,7 @@ mod editor;
 mod navigate;
 mod render;
 
+pub use breaks::chromium_breaks;
 use canvist_model::BlockId;
 use canvist_model::Point;
 pub use display::DecorationKind;
@@ -85,18 +87,22 @@ pub use display::SlotKind;
 pub use display::TextRun;
 pub use document::Damage;
 pub use document::DocumentLayout;
+pub use document::FontInvalidation;
 pub use document::LayoutOptions;
 pub use document::ViewportUpdate;
 pub use font::FontBook;
 pub use font::FontId;
 pub use font::FontMetrics;
 pub use font::FontSpec;
+pub use font::LineBox;
 pub use geometry::Color;
 pub use geometry::Insets;
 pub use geometry::Rect;
 pub use measure::FixedMeasurer;
+pub use measure::FontCacheStats;
 pub use measure::MeasureBatch;
 pub use measure::MeasureOutput;
+pub use measure::MeasureStats;
 #[cfg(feature = "parley")]
 pub use measure::ParleyMeasurer;
 pub use measure::SegmentRequest;
@@ -115,6 +121,7 @@ pub use theme::BlockPatch;
 pub use theme::BlockRule;
 pub use theme::Border;
 pub use theme::Chrome;
+pub use theme::ColorScheme;
 pub use theme::Decorations;
 pub use theme::EmbedRule;
 pub use theme::EmbedStyle;
@@ -123,6 +130,7 @@ pub use theme::LeafStyle;
 pub use theme::MarkRule;
 pub use theme::MarkerKind;
 pub use theme::MarkerStyle;
+pub use theme::StarterKitOptions;
 pub use theme::TextPatch;
 pub use theme::TextStyle;
 pub use theme::Theme;
@@ -190,6 +198,16 @@ pub enum LayoutError {
 		requested: [u32; 2],
 		/// The returned number of font metrics and character advances.
 		returned: [u32; 2],
+	},
+	/// A [`TextMeasurer`] returned line boxes, but not one per request.
+	#[error(
+		"the measurer returned {returned} line boxes, but {requested} (or none) were requested"
+	)]
+	LineBoxContract {
+		/// The requested number of line boxes.
+		requested: u32,
+		/// The returned number.
+		returned: u32,
 	},
 	/// A measurement was missing after the cache was flushed.
 	#[error("a text measurement was missing after measuring")]

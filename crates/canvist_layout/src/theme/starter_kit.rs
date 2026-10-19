@@ -24,19 +24,99 @@ use crate::Insets;
 
 /// The sans-serif stack used for body text.
 pub const SANS: &str = "Inter, ui-sans-serif, system-ui, sans-serif";
-/// The monospace stack used for code.
-pub const MONO: &str = "\"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, monospace";
+/// The monospace stack used for code. It names fonts rather than
+/// `ui-monospace`: after a missing family, WebKit takes tab stops from the
+/// `ui-monospace` face but draws glyphs from the `monospace` fallback, which
+/// a canvas cannot reproduce.
+pub const MONO: &str =
+	"\"JetBrains Mono\", SFMono-Regular, Menlo, Consolas, \"Liberation Mono\", monospace";
 
-const INK: Color = Color::rgb(0x2e, 0x2b, 0x29);
-const PURPLE: Color = Color::rgb(0x6a, 0x00, 0xf5);
-const PURPLE_LIGHT: Color = Color::rgb(0xee, 0xee, 0xff);
-const GRAY_2: Color = Color::rgb(0xe5, 0xe3, 0xe1);
-const GRAY_3: Color = Color::rgb(0xd6, 0xd3, 0xd1);
-const YELLOW: Color = Color::rgb(0xfa, 0xf5, 0x94);
-const WHITE: Color = Color::rgb(0xff, 0xff, 0xff);
+/// Light or dark colours.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ColorScheme {
+	/// Dark text on white, TipTap's look.
+	#[default]
+	Light,
+	/// Light text on a warm near-black.
+	Dark,
+}
+
+/// The colours one scheme uses.
+struct Palette {
+	page: Color,
+	ink: Color,
+	accent: Color,
+	accent_wash: Color,
+	rule: Color,
+	quote_bar: Color,
+	highlight: Color,
+	code_page: Color,
+	code_ink: Color,
+	selection: Color,
+}
+
+const LIGHT: Palette = Palette {
+	page: Color::rgb(0xff, 0xff, 0xff),
+	ink: Color::rgb(0x2e, 0x2b, 0x29),
+	accent: Color::rgb(0x6a, 0x00, 0xf5),
+	accent_wash: Color::rgb(0xee, 0xee, 0xff),
+	rule: Color::rgb(0xe5, 0xe3, 0xe1),
+	quote_bar: Color::rgb(0xd6, 0xd3, 0xd1),
+	highlight: Color::rgb(0xfa, 0xf5, 0x94),
+	code_page: Color::rgb(0x2e, 0x2b, 0x29),
+	code_ink: Color::rgb(0xff, 0xff, 0xff),
+	selection: Color::rgba(0x6a, 0x00, 0xf5, 0x33),
+};
+
+const DARK: Palette = Palette {
+	page: Color::rgb(0x1a, 0x18, 0x17),
+	ink: Color::rgb(0xe9, 0xe6, 0xe3),
+	accent: Color::rgb(0xb8, 0x96, 0xff),
+	accent_wash: Color::rgb(0x33, 0x2a, 0x4d),
+	rule: Color::rgb(0x3d, 0x39, 0x36),
+	quote_bar: Color::rgb(0x57, 0x52, 0x4e),
+	highlight: Color::rgb(0x5c, 0x55, 0x1a),
+	code_page: Color::rgb(0x0d, 0x0c, 0x0b),
+	code_ink: Color::rgb(0xe9, 0xe6, 0xe3),
+	selection: Color::rgba(0xb8, 0x96, 0xff, 0x4d),
+};
+
+/// What [`Theme::starter_kit_with`] varies: the colour scheme, the font
+/// stacks, and the body size. Spacing stays in the StarterKit's rem units.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StarterKitOptions {
+	/// Light or dark colours.
+	pub scheme: ColorScheme,
+	/// The CSS `font-family` list for body text and headings.
+	pub body_family: Arc<str>,
+	/// The CSS `font-family` list for inline code and code blocks.
+	pub code_family: Arc<str>,
+	/// The body font size in pixels.
+	pub size: f32,
+	/// The body line height, as a multiple of the font size.
+	pub line_height: f32,
+	/// Extra space after every grapheme of body text, in pixels, like CSS
+	/// `letter-spacing`.
+	pub letter_spacing: f32,
+}
+
+impl Default for StarterKitOptions {
+	fn default() -> Self {
+		Self {
+			scheme: ColorScheme::Light,
+			body_family: Arc::from(SANS),
+			code_family: Arc::from(MONO),
+			size: REM,
+			line_height: BODY_LINE_HEIGHT,
+			letter_spacing: 0.0,
+		}
+	}
+}
 
 /// One root em in pixels.
 const REM: f32 = 16.0;
+/// The body line height, as a multiple of the font size.
+const BODY_LINE_HEIGHT: f32 = 1.5;
 
 /// The weight of headings and bold text.
 const BOLD: u16 = 700;
@@ -138,10 +218,23 @@ impl Theme {
 	/// so documents imported from TipTap JSON style correctly.
 	#[must_use]
 	pub fn starter_kit() -> Self {
-		let builder = Theme::builder(base_style())
+		Self::starter_kit_with(&StarterKitOptions::default())
+	}
+
+	/// The StarterKit theme in another colour scheme, font stacks, or body
+	/// size. Server rendering and the canvas must build the theme from the
+	/// same options, or the HTML will not match the canvas.
+	#[must_use]
+	pub fn starter_kit_with(options: &StarterKitOptions) -> Self {
+		let palette = match options.scheme {
+			ColorScheme::Light => &LIGHT,
+			ColorScheme::Dark => &DARK,
+		};
+		let builder = Theme::builder(base_style(options, palette))
 			.chrome(Chrome {
-				selection: Color::rgba(0x6a, 0x00, 0xf5, 0x33),
-				caret: INK,
+				background: palette.page,
+				selection: palette.selection,
+				caret: palette.ink,
 				caret_width: 2.0,
 			})
 			.markers(MarkerStyle {
@@ -150,39 +243,43 @@ impl Theme {
 				checkbox: CHECKBOX_SIZE,
 				color: None,
 			});
-		let builder = block_rules().into_iter().fold(builder, ThemeBuilder::block);
-		let builder = mark_rules().into_iter().fold(builder, ThemeBuilder::mark);
+		let builder = block_rules(options, palette)
+			.into_iter()
+			.fold(builder, ThemeBuilder::block);
+		let builder = mark_rules(options, palette)
+			.into_iter()
+			.fold(builder, ThemeBuilder::mark);
 
-		embed_rules()
+		embed_rules(palette)
 			.into_iter()
 			.fold(builder, ThemeBuilder::embed)
 			.build()
 	}
 }
 
-/// The root text style: body text in the sans-serif stack.
-fn base_style() -> TextStyle {
+/// The root text style: body text in the body stack.
+fn base_style(options: &StarterKitOptions, palette: &Palette) -> TextStyle {
 	TextStyle {
 		font: FontSpec {
-			family: Arc::from(SANS),
-			size: REM,
+			family: options.body_family.clone(),
+			size: options.size,
 			weight: 400,
 			italic: false,
 		},
-		line_height: 1.5,
-		color: INK,
+		line_height: options.line_height,
+		color: palette.ink,
 		background: None,
 		decorations: Decorations::default(),
-		letter_spacing: 0.0,
+		letter_spacing: options.letter_spacing,
 	}
 }
 
 /// Every block rule, in the order later rules override earlier ones.
-fn block_rules() -> Vec<BlockRule> {
+fn block_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<BlockRule> {
 	let mut rules = text_block_rules();
 
-	rules.extend(container_rules());
-	rules.extend(code_and_leaf_rules());
+	rules.extend(container_rules(palette));
+	rules.extend(code_and_leaf_rules(options, palette));
 	rules.extend(nested_list_rules());
 	rules
 }
@@ -207,7 +304,7 @@ fn text_block_rules() -> Vec<BlockRule> {
 }
 
 /// Block quotes, lists, and list items with their paragraphs.
-fn container_rules() -> Vec<BlockRule> {
+fn container_rules(palette: &Palette) -> Vec<BlockRule> {
 	let list = |marker| {
 		BlockPatch::new()
 			.padding(Insets::new(0.0, REM, 0.0, LIST_INDENT))
@@ -220,7 +317,7 @@ fn container_rules() -> Vec<BlockRule> {
 		BlockRule::new(
 			"blockquote",
 			BlockPatch::new()
-				.border_left(3.0, GRAY_3)
+				.border_left(3.0, palette.quote_bar)
 				.padding(Insets::new(0.0, 0.0, 0.0, REM))
 				.space(FIGURE_SPACE, FIGURE_SPACE)
 				.tag("blockquote"),
@@ -236,11 +333,11 @@ fn container_rules() -> Vec<BlockRule> {
 }
 
 /// Code blocks, horizontal rules, and images.
-fn code_and_leaf_rules() -> Vec<BlockRule> {
+fn code_and_leaf_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<BlockRule> {
 	let code_text = TextPatch::new()
-		.family(MONO)
+		.family(&options.code_family)
 		.size(FontSize::Px(CODE_BLOCK_SIZE))
-		.color(WHITE);
+		.color(palette.code_ink);
 
 	vec![
 		BlockRule::new(
@@ -248,7 +345,7 @@ fn code_and_leaf_rules() -> Vec<BlockRule> {
 			BlockPatch::new()
 				.text(code_text)
 				.padding(Insets::symmetric(CODE_BLOCK_PADDING, REM))
-				.background(INK, 0.5 * REM)
+				.background(palette.code_page, 0.5 * REM)
 				.space(FIGURE_SPACE, FIGURE_SPACE)
 				.tag("pre"),
 		),
@@ -257,7 +354,7 @@ fn code_and_leaf_rules() -> Vec<BlockRule> {
 			BlockPatch::new()
 				.leaf(LeafStyle::Rule {
 					thickness: 1.0,
-					color: GRAY_2,
+					color: palette.rule,
 				})
 				.space(2.0 * REM, 2.0 * REM)
 				.tag("hr"),
@@ -289,7 +386,7 @@ fn nested_list_rules() -> Vec<BlockRule> {
 	rules
 }
 
-fn mark_rules() -> Vec<MarkRule> {
+fn mark_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<MarkRule> {
 	vec![
 		MarkRule::new("bold", "strong", TextPatch::new().weight(BOLD)),
 		MarkRule::new("italic", "em", TextPatch::new().italic(true)),
@@ -299,13 +396,21 @@ fn mark_rules() -> Vec<MarkRule> {
 			"code",
 			"code",
 			TextPatch::new()
-				.family(MONO)
+				.family(&options.code_family)
 				.size(FontSize::Em(INLINE_CODE_SCALE))
-				.background(PURPLE_LIGHT),
+				.background(palette.accent_wash),
 		),
-		MarkRule::new("link", "a", TextPatch::new().color(PURPLE).underline(true)),
-		MarkRule::new("highlight", "mark", TextPatch::new().background(YELLOW))
-			.bind(AttrBinding::Background(Arc::from("color"))),
+		MarkRule::new(
+			"link",
+			"a",
+			TextPatch::new().color(palette.accent).underline(true),
+		),
+		MarkRule::new(
+			"highlight",
+			"mark",
+			TextPatch::new().background(palette.highlight),
+		)
+		.bind(AttrBinding::Background(Arc::from("color"))),
 		MarkRule::new("textStyle", "span", TextPatch::new())
 			.bind(AttrBinding::Color(Arc::from("color")))
 			.bind(AttrBinding::FontFamily(Arc::from("fontFamily")))
@@ -313,7 +418,7 @@ fn mark_rules() -> Vec<MarkRule> {
 	]
 }
 
-fn embed_rules() -> Vec<EmbedRule> {
+fn embed_rules(palette: &Palette) -> Vec<EmbedRule> {
 	vec![
 		EmbedRule::new("hardBreak", EmbedStyle::LineBreak),
 		EmbedRule::new(
@@ -321,7 +426,9 @@ fn embed_rules() -> Vec<EmbedRule> {
 			EmbedStyle::Label {
 				attr: Arc::from("label"),
 				prefix: Arc::from("@"),
-				patch: TextPatch::new().color(PURPLE).background(PURPLE_LIGHT),
+				patch: TextPatch::new()
+					.color(palette.accent)
+					.background(palette.accent_wash),
 			},
 		),
 		EmbedRule::new(

@@ -540,6 +540,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "unicode-bidi",
+ "unicode-segmentation",
 ]
 
 [[package]]
@@ -586,6 +587,20 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
+ "web-sys",
+]
+
+[[package]]
+name = "canvist_web"
+version = "0.1.0"
+dependencies = [
+ "canvist_headless",
+ "canvist_layout",
+ "js-sys",
+ "rustc-hash",
+ "serde_json",
+ "unicode-segmentation",
+ "wasm-bindgen",
  "web-sys",
 ]
 

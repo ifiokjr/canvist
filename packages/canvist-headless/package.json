@@ -9,6 +9,10 @@
 			"types": "./dist/mod.d.ts",
 			"default": "./dist/mod.js"
 		},
+		"./extensions": {
+			"types": "./dist/extensions.generated.d.ts",
+			"default": "./dist/extensions.generated.js"
+		},
 		"./wasm/canvist_headless_wasm_bg.wasm": "./wasm/canvist_headless_wasm_bg.wasm"
 	},
 	"files": [

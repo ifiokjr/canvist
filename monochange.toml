@@ -150,6 +150,12 @@ path = "crates/canvist_headless_wasm"
 publish = { enabled = false }
 changelog = false
 
+# `canvist_web` ships inside `@canvist/web`.
+[package.canvist_web]
+path = "crates/canvist_web"
+publish = { enabled = false }
+changelog = false
+
 # The v1 engine, slated for removal. It still inherits the workspace version,
 # so it stays in the group to keep `workspace.dependencies` consistent, but it
 # is never published.
@@ -180,6 +186,11 @@ changelog = false
 path = "packages/canvist-headless"
 type = "npm"
 
+# The canvas editor for the browser, over `canvist_web`.
+[package."@canvist/web"]
+path = "packages/canvist-web"
+type = "npm"
+
 # Dart packages. `mode = "external"` keeps them out of release publishing (the
 # build hook's Rust crate still resolves through the Cargo workspace, which a
 # pub.dev archive cannot include) while placeholder publishing still reserves
@@ -199,6 +210,7 @@ publish = { enabled = true, mode = "external" }
 [group.sdk]
 packages = [
 	"@canvist/headless",
+	"@canvist/web",
 	"canvist_v1",
 	"canvist-dart",
 	"canvist_collab",
@@ -213,6 +225,7 @@ packages = [
 	"canvist_model",
 	"canvist_render",
 	"canvist_wasm",
+	"canvist_web",
 ]
 tag = true
 release = true

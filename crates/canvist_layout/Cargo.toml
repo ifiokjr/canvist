@@ -22,6 +22,7 @@ parley = { version = "^0.12", default-features = false, features = ["std"], opti
 rustc-hash = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 unicode-bidi = { version = "^0.3", default-features = false, features = ["hardcoded-data", "std"] }
+unicode-segmentation = { workspace = true }
 
 [dev-dependencies]
 divan = { workspace = true }
