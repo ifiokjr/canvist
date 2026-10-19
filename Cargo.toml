@@ -15,6 +15,7 @@ members = [
 	"crates/canvist_wasm",
 	"docs",
 	"platforms/dart/rust",
+	"tools/footage",
 ]
 default-members = [
 	"crates/canvist",
