@@ -1,0 +1,76 @@
+---
+import "../styles/global.css";
+import bricolage from "../fonts/bricolage-grotesque-subset.woff2?url";
+import geistMono from "../fonts/geist-mono-subset.woff2?url";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+
+interface Props {
+	title: string;
+	description: string;
+	/** Extra font files this page paints above the fold. */
+	preloadMono?: boolean;
+}
+
+const { title, description, preloadMono = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL("/og-image.png", Astro.site);
+const fullTitle = title === "canvist" ? "canvist: the editor that owns every pixel" : `${title} · canvist`;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{fullTitle}</title>
+		<meta name="description" content={description} />
+		<link rel="canonical" href={canonical} />
+		<meta name="color-scheme" content="light dark" />
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0d0b13" />
+		<link rel="icon" href="/favicon.ico" sizes="32x32" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+		<link rel="manifest" href="/site.webmanifest" />
+		<meta property="og:type" content="website" />
+		<meta property="og:site_name" content="canvist" />
+		<meta property="og:title" content={fullTitle} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:image" content={ogImage} />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<link rel="preload" href={bricolage} as="font" type="font/woff2" crossorigin />
+		{preloadMono && <link rel="preload" href={geistMono} as="font" type="font/woff2" crossorigin />}
+		<script is:inline>
+			// Runs before first paint: a pinned theme never flashes, and motion-only
+			// starting states (like the unpainted hero) apply before anything shows.
+			if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("motion-ok");
+			try {
+				const theme = localStorage.getItem("canvist-theme");
+				if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+			} catch {
+				// Storage can be blocked; the system theme still applies.
+			}
+		</script>
+		<slot name="head" />
+	</head>
+	<body>
+		<Fragment set:html={`<!--
+THESIS: canvist is a paint fan deck of its own colour. Every section is a swatch chip punched with a rivet, fanning open as you scroll; it refuses the dark devtool hero with glowing gradients and feature-card grids.
+OWN-WORLD: Paper to Paint to Ink tint ramp, one full-bleed chip per section, rivet holes, mono label strips with real codes (µs, MADs, plan names), Bricolage Grotesque at display optical size, the Wet Caret as the only accent mark.
+STORY: a developer sees the caret paint the name, types into the real engine and reads its latency, watches one document travel across seven platforms, sees carets meet, a type error light up, budgets measured, the free promise, then the paid services; they leave for the docs or GitHub.
+FIRST VIEWPORT: Paper chip; the caret paints the wordmark at about 70% width; headline and two actions below; the demo film slot right; the deck's remaining chips fanned open behind the bottom-right corner as section wayfinding.
+FORM: paint fan deck, candidate 7 of 7, seed 79f9cb94.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+-->`} />
+		<a class="skip-link" href="#main">Skip to content</a>
+		<SiteHeader />
+		<main id="main">
+			<slot />
+		</main>
+		<SiteFooter />
+	</body>
+</html>

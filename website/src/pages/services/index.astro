@@ -1,0 +1,115 @@
+---
+import { services } from "../../data/services.ts";
+import Base from "../../layouts/Base.astro";
+---
+
+<Base
+	title="Services"
+	description="canvist Cloud runs Sync, Convert and History for you, billed per monthly active document. Every service is open source and self-hostable with the exact binary canvist deploys."
+>
+	<div class="services-page">
+		<section class="intro" aria-labelledby="services-title">
+			<p class="code-label">canvist Cloud</p>
+			<h1 id="services-title" class="intro__title">The servers, run for you.</h1>
+			<p class="intro__body">
+				The editor is free and runs anywhere. When it needs a server (to sync, to convert, to remember), canvist Cloud can run it for you, or you can run the exact same binary yourself.
+			</p>
+		</section>
+		<ol class="list">
+			{
+				services.map((service, index) => (
+					<li style={`--sw: var(--chip-${index + 1});`}>
+						<a href={`/services/${service.id}`} data-astro-prefetch>
+							<span class="list__no code-label">0{index + 1}</span>
+							<span class="list__name">{service.name}</span>
+							<span class="list__tagline">{service.tagline}</span>
+							<span class="status" data-status={service.status === "next" ? "planned" : "building"}>{service.statusText}</span>
+						</a>
+					</li>
+				))
+			}
+		</ol>
+	</div>
+</Base>
+
+<style>
+	.services-page {
+		display: grid;
+		gap: var(--section-gap);
+		padding: 0 var(--gutter) var(--section-gap);
+	}
+
+	.intro {
+		display: grid;
+		gap: var(--s-5);
+		padding: var(--chip-pad);
+		border-radius: var(--r-chip);
+		background: var(--chip-7);
+		color: light-dark(var(--paper), var(--ink));
+	}
+
+	.intro__title {
+		font-size: var(--t-mega);
+		line-height: 0.86;
+		font-weight: 800;
+		letter-spacing: -0.05em;
+		max-width: 11ch;
+	}
+
+	.intro__body {
+		font-size: var(--t-3);
+		line-height: 1.4;
+		max-width: 48ch;
+	}
+
+	.list {
+		display: grid;
+		gap: var(--section-gap);
+		padding: 0;
+		list-style: none;
+	}
+
+	.list a {
+		display: grid;
+		grid-template-columns: 4rem minmax(0, 3fr) minmax(0, 5fr) auto;
+		gap: var(--s-4) var(--s-6);
+		align-items: center;
+		padding: var(--s-6) var(--chip-pad);
+		border-radius: var(--r-chip);
+		background: var(--sw);
+		color: var(--chip-ink);
+		text-decoration: none;
+		transition: transform var(--dur-2) var(--ease-out);
+	}
+
+	.list a:hover {
+		transform: translateX(0.5rem);
+	}
+
+	.list__name {
+		font-size: var(--t-1);
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		line-height: 1;
+	}
+
+	.list__tagline {
+		font-size: var(--t-3);
+		line-height: 1.3;
+	}
+
+	@media (max-width: 56rem) {
+		.list a {
+			grid-template-columns: minmax(0, 1fr) auto;
+		}
+
+		.list__no {
+			display: none;
+		}
+
+		.list__tagline {
+			grid-column: 1 / -1;
+			order: 3;
+		}
+	}
+</style>

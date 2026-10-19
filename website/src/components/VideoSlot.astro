@@ -1,0 +1,92 @@
+---
+/**
+ * The demo film. A Remotion render is in production; until it lands this is
+ * a labelled placeholder with the same 16:9 box, so swapping in the video
+ * never shifts layout. To ship it, pass `src` (an MP4 in `public/media/`)
+ * and `poster`.
+ */
+interface Props {
+	src?: string;
+	poster?: string;
+	class?: string;
+}
+
+const { src, poster, class: className } = Astro.props;
+---
+
+<figure class:list={["film", className]} data-video-slot>
+	{
+		src ? (
+			<video controls playsinline preload="none" poster={poster} aria-label="canvist demo film">
+				<source src={src} type="video/mp4" />
+			</video>
+		) : (
+			<div class="film__placeholder" role="img" aria-label="Demo film placeholder: the film is in production">
+				<svg viewBox="0 0 64 64" aria-hidden="true" class="film__play">
+					<circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 5"></circle>
+					<path d="M26 21v22l18-11Z" fill="currentColor"></path>
+				</svg>
+				<span class="film__note">In the darkroom</span>
+			</div>
+		)
+	}
+	<figcaption class="code-label">
+		<span>Demo film</span>
+		<span>{src ? "1:00" : "coming soon"}</span>
+	</figcaption>
+</figure>
+
+<style>
+	.film {
+		display: grid;
+		gap: var(--s-2);
+		padding: var(--s-2);
+		border-radius: calc(var(--r-2) + var(--s-2));
+		background: color-mix(in oklab, var(--chip-fg, var(--text)) 6%, transparent);
+	}
+
+	video,
+	.film__placeholder {
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		border-radius: var(--r-2);
+	}
+
+	video {
+		background: var(--ink);
+	}
+
+	.film__placeholder {
+		display: grid;
+		place-content: center;
+		justify-items: center;
+		gap: var(--s-3);
+		background:
+			repeating-linear-gradient(
+				-45deg,
+				color-mix(in oklab, var(--chip-fg, var(--text)) 5%, transparent) 0 10px,
+				transparent 10px 20px
+			),
+			color-mix(in oklab, var(--chip-bg, var(--surface)) 70%, var(--page));
+		color: color-mix(in oklab, var(--chip-fg, var(--text)) 70%, transparent);
+	}
+
+	.film__play {
+		width: 3.5rem;
+		height: 3.5rem;
+	}
+
+	.film__note {
+		font-family: var(--font-mono);
+		font-size: var(--t-micro);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+
+	figcaption {
+		display: flex;
+		justify-content: space-between;
+		padding: 0 var(--s-1);
+		color: color-mix(in oklab, var(--chip-fg, var(--text)) 78%, transparent);
+	}
+</style>

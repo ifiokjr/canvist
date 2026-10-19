@@ -1,0 +1,305 @@
+---
+import { lockup } from "../../lib/brand.ts";
+import { deck } from "../../lib/deck.ts";
+import VideoSlot from "../VideoSlot.astro";
+
+const fanned = deck.filter((chip) => chip.id !== "top");
+---
+
+<section class="chip hero" data-chip="0" id="top" aria-labelledby="hero-title">
+	<div class="chip-inner hero__grid">
+		<div class="hero__stage" data-hero-stage data-state="waiting">
+			<div class="hero__lockup" data-hero-lockup set:html={lockup} />
+			<canvas class="hero__rive" data-hero-rive aria-hidden="true" width="960" height="256"></canvas>
+		</div>
+
+		<nav class="fan" aria-label="Sections" data-fan>
+			<ol>
+				{
+					fanned.map((chip, index) => (
+						<li style={`--i: ${index}; --fan-bg: var(--chip-${chip.chip}); --fan-fg: ${chip.ink};`}>
+							<a href={`#${chip.id}`} data-fan-strip>
+								<span class="fan__no">{chip.number}</span>
+								<span class="fan__name">{chip.name}</span>
+							</a>
+						</li>
+					))
+				}
+			</ol>
+			<span class="fan__rivet" aria-hidden="true"></span>
+		</nav>
+
+		<div class="hero__copy">
+			<h1 id="hero-title" class="hero__title">The rich-text editor that paints every pixel itself.</h1>
+			<p class="hero__lede chip-muted">
+				One Rust core measures, lays out and paints your text onto a canvas, the same way on the web, desktop, iOS, Android, Flutter, React Native and Lynx.
+			</p>
+			<div class="hero__actions">
+				<a class="btn" href="/docs/getting-started" data-astro-prefetch>Start building</a>
+				<a class="btn btn--ghost" href="https://github.com/ifiokjr/canvist">Read the source</a>
+			</div>
+		</div>
+
+		<VideoSlot class="hero__film" />
+	</div>
+
+	<p class="chip-label">
+		<b>No. 01</b>
+		<span>Wet Caret</span>
+		<span class="chip-label__code">Paint #3B2CF5 · Unlicense</span>
+	</p>
+</section>
+
+<style>
+	.hero {
+		padding-top: calc(var(--chip-pad) + var(--s-3));
+	}
+
+	.hero__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+		grid-template-areas:
+			"stage fan"
+			"copy film";
+		gap: var(--s-7) var(--s-8);
+		align-items: end;
+	}
+
+	.hero__stage {
+		grid-area: stage;
+		position: relative;
+		aspect-ratio: 240.1 / 64;
+		width: 100%;
+		margin-left: -1.5%;
+	}
+
+	.hero__lockup,
+	.hero__rive {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+	}
+
+	.hero__lockup :global(svg) {
+		width: 100%;
+		height: 100%;
+		overflow: visible;
+	}
+
+	.hero__rive {
+		opacity: 0;
+	}
+
+	/* While Rive is painting, the canvas replaces the static master. */
+	.hero__stage[data-state="rive"] .hero__rive {
+		opacity: 1;
+	}
+
+	.hero__stage[data-state="rive"] .hero__lockup {
+		visibility: hidden;
+	}
+
+	/*
+	 * Waiting for the painter: the wordmark is not on the canvas yet and the
+	 * caret blinks where the stroke will start. `motion-ok` is set before
+	 * first paint (see Base.astro), so this never flashes the full lockup.
+	 * If no script ever takes over, the CSS stroke starts on its own.
+	 */
+	:global(.motion-ok) .hero__stage[data-state="waiting"] .hero__lockup :global(path:not(.logo-caret)) {
+		animation: paint-reveal-late 1.4s var(--ease-paint) 2.8s both;
+	}
+
+	:global(.motion-ok) .hero__stage[data-state="waiting"] .hero__lockup :global(.logo-caret) {
+		transform-box: view-box;
+		animation:
+			paint-sweep-late 1.4s var(--ease-paint) 2.8s both,
+			caret-blink 1.06s steps(1, end) infinite;
+	}
+
+	/* Rive missed its deadline or failed: paint the stroke in CSS now. */
+	:global(.motion-ok) .hero__stage[data-state="css"] .hero__lockup :global(path:not(.logo-caret)) {
+		animation: paint-reveal 1.4s var(--ease-paint) both;
+	}
+
+	:global(.motion-ok) .hero__stage[data-state="css"] .hero__lockup :global(.logo-caret) {
+		transform-box: view-box;
+		animation:
+			paint-sweep 1.4s var(--ease-paint) both,
+			caret-blink 1.06s steps(1, end) 1.6s infinite;
+	}
+
+	@keyframes caret-blink {
+		0%,
+		50% {
+			opacity: 1;
+		}
+
+		50.01%,
+		100% {
+			opacity: 0;
+		}
+	}
+
+	@keyframes paint-reveal {
+		from {
+			clip-path: inset(0 100% 0 0);
+		}
+
+		to {
+			clip-path: inset(0 0 0 0);
+		}
+	}
+
+	@keyframes paint-sweep {
+		from {
+			transform: translateX(-92.9%);
+		}
+
+		to {
+			transform: translateX(0);
+		}
+	}
+
+	/* Same strokes under new names: switching names restarts the animation. */
+	@keyframes paint-reveal-late {
+		from {
+			clip-path: inset(0 100% 0 0);
+		}
+
+		to {
+			clip-path: inset(0 0 0 0);
+		}
+	}
+
+	@keyframes paint-sweep-late {
+		from {
+			transform: translateX(-92.9%);
+		}
+
+		to {
+			transform: translateX(0);
+		}
+	}
+
+	.hero__copy {
+		grid-area: copy;
+		display: grid;
+		gap: var(--s-5);
+	}
+
+	.hero__title {
+		font-size: clamp(2rem, 4.4vw, 4rem);
+		line-height: 1;
+		letter-spacing: -0.035em;
+		font-weight: 760;
+		max-width: 16ch;
+	}
+
+	.hero__lede {
+		font-size: var(--t-3);
+		line-height: 1.42;
+		max-width: 38ch;
+	}
+
+	.hero__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s-3);
+	}
+
+	.hero__film {
+		grid-area: film;
+	}
+
+	/* ---------- The fan: the rest of the deck, opened behind the name ---------- */
+
+	.fan {
+		grid-area: fan;
+		position: relative;
+		align-self: stretch;
+		min-height: 15rem;
+	}
+
+	.fan ol {
+		position: absolute;
+		inset: 0;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	/* The strip is the swatch; only its labelled open end is the link. */
+	.fan li {
+		position: absolute;
+		top: 0.4rem;
+		left: 0.4rem;
+		display: flex;
+		justify-content: flex-end;
+		width: min(100%, 23rem);
+		height: 2.75rem;
+		border-radius: 0.875rem;
+		background: var(--fan-bg);
+		box-shadow: 0 1px 0 color-mix(in oklab, var(--ink) 18%, transparent);
+		z-index: calc(20 - var(--i));
+		transform-origin: 1.25rem 1.375rem;
+		transform: rotate(calc(var(--i) * 9deg - 5deg));
+		transition: transform var(--dur-2) var(--ease-out);
+	}
+
+	/* Labels sit at the open end, where the strips fan apart. */
+	.fan a {
+		display: flex;
+		align-items: center;
+		gap: var(--s-3);
+		height: 100%;
+		padding: 0 var(--s-4) 0 var(--s-3);
+		border-radius: 0.875rem;
+		color: var(--fan-fg);
+		font-size: var(--t-small);
+		font-weight: 620;
+		text-decoration: none;
+		white-space: nowrap;
+	}
+
+	.fan li:hover,
+	.fan li:focus-within {
+		transform: rotate(calc(var(--i) * 9deg - 5deg)) translateX(0.75rem);
+	}
+
+	.fan__no {
+		font-family: var(--font-mono);
+		font-size: var(--t-micro);
+		font-weight: 500;
+		opacity: 0.8;
+	}
+
+	.fan__rivet {
+		position: absolute;
+		top: calc(0.4rem + 1.375rem - 0.45rem);
+		left: calc(0.4rem + 1.25rem - 0.45rem);
+		width: 0.9rem;
+		height: 0.9rem;
+		border-radius: 50%;
+		background: var(--page);
+		box-shadow:
+			0 0 0 3px var(--chip-ink),
+			inset 0 0 0 2px color-mix(in oklab, var(--chip-ink) 20%, transparent);
+		pointer-events: none;
+	}
+
+	@media (max-width: 64rem) {
+		.hero__grid {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-areas:
+				"stage"
+				"copy"
+				"film";
+			gap: var(--s-6);
+		}
+
+		.fan {
+			display: none;
+		}
+	}
+</style>

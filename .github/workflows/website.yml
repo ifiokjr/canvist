@@ -1,0 +1,119 @@
+name: "website"
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - main
+    paths: &paths
+      - "website/**"
+      - "docs/src/**"
+      - "assets/brand/**"
+      - "packages/canvist/src/**"
+      - "packages/canvist/wasm/**"
+      - ".github/workflows/website.yml"
+  pull_request:
+    paths: *paths
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+defaults:
+  run:
+    working-directory: website
+
+jobs:
+  test:
+    name: check, build and test
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.8.x
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install dependencies
+        run: deno install --frozen
+
+      - name: type check
+        run: deno task check
+
+      - name: unit tests
+        run: deno task test:unit
+
+      - name: build
+        run: deno task build
+
+      - name: install playwright chromium
+        timeout-minutes: 10
+        run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+
+      - name: end-to-end tests
+        run: deno task test:e2e
+        env:
+          CI: "true"
+
+      - name: lighthouse
+        run: npx --yes @lhci/cli@0.15.1 autorun
+        env:
+          LHCI_BUILD_CONTEXT__CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+      - name: upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-reports
+          path: |
+            website/playwright-report
+            website/test-results
+            website/.lighthouseci
+
+  visual:
+    name: visual snapshots (macOS)
+    timeout-minutes: 30
+    runs-on: macos-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.8.x
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install dependencies
+        run: deno install --frozen
+
+      - name: build
+        run: deno task build
+
+      - name: install playwright chromium
+        timeout-minutes: 10
+        run: node node_modules/@playwright/test/cli.js install chromium
+
+      - name: visual snapshots
+        run: deno task test:e2e tests/e2e/visual.spec.ts
+        env:
+          CI: "true"
+
+      - name: upload diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-visual-diffs
+          path: website/test-results
