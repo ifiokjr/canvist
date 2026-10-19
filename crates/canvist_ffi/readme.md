@@ -15,4 +15,4 @@
 
 **This is a placeholder.** The handle is backed by a plain `String` so the native build pipelines can be proven before the v2 editor engine exists. The engine will replace it behind the same handle.
 
-See [the native toolchain guide](../../docs/src/platforms/native-toolchain.md) for building and testing on iOS, Android and Flutter.
+See [the native toolchain guide](../../docs/internal/native-toolchain.md) for building and testing on iOS, Android and Flutter.

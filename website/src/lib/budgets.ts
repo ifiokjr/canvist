@@ -1,5 +1,5 @@
 /**
- * Reads the "Performance budgets" table from `docs/src/v2/architecture.md` at
+ * Reads the "Performance budgets" table from `docs/src/guides/performance.md` at
  * build time, so the site's numbers are the repository's numbers. The table
  * is enforced by `tests/perf_budgets.rs` in each crate.
  */
@@ -66,14 +66,14 @@ function stripFootnotes(cell: string): string {
 export function parseBudgetTable(markdown: string): Budget[] {
 	const section = markdown.split(/^## Performance budgets\s*$/m)[1];
 	if (section === undefined) {
-		throw new Error("architecture.md has no '## Performance budgets' section");
+		throw new Error("performance.md has no '## Performance budgets' section");
 	}
 	const rows = section
 		.split("\n")
 		.filter((line) => line.startsWith("|"))
 		.slice(2); // header and separator
 	if (rows.length === 0) {
-		throw new Error("architecture.md's budget table is empty");
+		throw new Error("performance.md's budget table is empty");
 	}
 
 	return rows.map((row) => {
@@ -102,13 +102,13 @@ export type MeasuredBudget =
 export interface BudgetTable {
 	/** Rows with a measured duration today, ready to chart. */
 	measured: MeasuredBudget[];
-	/** Rows waiting on a milestone, such as the web host (M3). */
+	/** Rows waiting on a host that hasn't shipped, such as the web editor ("Coming soon"). */
 	pending: Budget[];
 	/** Budgets that aren't durations, such as sizes and stress tests. */
 	other: Budget[];
 }
 
-const WAITING = /\(M\d+\)/;
+const WAITING = /^Coming soon$/i;
 
 export function splitBudgets(rows: Budget[]): BudgetTable {
 	const measured = rows.filter((row): row is MeasuredBudget =>
@@ -122,7 +122,7 @@ export function splitBudgets(rows: Budget[]): BudgetTable {
 	};
 }
 
-/** Reads the table from `docs/src/v2/architecture.md` at `path`. Called at build time. */
+/** Reads the table from `docs/src/guides/performance.md` at `path`. Called at build time. */
 export function loadBudgets(path: string): BudgetTable {
 	return splitBudgets(parseBudgetTable(readFileSync(path, "utf8")));
 }

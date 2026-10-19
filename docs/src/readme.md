@@ -3,15 +3,41 @@
   <img class="brand-dark" src="images/brand/lockup-dark.svg" alt="canvist">
 </h1>
 
-A canvas-based text editor written in Rust.
+**canvist is a rich-text editor you build from plugins.** Start with plain paragraphs. Add bold, then headings, lists, links, and live collaboration. Stop wherever your app needs to stop, or keep going until you have your own Google Docs.
 
-**canvist** renders text through a custom canvas engine — the same approach used by Google Docs and Figma. Instead of delegating to `contenteditable` or platform text views, canvist owns every pixel, giving you full control over the editing experience.
+![A canvist document with a heading, formatted text, a bullet list, a quote, a task, and a code block](images/editor.png)
 
-## Why?
+## Why canvist
 
-Browser-native editing surfaces (`contenteditable`, `textarea`) are notoriously inconsistent across platforms and browsers. By taking full ownership of rendering, canvist can guarantee:
+- **You choose every feature.** Each feature is an extension: bold, headings, lists, tasks, links, and more. Register the ones you want and nothing else gets in. A comment box can be paragraphs and bold. A notes app can be the full StarterKit.
+- **It draws every pixel itself.** canvist doesn't use `contenteditable` or the platform's text view. A Rust core lays the text out and paints it to a canvas, the way Google Docs and Figma do. So the editor looks and behaves the same everywhere.
+- **One core, every platform.** The same engine runs on servers (Rust, TypeScript, Dart) and in Flutter today. Web, React, Vue, iOS, Android, desktop, React Native, and Lynx are on the way. [Check the status of your platform](./quick-start/readme.md).
+- **Collaboration is built in.** Documents are [Yjs](https://yjs.dev)-compatible. Connect them to y-websocket, Hocuspocus, or [canvist Cloud](./cloud/readme.md).
+- **Typed, headless APIs.** canvist ships no toolbar. You call typed commands and build your own UI on top. If you call a command from an extension you didn't register, your code doesn't compile. That catches the mistakes people and AI agents make most.
+- **Free forever.** The code is released into the public domain under the [Unlicense](https://unlicense.org).
 
-- Pixel-perfect cross-platform consistency
-- First-class real-time collaboration via CRDTs
-- Full accessibility through a parallel hidden DOM
-- Custom rendering backends (Canvas2D, WebGL, Skia, native)
+## See it in ten lines
+
+This TypeScript runs on a server, in a script, or in a test. It registers two extensions, loads Markdown, makes a word bold, and exports HTML:
+
+```ts
+import { bold, createEngine, heading } from "@canvist/headless";
+
+const engine = await createEngine([bold, heading]);
+const doc = engine.parse("markdown", "# Notes\n\nShip it today");
+
+doc.select({ path: [1], offset: 8 }, { path: [1], offset: 13 });
+doc.commands.toggleBold();
+
+console.log(doc.export("html"));
+// <h1>Notes</h1><p>Ship it <strong>today</strong></p>
+```
+
+`doc.commands.toggleItalic()` would be a type error here, because italic isn't registered.
+
+## Where to go next
+
+- **[Quick start](./quick-start/readme.md):** install canvist on your platform and get a working document in five minutes.
+- **[Core concepts](./concepts/documents.md):** documents, extensions, commands, and selections, in a few short pages.
+- **[Build your own editor](./extensions/build-your-own-editor.md):** go from a minimal editor to a Google Docs-style one, one extension at a time.
+- **[Integrate canvist with an agent](./agents/readme.md):** the steps and checklist for AI coding agents.

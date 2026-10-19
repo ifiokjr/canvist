@@ -4,7 +4,7 @@
 //!
 //! Each measurement is a pair of keystrokes that leaves the document as it
 //! found it, halved to give the cost of one. Budgets come from
-//! `docs/src/v2/architecture.md` and the M1 roadmap: under 5 µs of editor
+//! `docs/src/guides/performance.md` and the M1 roadmap: under 5 µs of editor
 //! work per typed character and under 100 µs per structural edit, at
 //! 100,000 blocks. They only mean something in release mode:
 //!

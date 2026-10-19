@@ -8,7 +8,7 @@ import {
 } from "../../src/lib/budgets.ts";
 
 const ARCHITECTURE =
-	new URL("../../../docs/src/v2/architecture.md", import.meta.url).pathname;
+	new URL("../../../docs/src/guides/performance.md", import.meta.url).pathname;
 
 Deno.test("parseDuration reads the units the budget table uses", () => {
 	assertEquals(parseDuration("0.29 µs")?.seconds, 0.29e-6);
@@ -36,7 +36,7 @@ Deno.test("parseBudgetTable fails loudly when the section is missing", () => {
 	assert(message.includes("Performance budgets"));
 });
 
-Deno.test("the architecture doc's budgets parse, and every measurement is within budget", () => {
+Deno.test("the performance page's budgets parse, and every measurement is within budget", () => {
 	const table = loadBudgets(ARCHITECTURE);
 	assert(
 		table.measured.length >= 10,

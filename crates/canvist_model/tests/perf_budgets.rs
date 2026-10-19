@@ -1,7 +1,7 @@
 //! Performance budgets for the model's hot paths.
 //!
 //! These tests fail when an operation exceeds the budget recorded in
-//! `docs/src/v2/architecture.md`, so a regression breaks CI instead of
+//! `docs/src/guides/performance.md`, so a regression breaks CI instead of
 //! hiding in a benchmark report. They only mean something in release mode:
 //!
 //! ```sh

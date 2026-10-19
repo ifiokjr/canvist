@@ -1,0 +1,132 @@
+name: "docs"
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - main
+    paths: &paths
+      - "docs/**"
+      - "skills/**"
+      - "crates/**"
+      - "packages/canvist-headless/**"
+      - "platforms/dart/**"
+      - "platforms/flutter/**"
+      - "Cargo.lock"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths: *paths
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# The docs' Rust samples run as doc tests in `ci` (`test:docs` covers the
+# `canvist_book` crate). These jobs check the TypeScript, Dart, and Flutter
+# samples with `docs/check-snippets.ts`: every fence has a language, every
+# sample type-checks or analyzes, and runnable samples print what their
+# comments promise.
+
+jobs:
+  typescript:
+    name: typescript samples
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: build @canvist/headless
+        working-directory: packages/canvist-headless
+        run: |
+          npm ci
+          npm run build:wasm
+
+      - name: check the samples
+        run: deno run --allow-read --allow-write --allow-run --allow-env --allow-net docs/check-snippets.ts ts
+
+  dart:
+    name: dart samples
+    timeout-minutes: 40
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain
+        # The build hook compiles the crate with the toolchain its
+        # `rust-toolchain.toml` pins.
+        working-directory: platforms/dart/rust
+        run: rustup toolchain install
+
+      - name: cache the build hook's cargo output
+        uses: actions/cache@v4
+        with:
+          path: platforms/dart/.dart_tool/hooks_runner
+          key: dart-hooks-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'platforms/dart/rust/**') }}
+          restore-keys: dart-hooks-${{ runner.os }}-
+
+      - name: install dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.5
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: install dependencies
+        working-directory: platforms/dart
+        run: dart pub get
+
+      - name: check the samples
+        run: deno run --allow-read --allow-write --allow-run --allow-env --allow-net docs/check-snippets.ts dart
+
+  flutter:
+    name: flutter samples
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: setup flutter
+        uses: kuhnroyal/flutter-fvm-config-action/setup@v3
+        with:
+          path: platforms/flutter/.fvmrc
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: install dependencies
+        working-directory: platforms/flutter/example
+        run: flutter pub get
+
+      - name: analyze the samples
+        run: deno run --allow-read --allow-write --allow-run --allow-env --allow-net docs/check-snippets.ts flutter

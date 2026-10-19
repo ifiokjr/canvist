@@ -32,3 +32,6 @@ migrate_working_dir/
 
 # FVM Version Cache
 .fvm/
+
+# Docs samples, written by docs/check-snippets.ts
+/doc_snippets/

@@ -104,7 +104,7 @@ for (const scheme of ["light", "dark"] as const) {
 			});
 		}
 
-		for (const path of ["/pricing", "/services/sync", "/docs/v2/roadmap"]) {
+		for (const path of ["/pricing", "/services/sync", "/docs/quick-start"]) {
 			test(`${path} at 1280px`, async ({ page }) => {
 				await page.setViewportSize({ width: 1280, height: 900 });
 				await open(page, path);

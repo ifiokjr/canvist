@@ -1,0 +1,207 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../layouts/Base.astro";
+import { compareVersionsDescending } from "../lib/changelog.ts";
+
+/**
+ * What changed for people using canvist's website and Cloud, newest first.
+ * monochange writes one file per app release from the user release stream
+ * only (see `content.config.ts`); developer notes never reach this page.
+ */
+const releases = (await getCollection("changelog")).sort((a, b) => compareVersionsDescending(a.data.version, b.data.version));
+
+const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const formatDate = (date: string) => longDate.format(new Date(`${date}T00:00:00Z`));
+---
+
+<Base title="Changelog" description="What's new in canvist: new features, fixes and pricing changes on the website and canvist Cloud, newest first.">
+	<div class="changelog">
+		<section class="changelog__intro" aria-labelledby="changelog-title">
+			<h1 id="changelog-title">What's new</h1>
+			<p>Changes you'll notice on the canvist website and in canvist Cloud, newest first. For changes to the editor and its packages, see each package's release notes on GitHub.</p>
+		</section>
+
+		{
+			releases.length === 0 ? (
+				<section class="changelog__empty" aria-label="No releases yet">
+					<p class="changelog__empty-title">Nothing to report yet.</p>
+					<p>The first release notes appear here as soon as they ship.</p>
+				</section>
+			) : (
+				<ol class="releases">
+					{releases.map((release) => (
+						<li class="release" id={`v${release.data.version}`}>
+							<header class="release__head">
+								<h2 class="release__version">
+									<a href={`#v${release.data.version}`}>{release.data.version}</a>
+								</h2>
+								<time class="release__date" datetime={release.data.date}>{formatDate(release.data.date)}</time>
+							</header>
+							<div class="release__body">
+								{release.data.sections.map((section) => (
+									<section class="release__section" aria-label={`${section.title} in ${release.data.version}`}>
+										<h3 class="release__section-title">{section.title}</h3>
+										<ul class="entries">
+											{section.entries.map((entry) => (
+												<li class="entry">
+													<p class="entry__summary">{entry.summary}</p>
+													<div class="entry__details" set:html={entry.html} />
+												</li>
+											))}
+										</ul>
+									</section>
+								))}
+							</div>
+						</li>
+					))}
+				</ol>
+			)
+		}
+	</div>
+</Base>
+
+<style>
+	.changelog {
+		display: grid;
+		gap: var(--section-gap);
+		padding: 0 var(--gutter) var(--section-gap);
+	}
+
+	.changelog__intro,
+	.changelog__empty,
+	.release {
+		border-radius: var(--r-chip);
+		padding: var(--chip-pad);
+	}
+
+	.changelog__intro {
+		display: grid;
+		gap: var(--s-4);
+		background: var(--chip-1);
+		color: var(--chip-ink);
+	}
+
+	.changelog__intro h1 {
+		font-size: var(--t-1);
+		line-height: 0.95;
+		letter-spacing: -0.035em;
+	}
+
+	.changelog__intro p {
+		max-width: 52ch;
+		font-size: var(--t-3);
+		line-height: 1.42;
+		color: color-mix(in oklab, var(--chip-ink) 86%, var(--chip-1));
+	}
+
+	.changelog__empty {
+		display: grid;
+		gap: var(--s-2);
+		border: 2px dashed var(--line);
+		color: var(--text-muted);
+	}
+
+	.changelog__empty-title {
+		font-size: var(--t-3);
+		font-weight: 700;
+		color: var(--text);
+	}
+
+	.releases {
+		display: grid;
+		gap: var(--section-gap);
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	/* A release: its version on the left like a swatch label, its changes on the right. */
+	.release {
+		display: grid;
+		grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+		gap: var(--s-5) var(--s-8);
+		background: var(--chip-0);
+	}
+
+	.release__head {
+		display: grid;
+		align-content: start;
+		gap: var(--s-1);
+	}
+
+	.release__version {
+		font-size: var(--t-2);
+		letter-spacing: -0.03em;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.release__version a {
+		text-decoration: none;
+	}
+
+	.release__version a:hover {
+		text-decoration: underline;
+		text-decoration-thickness: 0.06em;
+	}
+
+	.release__date {
+		font-family: var(--font-mono);
+		font-size: var(--t-micro);
+		color: var(--text-muted);
+	}
+
+	.release__body {
+		display: grid;
+		gap: var(--s-6);
+		min-width: 0;
+	}
+
+	.release__section {
+		display: grid;
+		gap: var(--s-3);
+	}
+
+	.release__section-title {
+		font-size: var(--t-small);
+		font-weight: 700;
+		color: var(--accent);
+	}
+
+	.entries {
+		display: grid;
+		gap: var(--s-4);
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.entry {
+		display: grid;
+		gap: var(--s-1);
+		max-width: 68ch;
+	}
+
+	.entry__summary {
+		font-size: var(--t-3);
+		font-weight: 680;
+		line-height: 1.3;
+	}
+
+	.entry__details {
+		color: var(--text-muted);
+	}
+
+	.entry__details :global(p + p) {
+		margin-top: var(--s-2);
+	}
+
+	.entry__details :global(a) {
+		color: var(--accent);
+	}
+
+	@media (max-width: 48rem) {
+		.release {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>

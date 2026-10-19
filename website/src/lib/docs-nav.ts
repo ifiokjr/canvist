@@ -5,16 +5,16 @@ import { docsRoute } from "./rehype-docs-links.ts";
  * The `/docs` sidebar, built from the mdBook `SUMMARY.md` so the book and the
  * site share one table of contents.
  *
- * `SUMMARY.md` is a flat list, so the sidebar groups its entries by top-level
- * folder, keeping summary order inside each group. Pages that exist in
- * `docs/src` but are missing from the summary still render: they join the end
- * of their folder's group, titled by their first `# Heading`.
+ * Groups come from the summary's part headings (`# Get started`), in summary
+ * order, so the sidebar follows the book. Pages outside any part, and pages
+ * missing from the summary, are grouped by top-level folder instead. Pages
+ * that exist in `docs/src` but are missing from the summary still render:
+ * they join the end of their group, titled by their first `# Heading`.
  */
 
-/** One page as the docs collection sees it. */
 export interface DocsPage {
 	/**
-	 * Docs path, such as `v2/architecture.md`. Readmes use a virtual one:
+	 * Docs path, such as `guides/performance.md`. Readmes use a virtual one:
 	 * `crates/canvist_core.md` for `crates/canvist_core/readme.md`.
 	 */
 	path: string;
@@ -49,19 +49,24 @@ interface GroupRule {
 	trim?: RegExp;
 }
 
-/** Sidebar order. A folder not listed here gets a group named after it, last. */
+/**
+ * Groups for pages outside the summary's parts, by folder, in sidebar order.
+ * A folder not listed here gets a group named after it, last.
+ */
 const GROUP_RULES: readonly GroupRule[] = [
-	{ title: "Guides", folders: ["", "guide"], trim: /^Guide:\s*/ },
-	{ title: "v2 design", folders: ["v2"], trim: /^v2\s+/ },
+	{ title: "Get started", folders: ["", "quick-start"] },
+	{ title: "Core concepts", folders: ["concepts"] },
+	{ title: "Extensions", folders: ["extensions"] },
+	{ title: "Guides", folders: ["guides"] },
+	{ title: "AI agents", folders: ["agents"] },
 	{
 		title: "canvist Cloud",
 		folders: ["cloud"],
 		trim: /^(canvist\s+)?Cloud:?\s+/i,
 	},
-	{ title: "Platforms", folders: ["platforms"] },
+	{ title: "Reference", folders: ["reference"] },
 	{ title: "Rust crates", folders: ["crates"] },
 	{ title: "Packages", folders: ["packages"] },
-	{ title: "Research", folders: ["research"], trim: /^Research:\s*/ },
 ];
 
 const SUMMARY_ENTRY = /^\s*[-*]\s+\[([^\]]+)\]\(\.?\/?([^)\s]+\.md)\)/;
@@ -69,14 +74,38 @@ const SUMMARY_ENTRY = /^\s*[-*]\s+\[([^\]]+)\]\(\.?\/?([^)\s]+\.md)\)/;
 // mdBook only reads this exact name; on case-sensitive systems `summary.md` fails.
 export const SUMMARY_PATH = "SUMMARY.md";
 
-/** Reads `[Title](./path.md)` entries from mdBook's summary, in order. */
-export function parseSummary(markdown: string): Map<string, string> {
-	const entries = new Map<string, string>();
+/** One `[Title](./path.md)` entry of mdBook's summary. */
+export interface SummaryEntry {
+	title: string;
+	/** The part heading (`# Guides`) the entry sits under, if any. */
+	part?: string;
+}
+
+const SUMMARY_PART = /^#\s+(.+?)\s*$/;
+
+/** Reads `[Title](./path.md)` entries from mdBook's summary, in order, with their parts. */
+export function parseSummary(markdown: string): Map<string, SummaryEntry> {
+	const entries = new Map<string, SummaryEntry>();
+	let part: string | undefined;
+	let sawHeading = false;
 	for (const line of markdown.split("\n")) {
+		const heading = SUMMARY_PART.exec(line);
+		if (heading) {
+			// The first heading is the book's title (`# Summary`), not a part.
+			if (sawHeading) part = heading[1];
+			sawHeading = true;
+			continue;
+		}
 		const match = SUMMARY_ENTRY.exec(line);
 		if (!match) continue;
 		const [, title = "", path = ""] = match;
-		if (!entries.has(path)) entries.set(path, title.trim());
+		if (entries.has(path)) continue;
+		entries.set(
+			path,
+			part === undefined
+				? { title: title.trim() }
+				: { title: title.trim(), part },
+		);
 	}
 	return entries;
 }
@@ -154,7 +183,7 @@ function isReadme(path: string): boolean {
  */
 export function buildDocsNav(
 	pages: readonly DocsPage[],
-	summary: Map<string, string>,
+	summary: Map<string, SummaryEntry>,
 ): DocsGroup[] {
 	const byPath = new Map(pages.map((page) => [page.path, page]));
 	const ordered = [
@@ -163,41 +192,53 @@ export function buildDocsNav(
 			.sort(),
 	];
 
-	const groups = new Map<string, DocsGroup>();
+	// Parts lead, in summary order; folder groups follow in GROUP_RULES order.
+	const parts = [
+		...new Set(
+			[...summary.values()].flatMap((entry) =>
+				entry.part === undefined ? [] : [entry.part]
+			),
+		),
+	];
 	const order = (title: string): number => {
+		const part = parts.indexOf(title);
+		if (part !== -1) return part;
 		const index = GROUP_RULES.findIndex((rule) => rule.title === title);
-		return index === -1 ? GROUP_RULES.length : index;
+		return parts.length + (index === -1 ? GROUP_RULES.length : index);
 	};
 
+	const groups = new Map<string, DocsGroup>();
 	for (const path of ordered) {
 		const page = byPath.get(path);
 		if (page === undefined) continue;
+		const entry = summary.get(path);
 		const rule = ruleFor(folderOf(path));
-		const title = summary.get(path) ?? firstHeading(page.body) ??
+		const groupTitle = entry?.part ?? rule.title;
+		const title = entry?.title ?? firstHeading(page.body) ??
 			fallbackTitle(path);
 		const label = rule.trim === undefined
 			? title
 			: title.replace(rule.trim, "") || title;
-		const group = groups.get(rule.title) ?? { title: rule.title, links: [] };
+		const group = groups.get(groupTitle) ?? { title: groupTitle, links: [] };
 		const link: DocsLink = {
 			path,
 			source: page.source,
 			route: docsRoute(path),
 			title,
 			label,
-			group: rule.title,
+			group: groupTitle,
 		};
 		// The book's introduction leads its group, wherever the summary lists it.
 		if (isReadme(path) && folderOf(path) === "") group.links.unshift(link);
 		else group.links.push(link);
-		groups.set(rule.title, group);
+		groups.set(groupTitle, group);
 	}
 
 	return [...groups.values()].sort((a, b) => order(a.title) - order(b.title));
 }
 
 /** Reads the book's table of contents from `docs/src/SUMMARY.md` at `path`. */
-export function readSummary(path: string): Map<string, string> {
+export function readSummary(path: string): Map<string, SummaryEntry> {
 	return parseSummary(readFileSync(path, "utf8"));
 }
 

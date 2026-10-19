@@ -3,7 +3,7 @@ import { findBudget, loadBudgets } from "../../lib/budgets.ts";
 import { repoPath } from "../../lib/paths.ts";
 
 // One real number from the repository's budget table, read at build time.
-const keystroke = findBudget(loadBudgets(repoPath("docs/src/v2/architecture.md")), "Apply one keystroke");
+const keystroke = findBudget(loadBudgets(repoPath("docs/src/guides/performance.md")), "Apply one keystroke");
 ---
 
 <section class="beat pixel" id="every-pixel" aria-labelledby="pixel-title">
@@ -14,7 +14,7 @@ const keystroke = findBudget(loadBudgets(repoPath("docs/src/v2/architecture.md")
 				This is canvist running in your browser. No contenteditable: every letter you type is laid out and painted by canvist itself.
 			</p>
 			<p class="pixel__proof">
-				<a href="/docs/v2/architecture#performance-budgets" data-astro-prefetch>
+				<a href="/docs/guides/performance#performance-budgets" data-astro-prefetch>
 					<span class="pixel__number">{keystroke.today.text.replace(" ", " ")}</span>
 					<span>per keystroke in a 100,000-block document</span>
 				</a>

@@ -14,7 +14,7 @@
  * webhook endpoint's signing secret goes straight into the Railway variable
  * `STRIPE_WEBHOOK_SECRET` of the `sync` service (`--railway-environment`,
  * default `staging`); secrets are never printed. See
- * `docs/src/cloud/billing.md`.
+ * `docs/internal/cloud/billing-operations.md`.
  */
 
 import { parseArgs } from "@std/cli/parse-args";

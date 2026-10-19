@@ -383,6 +383,13 @@ dependencies = [
 [[package]]
 name = "canvist_book"
 version = "0.1.0"
+dependencies = [
+ "canvist_editor",
+ "canvist_headless",
+ "canvist_layout",
+ "canvist_model",
+ "serde_json",
+]
 
 [[package]]
 name = "canvist_cloud"

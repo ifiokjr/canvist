@@ -1,5 +1,5 @@
 //! Performance budgets for the headless API's hot paths, recorded in
-//! `docs/src/v2/architecture.md`. They only mean something in release mode:
+//! `docs/src/guides/performance.md`. They only mean something in release mode:
 //!
 //! ```sh
 //! cargo test --release -p canvist_headless --all-features --test perf_budgets -- --ignored
