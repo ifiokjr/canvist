@@ -31,4 +31,4 @@ migrate_working_dir/
 /coverage/
 
 # FVM Version Cache
-.fvm/
+.fvm//doc_snippets/
