@@ -36,13 +36,20 @@ async function open(page: Page, path: string): Promise<void> {
  * fractional offsets that shift when content above them changes, and an
  * element screenshot's size would round differently with them.
  */
-async function documentBox(page: Page, element: Locator) {
+interface Box {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
+async function documentBox(page: Page, element: Locator): Promise<Box> {
 	const box = await element.boundingBox();
 	if (box === null) throw new Error("Section is not rendered");
-	const scrollY = await page.evaluate(() => scrollY);
+	const scrolled = await page.evaluate(() => window.scrollY);
 	return {
 		x: Math.round(box.x),
-		y: Math.round(box.y + scrollY),
+		y: Math.round(box.y + scrolled),
 		width: Math.round(box.width),
 		height: Math.round(box.height),
 	};
