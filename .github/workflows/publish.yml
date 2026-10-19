@@ -126,6 +126,18 @@ jobs:
           mc run release --commit --no-verify=true --format text
         shell: devenv shell -- bash -e {0}
 
+      # The same toolchain as `headless-js.yml`: the build uses `wasm-pack
+      # --profile`, which devenv's wasm-pack is too old for.
+      - name: install the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
       - name: build @canvist/headless
         working-directory: packages/canvist-headless
         run: |
@@ -133,7 +145,6 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build:wasm
           npm run build
-        shell: devenv shell -- bash -e {0}
 
       - name: get a crates.io token through OIDC
         if: needs.plan.outputs.dry_run != 'true'
