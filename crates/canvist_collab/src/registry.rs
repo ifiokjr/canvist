@@ -175,6 +175,11 @@ impl Registry {
 		self.unmirrored.insert(parent, count);
 	}
 
+	/// How many items in all shared arrays the model does not show.
+	pub(crate) fn unmirrored_total(&self) -> u32 {
+		self.unmirrored.values().sum()
+	}
+
 	/// Every hidden block map directly inside `parent`.
 	pub(crate) fn hidden_in(&self, parent: Option<BlockId>) -> Vec<ID> {
 		if self.is_mirrored(parent) {

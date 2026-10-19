@@ -384,6 +384,54 @@ fn remote_changes_clear_local_history() {
 }
 
 #[test]
+fn external_changes_edit_the_document_in_place_and_map_the_selection() {
+	let mut editor = editor("paragraph: |");
+	type_text(&mut editor, "ab", 0);
+	let block = editor.state().doc().first_text_block().expect("text");
+	let insert = |doc: &mut Document| {
+		let mut transaction = doc.transaction();
+		transaction.insert_text(
+			canvist_model::Point::new(block, 0),
+			"Z",
+			canvist_model::MarkSet::empty(),
+		)?;
+		Ok::<_, EditorError>(transaction.commit())
+	};
+	let update = editor
+		.apply_external(&mut at(100), insert)
+		.expect("external");
+
+	assert_eq!(update.origin, canvist_editor::Origin::Remote);
+	assert_eq!(render(editor.state()), "paragraph: Zab|");
+	assert!(
+		!editor.can_undo(),
+		"like remote changes, it clears local history"
+	);
+}
+
+#[test]
+fn empty_and_failed_external_changes_keep_history() {
+	let mut editor = editor("paragraph: |");
+	type_text(&mut editor, "ab", 0);
+	let empty = editor
+		.apply_external(&mut at(100), |doc| {
+			Ok::<_, EditorError>(doc.transaction().commit())
+		})
+		.expect("empty");
+
+	assert!(!empty.doc_changed());
+	assert!(editor.can_undo(), "an empty change is not recorded");
+
+	let failed = editor.apply_external(&mut at(200), |_| {
+		Err::<canvist_model::Commit, _>(EditorError::UnknownName("x".to_owned()))
+	});
+
+	assert!(failed.is_err());
+	assert_eq!(render(editor.state()), "paragraph: ab|");
+	assert!(editor.can_undo());
+}
+
+#[test]
 fn heading_rule_fires_and_backspace_restores_the_text() {
 	let mut editor = editor("paragraph: |");
 	type_text(&mut editor, "## ", 0);

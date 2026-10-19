@@ -1,0 +1,169 @@
+{
+	"description": "Loading and exporting every format, and the errors for content that does not fit.",
+	"cases": [
+		{
+			"name": "an empty document has one empty paragraph",
+			"expect": {
+				"json": { "type": "doc", "content": [{ "type": "paragraph" }] },
+				"html": "<p></p>",
+				"markdown": "",
+				"text": "",
+				"selection": { "anchor": { "path": [0], "offset": 0 }, "head": { "path": [0], "offset": 0 } }
+			}
+		},
+		{
+			"name": "markdown with every StarterKit block becomes ProseMirror JSON",
+			"input": {
+				"format": "markdown",
+				"content": "# Plan\n\nShip **bold** and *italic* `code` ~~old~~ [docs](https://canvist.dev)\n\n- one\n- two\n  - nested\n\n1. first\n2. second\n\n- [x] done\n- [ ] todo\n\n> quoted\n\n```rust\nfn main() {}\n```\n\n---"
+			},
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{ "type": "heading", "attrs": { "level": 1 }, "content": [{ "type": "text", "text": "Plan" }] },
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "Ship " },
+								{ "type": "text", "text": "bold", "marks": [{ "type": "bold" }] },
+								{ "type": "text", "text": " and " },
+								{ "type": "text", "text": "italic", "marks": [{ "type": "italic" }] },
+								{ "type": "text", "text": " " },
+								{ "type": "text", "text": "code", "marks": [{ "type": "code" }] },
+								{ "type": "text", "text": " " },
+								{ "type": "text", "text": "old", "marks": [{ "type": "strike" }] },
+								{ "type": "text", "text": " " },
+								{ "type": "text", "text": "docs", "marks": [{ "type": "link", "attrs": { "href": "https://canvist.dev" } }] }
+							]
+						},
+						{
+							"type": "bulletList",
+							"content": [
+								{ "type": "listItem", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "one" }] }] },
+								{
+									"type": "listItem",
+									"content": [
+										{ "type": "paragraph", "content": [{ "type": "text", "text": "two" }] },
+										{
+											"type": "bulletList",
+											"content": [{ "type": "listItem", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "nested" }] }] }]
+										}
+									]
+								}
+							]
+						},
+						{
+							"type": "orderedList",
+							"attrs": { "start": 1 },
+							"content": [
+								{ "type": "listItem", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "first" }] }] },
+								{ "type": "listItem", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "second" }] }] }
+							]
+						},
+						{
+							"type": "taskList",
+							"content": [
+								{ "type": "taskItem", "attrs": { "checked": true }, "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "done" }] }] },
+								{ "type": "taskItem", "attrs": { "checked": false }, "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "todo" }] }] }
+							]
+						},
+						{ "type": "blockquote", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "quoted" }] }] },
+						{ "type": "codeBlock", "attrs": { "language": "rust" }, "content": [{ "type": "text", "text": "fn main() {}" }] },
+						{ "type": "horizontalRule" }
+					]
+				},
+				"markdown": "# Plan\n\nShip **bold** and *italic* `code` ~~old~~ [docs](https://canvist.dev)\n\n- one\n- two\n  - nested\n\n1. first\n2. second\n\n- [x] done\n- [ ] todo\n\n> quoted\n\n```rust\nfn main() {}\n```\n\n---",
+				"html": "<h1>Plan</h1><p>Ship <strong>bold</strong> and <em>italic</em> <code>code</code> <s>old</s> <a href=\"https://canvist.dev\">docs</a></p><ul><li><p>one</p></li><li><p>two</p><ul><li><p>nested</p></li></ul></li></ul><ol><li><p>first</p></li><li><p>second</p></li></ol><ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"true\"><p>done</p></li><li data-type=\"taskItem\" data-checked=\"false\"><p>todo</p></li></ul><blockquote><p>quoted</p></blockquote><pre><code class=\"language-rust\">fn main() {}</code></pre><hr>",
+				"text": "Plan\nShip bold and italic code old docs\none\ntwo\nnested\nfirst\nsecond\ndone\ntodo\nquoted\nfn main() {}"
+			}
+		},
+		{
+			"name": "html with a hard break and escaped characters",
+			"input": { "format": "html", "content": "<h2>Hi</h2><p>a <em>b</em><br>c</p><p>&lt;tag&gt; &amp; 😀</p>" },
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{ "type": "heading", "attrs": { "level": 2 }, "content": [{ "type": "text", "text": "Hi" }] },
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "a " },
+								{ "type": "text", "text": "b", "marks": [{ "type": "italic" }] },
+								{ "type": "hardBreak" },
+								{ "type": "text", "text": "c" }
+							]
+						},
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "<tag> & 😀" }] }
+					]
+				},
+				"html": "<h2>Hi</h2><p>a <em>b</em><br>c</p><p>&lt;tag&gt; &amp; 😀</p>",
+				"markdown": "## Hi\n\na *b*\\\nc\n\n<tag> & 😀",
+				"text": "Hi\na b\nc\n<tag> & 😀"
+			}
+		},
+		{
+			"name": "plain text keeps one paragraph per line, empty lines included",
+			"input": { "format": "text", "content": "one\ntwo\n\nfour" },
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "one" }] },
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "two" }] },
+						{ "type": "paragraph" },
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "four" }] }
+					]
+				},
+				"html": "<p>one</p><p>two</p><p></p><p>four</p>",
+				"text": "one\ntwo\n\nfour"
+			}
+		},
+		{
+			"name": "TipTap JSON without ids loads, and Markdown drops the underline it cannot express",
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{ "type": "heading", "attrs": { "level": 3 }, "content": [{ "type": "text", "text": "From TipTap" }] },
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "kept", "marks": [{ "type": "underline" }] }] }
+					]
+				}
+			},
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{ "type": "heading", "attrs": { "level": 3 }, "content": [{ "type": "text", "text": "From TipTap" }] },
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "kept", "marks": [{ "type": "underline" }] }] }
+					]
+				},
+				"html": "<h3>From TipTap</h3><p><u>kept</u></p>",
+				"markdown": "### From TipTap\n\nkept"
+			}
+		},
+		{
+			"name": "JSON whose root is not a doc fails to parse",
+			"input": { "format": "json", "content": { "type": "paragraph" }, "error": "parse" }
+		},
+		{
+			"name": "JSON with a node type the schema lacks fails the schema",
+			"input": { "format": "json", "content": { "type": "doc", "content": [{ "type": "callout" }] }, "error": "schema" }
+		},
+		{
+			"name": "JSON with a mark the schema lacks fails the schema",
+			"input": {
+				"format": "json",
+				"content": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "x", "marks": [{ "type": "sparkle" }] }] }] },
+				"error": "schema"
+			}
+		},
+		{
+			"name": "html for blocks the schema lacks falls back to paragraphs",
+			"input": { "format": "html", "content": "<table><tr><td>cell</td></tr></table><p>after</p>" },
+			"expect": { "text": "cell\nafter" }
+		}
+	]
+}

@@ -1,0 +1,81 @@
+name: "headless-js"
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - main
+  # Every pull request, including stacked ones whose base is another
+  # feature branch.
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+defaults:
+  run:
+    working-directory: packages/canvist-headless
+
+jobs:
+  test:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    env:
+      # Shared runners are slower and noisier than a developer machine.
+      CANVIST_PERF_SLACK: "3"
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: install dependencies
+        run: npm ci
+
+      - name: build wasm
+        run: npm run build:wasm
+
+      - name: generated types are up to date
+        run: npm run check:generated
+
+      - name: type-level tests (tsc --noEmit)
+        run: npm run check:types
+
+      - name: conformance and api tests (node)
+        run: npm test
+
+      - name: conformance, api, and server tests (deno)
+        run: deno task test
+
+      - name: per-call overhead and wasm size budgets
+        run: node bench/overhead.ts --check
+
+      - name: the packed package works as a dependency
+        run: |
+          npm pack --pack-destination "$RUNNER_TEMP"
+          mkdir "$RUNNER_TEMP/consumer" && cd "$RUNNER_TEMP/consumer"
+          npm init -y > /dev/null && npm pkg set type=module
+          npm install --no-audit --no-fund "$RUNNER_TEMP"/canvist-headless-*.tgz
+          node --input-type=module -e 'const { createEngine } = await import("@canvist/headless"); const doc = (await createEngine()).parse("markdown", "**ok**"); if (doc.export("html") !== "<p><strong>ok</strong></p>") process.exit(1);'

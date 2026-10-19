@@ -1,0 +1,81 @@
+{
+	"description": "A document as a Yjs peer: joining, merging updates in any order, y-sync, and checking shared state against the schema.",
+	"cases": [
+		{
+			"name": "joins a shared document from its Yjs state",
+			"requires": ["collab"],
+			"input": {
+				"format": "yjs",
+				"clientId": 30,
+				"content": "ASJlAAcBBmJsb2NrcwEoAGUAAmlkAXcDMS4xKABlAAR0eXBlAXcKYnVsbGV0TGlzdCcAZQAFYXR0cnMBJwBlAAhjaGlsZHJlbgAHAGUEASgAZQUCaWQBdwMxLjQoAGUFBHR5cGUBdwhsaXN0SXRlbScAZQUFYXR0cnMBJwBlBQhjaGlsZHJlbgAHAGUJASgAZQoCaWQBdwMxLjUoAGUKBHR5cGUBdwlwYXJhZ3JhcGgnAGUKBWF0dHJzAScAZQoEdGV4dAIEAGUOA3R3b0dlBQEoAGUSAmlkAXcDMS4yKABlEgR0eXBlAXcIbGlzdEl0ZW0nAGUSBWF0dHJzAScAZRIIY2hpbGRyZW4ABwBlFgEoAGUXAmlkAXcDMS4zKABlFwR0eXBlAXcJcGFyYWdyYXBoJwBlFwVhdHRycwEnAGUXBHRleHQCBABlGwNvbmVHZQABKABlHwJpZAF3AzEuMCgAZR8EdHlwZQF3B2hlYWRpbmcnAGUfBWF0dHJzASgAZSIFbGV2ZWwBfQEnAGUfBHRleHQCBABlJAZTaGFyZWQA"
+			},
+			"steps": [
+				{ "op": "validate", "rejectedBlocks": 0, "waiting": false }
+			],
+			"expect": { "markdown": "# Shared\n\n- one\n- two" }
+		},
+		{
+			"name": "merges a peer's updates even when they arrive out of order",
+			"requires": ["collab"],
+			"input": { "format": "markdown", "content": "Hello" },
+			"steps": [
+				{ "op": "share", "clientId": 10 },
+				{ "op": "applyUpdate", "update": "AQIUBsYUABQBBGJvbGQEdHJ1ZYYUBQRib2xkBG51bGwA", "changed": false },
+				{ "op": "validate", "rejectedBlocks": 0, "waiting": true },
+				{ "op": "applyUpdate", "update": "AQEUAIQKCQYgd29ybGQA", "changed": true },
+				{ "op": "validate", "rejectedBlocks": 0, "waiting": false },
+				{ "op": "applyUpdate", "update": "AQEUAIQKCQYgd29ybGQA", "changed": false }
+			],
+			"expect": { "markdown": "Hello **world**" }
+		},
+		{
+			"name": "local commands become updates for other peers",
+			"requires": ["collab"],
+			"input": { "format": "markdown", "content": "Hello" },
+			"steps": [
+				{ "op": "share", "clientId": 10 },
+				{ "op": "takeUpdates", "count": 0 },
+				{ "op": "select", "anchor": { "path": [0], "offset": 0 }, "head": { "path": [0], "offset": 5 } },
+				{ "op": "run", "command": "toggleItalic" },
+				{ "op": "takeUpdates", "count": 1 },
+				{ "op": "undo", "applied": true },
+				{ "op": "takeUpdates", "count": 1 },
+				{ "op": "rejoin", "clientId": 11 }
+			],
+			"expect": { "markdown": "Hello" }
+		},
+		{
+			"name": "keeps blocks the schema rejects out of the document and reports them",
+			"requires": ["collab"],
+			"input": { "format": "markdown", "content": "Hello" },
+			"steps": [
+				{ "op": "share", "clientId": 10 },
+				{ "op": "applyUpdate", "update": "AQVNAIcKAAEoAE0AAmlkAXcEMXouMCgATQAEdHlwZQF3B2NhbGxvdXQnAE0ABHRleHQCBABNAwRub3RlAA==", "changed": false },
+				{ "op": "validate", "rejectedBlocks": 1, "waiting": false }
+			],
+			"expect": { "markdown": "Hello" }
+		},
+		{
+			"name": "answers y-sync step 1 and relays updates",
+			"requires": ["collab"],
+			"input": { "format": "markdown", "content": "Hello" },
+			"steps": [
+				{ "op": "share", "clientId": 10 },
+				{ "op": "receiveSync", "message": "AAABAA==", "reply": 1, "broadcast": 0, "changed": false },
+				{ "op": "receiveSync", "message": "AAIPAQEUAIQKCQYgd29ybGQA", "reply": 0, "broadcast": 1, "changed": true }
+			],
+			"expect": { "markdown": "Hello world" }
+		},
+		{
+			"name": "collaboration needs a shared document",
+			"requires": ["collab"],
+			"steps": [
+				{ "op": "applyUpdate", "update": "AQEUAIQKCQYgd29ybGQA", "error": "notShared" },
+				{ "op": "share", "clientId": 10 },
+				{ "op": "share", "clientId": 11, "error": "alreadyShared" },
+				{ "op": "applyUpdate", "update": "AQID", "error": "collab" }
+			],
+			"expect": { "text": "" }
+		}
+	]
+}
