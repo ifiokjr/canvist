@@ -13,8 +13,8 @@ const REPO_BLOB = "https://github.com/ifiokjr/canvist/blob/main/";
 const README = /^(crates|packages)\/([^/]+)(?:\/readme\.md)?\/?$/i;
 
 /**
- * Maps a markdown file inside `docs/src` to its route: `v2/architecture.md`
- * becomes `/docs/v2/architecture`, and a `readme.md` becomes its folder.
+ * Maps a markdown file inside `docs/src` to its route: `guides/performance.md`
+ * becomes `/docs/guides/performance`, and a `readme.md` becomes its folder.
  */
 export function docsRoute(pathInDocs: string): string {
 	const withoutExt = pathInDocs.replace(/\.md$/, "");

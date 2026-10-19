@@ -8,7 +8,14 @@ license.workspace = true
 publish = false
 repository.workspace = true
 rust-version.workspace = true
-description = "Documentation for the canvist canvas editor"
+description = "The canvist docs, with their Rust samples run as doc tests"
+
+[dev-dependencies]
+canvist_editor = { workspace = true }
+canvist_headless = { path = "../crates/canvist_headless", features = ["collab", "ssr"] }
+canvist_layout = { workspace = true }
+canvist_model = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
 
 [lints]
 workspace = true

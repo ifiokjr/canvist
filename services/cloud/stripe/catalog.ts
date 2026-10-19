@@ -1,7 +1,7 @@
 /**
  * canvist Cloud's billing catalog in Stripe: the meters, products, prices,
  * Customer Portal configuration, and webhook events `setup.ts` creates.
- * Prices follow the provisional plans in `docs/src/v2/business.md`; amounts
+ * Prices follow the provisional plans in `docs/src/cloud/billing.md`; amounts
  * are in US cents. Hobby is free and has no Stripe objects.
  */
 

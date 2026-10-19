@@ -4,7 +4,7 @@
  *
  * - `footage/`: real canvist renders, from `cargo run -p canvist_footage`.
  * - `footage/budgets.json`: the performance budget table in
- *   `docs/src/v2/architecture.md`.
+ *   `docs/src/guides/performance.md`.
  * - `footage/typed.json`: TypeScript declarations generated from the
  *   StarterKit's `metadata_json()`, and the compiler's real diagnostics for
  *   a snippet that calls an extension the editor never registered.
@@ -123,12 +123,15 @@ interface Budget {
 
 /** The rows of the performance budget table, footnote markers removed. */
 function budgets(): Budget[] {
-	const doc = readFileSync(join(ROOT, "docs/src/v2/architecture.md"), "utf8");
+	const doc = readFileSync(
+		join(ROOT, "docs/src/guides/performance.md"),
+		"utf8",
+	);
 	const section = doc.split("## Performance budgets")[1]?.split("\n## ")[0];
 
 	if (!section) {
 		throw new Error(
-			"docs/src/v2/architecture.md has no performance budget table",
+			"docs/src/guides/performance.md has no performance budget table",
 		);
 	}
 

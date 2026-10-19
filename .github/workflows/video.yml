@@ -11,7 +11,7 @@ on:
       - "crates/canvist_extensions/**"
       - "crates/canvist_layout/**"
       - "crates/canvist_collab/**"
-      - "docs/src/v2/architecture.md"
+      - "docs/src/guides/performance.md"
       - "assets/brand/vector/**"
       - ".github/workflows/video.yml"
 

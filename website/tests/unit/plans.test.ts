@@ -1,7 +1,7 @@
 import { assertEquals, assertExists } from "@std/assert";
 import { estimate, plans, quote } from "../../src/data/plans.ts";
 
-const BUSINESS = new URL("../../../docs/src/v2/business.md", import.meta.url);
+const BILLING = new URL("../../../docs/src/cloud/billing.md", import.meta.url);
 const none = { openSource: false, smallTeam: false };
 
 function money(cell: string): number[] {
@@ -10,13 +10,13 @@ function money(cell: string): number[] {
 	);
 }
 
-Deno.test("plans match the provisional table in docs/src/v2/business.md", async () => {
-	const markdown = await Deno.readTextFile(BUSINESS);
+Deno.test("plans match the provisional table in docs/src/cloud/billing.md", async () => {
+	const markdown = await Deno.readTextFile(BILLING);
 	const rows = markdown
 		.split("\n")
 		.filter((line) => /^\| (Hobby|Builder|Scale|Enterprise) /.test(line))
 		.map((line) => line.split("|").slice(1, -1).map((cell) => cell.trim()));
-	assertEquals(rows.length, 4, "business.md should list four plans");
+	assertEquals(rows.length, 4, "billing.md should list four plans");
 
 	for (const [name = "", price = "", included = "", overage = ""] of rows) {
 		const plan = plans.find((entry) => entry.name === name);

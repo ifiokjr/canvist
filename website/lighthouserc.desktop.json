@@ -7,7 +7,7 @@
 				"http://127.0.0.1:4800/",
 				"http://127.0.0.1:4800/pricing",
 				"http://127.0.0.1:4800/services/sync",
-				"http://127.0.0.1:4800/docs/v2/architecture"
+				"http://127.0.0.1:4800/docs/concepts/how-it-works"
 			],
 			"numberOfRuns": 3,
 			"settings": {

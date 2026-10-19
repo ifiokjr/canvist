@@ -1,7 +1,7 @@
 //! Layout hot-path benchmarks, measured with the deterministic
 //! [`FixedMeasurer`] so they track layout cost rather than font shaping.
 //!
-//! Budgets (see `docs/src/v2/architecture.md`):
+//! Budgets (see `docs/src/guides/performance.md`):
 //!
 //! - `relayout_keystroke`: under 100 µs.
 //! - `open_10k_paragraphs`: under 50 ms to the first laid-out viewport.

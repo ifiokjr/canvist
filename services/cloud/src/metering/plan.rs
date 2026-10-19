@@ -8,7 +8,7 @@ use std::time::UNIX_EPOCH;
 use serde::Deserialize;
 use serde::Serialize;
 
-/// A canvist Cloud plan. Prices live in `docs/src/v2/business.md`; the
+/// A canvist Cloud plan. Prices live in `docs/src/cloud/billing.md`; the
 /// server only knows what each plan includes and whether it caps.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]

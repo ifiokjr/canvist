@@ -6,7 +6,7 @@
 //! line breaking, so a browser rendering the HTML at the layout width breaks
 //! lines at the same places as [`DocumentLayout`](crate::DocumentLayout)
 //! with the browser's own measurer. The full contract is in
-//! `docs/src/v2/ssr-css-contract.md`.
+//! `docs/internal/ssr-css-contract.md`.
 
 use std::fmt::Write;
 use std::sync::Arc;

@@ -8,7 +8,7 @@ const SCALE_MAX = 1e-1; // 100 ms
 const position = (seconds: number) =>
 	(Math.log10(Math.max(seconds, SCALE_MIN) / SCALE_MIN) / Math.log10(SCALE_MAX / SCALE_MIN)) * 100;
 
-const table = loadBudgets(repoPath("docs/src/v2/architecture.md"));
+const table = loadBudgets(repoPath("docs/src/guides/performance.md"));
 const { measured, pending, other } = table;
 const lists = [
 	{ title: "Waiting on a host", rows: pending },
@@ -23,7 +23,7 @@ const ticks = [
 	{ label: "100 µs", seconds: 1e-4 },
 ];
 const framePosition = position(FRAME_SECONDS);
-const source = "https://github.com/ifiokjr/canvist/blob/main/docs/src/v2/architecture.md#performance-budgets";
+const source = "https://github.com/ifiokjr/canvist/blob/main/docs/src/guides/performance.md#performance-budgets";
 ---
 
 <section class="chip speed" data-chip="5" id="speed" aria-labelledby="speed-title" data-fan-chip>
