@@ -40,8 +40,8 @@ Every number below has a budget, and a test fails the build when an operation go
 | Headless TypeScript: one command / Yjs update      | < 5 µs / < 30 µs                            | 0.71 µs / 4.6 µs     |
 | Headless TypeScript wasm module, after `wasm-opt`  | < 1,200 KB raw                              | 1,058 KB (433 KB gz) |
 | Headless Dart: one command / Yjs update            | < 10 µs / < 30 µs                           | 2.0 µs / 3.5 µs      |
-| Keystroke → paint on the web, p95                  | < 8 ms                                      | 0.5 / 2 / 2 ms ⁴     |
-| Typing burst: 1,000 key events on the web          | no crash, no dropped input, ≤ 2 frames late | 1,000 of 1,000 ⁴     |
+| Keystroke → paint on the web, p95 ⁴                | < 8 ms                                      | 0.5 / 2 / 2 ms       |
+| Typing burst: 1,000 key events on the web ⁴        | no crash, no dropped input, ≤ 2 frames late | 1,000 of 1,000       |
 | Open a 10k-paragraph document → first paint        | < 50 ms                                     | layout 0.6 ms        |
 | Web bundle (core + StarterKit), gzipped            | < 350 KB                                    | 349.8 KB ³           |
 
