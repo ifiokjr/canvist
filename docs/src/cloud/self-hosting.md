@@ -2,7 +2,22 @@
 
 canvist Cloud is one binary, `canvist-cloud`, from `services/cloud`. Self-hosting runs exactly what canvist Cloud runs.
 
-## Run it
+## Run the image
+
+The image canvist Cloud deploys builds from the repository root:
+
+```sh
+docker build -f services/cloud/Dockerfile -t canvist-cloud .
+docker run -p 8080:8080 \
+	-e CANVIST_TOKEN_SECRET="$(openssl rand -hex 32)" \
+	-e CANVIST_ADMIN_TOKEN="$(openssl rand -hex 32)" \
+	-e DATABASE_URL=postgres://user:password@db.internal:5432/canvist \
+	canvist-cloud
+```
+
+It is a Debian slim base with the one binary, running as an unprivileged user, logging JSON. [Railway](./railway.md) runs exactly this image.
+
+## Run from source
 
 ```sh
 CANVIST_TOKEN_SECRET=$(openssl rand -hex 32) \
