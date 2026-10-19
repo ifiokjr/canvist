@@ -70,7 +70,7 @@ So every subscription is anchored to the first of the month: Checkout sets `subs
 ## Checkout, plan changes, and the Portal
 
 - **`POST /v1/billing/checkout`** (API key) creates a Checkout Session for Builder or Scale: the base price plus both overage prices, `metadata.canvist_project` on the session and the subscription, the month-start anchor, tax ID collection, and `automatic_tax` when enabled. A project that already pays gets `409` and is pointed at the next two endpoints.
-- **`POST /v1/billing/plan`** (API key) switches between Builder and Scale by swapping each item's price, prorating the base fee. The Portal cannot do this: it refuses plan switches on subscriptions with usage-based prices or several products.
+- **`POST /v1/billing/plan`** (API key) switches between Builder and Scale by swapping each item's price, prorating the base fee. Stripe bills metered usage before the switch at the old plan's rates and starts the new plan's tiers from the switch, which favours the customer either way (tested in test mode on 2026-10-19). The Portal cannot do this: it refuses plan switches on subscriptions with usage-based prices or several products.
 - **`POST /v1/billing/portal`** (API key) opens the Customer Portal for payment methods, invoices, billing details, tax IDs, and cancelling at the end of the period.
 - **Annual plans are not in Checkout yet.** An annual base fee with monthly metered overage needs a mixed-interval subscription (`billing_mode: flexible`), and Checkout cannot create those. The path is a Checkout Session in `setup` mode to collect the payment method, then `POST /v1/subscriptions` from the server. That is a follow-up; until then annual plans are sold by hand.
 

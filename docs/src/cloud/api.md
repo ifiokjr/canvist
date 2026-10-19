@@ -149,7 +149,7 @@ A document is **active** in a month (UTC) once a sync session opens it or `POST 
 These need an API key and a server with Stripe configured (`404` otherwise). See [billing](./billing.md) for the whole flow.
 
 - `POST /v1/billing/checkout` with `{ "plan": "builder", "success_url": "https://…", "cancel_url": "https://…" }` returns `{ "url" }`, a Stripe Checkout page for a monthly Builder or Scale subscription. The subscription bills on the first of each month; the first partial month's base fee is prorated. A project that already pays gets `409` with code `already_subscribed`.
-- `POST /v1/billing/plan` with `{ "plan": "scale" }` switches a paid subscription between Builder and Scale and returns the new terms. The base fee is prorated; this month's metered usage is billed at the new plan's rates. A project without a paid subscription gets `409` with code `not_subscribed`.
+- `POST /v1/billing/plan` with `{ "plan": "scale" }` switches a paid subscription between Builder and Scale and returns the new terms. The base fee is prorated. Usage before the switch is billed at the old plan's rates, and the new plan's tiers, included documents and all, start from the switch. A project without a paid subscription gets `409` with code `not_subscribed`.
 - `POST /v1/billing/portal` with `{ "return_url": "https://…" }` returns `{ "url" }`, a Stripe Customer Portal session for payment methods, invoices, billing details, tax IDs, and cancelling at the end of the period. A project that never subscribed gets `409` with code `no_customer`.
 - `POST /v1/stripe/webhook` receives Stripe's subscription, checkout, and invoice events, signed with `STRIPE_WEBHOOK_SECRET`.
 

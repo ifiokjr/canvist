@@ -166,20 +166,18 @@ impl StripeClient {
 		.map(|(name, value)| (name.to_owned(), value));
 
 		match self.post("/v1/billing/meter_events", &form).await {
-			Err(StripeError::Api { code, message, .. })
-				if is_duplicate(code.as_deref(), &message) =>
-			{
-				Ok(())
-			}
+			Err(StripeError::Api { message, .. }) if is_duplicate(&message) => Ok(()),
 			result => result.map(drop),
 		}
 	}
 }
 
-/// Whether a meter event error says the identifier was already used.
-fn is_duplicate(code: Option<&str>, message: &str) -> bool {
-	code.is_some_and(|code| code.contains("duplicate") || code == "resource_already_exists")
-		|| message.contains("already exists")
+/// Whether a meter event error says the identifier was already used. Stripe
+/// answers a repeat with a `400` carrying no error code, only the message
+/// "An event already exists with identifier …" (checked in test mode on
+/// 2026-10-19).
+fn is_duplicate(message: &str) -> bool {
+	message.contains("already exists with identifier")
 }
 
 /// One meter event.
@@ -444,11 +442,9 @@ mod tests {
 
 	#[test]
 	fn repeated_identifiers_count_as_sent() {
-		assert!(is_duplicate(Some("resource_already_exists"), ""));
 		assert!(is_duplicate(
-			None,
-			"An event with identifier mad_1 already exists."
+			"An event already exists with identifier mad_0123456789abcdef."
 		));
-		assert!(!is_duplicate(Some("rate_limit"), "Too many requests"));
+		assert!(!is_duplicate("No such customer: 'cus_missing'"));
 	}
 }

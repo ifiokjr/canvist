@@ -73,6 +73,24 @@ Created on 2026-10-19 by `deno task stripe:setup` in the **canvist** account (`a
 
 Staging `sync` has `STRIPE_SECRET_KEY` (the Stripe CLI's test key, which expires on 2027-01-17; replace it with a restricted key) and `STRIPE_WEBHOOK_SECRET`. Tax settings are `pending` with no registrations, so `STRIPE_AUTOMATIC_TAX` is off.
 
+### Checked end to end on 2026-10-19
+
+Against staging, in test mode, with the code from [#122](https://github.com/ifiokjr/canvist/pull/122):
+
+| Check                                                                      | Result                                                                                                                               |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /v1/billing/checkout` creates a session Stripe accepts               | Subscription mode, the three Builder prices, project metadata, tax ID collection                                                     |
+| A Builder subscription (customer `cus_VT914cZQfadFMV`) reaches the webhook | The project became `builder`, `active`                                                                                               |
+| 25 documents written and 3 conversions run on staging                      | Stripe's meters summed exactly 25 MADs and 3 conversions for the customer                                                            |
+| 10,000 synthetic MADs added to cross the allowance                         | Upcoming invoice, period ending 1 November: 10,000 at $0, 25 at $0.002 ($0.05), 3 conversions at $0.01 ($0.03), and the $29 base fee |
+| `POST /v1/billing/plan` to Scale                                           | Items swapped to the Scale prices; base fee prorated; pre-switch usage billed at Builder rates                                       |
+| `POST /v1/billing/portal`                                                  | A Stripe Customer Portal URL                                                                                                         |
+| Cancelling the subscription                                                | The project returned to `hobby` (`canceled`), and its documents kept syncing                                                         |
+| A declined renewal on a test clock                                         | The subscription went `past_due`; the project stayed on `builder`                                                                    |
+| A repeated meter event identifier                                          | `400` "An event already exists with identifier …", which the reporter treats as sent                                                 |
+
+The 10,000 synthetic MADs were sent straight to Stripe, not through canvist, to see the overage without creating 10,000 documents. The Checkout page itself was not completed: entering the test card is left to a person.
+
 ## Setting it up
 
 The setup script reads only, unless it has to create or change something, and running it again changes nothing. It finds meters by event name, products and the portal configuration by `metadata.canvist_key`, prices by lookup key, and the webhook endpoint by URL. A price whose definition changed is replaced (the new price takes over the lookup key; the old one is archived), because Stripe prices cannot change their amounts.

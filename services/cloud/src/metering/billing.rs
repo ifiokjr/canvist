@@ -188,8 +188,9 @@ pub async fn portal(
 }
 
 /// Switch `project`'s subscription to `plan`, swapping each canvist price
-/// for the same price of the new plan. The base fee is prorated; metered
-/// usage this period is billed at the new plan's rates.
+/// for the same price of the new plan. The base fee is prorated. Metered
+/// usage before the switch is billed at the old plan's rates; the new plan's
+/// tiers, included documents and all, start from the switch.
 pub async fn change_plan(
 	stripe: &StripeClient,
 	store: &Store,
