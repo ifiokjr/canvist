@@ -482,6 +482,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "canvist_footage"
+version = "0.0.0"
+dependencies = [
+ "canvist_collab",
+ "canvist_editor",
+ "canvist_extensions",
+ "canvist_layout",
+ "canvist_model",
+ "serde_json",
+]
+
+[[package]]
 name = "canvist_headless"
 version = "0.1.0"
 dependencies = [

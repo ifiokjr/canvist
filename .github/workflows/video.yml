@@ -1,0 +1,68 @@
+name: "video"
+permissions:
+  contents: read
+on:
+  pull_request:
+    paths:
+      - "video/**"
+      - "tools/footage/**"
+      - "crates/canvist_model/**"
+      - "crates/canvist_editor/**"
+      - "crates/canvist_extensions/**"
+      - "crates/canvist_layout/**"
+      - "crates/canvist_collab/**"
+      - "docs/src/v2/architecture.md"
+      - "assets/brand/vector/**"
+      - ".github/workflows/video.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: video
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust
+        # Reads the channel from rust-toolchain.toml.
+        run: rustup show active-toolchain || rustup toolchain install
+
+      - name: cache rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: video
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: video/package-lock.json
+
+      - name: install dependencies
+        run: npm ci
+
+      - name: install chrome dependencies
+        run: npx remotion browser ensure && sudo apt-get update && sudo apt-get install -y libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 libxrandr2 libxkbcommon-dev libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2
+
+      - name: typecheck
+        run: npm run typecheck
+
+      - name: render preview
+        run: npm run render:preview
+
+      - name: upload preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvist-launch-preview
+          path: |
+            video/out/canvist-launch-preview.mp4
+            video/out/report.json
+          retention-days: 14
