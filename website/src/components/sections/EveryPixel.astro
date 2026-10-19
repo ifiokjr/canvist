@@ -1,0 +1,170 @@
+---
+import ChipLabel from "../ChipLabel.astro";
+---
+
+<section class="chip pixel" data-chip="1" id="every-pixel" aria-labelledby="pixel-title" data-fan-chip>
+	<div class="chip-inner pixel__grid">
+		<div class="pixel__copy">
+			<p class="eyebrow">02 / Owns every pixel</p>
+			<h2 id="pixel-title" class="section-title">Every glyph, painted by canvist.</h2>
+			<p class="lede chip-muted">
+				No contenteditable, no borrowed native text view: canvist measures, lays out and paints each glyph itself. The caret, the selection and the line breaks are canvist's on every platform, so they are the same on every platform.
+			</p>
+			<p class="pixel__note chip-muted">
+				This is the v1 engine, compiled to WebAssembly and running in this page. Type into it: the readout times each keystroke from the input event to the next painted frame, in your browser.
+			</p>
+		</div>
+
+		<div class="sheet" data-pixel-demo data-state="idle">
+			<div class="sheet__paper">
+				<canvas class="sheet__canvas" id="pixel-canvas" aria-label="canvist v1 editor"></canvas>
+				<div class="sheet__cover" data-pixel-cover>
+					<button class="btn" type="button" data-pixel-start>
+						<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 1h2v14H7z" fill="currentColor"></path></svg>
+						<span data-pixel-start-label>Load the engine and type</span>
+					</button>
+					<p class="code-label" data-pixel-status>v1 · WebAssembly · about 420 KB gzipped</p>
+				</div>
+			</div>
+			<dl class="readout" aria-live="polite" data-pixel-readout>
+				<div>
+					<dt>Last keystroke</dt>
+					<dd data-pixel-last>–</dd>
+				</div>
+				<div>
+					<dt>Median</dt>
+					<dd data-pixel-p50>–</dd>
+				</div>
+				<div>
+					<dt>p95</dt>
+					<dd data-pixel-p95>–</dd>
+				</div>
+				<div>
+					<dt>Keys</dt>
+					<dd data-pixel-count>0</dd>
+				</div>
+				<canvas class="readout__spark" data-pixel-spark aria-hidden="true" width="240" height="40"></canvas>
+			</dl>
+			<p class="readout__source code-label" data-pixel-source>Keystroke to next painted frame</p>
+		</div>
+	</div>
+	<ChipLabel id="every-pixel" code="Budget: keystroke to paint, p95 under 8 ms" />
+</section>
+
+<style>
+	.pixel__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+		gap: var(--s-7) var(--s-8);
+		align-items: start;
+	}
+
+	.pixel__copy {
+		display: grid;
+		gap: var(--s-5);
+	}
+
+	.pixel__note {
+		max-width: 44ch;
+		font-size: var(--t-small);
+	}
+
+	.sheet {
+		display: grid;
+		gap: var(--s-3);
+	}
+
+	.sheet__paper {
+		position: relative;
+		height: clamp(15rem, 30vw, 22rem);
+		border-radius: var(--r-2);
+		background: var(--raised);
+		box-shadow:
+			0 1px 0 color-mix(in oklab, var(--ink) 10%, transparent),
+			0 18px 40px -24px color-mix(in oklab, var(--paint) 45%, transparent);
+		overflow: hidden;
+		cursor: text;
+	}
+
+	.sheet__canvas {
+		width: 100%;
+		height: 100%;
+	}
+
+	.sheet__cover {
+		position: absolute;
+		inset: 0;
+		display: grid;
+		place-content: center;
+		justify-items: center;
+		gap: var(--s-3);
+		padding: var(--s-5);
+		text-align: center;
+		background:
+			linear-gradient(transparent calc(2rem - 1px), color-mix(in oklab, var(--paint) 14%, transparent) 0) 0 1.25rem / 100% 2rem,
+			var(--raised);
+		color: var(--text-muted);
+	}
+
+	.sheet[data-state="ready"] .sheet__cover {
+		display: none;
+	}
+
+	.sheet[data-state="loading"] [data-pixel-start] {
+		opacity: 0.7;
+		pointer-events: none;
+	}
+
+	.readout {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, auto)) minmax(6rem, 1fr);
+		gap: var(--s-2) var(--s-5);
+		align-items: end;
+		padding: var(--s-3) var(--s-4);
+		border-radius: var(--r-2);
+		background: var(--ink);
+		color: var(--paper);
+	}
+
+	.readout dt {
+		font-family: var(--font-mono);
+		font-size: 0.6875rem;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: color-mix(in oklab, var(--paper) 68%, transparent);
+	}
+
+	.readout dd {
+		margin: 0;
+		font-family: var(--font-mono);
+		font-size: 1.375rem;
+		font-variant-numeric: tabular-nums;
+		font-weight: 500;
+		white-space: nowrap;
+	}
+
+	.readout__spark {
+		width: 100%;
+		height: 2.5rem;
+	}
+
+	.readout__source {
+		color: var(--chip-muted);
+	}
+
+	@media (max-width: 64rem) {
+		.pixel__grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	@media (max-width: 36rem) {
+		.readout {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.readout__spark {
+			grid-column: 1 / -1;
+		}
+	}
+</style>

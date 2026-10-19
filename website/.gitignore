@@ -1,0 +1,7 @@
+dist/
+.astro/
+node_modules/
+test-results/
+playwright-report/
+shoot.tmp.ts
+.lighthouseci/

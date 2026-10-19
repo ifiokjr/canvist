@@ -1,0 +1,135 @@
+---
+import type { MarkdownHeading } from "astro";
+import "../styles/docs.css";
+import DocsPager from "../components/docs/DocsPager.astro";
+import DocsSearch from "../components/docs/DocsSearch.astro";
+import DocsSidebar from "../components/docs/DocsSidebar.astro";
+import DocsToc from "../components/docs/DocsToc.astro";
+import type { DocsGroup, DocsLink } from "../lib/docs-nav.ts";
+import Base from "./Base.astro";
+
+interface Props {
+	title: string;
+	description: string;
+	nav: readonly DocsGroup[];
+	current: DocsLink;
+	headings: readonly MarkdownHeading[];
+	prev: DocsLink | undefined;
+	next: DocsLink | undefined;
+	editUrl: string;
+}
+
+const { title, description, nav, current, headings, prev, next, editUrl } = Astro.props;
+---
+
+<Base title={title} description={description} preloadMono>
+	<Fragment slot="head">
+		<script is:inline>
+			// Lets the CSS hide controls that need script, and show the sidebar inline without it.
+			document.documentElement.classList.add("docs-js");
+		</script>
+	</Fragment>
+
+	<div class="docs">
+		<div class="docs-bar">
+			<div class="docs-bar__inner">
+				<button class="docs-menu" type="button" aria-expanded="false" aria-controls="docs-drawer" data-docs-menu>
+					<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+						<path d="M3 5.5h14M3 10h14M3 14.5h9" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+					</svg>
+					Menu
+				</button>
+				<nav class="docs-crumbs" aria-label="Breadcrumb">
+					<ol>
+						<li><a href="/docs">Docs</a></li>
+						<li><span>{current.group}</span></li>
+					</ol>
+				</nav>
+				<DocsSearch />
+			</div>
+		</div>
+
+		<div class="docs-shell">
+			<div class="docs-sidebar">
+				<DocsSidebar groups={nav} currentRoute={current.route} idPrefix="side" />
+			</div>
+
+			<div class="docs-main">
+				<p class="docs-kicker">{current.group}</p>
+				<DocsToc headings={headings} variant="inline" />
+				<article class="docs-article" data-pagefind-body>
+					<slot />
+				</article>
+				<DocsPager prev={prev} next={next} editUrl={editUrl} />
+			</div>
+
+			<DocsToc headings={headings} variant="aside" />
+		</div>
+
+		<dialog id="docs-drawer" class="docs-drawer" aria-label="Docs navigation">
+			<div class="docs-drawer__head">
+				<span class="docs-drawer__title">Docs</span>
+				<button class="docs-drawer__close" type="button" data-docs-drawer-close>
+					<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+						<path d="m5 5 10 10M15 5 5 15" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+					</svg>
+					<span class="visually-hidden">Close menu</span>
+				</button>
+			</div>
+			<DocsSidebar groups={nav} currentRoute={current.route} idPrefix="drawer" />
+		</dialog>
+
+		<p class="visually-hidden" role="status" data-docs-announce></p>
+	</div>
+</Base>
+
+<script>
+	// The small-screen drawer: a modal dialog, so focus and Escape come for free.
+	const menu = document.querySelector<HTMLButtonElement>("[data-docs-menu]");
+	const drawer = document.querySelector<HTMLDialogElement>("#docs-drawer");
+	if (menu && drawer) {
+		menu.addEventListener("click", () => {
+			drawer.showModal();
+			menu.setAttribute("aria-expanded", "true");
+			drawer.querySelector('[aria-current="page"]')?.scrollIntoView({ block: "center" });
+		});
+		drawer.addEventListener("close", () => menu.setAttribute("aria-expanded", "false"));
+		drawer.addEventListener("click", (event) => {
+			if (event.target === drawer) drawer.close();
+		});
+		drawer.querySelector("[data-docs-drawer-close]")?.addEventListener("click", () => drawer.close());
+		// The drawer is only for narrow screens; widening the window puts the sidebar back.
+		matchMedia("(min-width: 60rem)").addEventListener("change", (event) => {
+			if (event.matches) drawer.close();
+		});
+	}
+
+	// Copy buttons on code blocks, added only where the clipboard can be reached.
+	const announce = document.querySelector<HTMLElement>("[data-docs-announce]");
+	for (const frame of document.querySelectorAll<HTMLElement>(".docs-code")) {
+		const pre = frame.querySelector("pre");
+		if (!pre) continue;
+		const button = document.createElement("button");
+		button.type = "button";
+		button.className = "docs-copy";
+		button.textContent = "Copy";
+		button.setAttribute("aria-label", "Copy code");
+		let reset: number | undefined;
+		button.addEventListener("click", async () => {
+			let result: string;
+			try {
+				await navigator.clipboard.writeText(pre.innerText.replace(/\n$/, ""));
+				result = "Copied";
+			} catch {
+				result = "Copy failed";
+			}
+			button.textContent = result;
+			if (announce) announce.textContent = result === "Copied" ? "Code copied to clipboard" : "Could not copy the code";
+			clearTimeout(reset);
+			reset = window.setTimeout(() => {
+				button.textContent = "Copy";
+			}, 1600);
+		});
+		frame.append(button);
+	}
+</script>

@@ -1,0 +1,343 @@
+@import "./tokens.css";
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+* {
+	margin: 0;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+	text-size-adjust: 100%;
+	scroll-padding-top: 5rem;
+	hanging-punctuation: first last;
+}
+
+body {
+	min-height: 100dvh;
+	background: var(--page);
+	color: var(--text);
+	font-family: var(--font-sans);
+	font-size: var(--t-body);
+	line-height: var(--lh-body);
+	font-optical-sizing: auto;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	overflow-x: clip;
+}
+
+img,
+svg,
+video,
+canvas {
+	display: block;
+	max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+	font: inherit;
+	color: inherit;
+}
+
+h1,
+h2,
+h3,
+h4 {
+	font-weight: 750;
+	line-height: var(--lh-snug);
+	text-wrap: balance;
+	letter-spacing: -0.02em;
+}
+
+p,
+li {
+	text-wrap: pretty;
+}
+
+a {
+	color: inherit;
+	text-decoration-thickness: 0.08em;
+	text-underline-offset: 0.18em;
+}
+
+code,
+kbd,
+samp,
+pre {
+	font-family: var(--font-mono);
+	font-size: 0.92em;
+}
+
+:focus-visible {
+	outline: 3px solid var(--focus);
+	outline-offset: 3px;
+	border-radius: 4px;
+}
+
+::selection {
+	background: color-mix(in oklab, var(--paint) 30%, transparent);
+}
+
+.visually-hidden {
+	position: absolute !important;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+.skip-link {
+	position: absolute;
+	left: var(--gutter);
+	top: -4rem;
+	z-index: 100;
+	padding: var(--s-3) var(--s-4);
+	background: var(--accent);
+	color: var(--accent-text);
+	border-radius: var(--r-1);
+	font-weight: 650;
+	text-decoration: none;
+}
+
+.skip-link:focus {
+	top: var(--s-3);
+}
+
+/* ---------- Buttons: a swatch you can press ---------- */
+
+.btn {
+	--btn-bg: var(--accent);
+	--btn-fg: var(--accent-text);
+	display: inline-flex;
+	align-items: center;
+	gap: var(--s-2);
+	min-height: 3rem;
+	padding: 0 var(--s-5);
+	border: 2px solid var(--btn-bg);
+	border-radius: 999px;
+	background: var(--btn-bg);
+	color: var(--btn-fg);
+	font-weight: 650;
+	font-size: var(--t-small);
+	letter-spacing: 0.005em;
+	text-decoration: none;
+	cursor: pointer;
+	transition:
+		transform var(--dur-1) var(--ease-out),
+		background-color var(--dur-2) var(--ease-out);
+}
+
+.btn:hover {
+	transform: translateY(-2px);
+}
+
+.btn:active {
+	transform: translateY(0);
+}
+
+.btn--ghost {
+	background: transparent;
+	color: inherit;
+	border-color: currentColor;
+}
+
+.btn svg {
+	width: 1.125em;
+	height: 1.125em;
+	flex: none;
+}
+
+/* ---------- Mono labels (swatch codes) ---------- */
+
+.code-label {
+	font-family: var(--font-mono);
+	font-size: var(--t-micro);
+	letter-spacing: 0.02em;
+	font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Chips: every section is a swatch on the deck ---------- */
+
+.deck {
+	display: grid;
+	gap: var(--section-gap);
+	padding-inline: var(--gutter);
+	padding-bottom: var(--section-gap);
+}
+
+.chip {
+	--chip-bg: var(--chip-0);
+	--chip-fg: var(--chip-ink);
+	--chip-caret: var(--accent);
+	/* Secondary text on a chip: the most a muted tone can fade and still pass AA. */
+	--chip-muted: color-mix(in oklab, var(--chip-fg) 86%, var(--chip-bg));
+	position: relative;
+	isolation: isolate;
+	background: var(--chip-bg);
+	color: var(--chip-fg);
+	border-radius: var(--r-chip);
+	padding: calc(var(--chip-pad) + var(--s-4)) var(--chip-pad) calc(var(--chip-pad) * 0.42);
+	transform-origin: calc(var(--chip-pad) * 0.5 + var(--rivet) * 0.5) calc(var(--chip-pad) * 0.5 + var(--rivet) * 0.5);
+	overflow: clip;
+}
+
+/* The rivet hole every swatch on a fan deck is punched with. */
+.chip::before {
+	content: "";
+	position: absolute;
+	top: calc(var(--chip-pad) * 0.5);
+	left: calc(var(--chip-pad) * 0.5);
+	width: var(--rivet);
+	height: var(--rivet);
+	border-radius: 50%;
+	background: var(--page);
+	box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--chip-fg) 14%, transparent);
+}
+
+.chip[data-chip="1"] {
+	--chip-bg: var(--chip-1);
+}
+
+.chip[data-chip="2"] {
+	--chip-bg: var(--chip-2);
+}
+
+.chip[data-chip="3"] {
+	--chip-bg: var(--chip-3);
+}
+
+.chip[data-chip="4"] {
+	--chip-bg: var(--chip-4);
+	--chip-fg: var(--paper);
+	--chip-caret: var(--paper);
+}
+
+.chip[data-chip="5"],
+.chip[data-chip="6"],
+.chip[data-chip="7"] {
+	--chip-fg: light-dark(var(--paper), var(--ink));
+	--chip-caret: light-dark(var(--paint-on-dark), var(--paint));
+}
+
+.chip[data-chip="5"] {
+	--chip-bg: var(--chip-5);
+	--chip-caret: light-dark(var(--paper), var(--ink));
+}
+
+.chip[data-chip="6"] {
+	--chip-bg: var(--chip-6);
+}
+
+.chip[data-chip="7"] {
+	--chip-bg: var(--chip-7);
+}
+
+.chip-muted {
+	color: var(--chip-muted);
+}
+
+/* The label strip printed along the bottom of each swatch. */
+.chip-label {
+	position: relative;
+	max-width: var(--content);
+	margin: calc(var(--chip-pad) * 0.9) auto 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--s-1) var(--s-4);
+	padding-top: var(--s-2);
+	border-top: 1px solid color-mix(in oklab, var(--chip-fg) 22%, transparent);
+	font-family: var(--font-mono);
+	font-size: var(--t-micro);
+	letter-spacing: 0.02em;
+	font-variant-numeric: tabular-nums;
+	color: var(--chip-muted);
+}
+
+.chip-label b {
+	font-weight: 600;
+	color: var(--chip-fg);
+}
+
+.chip-label .chip-label__code {
+	margin-left: auto;
+}
+
+.chip-inner {
+	max-width: var(--content);
+	margin-inline: auto;
+}
+
+.eyebrow {
+	display: inline-flex;
+	gap: var(--s-2);
+	align-items: center;
+	font-family: var(--font-mono);
+	font-size: var(--t-micro);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--chip-muted, var(--text-muted));
+}
+
+.section-title {
+	font-size: var(--t-1);
+	line-height: var(--lh-tight);
+	letter-spacing: -0.035em;
+	font-weight: 780;
+	max-width: 14ch;
+}
+
+.lede {
+	font-size: var(--t-3);
+	line-height: 1.4;
+	max-width: 40ch;
+}
+
+/* Status tags: what exists today versus what is being built. */
+.status {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	padding: 0.15em 0.6em;
+	border-radius: 999px;
+	border: 1px solid currentColor;
+	font-family: var(--font-mono);
+	font-size: var(--t-micro);
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+.status::before {
+	content: "";
+	width: 0.5em;
+	height: 0.5em;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+.status[data-status="planned"]::before {
+	background: transparent;
+	box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

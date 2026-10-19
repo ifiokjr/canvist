@@ -1,0 +1,46 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Not found" description="This page doesn't exist.">
+	<div class="lost">
+		<section class="lost__chip" aria-labelledby="lost-title">
+			<p class="code-label">404 · nothing painted here</p>
+			<h1 id="lost-title" class="lost__title">This swatch is missing from the deck.</h1>
+			<p>The page you were after has moved or never existed.</p>
+			<div class="lost__actions">
+				<a class="btn" href="/">Back to the start</a>
+				<a class="btn btn--ghost" href="/docs">Search the docs</a>
+			</div>
+		</section>
+	</div>
+</Base>
+
+<style>
+	.lost {
+		padding: 0 var(--gutter) var(--section-gap);
+	}
+
+	.lost__chip {
+		display: grid;
+		gap: var(--s-5);
+		padding: var(--chip-pad);
+		border-radius: var(--r-chip);
+		border: 3px dashed var(--line);
+		min-height: 60vh;
+		align-content: center;
+	}
+
+	.lost__title {
+		font-size: var(--t-1);
+		line-height: 0.95;
+		letter-spacing: -0.04em;
+		max-width: 16ch;
+	}
+
+	.lost__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s-3);
+	}
+</style>
