@@ -1,0 +1,13 @@
+# Only what the cloud binary builds from; the rest of the repository
+# (apps, packages, docs, caches) stays out of the build context.
+*
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!crates/
+!docs/Cargo.toml
+!docs/src/lib.rs
+!platforms/dart/rust/
+!services/cloud/
+**/target/
+**/node_modules/
