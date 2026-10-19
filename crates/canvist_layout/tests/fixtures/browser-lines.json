@@ -1,0 +1,194 @@
+{
+	"browser": "chromium",
+	"breaks": "chromium",
+	"cases": [
+		{
+			"fixture": "inter",
+			"width": 480,
+			"bodyFamily": "Inter, ui-sans-serif, system-ui, sans-serif",
+			"size": 16,
+			"letterSpacing": 0,
+			"texts": [
+				{
+					"text": "The quick brown fox jumps over the lazy dog. AVATAR, Wa, To, Ty, LT, “quotes” and ‘apostrophes’, fi fl ffi ffl, 0123456789, ½ — en–dash… (parentheses) [brackets] {braces} and a-very-long-hyphenated-compound https://example.com/a/path/that/has/to/wrap?with=query&and=more",
+					"lines": [
+						[
+							0,
+							61
+						],
+						[
+							61,
+							128
+						],
+						[
+							128,
+							187
+						],
+						[
+							187,
+							207
+						],
+						[
+							207,
+							251
+						],
+						[
+							251,
+							270
+						]
+					]
+				}
+			]
+		},
+		{
+			"fixture": "size-10",
+			"width": 480,
+			"bodyFamily": "Inter, ui-sans-serif, system-ui, sans-serif",
+			"size": 10,
+			"letterSpacing": 0,
+			"texts": [
+				{
+					"text": "The quick brown fox jumps over the lazy dog. AVATAR, Wa, To, Ty, LT, “quotes” and ‘apostrophes’, fi fl ffi ffl, 01234567",
+					"lines": [
+						[
+							0,
+							100
+						],
+						[
+							100,
+							120
+						]
+					]
+				}
+			]
+		},
+		{
+			"fixture": "size-13",
+			"width": 480,
+			"bodyFamily": "Inter, ui-sans-serif, system-ui, sans-serif",
+			"size": 13,
+			"letterSpacing": 0,
+			"texts": [
+				{
+					"text": "The quick brown fox jumps over the lazy dog. AVATAR, Wa, To, Ty, LT, “quotes” and ‘apostrophes’, fi fl ffi ffl, 01234567",
+					"lines": [
+						[
+							0,
+							69
+						],
+						[
+							69,
+							120
+						]
+					]
+				}
+			]
+		},
+		{
+			"fixture": "size-24",
+			"width": 480,
+			"bodyFamily": "Inter, ui-sans-serif, system-ui, sans-serif",
+			"size": 24,
+			"letterSpacing": 0,
+			"texts": [
+				{
+					"text": "The quick brown fox jumps over the lazy dog. AVATAR, Wa, To, Ty, LT, “quotes” and ‘apostrophes’, fi fl ffi ffl, 01234567",
+					"lines": [
+						[
+							0,
+							40
+						],
+						[
+							40,
+							82
+						],
+						[
+							82,
+							120
+						]
+					]
+				}
+			]
+		},
+		{
+			"fixture": "size-40",
+			"width": 480,
+			"bodyFamily": "Inter, ui-sans-serif, system-ui, sans-serif",
+			"size": 40,
+			"letterSpacing": 0,
+			"texts": [
+				{
+					"text": "The quick brown fox jumps over the lazy dog. AVATAR, Wa, To, Ty, LT, “quotes” and ‘apostrophes’, fi fl ffi ffl, 01234567",
+					"lines": [
+						[
+							0,
+							26
+						],
+						[
+							26,
+							53
+						],
+						[
+							53,
+							82
+						],
+						[
+							82,
+							112
+						],
+						[
+							112,
+							120
+						]
+					]
+				}
+			]
+		},
+		{
+			"fixture": "size-64",
+			"width": 480,
+			"bodyFamily": "Inter, ui-sans-serif, system-ui, sans-serif",
+			"size": 64,
+			"letterSpacing": 0,
+			"texts": [
+				{
+					"text": "The quick brown fox jumps over the lazy dog. AVATAR, Wa, To, Ty, LT, “quotes” and ‘apostrophes’, fi fl ffi ffl, 01234567",
+					"lines": [
+						[
+							0,
+							16
+						],
+						[
+							16,
+							31
+						],
+						[
+							31,
+							45
+						],
+						[
+							45,
+							61
+						],
+						[
+							61,
+							78
+						],
+						[
+							78,
+							82
+						],
+						[
+							82,
+							103
+						],
+						[
+							103,
+							120
+						]
+					]
+				}
+			]
+		}
+	]
+}

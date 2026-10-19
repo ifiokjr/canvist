@@ -1,6 +1,6 @@
 # The SSR CSS contract
 
-canvist renders a document on the server as semantic HTML (`to_html`), then the web host replaces it with the live canvas. The swap must not move anything: every line has to wrap at the same character in the HTML as on the canvas, and every block has to sit at the same height. This page lists what `canvist_layout` emits to make that true, what the web host must do, and where exact agreement is still at risk. The pixel parity tests in `packages/canvist-web` check the whole contract in Chromium, Firefox, and WebKit.
+canvist renders a document on the server as semantic HTML (`to_html`), then the web host replaces it with the live canvas. The swap must not move anything: every line has to wrap at the same character in the HTML as on the canvas, and every block has to sit at the same height. This page lists what `canvist_layout` emits to make that true, what the web host must do, and where exact agreement is still at risk. The [pixel parity tests](../src/guides/rendering-parity.md) check the whole contract in Chromium, Firefox, and WebKit.
 
 ## How agreement works
 
@@ -93,7 +93,7 @@ Layout reproduces the CSS line box exactly, so the CSS has to keep to the same m
 These are the places where the HTML and the canvas can still differ. The pixel parity tests measure each one.
 
 - **Kerning across a space.** Layout kerns adjacent segments that touch, but measures a word together with its trailing spaces and never kerns across them. A browser shapes the whole line, so a font that kerns a space against a letter shifts later glyphs by a fraction of a pixel. That doesn't change wrapping unless a line fits to within that fraction.
-- **Contextual punctuation spacing.** Firefox applies OpenType `chws` to full-width punctuation depending on the characters on both sides. Layout measures Japanese one character at a time, so in Firefox a line holding 「。」 before Latin text can wrap one character differently.
+- **Contextual punctuation spacing.** Firefox applies OpenType `chws` to full-width punctuation depending on the characters on both sides. Layout measures Japanese one character at a time, so in Firefox a line holding 「。」 before Latin text can wrap one character differently. See [Rendering parity](../src/guides/rendering-parity.md).
 - **Sub-pixel rounding.** Chromium keeps inline positions in 1/64 px units. A line whose width lands within 1/64 px of the available width could wrap differently. Layout already accepts widths up to 1/128 px over the limit, to absorb float error.
 - **Complex scripts.** Layout uses ICU4X without its dictionary and LSTM models, so Thai, Lao, Khmer, and Burmese only break at spaces. Browsers break inside words in these scripts. Adding the `auto` segmenter models fixes this, at a large cost in wasm size.
 - **New CSS properties.** The stylesheet pins every property known to change advances or wrapping today. A property that browsers add later, with a non-neutral default, would need pinning too; the pixel parity tests are the alarm for it.

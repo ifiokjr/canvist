@@ -78,3 +78,91 @@ jobs:
             echo
             npm run --silent size
           } | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # Pixel parity between the canvas editor and the server-rendered HTML it
+  # hydrates from, in every engine on both desktop platforms. Each run
+  # uploads a side-by-side report (canvas | DOM | difference).
+  parity:
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+        browser:
+          - chromium
+          - firefox
+          - webkit
+    runs-on: ${{ matrix.os }}
+    env:
+      CANVIST_BROWSERS: ${{ matrix.browser }}
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
+
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # @canvist/web reads its extension types from @canvist/headless.
+      - name: build @canvist/headless
+        working-directory: packages/canvist-headless
+        run: |
+          npm ci
+          npm run build:wasm
+          npm run build
+
+      - name: install dependencies
+        working-directory: packages/canvist-web
+        run: npm ci
+
+      - name: build wasm
+        working-directory: packages/canvist-web
+        run: npm run build:wasm
+
+      - name: install the browser
+        working-directory: packages/canvist-web
+        timeout-minutes: 10
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: pixel parity
+        working-directory: packages/canvist-web
+        run: npx playwright test
+
+      - name: parity report
+        if: ${{ !cancelled() }}
+        working-directory: packages/canvist-web
+        run: |
+          node scripts/parity-report.ts --inline
+          {
+            echo "## Pixel parity: ${{ matrix.browser }} on ${{ matrix.os }}"
+            echo
+            echo '```'
+            node scripts/parity-report.ts | head -1
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-${{ matrix.browser }}-${{ matrix.os }}
+          path: packages/canvist-web/report/parity/
+          retention-days: 30

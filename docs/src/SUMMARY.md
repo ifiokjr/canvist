@@ -40,6 +40,7 @@
 - [Server-side transforms](./guides/server-transforms.md)
 - [Theming and styling](./guides/theming.md)
 - [Fonts and text rendering](./guides/fonts.md)
+- [Rendering parity](./guides/rendering-parity.md)
 - [Performance](./guides/performance.md)
 
 # AI agents
