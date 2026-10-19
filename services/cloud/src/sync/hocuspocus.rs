@@ -13,6 +13,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Instant;
 
 use axum::extract::State;
 use axum::extract::WebSocketUpgrade;
@@ -23,12 +24,14 @@ use futures_util::StreamExt;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
+use yrs::StateVector;
 use yrs::encoding::read::Cursor;
 use yrs::encoding::read::Read;
 use yrs::encoding::write::Write;
 use yrs::updates::encoder::Encoder;
 use yrs::updates::encoder::EncoderV1;
 
+use super::protocol;
 use super::room::Fanout;
 use super::session::Reply;
 use super::session::Session;
@@ -40,6 +43,7 @@ use crate::app::SharedApp;
 use crate::auth::AuthError;
 use crate::auth::Scope;
 use crate::error::ApiError;
+use crate::metering::Admission;
 use crate::names::DocumentKey;
 use crate::names::DocumentName;
 
@@ -50,6 +54,7 @@ mod kind {
 	pub(super) const AUTH: u8 = 2;
 	pub(super) const QUERY_AWARENESS: u8 = 3;
 	pub(super) const SYNC_REPLY: u8 = 4;
+	pub(super) const STATELESS: u8 = 5;
 	pub(super) const CLOSE: u8 = 7;
 	pub(super) const SYNC_STATUS: u8 = 8;
 	pub(super) const TOKEN: u8 = 0;
@@ -81,6 +86,23 @@ struct Open {
 	forward: JoinHandle<()>,
 }
 
+/// What a token grants for one document.
+struct Grant {
+	key: DocumentKey,
+	scope: Scope,
+	editor: Arc<str>,
+}
+
+/// A document authenticated but paused because its free plan is full.
+struct Paused {
+	grant: Grant,
+	checked: Instant,
+}
+
+/// The stateless message a paused document gets, as JSON. Providers emit it
+/// as a `stateless` event.
+const PAUSED: &str = r#"{"type":"canvist.paused","reason":"document_limit","message":"this project's free plan has reached its monthly active document limit; this document will sync once the limit resets or the plan is upgraded"}"#;
+
 /// Frames for the socket, from forwarders.
 enum Outbox {
 	Frame(Vec<u8>),
@@ -91,6 +113,7 @@ struct Connection {
 	app: SharedApp,
 	sink: Sink,
 	documents: HashMap<String, Open>,
+	paused: HashMap<String, Paused>,
 	outbox: mpsc::Sender<Outbox>,
 	liveness: Liveness,
 }
@@ -104,17 +127,20 @@ async fn run(app: SharedApp, socket: WebSocket) {
 		app,
 		sink,
 		documents: HashMap::new(),
+		paused: HashMap::new(),
 		outbox,
 		liveness: Liveness::default(),
 	};
 	let mut ping = tokio::time::interval(socket::PING_INTERVAL);
 	ping.tick().await;
+	let mut keepalive = tokio::time::interval(socket::KEEPALIVE_INTERVAL);
 
 	let end = loop {
 		let step = tokio::select! {
 			frame = stream.next() => connection.incoming(frame).await,
 			Some(out) = inbox.recv() => connection.outgoing(out).await,
 			_ = ping.tick() => connection.ping().await,
+			_ = keepalive.tick() => connection.keep_paused().await,
 			_ = shutdown.changed() => Err(Some((codes::RESTART, "server restarting"))),
 		};
 
@@ -139,7 +165,7 @@ type Step = Result<(), Option<(u16, &'static str)>>;
 impl Connection {
 	async fn ping(&mut self) -> Step {
 		// Unauthenticated sockets get one ping interval to authenticate.
-		if self.documents.is_empty() {
+		if self.documents.is_empty() && self.paused.is_empty() {
 			return Err(Some((codes::NORMAL, "no document authenticated")));
 		}
 
@@ -252,7 +278,8 @@ impl Connection {
 	}
 
 	/// Tell the peer it may sync `address`, then send the room's presence,
-	/// as Hocuspocus does on connect.
+	/// as Hocuspocus does on connect. A paused document is authenticated
+	/// too, so the provider stays happy, and told why it is not syncing.
 	async fn authenticated(&mut self, address: &str, scope: Scope) -> Step {
 		let scope = match scope {
 			Scope::Read => "readonly",
@@ -260,6 +287,13 @@ impl Connection {
 		};
 		self.send(frame(address, &auth_reply(kind::AUTHENTICATED, scope)))
 			.await?;
+
+		if self.paused.contains_key(address) {
+			let mut notice = vec![kind::STATELESS];
+			notice.extend(var_string(PAUSED));
+			return self.send(frame(address, &notice)).await;
+		}
+
 		let awareness = self
 			.documents
 			.get(address)
@@ -271,26 +305,111 @@ impl Connection {
 		}
 	}
 
+	/// Keep paused documents alive, and sync any that may now: they get the
+	/// whole document and a step 1, because their own step 1 was dropped.
+	async fn keep_paused(&mut self) -> Step {
+		let recheck = self.app.config.sync.pause_recheck;
+		let addresses: Vec<String> = self.paused.keys().cloned().collect();
+
+		for address in addresses {
+			self.send(frame(&address, &protocol::keepalive())).await?;
+			let due = self
+				.paused
+				.get(&address)
+				.is_some_and(|paused| paused.checked.elapsed() >= recheck);
+
+			if due {
+				self.recheck(&address).await?;
+			}
+		}
+
+		Ok(())
+	}
+
+	async fn recheck(&mut self, address: &str) -> Step {
+		let Some(paused) = self.paused.remove(address) else {
+			return Ok(());
+		};
+
+		match self.app.admit(&paused.grant.key).await {
+			Ok(Admission::Admitted) => {}
+			Ok(Admission::Paused) | Err(_) => {
+				self.paused.insert(
+					address.to_owned(),
+					Paused {
+						grant: paused.grant,
+						checked: Instant::now(),
+					},
+				);
+				return Ok(());
+			}
+		}
+
+		if self.join(address, paused.grant).await.is_err() {
+			return Err(Some((codes::INTERNAL, "could not load the document")));
+		}
+
+		let Some(room) = self
+			.documents
+			.get(address)
+			.map(|open| open.session.room().clone())
+		else {
+			return Ok(());
+		};
+
+		for message in [room.step1(), room.step2(&StateVector::default())] {
+			self.send(frame(address, &message)).await?;
+		}
+
+		Ok(())
+	}
+
 	/// Authenticate `token` for `address` and join its room.
 	async fn open(&mut self, address: &str, token: &str) -> Result<Scope, String> {
 		if let Some(open) = self.documents.get(address) {
 			return Ok(open.session.scope());
 		}
 
-		if self.documents.len() >= MAX_DOCUMENTS {
+		if let Some(paused) = self.paused.get(address) {
+			return Ok(paused.grant.scope);
+		}
+
+		if self.documents.len() + self.paused.len() >= MAX_DOCUMENTS {
 			return Err("too many documents on one connection".to_owned());
 		}
 
-		let (key, scope, editor) = self.authorize(address, token).await?;
-		let (room, membership) = self.app.rooms.join(&key).await.map_err(|error| {
-			tracing::error!(document = %key, %error, "could not load document");
+		let grant = self.authorize(address, token).await?;
+		let scope = grant.scope;
+		let admission = self.app.admit(&grant.key).await.map_err(|error| {
+			tracing::error!(document = %grant.key, %error, "could not check usage");
+			"could not check usage".to_owned()
+		})?;
+
+		if admission == Admission::Paused {
+			let paused = Paused {
+				grant,
+				checked: Instant::now(),
+			};
+			self.paused.insert(address.to_owned(), paused);
+			return Ok(scope);
+		}
+
+		self.join(address, grant).await?;
+
+		Ok(scope)
+	}
+
+	/// Join the room `grant` names and relay it on `address`.
+	async fn join(&mut self, address: &str, grant: Grant) -> Result<(), String> {
+		let (room, membership) = self.app.rooms.join(&grant.key).await.map_err(|error| {
+			tracing::error!(document = %grant.key, %error, "could not load document");
 			"could not load the document".to_owned()
 		})?;
 		let session = Session::new(
 			room,
 			membership.peer,
-			scope,
-			editor,
+			grant.scope,
+			grant.editor,
 			socket::limits(&self.app),
 		);
 		let forward = tokio::spawn(forward(
@@ -302,15 +421,11 @@ impl Connection {
 		self.documents
 			.insert(address.to_owned(), Open { session, forward });
 
-		Ok(scope)
+		Ok(())
 	}
 
 	/// The document, scope, and editor name `token` grants for `address`.
-	async fn authorize(
-		&self,
-		address: &str,
-		token: &str,
-	) -> Result<(DocumentKey, Scope, Arc<str>), String> {
+	async fn authorize(&self, address: &str, token: &str) -> Result<Grant, String> {
 		let principal = self
 			.app
 			.authenticate(token)
@@ -327,7 +442,7 @@ impl Connection {
 			name,
 		};
 
-		Ok((key, scope, editor))
+		Ok(Grant { key, scope, editor })
 	}
 }
 

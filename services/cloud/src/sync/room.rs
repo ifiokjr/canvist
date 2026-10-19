@@ -37,6 +37,7 @@ use super::awareness::AwarenessTable;
 use super::protocol;
 use super::validate;
 use super::validate::Rejected;
+use crate::metering::Month;
 use crate::names::DocumentKey;
 use crate::store::Store;
 use crate::store::StoreError;
@@ -124,6 +125,9 @@ struct RoomState {
 	/// When the last peer left, if none are connected.
 	idle_since: Option<Instant>,
 	changes: Option<Changes>,
+	/// The month this document was last admitted for, so sessions after
+	/// the first skip the store.
+	admitted: Option<Month>,
 }
 
 /// A peer's membership of a room.
@@ -151,6 +155,7 @@ impl Room {
 				size: 0,
 				idle_since: Some(Instant::now()),
 				changes: None,
+				admitted: None,
 			}),
 			fanout,
 			loaded: OnceCell::new(),
@@ -219,6 +224,16 @@ impl Room {
 		if self.peers.fetch_sub(1, Ordering::SeqCst) == 1 {
 			state.idle_since = Some(Instant::now());
 		}
+	}
+
+	/// Whether the document was admitted for `month`.
+	pub fn is_admitted(&self, month: Month) -> bool {
+		self.lock().admitted == Some(month)
+	}
+
+	/// Remember that the document was admitted for `month`.
+	pub fn mark_admitted(&self, month: Month) {
+		self.lock().admitted = Some(month);
 	}
 
 	/// Connected peers.

@@ -79,6 +79,7 @@ const COMPACT_AFTER_UPDATES: usize = 200;
 const MAX_DOCUMENT_MEBIBYTES: usize = 16;
 const WEBHOOK_DEBOUNCE_SECONDS: u64 = 2;
 const WEBHOOK_MAX_WAIT_SECONDS: u64 = 30;
+const PAUSE_RECHECK_SECONDS: u64 = 30;
 /// The port when `PORT` is unset; Railway always sets it.
 const DEFAULT_PORT: u16 = 8080;
 /// The shortest token secret: 256 bits, HS256's key size.
@@ -105,6 +106,9 @@ pub struct SyncConfig {
 	/// Allow plain-HTTP webhooks and private hosts, for tests and
 	/// self-hosting inside a private network.
 	pub webhook_allow_private: bool,
+	/// How often a paused session (a new document on a full free plan)
+	/// checks whether it may sync now.
+	pub pause_recheck: Duration,
 }
 
 impl Default for SyncConfig {
@@ -118,8 +122,20 @@ impl Default for SyncConfig {
 			webhook_debounce: Duration::from_secs(WEBHOOK_DEBOUNCE_SECONDS),
 			webhook_max_wait: Duration::from_secs(WEBHOOK_MAX_WAIT_SECONDS),
 			webhook_allow_private: false,
+			pause_recheck: Duration::from_secs(PAUSE_RECHECK_SECONDS),
 		}
 	}
+}
+
+/// Stripe Billing Meters, test mode only.
+#[derive(Clone, Debug)]
+pub struct StripeConfig {
+	/// A `sk_test_` or `rk_test_` key. Live keys are refused at startup.
+	pub secret_key: Secret,
+	/// The meter's event name.
+	pub meter_event: String,
+	/// The Stripe API base URL, overridable for tests.
+	pub api_base: String,
 }
 
 /// Everything the server needs.
@@ -137,6 +153,8 @@ pub struct Config {
 	pub admin_token: Option<Secret>,
 	/// Sync relay settings.
 	pub sync: SyncConfig,
+	/// Stripe metering, off when `None`.
+	pub stripe: Option<StripeConfig>,
 }
 
 impl Config {
@@ -150,6 +168,7 @@ impl Config {
 			token_secret: Secret::new(token_secret),
 			admin_token: None,
 			sync: SyncConfig::default(),
+			stripe: None,
 		}
 	}
 
@@ -181,6 +200,7 @@ impl Config {
 			token_secret: Secret::new(token_secret),
 			admin_token: env.get("CANVIST_ADMIN_TOKEN").map(Secret::new),
 			sync: sync_config(&env)?,
+			stripe: stripe_config(&env)?,
 		})
 	}
 }
@@ -200,7 +220,31 @@ fn sync_config(env: &Env<'_>) -> Result<SyncConfig, ConfigError> {
 			"CANVIST_WEBHOOK_ALLOW_PRIVATE",
 			defaults.webhook_allow_private,
 		)?,
+		pause_recheck: env.seconds("CANVIST_PAUSE_RECHECK_SECONDS", defaults.pause_recheck)?,
 	})
+}
+
+fn stripe_config(env: &Env<'_>) -> Result<Option<StripeConfig>, ConfigError> {
+	let Some(secret_key) = env.get("STRIPE_SECRET_KEY") else {
+		return Ok(None);
+	};
+
+	if !(secret_key.starts_with("sk_test_") || secret_key.starts_with("rk_test_")) {
+		return Err(ConfigError::invalid(
+			"STRIPE_SECRET_KEY",
+			"only test-mode keys (sk_test_ or rk_test_) are accepted",
+		));
+	}
+
+	Ok(Some(StripeConfig {
+		secret_key: Secret::new(secret_key),
+		meter_event: env
+			.get("STRIPE_METER_EVENT")
+			.unwrap_or_else(|| "canvist_active_document".to_owned()),
+		api_base: env
+			.get("STRIPE_API_BASE")
+			.unwrap_or_else(|| "https://api.stripe.com".to_owned()),
+	}))
 }
 
 /// Typed access to variables, treating empty values as unset.
@@ -272,6 +316,17 @@ mod tests {
 		assert!(config(&[]).is_err());
 		assert!(config(&[("CANVIST_TOKEN_SECRET", "short")]).is_err());
 		assert!(config(&[SECRET]).is_ok());
+	}
+
+	#[test]
+	fn live_stripe_keys_are_refused() {
+		assert!(config(&[SECRET, ("STRIPE_SECRET_KEY", "sk_live_abc")]).is_err());
+		assert!(config(&[SECRET, ("STRIPE_SECRET_KEY", "rk_live_abc")]).is_err());
+		let test = config(&[SECRET, ("STRIPE_SECRET_KEY", "sk_test_abc")]).expect("valid");
+		assert_eq!(
+			test.stripe.map(|stripe| stripe.meter_event),
+			Some("canvist_active_document".to_owned())
+		);
 	}
 
 	#[test]

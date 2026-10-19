@@ -6,6 +6,7 @@ use axum::http::StatusCode;
 
 use crate::app::App;
 use crate::error::ApiError;
+use crate::metering::Admission;
 use crate::names::DocumentKey;
 use crate::sync::validate::Rejected;
 
@@ -42,7 +43,18 @@ pub async fn current_state(app: &App, key: &DocumentKey) -> Result<Vec<u8>, ApiE
 }
 
 /// Apply a v1 `update` to `key` as the server, as a connected peer would.
+/// The write counts the document as active this month; a new document on
+/// a full free plan is refused.
 pub async fn apply(app: &App, key: &DocumentKey, update: &[u8]) -> Result<bool, ApiError> {
+	if app.admit(key).await? == Admission::Paused {
+		return Err(ApiError::new(
+			StatusCode::TOO_MANY_REQUESTS,
+			"document_limit_reached",
+			"the free plan's monthly active documents are used up; existing documents still \
+			 accept writes",
+		));
+	}
+
 	let (room, membership) = app.rooms.join(key).await?;
 	let result = room.apply(
 		None,

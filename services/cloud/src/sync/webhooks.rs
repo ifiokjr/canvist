@@ -238,7 +238,8 @@ pub fn sign(secret: &str, timestamp: u64, body: &str) -> String {
 	format!("t={timestamp},v1={}", hex(&mac.finalize().into_bytes()))
 }
 
-fn hex(bytes: &[u8]) -> String {
+/// Lowercase hex.
+pub(crate) fn hex(bytes: &[u8]) -> String {
 	use std::fmt::Write;
 
 	bytes.iter().fold(String::new(), |mut out, byte| {

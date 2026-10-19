@@ -15,6 +15,9 @@ use crate::app::App;
 
 /// How often the server pings an idle connection.
 pub const PING_INTERVAL: Duration = Duration::from_secs(25);
+/// How often a paused session sends a keepalive, inside the 30 seconds
+/// after which y-websocket and Hocuspocus clients reconnect.
+pub const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
 /// Silence after which a connection is considered dead.
 pub const DEAD_AFTER: Duration = Duration::from_secs(70);
 

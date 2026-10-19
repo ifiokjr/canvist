@@ -7,14 +7,17 @@
  * sees. The Rust test drives it over stdin and stdout, one JSON message per
  * line, and every message is acknowledged with `{ "done": true }`:
  *
- * - `{ "connect": { "transport", "url", "document", "token" } }` connects
- *   and waits up to five seconds for the first sync; replies
+ * - `{ "connect": { "transport", "url", "document", "token", "timeout_ms" } }`
+ *   connects and waits up to `timeout_ms` (default five seconds) for the
+ *   first sync; replies
  *   `{ "synced": bool, "denied": string | null }`.
  * - `{ "append": "text" }` appends a paragraph block holding `text`.
  * - `{ "presence": "name" }` publishes a user in awareness.
  * - `{ "wait": { "texts": [...], "peers": n } }` waits up to ten seconds
  *   for the document to hold exactly those paragraph texts and for `n`
  *   other peers to be present; replies `{ "texts", "peers" }`.
+ * - `{ "wait_synced": true }` waits up to ten seconds for a sync; replies
+ *   `{ "synced": bool }`.
  * - `{ "disconnect": true }` closes the connection.
  */
 
@@ -38,6 +41,7 @@ const doc = new Y.Doc();
 const blocks = doc.getArray<Y.Map<unknown>>("blocks");
 let provider: Provider | null = null;
 let denied: string | null = null;
+let synced = false;
 let blockCounter = 0;
 
 function send(message: unknown) {
@@ -86,7 +90,7 @@ function peers(): number {
 }
 
 async function connect(options: Record<string, string>): Promise<Message> {
-	let synced = false;
+	synced = false;
 
 	if (options.transport === "hocuspocus") {
 		const hocuspocus = new HocuspocusProvider({
@@ -117,7 +121,10 @@ async function connect(options: Record<string, string>): Promise<Message> {
 		provider = websocket as unknown as Provider;
 	}
 
-	await until(() => synced || denied !== null, 5000);
+	await until(
+		() => synced || denied !== null,
+		Number(options.timeout_ms ?? 5000),
+	);
 
 	return { synced, denied };
 }
@@ -156,6 +163,9 @@ async function handle(message: Message): Promise<Message | null> {
 			10000,
 		);
 		return { texts: texts(), peers: peers() };
+	} else if (message.wait_synced) {
+		await until(() => synced, 10000);
+		return { synced };
 	} else if (message.disconnect) {
 		provider?.destroy();
 		provider = null;

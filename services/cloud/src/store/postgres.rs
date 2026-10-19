@@ -12,19 +12,27 @@ use deadpool_postgres::Pool;
 use deadpool_postgres::RecyclingMethod;
 use tokio_postgres::NoTls;
 
+use super::Admit;
 use super::DocumentSummary;
 use super::StoreError;
 use super::StoredDocument;
+use super::UsageRow;
 use super::Webhook;
 use crate::auth::KeyHash;
 use crate::auth::NewApiKey;
+use crate::metering::Month;
+use crate::metering::Plan;
+use crate::metering::Terms;
 use crate::names::DocumentKey;
 use crate::names::DocumentName;
 use crate::names::Environment;
 use crate::names::ProjectId;
 
 /// Every migration, in order. Each runs once, inside a transaction.
-const MIGRATIONS: &[(i32, &str)] = &[(1, include_str!("../../migrations/0001_sync.sql"))];
+const MIGRATIONS: &[(i32, &str)] = &[
+	(1, include_str!("../../migrations/0001_sync.sql")),
+	(2, include_str!("../../migrations/0002_metering.sql")),
+];
 
 /// Connections per instance. Railway's smallest Postgres allows 100, so
 /// several replicas fit.
@@ -249,6 +257,163 @@ impl PgStore {
 		}))
 	}
 
+	pub(super) async fn terms(&self, project: &ProjectId) -> Result<Terms, StoreError> {
+		let client = self.pool.get().await?;
+		read_terms(&**client, project).await
+	}
+
+	pub(super) async fn set_terms(
+		&self,
+		project: &ProjectId,
+		terms: &Terms,
+	) -> Result<(), StoreError> {
+		// Only an override is stored, so a later plan change takes the new
+		// plan's default.
+		let included = terms
+			.included_documents
+			.filter(|included| Some(*included) != terms.plan.included_documents())
+			.map(|included| i64::try_from(included).unwrap_or(i64::MAX));
+		let updated = self
+			.pool
+			.get()
+			.await?
+			.execute(
+				"UPDATE projects SET plan = $2, included_documents = $3, stripe_customer = $4
+				WHERE id = $1",
+				&[
+					&project.as_str(),
+					&terms.plan.as_str(),
+					&included,
+					&terms.stripe_customer,
+				],
+			)
+			.await?;
+
+		if updated == 0 {
+			return Err(StoreError::UnknownProject);
+		}
+
+		Ok(())
+	}
+
+	/// The admission transaction: documents already active this month pass
+	/// without a lock; new ones take the project's month lock, so two
+	/// documents admitted at once cannot both take a free plan's last slot.
+	pub(super) async fn admit(&self, key: &DocumentKey, month: Month) -> Result<Admit, StoreError> {
+		let mut client = self.pool.get().await?;
+		let transaction = client.transaction().await?;
+		let terms = read_terms(&*transaction, &key.project).await?;
+		let month = month.to_string();
+		let ids = document_ids(key);
+		let row: [&(dyn tokio_postgres::types::ToSql + Sync); 4] =
+			[&ids.project, &ids.environment, &month, &ids.name];
+		let active_already = transaction
+			.query_opt(
+				"SELECT 1 FROM active_documents
+				WHERE project_id = $1 AND environment = $2 AND month = $3 AND name = $4",
+				&row,
+			)
+			.await?
+			.is_some();
+
+		if active_already {
+			transaction.commit().await?;
+			return Ok(Admit {
+				admitted: true,
+				new: false,
+				active: None,
+				terms,
+			});
+		}
+
+		transaction
+			.execute(
+				"SELECT pg_advisory_xact_lock(hashtextextended($1 || '/' || $2, 0))",
+				&[&ids.project, &month],
+			)
+			.await?;
+		let active: i64 = transaction
+			.query_one(
+				"SELECT coalesce(sum(active_documents), 0)::bigint FROM usage
+				WHERE project_id = $1 AND month = $2",
+				&[&ids.project, &month],
+			)
+			.await?
+			.get(0);
+		let active = u64::try_from(active).unwrap_or_default();
+
+		if terms.is_full(active) {
+			transaction.commit().await?;
+			return Ok(Admit {
+				admitted: false,
+				new: false,
+				active: Some(active),
+				terms,
+			});
+		}
+
+		let inserted = transaction
+			.execute(
+				"INSERT INTO active_documents (project_id, environment, month, name)
+				VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
+				&row,
+			)
+			.await?
+			== 1;
+
+		if inserted {
+			transaction
+				.execute(
+					"INSERT INTO usage (project_id, environment, month, active_documents)
+					VALUES ($1, $2, $3, 1)
+					ON CONFLICT (project_id, environment, month)
+					DO UPDATE SET active_documents = usage.active_documents + 1",
+					&[&ids.project, &ids.environment, &month],
+				)
+				.await?;
+		}
+
+		transaction.commit().await?;
+
+		Ok(Admit {
+			admitted: true,
+			new: inserted,
+			active: Some(active + u64::from(inserted)),
+			terms,
+		})
+	}
+
+	pub(super) async fn usage(
+		&self,
+		project: &ProjectId,
+		month: Month,
+	) -> Result<Vec<UsageRow>, StoreError> {
+		let rows = self
+			.pool
+			.get()
+			.await?
+			.query(
+				"SELECT environment, active_documents, conversions FROM usage
+				WHERE project_id = $1 AND month = $2 ORDER BY environment",
+				&[&project.as_str(), &month.to_string()],
+			)
+			.await?;
+
+		Ok(rows
+			.into_iter()
+			.filter_map(|row| {
+				let environment: String = row.get(0);
+				let active: i64 = row.get(1);
+				let conversions: i64 = row.get(2);
+				Some(UsageRow {
+					environment: Environment::parse(&environment).ok()?,
+					active_documents: u64::try_from(active).ok()?,
+					conversions: u64::try_from(conversions).ok()?,
+				})
+			})
+			.collect())
+	}
+
 	pub(super) async fn load(&self, key: &DocumentKey) -> Result<StoredDocument, StoreError> {
 		let client = self.pool.get().await?;
 		let ids = document_ids(key);
@@ -389,6 +554,31 @@ impl PgStore {
 			.await?;
 		Ok(deleted > 0)
 	}
+}
+
+/// `project`'s terms, read through any client or transaction.
+async fn read_terms(
+	client: &impl tokio_postgres::GenericClient,
+	project: &ProjectId,
+) -> Result<Terms, StoreError> {
+	let row = client
+		.query_opt(
+			"SELECT plan, included_documents, stripe_customer FROM projects WHERE id = $1",
+			&[&project.as_str()],
+		)
+		.await?
+		.ok_or(StoreError::UnknownProject)?;
+	let plan: String = row.get(0);
+	let included: Option<i64> = row.get(1);
+	let plan: Plan = plan.parse().unwrap_or(Plan::Hobby);
+
+	Ok(Terms {
+		plan,
+		included_documents: included
+			.and_then(|included| u64::try_from(included).ok())
+			.or_else(|| plan.included_documents()),
+		stripe_customer: row.get(2),
+	})
 }
 
 /// A document key as query parameters.

@@ -94,6 +94,32 @@ Returns `{ "token": "eyJ…", "expires_at": 1792400000 }`. Tokens are HS256 JWTs
 
 `POST` refuses updates that break the rules above with `422`, and oversized ones with `413`.
 
+## Usage and plans
+
+A document is **active** in a month (UTC) once a sync session opens it or `POST /v1/documents/{name}` writes it. canvist Cloud bills per monthly active document (MAD), counted once per document per month however often it is used.
+
+`GET /v1/usage?month=YYYY-MM` (API key; the month defaults to the current one) returns the whole project's usage:
+
+```json
+{
+	"project": "prj_…",
+	"month": "2026-10",
+	"plan": "hobby",
+	"included_documents": 1000,
+	"active_documents": 812,
+	"standing": "approaching",
+	"environments": [
+		{ "environment": "production", "active_documents": 812, "conversions": 0 }
+	]
+}
+```
+
+`standing` is `ok`, `approaching` (80% of the included documents), `over` (a paid plan past them, billed as overage), or `capped`.
+
+**The free plan has a hard cap that never breaks a client.** When it is full, a session on a document that is not yet active this month is **paused**: the socket stays open and alive, the client keeps editing locally, and nothing syncs. Every document already active this month keeps working. A paused session checks again every 30 seconds and syncs on its own once the project is upgraded or the month turns, sending what was written while it waited. y-websocket clients log a permission warning when they are paused; Hocuspocus clients authenticate normally and receive a `stateless` message `{ "type": "canvist.paused", "reason": "document_limit" }`. A REST write to a new document on a full free plan gets `429` with code `document_limit_reached`.
+
+**Paid plans never pause.** Past the included documents, usage reports `over` and the overage is billed.
+
 ## Webhooks
 
 `PUT /v1/webhook` (API key) with `{ "url": "https://…" }` sets the environment's webhook and returns a new signing secret, `{ "url", "secret": "whsec_…" }`. `DELETE /v1/webhook` removes it. URLs must be HTTPS on a public host.
@@ -121,6 +147,7 @@ With `Authorization: Bearer $CANVIST_ADMIN_TOKEN`:
 
 - `POST /v1/admin/projects` with `{ "name": "acme", "environments": ["production", "staging"] }` creates a project and returns one API key per environment. Keys are shown once.
 - `POST /v1/admin/projects/{project}/keys` with `{ "environment": "staging" }` adds a key.
+- `PUT /v1/admin/projects/{project}/terms` with `{ "plan": "builder", "included_documents": 20000, "stripe_customer": "cus_…" }` changes a project's plan (`hobby`, `builder`, `scale`, or `enterprise`). `included_documents` overrides the plan's default; `stripe_customer` turns on metered billing.
 - `GET /v1/admin/stats` returns loaded documents and connected peers.
 
 ## Health

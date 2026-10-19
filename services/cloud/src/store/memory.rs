@@ -2,15 +2,21 @@
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
+use super::Admit;
 use super::DocumentSummary;
 use super::StoreError;
 use super::StoredDocument;
+use super::UsageRow;
 use super::Webhook;
 use crate::auth::KeyHash;
 use crate::auth::NewApiKey;
+use crate::metering::Month;
+use crate::metering::Plan;
+use crate::metering::Terms;
 use crate::names::DocumentKey;
 use crate::names::Environment;
 use crate::names::ProjectId;
@@ -28,12 +34,31 @@ struct Inner {
 	webhooks: HashMap<(ProjectId, Environment), Webhook>,
 	documents: BTreeMap<DocumentKey, MemoryDocument>,
 	next_seq: i64,
+	terms: HashMap<ProjectId, Terms>,
+	active: HashSet<(DocumentKey, Month)>,
+	usage: BTreeMap<(ProjectId, Month, Environment), Counters>,
+}
+
+#[derive(Debug, Default)]
+struct Counters {
+	active_documents: u64,
+	conversions: u64,
 }
 
 #[derive(Debug, Default)]
 struct MemoryDocument {
 	snapshot: Option<(Vec<u8>, i64)>,
 	updates: Vec<(i64, Vec<u8>)>,
+}
+
+impl Inner {
+	fn active_in(&self, project: &ProjectId, month: Month) -> u64 {
+		self.usage
+			.iter()
+			.filter(|((owner, period, _), _)| owner == project && *period == month)
+			.map(|(_, counters)| counters.active_documents)
+			.sum()
+	}
 }
 
 impl MemoryStore {
@@ -46,7 +71,85 @@ impl MemoryStore {
 	}
 
 	pub(super) fn create_project(&self, id: &ProjectId, name: &str) {
-		self.lock().projects.insert(id.clone(), name.to_owned());
+		let mut inner = self.lock();
+		inner.projects.insert(id.clone(), name.to_owned());
+		inner.terms.insert(id.clone(), Terms::of(Plan::Hobby));
+	}
+
+	pub(super) fn terms(&self, project: &ProjectId) -> Result<Terms, StoreError> {
+		self.lock()
+			.terms
+			.get(project)
+			.cloned()
+			.ok_or(StoreError::UnknownProject)
+	}
+
+	pub(super) fn set_terms(&self, project: &ProjectId, terms: &Terms) -> Result<(), StoreError> {
+		let mut inner = self.lock();
+		let current = inner
+			.terms
+			.get_mut(project)
+			.ok_or(StoreError::UnknownProject)?;
+		*current = terms.clone();
+		Ok(())
+	}
+
+	pub(super) fn admit(&self, key: &DocumentKey, month: Month) -> Result<Admit, StoreError> {
+		let mut inner = self.lock();
+		let terms = inner
+			.terms
+			.get(&key.project)
+			.cloned()
+			.ok_or(StoreError::UnknownProject)?;
+
+		if inner.active.contains(&(key.clone(), month)) {
+			return Ok(Admit {
+				admitted: true,
+				new: false,
+				active: None,
+				terms,
+			});
+		}
+
+		let active = inner.active_in(&key.project, month);
+
+		if terms.is_full(active) {
+			return Ok(Admit {
+				admitted: false,
+				new: false,
+				active: Some(active),
+				terms,
+			});
+		}
+
+		inner.active.insert((key.clone(), month));
+		inner
+			.usage
+			.entry((key.project.clone(), month, key.environment.clone()))
+			.or_default()
+			.active_documents += 1;
+
+		Ok(Admit {
+			admitted: true,
+			new: true,
+			active: Some(active + 1),
+			terms,
+		})
+	}
+
+	pub(super) fn usage(&self, project: &ProjectId, month: Month) -> Vec<UsageRow> {
+		self.lock()
+			.usage
+			.iter()
+			.filter(|((owner, period, _), _)| owner == project && *period == month)
+			.map(|((_, _, environment), counters)| {
+				UsageRow {
+					environment: environment.clone(),
+					active_documents: counters.active_documents,
+					conversions: counters.conversions,
+				}
+			})
+			.collect()
 	}
 
 	pub(super) fn project_exists(&self, id: &ProjectId) -> bool {

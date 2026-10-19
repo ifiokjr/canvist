@@ -24,23 +24,38 @@ curl -X POST http://localhost:8080/v1/admin/projects \
 
 ## Configuration
 
-| Variable                        | Default      | Meaning                                                                                        |
-| ------------------------------- | ------------ | ---------------------------------------------------------------------------------------------- |
-| `CANVIST_TOKEN_SECRET`          | required     | HMAC key for client tokens, at least 32 bytes. Rotating it signs everyone out.                 |
-| `DATABASE_URL`                  | memory       | Postgres connection string. Connections are unencrypted: use a private network or a TLS proxy. |
-| `CANVIST_ADMIN_TOKEN`           | off          | Bearer token for `/v1/admin`.                                                                  |
-| `HOST`, `PORT`                  | `::`, `8080` | Where to listen. `::` accepts IPv4 and IPv6.                                                   |
-| `CANVIST_ROLE`                  | `all`        | `all`, `sync`, or `convert`: which route groups this instance serves.                          |
-| `CANVIST_IDLE_EVICTION_SECONDS` | `60`         | How long a document with no connections stays in memory.                                       |
-| `CANVIST_FLUSH_INTERVAL_MS`     | `250`        | How often changes are written to Postgres.                                                     |
-| `CANVIST_COMPACT_AFTER_UPDATES` | `200`        | Update rows after which a document is folded into a snapshot.                                  |
-| `CANVIST_MAX_MESSAGE_BYTES`     | `1048576`    | The largest WebSocket message and REST body.                                                   |
-| `CANVIST_MAX_DOCUMENT_BYTES`    | `16777216`   | The largest document, as encoded Yjs state.                                                    |
-| `CANVIST_WEBHOOK_DEBOUNCE_MS`   | `2000`       | Quiet time before a `document.updated` webhook.                                                |
-| `CANVIST_WEBHOOK_MAX_WAIT_MS`   | `30000`      | The longest a webhook waits while changes keep coming.                                         |
-| `CANVIST_WEBHOOK_ALLOW_PRIVATE` | `false`      | Allow HTTP and private hosts as webhook targets, inside your network.                          |
-| `CANVIST_LOG_FORMAT`            | text         | `json` for structured logs.                                                                    |
-| `RUST_LOG`                      | `info`       | Log filter, such as `canvist_cloud=debug`.                                                     |
+| Variable                        | Default                   | Meaning                                                                                        |
+| ------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `CANVIST_TOKEN_SECRET`          | required                  | HMAC key for client tokens, at least 32 bytes. Rotating it signs everyone out.                 |
+| `DATABASE_URL`                  | memory                    | Postgres connection string. Connections are unencrypted: use a private network or a TLS proxy. |
+| `CANVIST_ADMIN_TOKEN`           | off                       | Bearer token for `/v1/admin`.                                                                  |
+| `HOST`, `PORT`                  | `::`, `8080`              | Where to listen. `::` accepts IPv4 and IPv6.                                                   |
+| `CANVIST_ROLE`                  | `all`                     | `all`, `sync`, or `convert`: which route groups this instance serves.                          |
+| `CANVIST_IDLE_EVICTION_SECONDS` | `60`                      | How long a document with no connections stays in memory.                                       |
+| `CANVIST_FLUSH_INTERVAL_MS`     | `250`                     | How often changes are written to Postgres.                                                     |
+| `CANVIST_COMPACT_AFTER_UPDATES` | `200`                     | Update rows after which a document is folded into a snapshot.                                  |
+| `CANVIST_MAX_MESSAGE_BYTES`     | `1048576`                 | The largest WebSocket message and REST body.                                                   |
+| `CANVIST_MAX_DOCUMENT_BYTES`    | `16777216`                | The largest document, as encoded Yjs state.                                                    |
+| `CANVIST_WEBHOOK_DEBOUNCE_MS`   | `2000`                    | Quiet time before a `document.updated` webhook.                                                |
+| `CANVIST_WEBHOOK_MAX_WAIT_MS`   | `30000`                   | The longest a webhook waits while changes keep coming.                                         |
+| `CANVIST_WEBHOOK_ALLOW_PRIVATE` | `false`                   | Allow HTTP and private hosts as webhook targets, inside your network.                          |
+| `CANVIST_PAUSE_RECHECK_SECONDS` | `30`                      | How often a session paused by a full free plan checks again.                                   |
+| `STRIPE_SECRET_KEY`             | off                       | A Stripe **test-mode** key (`sk_test_` or `rk_test_`); live keys are refused.                  |
+| `STRIPE_METER_EVENT`            | `canvist_active_document` | The Stripe Billing Meter event name.                                                           |
+| `CANVIST_LOG_FORMAT`            | text                      | `json` for structured logs.                                                                    |
+| `RUST_LOG`                      | `info`                    | Log filter, such as `canvist_cloud=debug`.                                                     |
+
+## Metering and Stripe
+
+Every project starts on the free `hobby` plan, capped at 1,000 monthly active documents. Self-hosters who want no caps set every project to `enterprise` with no included documents:
+
+```sh
+curl -X PUT http://localhost:8080/v1/admin/projects/$PROJECT/terms \
+	-H "Authorization: Bearer $CANVIST_ADMIN_TOKEN" -H "Content-Type: application/json" \
+	-d '{ "plan": "enterprise" }'
+```
+
+With `STRIPE_SECRET_KEY` set, each document that becomes active in a month on a project with a `stripe_customer` sends one [Billing Meter](https://docs.stripe.com/billing/subscriptions/usage-based/meters) event with value 1 and a deterministic identifier, so retries never double count. Create the meter in the Stripe dashboard (test mode) with the event name above, `sum` aggregation, and the customer mapped from `stripe_customer_id`, then attach a metered price to each paid plan's subscription.
 
 ## Durability
 

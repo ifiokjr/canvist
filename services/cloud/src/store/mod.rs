@@ -15,6 +15,8 @@ pub use postgres::PgStore;
 
 use crate::auth::KeyHash;
 use crate::auth::NewApiKey;
+use crate::metering::Month;
+use crate::metering::Terms;
 use crate::names::DocumentKey;
 use crate::names::DocumentName;
 use crate::names::Environment;
@@ -71,6 +73,31 @@ pub struct DocumentSummary {
 	pub name: DocumentName,
 	/// Update rows waiting for compaction.
 	pub pending_updates: i64,
+}
+
+/// The outcome of admitting a document for a month.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Admit {
+	/// Whether the document may sync. Only a full free plan refuses, and
+	/// only documents not yet active this month.
+	pub admitted: bool,
+	/// Whether this made the document active this month: a new MAD.
+	pub new: bool,
+	/// The project's active documents this month, when it was counted.
+	pub active: Option<u64>,
+	/// The project's billing terms.
+	pub terms: Terms,
+}
+
+/// One environment's usage in a month.
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct UsageRow {
+	/// The environment.
+	pub environment: Environment,
+	/// Documents active this month.
+	pub active_documents: u64,
+	/// Conversions run this month.
+	pub conversions: u64,
 }
 
 /// The durable store.
@@ -170,6 +197,43 @@ impl Store {
 		match self {
 			Self::Memory(store) => Ok(store.webhook(project, environment)),
 			Self::Postgres(store) => store.webhook(project, environment).await,
+		}
+	}
+
+	/// Count `key` as active in `month` unless its project's free plan is
+	/// full. Documents already active this month are always admitted.
+	pub async fn admit(&self, key: &DocumentKey, month: Month) -> Result<Admit, StoreError> {
+		match self {
+			Self::Memory(store) => store.admit(key, month),
+			Self::Postgres(store) => store.admit(key, month).await,
+		}
+	}
+
+	/// `project`'s billing terms.
+	pub async fn terms(&self, project: &ProjectId) -> Result<Terms, StoreError> {
+		match self {
+			Self::Memory(store) => store.terms(project),
+			Self::Postgres(store) => store.terms(project).await,
+		}
+	}
+
+	/// Replace `project`'s billing terms.
+	pub async fn set_terms(&self, project: &ProjectId, terms: &Terms) -> Result<(), StoreError> {
+		match self {
+			Self::Memory(store) => store.set_terms(project, terms),
+			Self::Postgres(store) => store.set_terms(project, terms).await,
+		}
+	}
+
+	/// `project`'s usage in `month`, per environment.
+	pub async fn usage(
+		&self,
+		project: &ProjectId,
+		month: Month,
+	) -> Result<Vec<UsageRow>, StoreError> {
+		match self {
+			Self::Memory(store) => Ok(store.usage(project, month)),
+			Self::Postgres(store) => store.usage(project, month).await,
 		}
 	}
 

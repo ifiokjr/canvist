@@ -18,9 +18,12 @@ use axum::http::HeaderMap;
 use axum::http::header::AUTHORIZATION;
 use axum::response::Response;
 use futures_util::StreamExt;
+use futures_util::stream::SplitStream;
 use serde::Deserialize;
 use tokio::sync::broadcast::error::RecvError;
+use tokio::sync::watch;
 
+use super::protocol;
 use super::room::Fanout;
 use super::session::Reply;
 use super::session::Session;
@@ -34,6 +37,7 @@ use crate::auth::AuthError;
 use crate::auth::Principal;
 use crate::auth::Scope;
 use crate::error::ApiError;
+use crate::metering::Admission;
 use crate::names::DocumentKey;
 use crate::names::DocumentName;
 
@@ -93,8 +97,15 @@ async fn run(
 	scope: Scope,
 ) {
 	let _alive = app.alive();
-	let (mut sink, stream) = socket.split();
-
+	let (mut sink, mut stream) = socket.split();
+	let mut shutdown = app.shutdown();
+	let paused = match wait_for_admission(&app, &key, &mut sink, &mut stream, &mut shutdown).await {
+		Ok(paused) => paused,
+		Err(end) => {
+			end.close(&mut sink).await;
+			return;
+		}
+	};
 	let joined = app.rooms.join(&key).await;
 	let Ok((room, membership)) = joined.inspect_err(|error| {
 		tracing::error!(document = %key, %error, "could not load document");
@@ -115,8 +126,77 @@ async fn run(
 		liveness: Liveness::default(),
 	};
 	connection
-		.serve(stream, membership.receiver, app.shutdown())
+		.serve(stream, membership.receiver, shutdown, paused)
 		.await;
+}
+
+/// What a paused client is told, once. y-websocket logs it as a warning.
+const PAUSED: &str = "canvist: this project's free plan has reached its monthly active document \
+                      limit; this document will sync once the limit resets or the plan is upgraded";
+
+/// Hold a session on a new document while its project's free plan is
+/// full. The socket stays open and alive, so the client keeps editing
+/// locally, and admission is checked again every
+/// [`pause_recheck`](crate::config::SyncConfig::pause_recheck). Returns
+/// whether the session was paused.
+async fn wait_for_admission(
+	app: &SharedApp,
+	key: &DocumentKey,
+	sink: &mut Sink,
+	stream: &mut SplitStream<WebSocket>,
+	shutdown: &mut watch::Receiver<bool>,
+) -> Result<bool, End> {
+	let mut paused = false;
+
+	loop {
+		match app.admit(key).await {
+			Ok(Admission::Admitted) => return Ok(paused),
+			Ok(Admission::Paused) => {}
+			Err(error) => {
+				tracing::error!(document = %key, %error, "could not check usage");
+				return Err(End::Close(codes::INTERNAL, "could not check usage"));
+			}
+		}
+
+		if !paused {
+			paused = true;
+			send_or_gone(sink, protocol::permission_denied(PAUSED)).await?;
+		}
+
+		hold(sink, stream, shutdown, app.config.sync.pause_recheck).await?;
+	}
+}
+
+/// Keep a paused socket alive for `duration`, dropping what it sends.
+async fn hold(
+	sink: &mut Sink,
+	stream: &mut SplitStream<WebSocket>,
+	shutdown: &mut watch::Receiver<bool>,
+	duration: std::time::Duration,
+) -> Result<(), End> {
+	let deadline = tokio::time::sleep(duration);
+	tokio::pin!(deadline);
+	let mut keepalive = tokio::time::interval(socket::KEEPALIVE_INTERVAL);
+
+	loop {
+		tokio::select! {
+			() = &mut deadline => return Ok(()),
+			_ = keepalive.tick() => send_or_gone(sink, protocol::keepalive()).await?,
+			frame = stream.next() => {
+				if matches!(frame, Some(Ok(Message::Close(_)) | Err(_)) | None) {
+					return Err(End::Gone);
+				}
+			}
+			_ = shutdown.changed() => return Err(End::Close(codes::RESTART, "server restarting")),
+		}
+	}
+}
+
+async fn send_or_gone(sink: &mut Sink, message: Vec<u8>) -> Result<(), End> {
+	socket::send(sink, message)
+		.await
+		.then_some(())
+		.ok_or(End::Gone)
 }
 
 struct Connection {
@@ -131,29 +211,44 @@ enum End {
 	Close(u16, &'static str),
 }
 
+impl End {
+	async fn close(self, sink: &mut Sink) {
+		if let Self::Close(code, reason) = self {
+			socket::close(sink, code, reason).await;
+		}
+	}
+}
+
 impl Connection {
 	/// Greet the peer, then relay until it leaves, the room closes, or the
 	/// server shuts down; leave the room whichever way it ends.
 	async fn serve(
 		mut self,
-		stream: futures_util::stream::SplitStream<WebSocket>,
+		stream: SplitStream<WebSocket>,
 		fanout: tokio::sync::broadcast::Receiver<Fanout>,
-		shutdown: tokio::sync::watch::Receiver<bool>,
+		shutdown: watch::Receiver<bool>,
+		paused: bool,
 	) {
-		let end = match self.greet().await {
+		let end = match self.greet(paused).await {
 			Ok(()) => self.relay(stream, fanout, shutdown).await,
 			Err(end) => end,
 		};
 
-		if let End::Close(code, reason) = end {
-			socket::close(&mut self.sink, code, reason).await;
-		}
-
+		end.close(&mut self.sink).await;
 		self.session.leave();
 	}
 
-	async fn greet(&mut self) -> Result<(), End> {
-		for message in self.session.greeting() {
+	/// Send the room's state vector and presence. A session that was paused
+	/// also gets the whole document, because the client's own step 1 was
+	/// dropped while it waited.
+	async fn greet(&mut self, paused: bool) -> Result<(), End> {
+		let mut greeting = self.session.greeting();
+
+		if paused {
+			greeting.push(self.session.room().step2(&yrs::StateVector::default()));
+		}
+
+		for message in greeting {
 			socket::send(&mut self.sink, message)
 				.await
 				.then_some(())
@@ -165,9 +260,9 @@ impl Connection {
 
 	async fn relay(
 		&mut self,
-		mut stream: futures_util::stream::SplitStream<WebSocket>,
+		mut stream: SplitStream<WebSocket>,
 		mut fanout: tokio::sync::broadcast::Receiver<Fanout>,
-		mut shutdown: tokio::sync::watch::Receiver<bool>,
+		mut shutdown: watch::Receiver<bool>,
 	) -> End {
 		let mut ping = tokio::time::interval(socket::PING_INTERVAL);
 		ping.tick().await;
