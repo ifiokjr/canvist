@@ -84,8 +84,12 @@ async function screenshotCanvas(
 /**
  * Analyse a canvas element screenshot by reading the PNG buffer from Playwright.
  * This avoids DPR-scaling issues with `ctx.getImageData()`.
+ *
+ * With `showCaret`, the caret is forced on and the canvas re-rendered in the
+ * same synchronous task that reads the pixels, so the demo's 530 ms blink
+ * timer can never hide the caret between rendering and sampling.
  */
-async function canvasPixelStats(page: any): Promise<{
+async function canvasPixelStats(page: any, showCaret = false): Promise<{
 	totalPixels: number;
 	nonWhitePixels: number;
 	nonWhitePercent: number;
@@ -94,7 +98,12 @@ async function canvasPixelStats(page: any): Promise<{
 }> {
 	// Create a temporary off-screen canvas at the logical (CSS) size,
 	// draw the editor canvas onto it at 1:1, then read pixels.
-	return page.evaluate(() => {
+	return page.evaluate((showCaret: boolean) => {
+		if (showCaret) {
+			const editor = (window as any).__canvistEditor;
+			editor?.set_caret_visible(true);
+			editor?.render();
+		}
 		const src = document.getElementById("editor-canvas") as HTMLCanvasElement;
 		// Use CSS dimensions (logical pixels) for analysis.
 		const rect = src.getBoundingClientRect();
@@ -132,7 +141,7 @@ async function canvasPixelStats(page: any): Promise<{
 			hasBlackPixels: hasBlack,
 			hasBluePixels: hasBlue,
 		};
-	});
+	}, showCaret);
 }
 
 // Determine which browsers to test.
@@ -165,7 +174,7 @@ for (const browserName of browsers) {
 					await page.waitForTimeout(100);
 
 					const path = await screenshotCanvas(page, "empty", browserName);
-					const stats = await canvasPixelStats(page);
+					const stats = await canvasPixelStats(page, true);
 
 					// An empty editor should be mostly white with just a caret line.
 					assert(
