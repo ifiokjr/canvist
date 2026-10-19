@@ -1,8 +1,12 @@
 /**
- * canvist Cloud's billing catalog in Stripe: the meters, products, and
- * prices `setup.ts` creates. Prices follow the provisional plans in
- * `docs/src/v2/business.md`; amounts are in US cents.
+ * canvist Cloud's billing catalog in Stripe: the meters, products, prices,
+ * Customer Portal configuration, and webhook events `setup.ts` creates.
+ * Prices follow the provisional plans in `docs/src/v2/business.md`; amounts
+ * are in US cents. Hobby is free and has no Stripe objects.
  */
+
+/** The API version the setup script and the server both pin. */
+export const API_VERSION = "2026-08-26.dahlia";
 
 /** A Billing Meter, matched by its event name. */
 export type MeterSpec = {
@@ -15,9 +19,11 @@ export type ProductSpec = {
 	key: string;
 	name: string;
 	description: string;
+	/** Stripe Tax product tax code. */
+	taxCode: string;
 };
 
-/** A price, matched by its lookup key. */
+/** A price, matched by its lookup key. Every price is tax-exclusive. */
 export type PriceSpec = {
 	lookupKey: string;
 	product: string;
@@ -33,6 +39,7 @@ export type PriceSpec = {
 
 /** What the server reports as `STRIPE_METER_EVENT`. */
 export const ACTIVE_DOCUMENT_METER = "canvist_active_document";
+/** What the server reports as `STRIPE_CONVERSION_METER_EVENT`. */
 export const CONVERSION_METER = "canvist_conversion";
 
 export const METERS: MeterSpec[] = [
@@ -43,33 +50,37 @@ export const METERS: MeterSpec[] = [
 	{ eventName: CONVERSION_METER, displayName: "canvist conversions" },
 ];
 
+/**
+ * Software as a service, business use: the code Stripe's guidance names for
+ * SaaS sold to businesses. Pending the owner's confirmation against
+ * https://docs.stripe.com/tax/tax-codes before taxes are switched on.
+ */
+const SAAS_BUSINESS_USE = "txcd_10103001";
+
 export const PRODUCTS: ProductSpec[] = [
 	{
 		key: "sync",
 		name: "canvist Sync",
 		description: "Real-time collaboration, billed per monthly active document.",
+		taxCode: SAAS_BUSINESS_USE,
 	},
 	{
 		key: "convert",
 		name: "canvist Convert",
 		description: "Document conversion between JSON, HTML, Markdown, and text.",
+		taxCode: SAAS_BUSINESS_USE,
 	},
 	{
 		key: "history",
 		name: "canvist History",
 		description: "Snapshots, named versions, diff, and restore.",
+		taxCode: SAAS_BUSINESS_USE,
 	},
 ];
 
 const MONTHLY_DOCUMENTS = { builder: 10_000, scale: 150_000 };
 
 export const PRICES: PriceSpec[] = [
-	{
-		lookupKey: "canvist_hobby_monthly",
-		product: "sync",
-		nickname: "Hobby",
-		licensed: { unitAmount: 0, interval: "month" },
-	},
 	{
 		lookupKey: "canvist_builder_monthly",
 		product: "sync",
@@ -128,9 +139,49 @@ export const PRICES: PriceSpec[] = [
 	},
 ];
 
+/**
+ * The Customer Portal configuration, matched by `metadata.canvist_key`.
+ * Plan switches stay off: the portal cannot update subscriptions with
+ * metered prices, so `POST /v1/billing/plan` does them instead.
+ */
+export const PORTAL = {
+	key: "portal",
+	params: {
+		business_profile: { headline: "canvist Cloud billing" },
+		features: {
+			customer_update: {
+				enabled: true,
+				allowed_updates: ["email", "address", "name", "tax_id"],
+			},
+			invoice_history: { enabled: true },
+			payment_method_update: { enabled: true },
+			subscription_cancel: {
+				enabled: true,
+				mode: "at_period_end",
+				cancellation_reason: {
+					enabled: true,
+					options: [
+						"too_expensive",
+						"missing_features",
+						"switched_service",
+						"unused",
+						"other",
+					],
+				},
+			},
+			subscription_update: { enabled: false },
+		},
+	},
+};
+
 /** The events `POST /v1/stripe/webhook` acts on. */
 export const WEBHOOK_EVENTS = [
+	"checkout.session.completed",
 	"customer.subscription.created",
 	"customer.subscription.updated",
 	"customer.subscription.deleted",
+	"customer.subscription.paused",
+	"customer.subscription.resumed",
+	"invoice.paid",
+	"invoice.payment_failed",
 ];

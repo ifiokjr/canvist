@@ -1,5 +1,5 @@
 //! Monthly active documents: counting them, capping free plans, and
-//! reporting paid usage to Stripe.
+//! billing paid usage through Stripe.
 //!
 //! A document is **active** in a month once a sync session opens it or the
 //! REST API writes it. Each project's active documents are counted per
@@ -10,8 +10,9 @@
 //! nothing syncs until the next month or an upgrade. Documents already
 //! active keep working. Paid plans never pause; going past the included
 //! documents is logged, shown by the usage endpoint, and billed through
-//! Stripe.
+//! Stripe by [`stripe::UsageReporter`].
 
+pub mod billing;
 mod plan;
 pub mod stripe;
 pub mod stripe_webhook;
@@ -19,9 +20,11 @@ pub mod stripe_webhook;
 pub use plan::InvalidMonth;
 pub use plan::Month;
 pub use plan::Plan;
+pub use plan::Subscription;
+pub use plan::SubscriptionStatus;
 pub use plan::Terms;
 pub use plan::UnknownPlan;
-use stripe::StripeMeter;
+pub use plan::UnknownStatus;
 
 use crate::names::DocumentKey;
 use crate::store::Admit;
@@ -37,20 +40,20 @@ pub enum Admission {
 	Paused,
 }
 
-/// Counts documents and enforces caps.
+/// Counts documents and enforces caps. A new document on a paid plan is
+/// stored with its Stripe customer, for the reporter to send.
 #[derive(Clone, Debug)]
 pub struct Meter {
 	store: Store,
-	stripe: Option<StripeMeter>,
 }
 
 /// Share of the included documents at which usage reports a warning.
 const WARN_AT_PERCENT: u64 = 80;
 
 impl Meter {
-	/// A meter over `store`, reporting to Stripe when `stripe` is set.
-	pub fn new(store: Store, stripe: Option<StripeMeter>) -> Self {
-		Self { store, stripe }
+	/// A meter over `store`.
+	pub fn new(store: Store) -> Self {
+		Self { store }
 	}
 
 	/// Admit `key` for `month`.
@@ -58,7 +61,7 @@ impl Meter {
 		let admit = self.store.admit(key, month).await?;
 
 		if admit.new {
-			self.counted(key, month, &admit);
+			warn_over_plan(key, month, &admit);
 		}
 
 		if admit.admitted {
@@ -68,19 +71,13 @@ impl Meter {
 			Ok(Admission::Paused)
 		}
 	}
+}
 
-	fn counted(&self, key: &DocumentKey, month: Month, admit: &Admit) {
-		let included = admit.terms.included_documents;
-
-		if let (Some(active), Some(included)) = (admit.active, included)
-			&& active > included
-		{
-			tracing::warn!(project = %key.project, %month, active, included, "over the plan's included documents");
-		}
-
-		if let (Some(stripe), Some(customer)) = (&self.stripe, &admit.terms.stripe_customer) {
-			stripe.record(customer, key, month);
-		}
+fn warn_over_plan(key: &DocumentKey, month: Month, admit: &Admit) {
+	if let (Some(active), Some(included)) = (admit.active, admit.terms.included_documents)
+		&& active > included
+	{
+		tracing::warn!(project = %key.project, %month, active, included, "over the plan's included documents");
 	}
 }
 

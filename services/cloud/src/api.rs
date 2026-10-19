@@ -34,6 +34,9 @@ use crate::metering::Month;
 use crate::metering::Plan;
 use crate::metering::Standing;
 use crate::metering::Terms;
+use crate::metering::billing;
+use crate::metering::billing::BillingError;
+use crate::metering::stripe::StripeClient;
 use crate::metering::stripe_webhook;
 use crate::names::DocumentKey;
 use crate::names::DocumentName;
@@ -63,7 +66,10 @@ pub fn router(app: SharedApp) -> Router {
 		.route("/v1/admin/stats", get(stats))
 		.route("/v1/admin/projects/{project}/terms", put(set_terms))
 		.route("/v1/usage", get(usage))
-		.route("/v1/stripe/webhook", post(stripe_webhook));
+		.route("/v1/stripe/webhook", post(stripe_webhook))
+		.route("/v1/billing/checkout", post(checkout))
+		.route("/v1/billing/portal", post(billing_portal))
+		.route("/v1/billing/plan", post(change_plan));
 
 	if app.config.role.serves_sync() {
 		router = router.merge(sync_routes().layer(body_limit(max_body)));
@@ -456,20 +462,25 @@ async fn usage(
 		"included_documents": terms.included_documents,
 		"active_documents": active,
 		"standing": Standing::of(&terms, active),
+		// `past_due` means a payment failed and Stripe is retrying it: the
+		// plan still applies, but the app should ask for a new card.
+		"subscription_status": terms.subscription.map(|subscription| subscription.status),
 		"environments": environments,
 	})))
 }
 
-/// `POST /v1/stripe/webhook`: Stripe's subscription events set project
-/// plans. Off (`404`) without `STRIPE_WEBHOOK_SECRET`. Events for unknown
-/// projects or prices are acknowledged and ignored, so Stripe does not
-/// retry them.
+/// `POST /v1/stripe/webhook`: subscription, checkout, and invoice events.
+/// Each names a subscription, which is retrieved from Stripe and applied as
+/// it is now, so out-of-order and repeated events are harmless. Off (`404`)
+/// without `STRIPE_WEBHOOK_SECRET` and `STRIPE_SECRET_KEY`. Events for other
+/// products or unknown projects are acknowledged and ignored, so Stripe
+/// does not retry them; a Stripe or store failure answers `503` so it does.
 async fn stripe_webhook(
 	State(app): State<SharedApp>,
 	headers: HeaderMap,
 	body: Bytes,
 ) -> Result<Json<JsonValue>, ApiError> {
-	let Some(secret) = &app.config.stripe_webhook_secret else {
+	let (Some(secret), Some(stripe)) = (&app.config.stripe_webhook_secret, &app.stripe) else {
 		return Err(ApiError::not_found("Stripe webhooks are not configured"));
 	};
 	let signature = headers
@@ -480,21 +491,88 @@ async fn stripe_webhook(
 		.map_err(|error| ApiError::bad_request(error.to_string()))?;
 	let event: JsonValue = serde_json::from_slice(&body)
 		.map_err(|_| ApiError::bad_request(stripe_webhook::WebhookError::Payload.to_string()))?;
-	let Some(change) = stripe_webhook::plan_change(&event) else {
+	let Some(subscription) = stripe_webhook::subscription_id(&event) else {
 		return Ok(Json(json!({ "handled": false })));
 	};
 
-	match app.store.set_terms(&change.project, &change.terms).await {
-		Ok(()) => {
-			tracing::info!(project = %change.project, plan = change.terms.plan.as_str(), "plan changed by Stripe");
-			Ok(Json(json!({ "handled": true })))
-		}
-		Err(crate::store::StoreError::UnknownProject) => {
-			tracing::warn!(project = %change.project, "Stripe subscription for an unknown project");
-			Ok(Json(json!({ "handled": false })))
-		}
-		Err(error) => Err(error.into()),
+	if event.get("type").and_then(JsonValue::as_str) == Some("invoice.payment_failed") {
+		tracing::warn!(
+			subscription,
+			"a subscription payment failed; Stripe is retrying it"
+		);
 	}
+
+	let applied = billing::sync_subscription(stripe, &app.store, subscription).await?;
+
+	Ok(Json(json!({ "handled": applied.is_some() })))
+}
+
+/// The configured Stripe client, or `404` where billing is off.
+fn stripe(app: &App) -> Result<&StripeClient, ApiError> {
+	app.stripe
+		.as_ref()
+		.ok_or_else(|| BillingError::NotConfigured.into())
+}
+
+#[derive(Debug, Serialize)]
+struct UrlResponse {
+	url: String,
+}
+
+/// `POST /v1/billing/checkout`: a Checkout Session for a monthly Builder or
+/// Scale subscription. API keys only.
+async fn checkout(
+	State(app): State<SharedApp>,
+	headers: HeaderMap,
+	Json(request): Json<billing::CheckoutRequest>,
+) -> Result<Json<UrlResponse>, ApiError> {
+	let principal = app.server_principal(&headers).await?;
+	let url = billing::checkout(stripe(&app)?, &app.store, &principal.project, &request).await?;
+	Ok(Json(UrlResponse { url }))
+}
+
+#[derive(Debug, Deserialize)]
+struct PortalRequest {
+	return_url: String,
+}
+
+/// `POST /v1/billing/portal`: a Customer Portal session for the project's
+/// payment methods, invoices, billing details, and cancellation. API keys
+/// only.
+async fn billing_portal(
+	State(app): State<SharedApp>,
+	headers: HeaderMap,
+	Json(request): Json<PortalRequest>,
+) -> Result<Json<UrlResponse>, ApiError> {
+	let principal = app.server_principal(&headers).await?;
+	let url = billing::portal(
+		stripe(&app)?,
+		&app.store,
+		&principal.project,
+		&request.return_url,
+	)
+	.await?;
+	Ok(Json(UrlResponse { url }))
+}
+
+#[derive(Debug, Deserialize)]
+struct PlanRequest {
+	plan: Plan,
+}
+
+/// `POST /v1/billing/plan`: switch a paid subscription between Builder and
+/// Scale. API keys only.
+async fn change_plan(
+	State(app): State<SharedApp>,
+	headers: HeaderMap,
+	Json(request): Json<PlanRequest>,
+) -> Result<Json<JsonValue>, ApiError> {
+	let principal = app.server_principal(&headers).await?;
+	let terms =
+		billing::change_plan(stripe(&app)?, &app.store, &principal.project, request.plan).await?;
+	Ok(Json(
+		json!({ "project": principal.project, "terms": terms }),
+	))
 }
 
 #[derive(Debug, Deserialize)]
@@ -513,12 +591,14 @@ async fn set_terms(
 ) -> Result<Json<JsonValue>, ApiError> {
 	app.authorize_admin(&headers)?;
 	let project = crate::names::ProjectId::new(project);
+	let current = app.store.terms(&project).await?;
 	let terms = Terms {
 		plan: request.plan,
 		included_documents: request
 			.included_documents
 			.or_else(|| request.plan.included_documents()),
 		stripe_customer: request.stripe_customer,
+		subscription: current.subscription,
 	};
 	app.store.set_terms(&project, &terms).await?;
 

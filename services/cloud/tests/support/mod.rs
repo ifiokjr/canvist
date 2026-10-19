@@ -3,6 +3,7 @@
 #![allow(dead_code, reason = "each test binary uses a different subset")]
 
 pub mod deno;
+pub mod stripe;
 
 use std::net::SocketAddr;
 use std::time::Duration;
@@ -43,6 +44,42 @@ pub async fn store() -> Store {
 				.expect("the test database is reachable")
 		}
 		_ => Store::memory(),
+	}
+}
+
+/// A database no other test shares: a fresh schema in
+/// `CANVIST_TEST_DATABASE_URL`, or `None` to run in memory. Billing tests
+/// need one, because a server with Stripe reports the whole database's usage
+/// and nextest runs every test in its own process at once.
+pub async fn isolated_database() -> Option<String> {
+	let url = std::env::var("CANVIST_TEST_DATABASE_URL")
+		.ok()
+		.filter(|url| !url.is_empty())?;
+	let schema = format!("test_{}", canvist_cloud::names::random_token(16));
+	let (client, connection) = tokio_postgres::connect(&url, tokio_postgres::NoTls)
+		.await
+		.expect("the test database is reachable");
+	tokio::spawn(connection);
+	client
+		.batch_execute(&format!("CREATE SCHEMA {schema}"))
+		.await
+		.expect("creates a schema");
+	let separator = if url.contains('?') { '&' } else { '?' };
+
+	Some(format!(
+		"{url}{separator}options=-c%20search_path%3D{schema}"
+	))
+}
+
+/// The store over `database`, or a fresh in-memory one.
+pub async fn store_at(database: Option<&str>) -> Store {
+	match database {
+		Some(url) => {
+			Store::postgres(url)
+				.await
+				.expect("the test database is reachable")
+		}
+		None => Store::memory(),
 	}
 }
 
@@ -87,12 +124,17 @@ impl Fixture {
 	/// A Postgres store reconnects from scratch; a memory store is reused,
 	/// standing in for the database.
 	pub async fn restart(self, config: Config) -> Self {
-		let report = self.server.shutdown().await;
-		assert_eq!(report.persist_failures, 0);
 		let store = match &self.store {
 			Store::Memory(_) => self.store.clone(),
 			Store::Postgres(_) => store().await,
 		};
+		self.restart_with(config, store).await
+	}
+
+	/// Restart the server over `store`, which holds the same data.
+	pub async fn restart_with(self, config: Config, store: Store) -> Self {
+		let report = self.server.shutdown().await;
+		assert_eq!(report.persist_failures, 0);
 		let server = Server::start_with_store(config, store.clone())
 			.await
 			.expect("server restarts");

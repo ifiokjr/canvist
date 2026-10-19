@@ -129,6 +129,7 @@ A document is **active** in a month (UTC) once a sync session opens it or `POST 
 	"included_documents": 1000,
 	"active_documents": 812,
 	"standing": "approaching",
+	"subscription_status": null,
 	"environments": [
 		{ "environment": "production", "active_documents": 812, "conversions": 0 }
 	]
@@ -140,6 +141,17 @@ A document is **active** in a month (UTC) once a sync session opens it or `POST 
 **The free plan has a hard cap that never breaks a client.** When it is full, a session on a document that is not yet active this month is **paused**: the socket stays open and alive, the client keeps editing locally, and nothing syncs. Every document already active this month keeps working. A paused session checks again every 30 seconds and syncs on its own once the project is upgraded or the month turns, sending what was written while it waited. y-websocket clients log a permission warning when they are paused; Hocuspocus clients authenticate normally and receive a `stateless` message `{ "type": "canvist.paused", "reason": "document_limit" }`. A REST write to a new document on a full free plan gets `429` with code `document_limit_reached`.
 
 **Paid plans never pause.** Past the included documents, usage reports `over` and the overage is billed.
+
+`subscription_status` is the Stripe subscription's status, or `null` for a project that never subscribed. `past_due` means a payment failed and Stripe is retrying it: the plan still applies, and the app should ask for a new card.
+
+## Billing
+
+These need an API key and a server with Stripe configured (`404` otherwise). See [billing](./billing.md) for the whole flow.
+
+- `POST /v1/billing/checkout` with `{ "plan": "builder", "success_url": "https://…", "cancel_url": "https://…" }` returns `{ "url" }`, a Stripe Checkout page for a monthly Builder or Scale subscription. The subscription bills on the first of each month; the first partial month's base fee is prorated. A project that already pays gets `409` with code `already_subscribed`.
+- `POST /v1/billing/plan` with `{ "plan": "scale" }` switches a paid subscription between Builder and Scale and returns the new terms. The base fee is prorated. Usage before the switch is billed at the old plan's rates, and the new plan's tiers, included documents and all, start from the switch. A project without a paid subscription gets `409` with code `not_subscribed`.
+- `POST /v1/billing/portal` with `{ "return_url": "https://…" }` returns `{ "url" }`, a Stripe Customer Portal session for payment methods, invoices, billing details, tax IDs, and cancelling at the end of the period. A project that never subscribed gets `409` with code `no_customer`.
+- `POST /v1/stripe/webhook` receives Stripe's subscription, checkout, and invoice events, signed with `STRIPE_WEBHOOK_SECRET`.
 
 ## Webhooks
 
@@ -168,8 +180,7 @@ With `Authorization: Bearer $CANVIST_ADMIN_TOKEN`:
 
 - `POST /v1/admin/projects` with `{ "name": "acme", "environments": ["production", "staging"] }` creates a project and returns one API key per environment. Keys are shown once.
 - `POST /v1/admin/projects/{project}/keys` with `{ "environment": "staging" }` adds a key.
-- `PUT /v1/admin/projects/{project}/terms` with `{ "plan": "builder", "included_documents": 20000, "stripe_customer": "cus_…" }` changes a project's plan (`hobby`, `builder`, `scale`, or `enterprise`). `included_documents` overrides the plan's default; `stripe_customer` turns on metered billing.
-- `POST /v1/stripe/webhook` receives Stripe's subscription events (signed with `STRIPE_WEBHOOK_SECRET`) and sets the plan of the project in `metadata.canvist_project`. See [billing](./billing.md).
+- `PUT /v1/admin/projects/{project}/terms` with `{ "plan": "builder", "included_documents": 20000, "stripe_customer": "cus_…" }` changes a project's plan (`hobby`, `builder`, `scale`, or `enterprise`). `included_documents` overrides the plan's default; `stripe_customer` on a paid plan turns on metered billing. Self-serve projects never need this: Stripe's webhooks set their terms.
 - `GET /v1/admin/stats` returns loaded documents and connected peers.
 
 ## Health

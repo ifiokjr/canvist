@@ -7,6 +7,8 @@ use axum::response::Response;
 use serde_json::json;
 
 use crate::auth::AuthError;
+use crate::metering::billing::BillingError;
+use crate::metering::stripe::StripeError;
 use crate::names::NameError;
 use crate::store::StoreError;
 
@@ -83,5 +85,41 @@ impl From<StoreError> for ApiError {
 			"store_unavailable",
 			"the document store is unavailable; retry shortly",
 		)
+	}
+}
+
+impl From<BillingError> for ApiError {
+	fn from(error: BillingError) -> Self {
+		let message = error.to_string();
+
+		match error {
+			BillingError::NotConfigured => {
+				Self::new(StatusCode::NOT_FOUND, "billing_not_configured", message)
+			}
+			BillingError::AlreadySubscribed => {
+				Self::new(StatusCode::CONFLICT, "already_subscribed", message)
+			}
+			BillingError::NotSubscribed => {
+				Self::new(StatusCode::CONFLICT, "not_subscribed", message)
+			}
+			BillingError::NoCustomer => Self::new(StatusCode::CONFLICT, "no_customer", message),
+			BillingError::NotSelfServe => Self::bad_request(message),
+			// Stripe refused what the caller sent, such as a malformed URL.
+			BillingError::Stripe(StripeError::Api { status: 400, .. }) => {
+				Self::new(StatusCode::BAD_REQUEST, "stripe_rejected", message)
+			}
+			BillingError::Store(error) => error.into(),
+			BillingError::MissingPrice(_)
+			| BillingError::MissingPortal
+			| BillingError::Malformed(_)
+			| BillingError::Stripe(_) => {
+				tracing::error!(%message, "billing failed");
+				Self::new(
+					StatusCode::SERVICE_UNAVAILABLE,
+					"billing_unavailable",
+					"billing is unavailable; retry shortly",
+				)
+			}
+		}
 	}
 }

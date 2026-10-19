@@ -1,14 +1,11 @@
 //! Monthly active documents: counting, free-plan caps that pause without
-//! breaking clients, and Stripe meter events.
+//! breaking clients. Stripe billing is tested in `billing.rs`.
 
 mod support;
 
 use std::time::Duration;
 
-use axum::http::HeaderMap;
 use canvist_cloud::auth::Scope;
-use canvist_cloud::config::Secret;
-use canvist_cloud::config::StripeConfig;
 use canvist_cloud::metering::Plan;
 use canvist_cloud::metering::Terms;
 use serde_json::Value as Json;
@@ -16,7 +13,6 @@ use serde_json::json;
 use support::Fixture;
 use support::deno::Client;
 use support::deno::Transport;
-use tokio::sync::mpsc;
 
 /// A free plan capped at `cap` documents, rechecking paused sessions fast.
 async fn capped(cap: u64) -> Fixture {
@@ -247,192 +243,4 @@ async fn usage_counts_each_document_once_a_month() {
 		.await
 		.expect("responds");
 	assert_eq!(invalid.status(), 400);
-}
-
-/// A stand-in for Stripe that records meter event forms.
-async fn fake_stripe() -> (String, mpsc::UnboundedReceiver<(HeaderMap, String)>) {
-	let (sender, receiver) = mpsc::unbounded_channel();
-	let app = axum::Router::new().route(
-		"/v1/billing/meter_events",
-		axum::routing::post(move |headers: HeaderMap, body: String| {
-			let sender = sender.clone();
-			async move {
-				let _ = sender.send((headers, body));
-				axum::Json(json!({ "object": "billing.meter_event" }))
-			}
-		}),
-	);
-	let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-		.await
-		.expect("binds");
-	let url = format!("http://{}", listener.local_addr().expect("addr"));
-	tokio::spawn(async move { axum::serve(listener, app).await });
-	(url, receiver)
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn new_paid_documents_send_one_stripe_meter_event_each() {
-	let (stripe, mut events) = fake_stripe().await;
-	let mut config = support::config();
-	config.stripe = Some(StripeConfig {
-		secret_key: Secret::new("sk_test_canvist"),
-		meter_event: "canvist_active_document".to_owned(),
-		api_base: stripe,
-	});
-	let fixture = Fixture::start_with(config, support::store().await).await;
-	let terms = Terms {
-		stripe_customer: Some("cus_test123".to_owned()),
-		..Terms::of(Plan::Builder)
-	};
-	fixture
-		.store
-		.set_terms(&fixture.project, &terms)
-		.await
-		.expect("sets terms");
-	let api = fixture.api();
-
-	for name in ["a", "b", "a"] {
-		api.post(&format!("/v1/documents/{name}"))
-			.body(paragraph(1))
-			.send()
-			.await
-			.expect("posts");
-	}
-
-	let mut identifiers = Vec::new();
-
-	for _ in 0..2 {
-		let (headers, form) = tokio::time::timeout(Duration::from_secs(5), events.recv())
-			.await
-			.expect("an event arrives")
-			.expect("open");
-		assert_eq!(headers["authorization"], "Bearer sk_test_canvist");
-		let fields: Vec<(String, String)> = form
-			.split('&')
-			.filter_map(|pair| pair.split_once('='))
-			.map(|(key, value)| (decode(key), decode(value)))
-			.collect();
-		let field = |name: &str| {
-			fields
-				.iter()
-				.find(|(key, _)| key == name)
-				.map(|(_, value)| value.clone())
-		};
-		assert_eq!(
-			field("event_name").as_deref(),
-			Some("canvist_active_document")
-		);
-		assert_eq!(
-			field("payload[stripe_customer_id]").as_deref(),
-			Some("cus_test123")
-		);
-		assert_eq!(field("payload[value]").as_deref(), Some("1"));
-		identifiers.push(field("identifier").expect("an identifier"));
-	}
-
-	assert_ne!(identifiers[0], identifiers[1]);
-	tokio::time::sleep(Duration::from_millis(300)).await;
-	assert!(events.try_recv().is_err(), "a document counts once a month");
-}
-
-fn decode(text: &str) -> String {
-	let bytes = text.as_bytes();
-	let mut out = Vec::new();
-	let mut index = 0;
-
-	while index < bytes.len() {
-		match bytes[index] {
-			b'%' => {
-				let hex = std::str::from_utf8(&bytes[index + 1..index + 3]).expect("ascii");
-				out.push(u8::from_str_radix(hex, 16).expect("hex"));
-				index += 3;
-			}
-			b'+' => {
-				out.push(b' ');
-				index += 1;
-			}
-			byte => {
-				out.push(byte);
-				index += 1;
-			}
-		}
-	}
-
-	String::from_utf8(out).expect("utf-8")
-}
-
-/// `body` signed as Stripe signs webhooks.
-fn stripe_signature(secret: &str, body: &str) -> String {
-	use hmac::Mac;
-
-	let timestamp = canvist_cloud::auth::unix_now();
-	let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes()).expect("any key");
-	mac.update(format!("{timestamp}.{body}").as_bytes());
-	let digest = mac.finalize().into_bytes();
-	let hex = digest.iter().fold(String::new(), |mut out, byte| {
-		use std::fmt::Write;
-		let _ = write!(out, "{byte:02x}");
-		out
-	});
-	format!("t={timestamp},v1={hex}")
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn a_stripe_subscription_lifts_the_cap() {
-	const SECRET: &str = "whsec_canvist_test";
-	let mut config = support::config();
-	config.sync.pause_recheck = Duration::from_millis(200);
-	config.stripe_webhook_secret = Some(Secret::new(SECRET));
-	let fixture = Fixture::start_with(config, support::store().await).await;
-	let capped_terms = Terms {
-		included_documents: Some(0),
-		..Terms::of(Plan::Hobby)
-	};
-	fixture
-		.store
-		.set_terms(&fixture.project, &capped_terms)
-		.await
-		.expect("sets terms");
-	let token = fixture.token("*", Scope::Write);
-	let mut client = Client::spawn();
-	let attempt = client.connect_within(
-		Transport::YWebsocket,
-		(&fixture.sync_url(), "doc", &token),
-		1000,
-	);
-	assert!(!attempt.synced);
-
-	let body = json!({
-		"type": "customer.subscription.created",
-		"data": { "object": {
-			"customer": "cus_test",
-			"status": "active",
-			"metadata": { "canvist_project": fixture.project.as_str() },
-			"items": { "data": [{ "price": { "lookup_key": "canvist_builder_monthly" } }] },
-		} },
-	})
-	.to_string();
-	let http = reqwest::Client::new();
-	let forged = http
-		.post(fixture.http("/v1/stripe/webhook"))
-		.header("stripe-signature", stripe_signature("whsec_wrong", &body))
-		.body(body.clone())
-		.send()
-		.await
-		.expect("responds");
-	assert_eq!(forged.status(), 400);
-
-	let genuine = http
-		.post(fixture.http("/v1/stripe/webhook"))
-		.header("stripe-signature", stripe_signature(SECRET, &body))
-		.body(body)
-		.send()
-		.await
-		.expect("responds");
-	assert_eq!(genuine.status(), 200);
-	assert!(
-		client.wait_synced(),
-		"the paused session syncs once Stripe reports the upgrade"
-	);
-	assert_eq!(usage(&fixture).await["plan"], "builder");
 }

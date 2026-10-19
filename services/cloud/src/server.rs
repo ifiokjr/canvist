@@ -20,8 +20,8 @@ use crate::app::App;
 use crate::app::SharedApp;
 use crate::config::Config;
 use crate::metering::Meter;
-use crate::metering::stripe::StripeMeter;
-use crate::metering::stripe::StripeWorker;
+use crate::metering::stripe::ReporterWorker;
+use crate::metering::stripe::UsageReporter;
 use crate::store::Store;
 use crate::store::StoreError;
 use crate::sync::Rooms;
@@ -36,7 +36,7 @@ const WEBHOOK_DRAIN: Duration = Duration::from_secs(5);
 /// Background workers that finish their queues at shutdown.
 struct Workers {
 	webhooks: WebhookWorker,
-	stripe: Option<StripeWorker>,
+	stripe: Option<ReporterWorker>,
 }
 
 /// A failure to start.
@@ -89,8 +89,7 @@ impl Server {
 		let (stop, stopped) = watch::channel(false);
 
 		let (webhooks, worker) = Webhooks::start(store.clone());
-		let (stripe, stripe_worker) = config.stripe.clone().map(StripeMeter::start).unzip();
-		let meter = Meter::new(store.clone(), stripe);
+		let meter = Meter::new(store.clone());
 		let rooms = Rooms::new(store.clone(), config.sync.clone(), webhooks);
 		let sockets = TaskTracker::new();
 		let app = Arc::new(App::new(
@@ -102,7 +101,10 @@ impl Server {
 		));
 		let workers = Workers {
 			webhooks: worker,
-			stripe: stripe_worker,
+			stripe: app
+				.stripe
+				.clone()
+				.map(|client| UsageReporter::start(client, app.store.clone())),
 		};
 		let task = tokio::spawn(run(app.clone(), listener, stopped, sockets, workers));
 		tracing::info!(%addr, role = ?app.config.role, "canvist cloud listening");
