@@ -368,6 +368,7 @@ mod tests {
 				}),
 			},
 			width: 10.0 * count as f32,
+			kern: 0.0,
 			break_after: BreakAfter::Soft,
 		}
 	}

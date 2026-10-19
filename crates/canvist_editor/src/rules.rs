@@ -229,6 +229,12 @@ impl InputRule {
 		pattern: &str,
 		handler: impl Fn(&mut EditorState, &RuleMatch) -> CommandResult + Send + Sync + 'static,
 	) -> Result<Self, EditorError> {
+		Self::with_handler(pattern, Arc::new(handler))
+	}
+
+	/// [`InputRule::new`] with the handler already boxed, so every rule
+	/// shares one copy of the pattern checks in a WebAssembly build.
+	fn with_handler(pattern: &str, handler: RuleHandler) -> Result<Self, EditorError> {
 		if !pattern.ends_with('$') {
 			return Err(EditorError::InvalidPattern {
 				pattern: pattern.to_owned(),
@@ -242,7 +248,7 @@ impl InputRule {
 			anchored: pattern.starts_with('^'),
 			uses_start: pattern.contains('^'),
 			lookback: DEFAULT_LOOKBACK,
-			handler: Arc::new(handler),
+			handler,
 		})
 	}
 

@@ -71,6 +71,23 @@ const CARET_RECT_BUDGET: Duration = Duration::from_micros(2);
 /// keeps the frame.
 const DISPLAY_LIST_BUDGET: Duration = Duration::from_micros(100);
 
+/// Relaying out after a web font loads: forgetting the face's measurements
+/// across the whole document, then laying out the affected blocks on screen.
+const FONT_LOAD_BUDGET: Duration = Duration::from_micros(200);
+/// Every twentieth block of the font-load document is a code block.
+const CODE_EVERY: usize = 20;
+/// After a width change every block is laid out again, but every segment is
+/// already measured.
+const RESIZE_HIT_RATE_BUDGET: f64 = 0.99;
+/// Typing prose at the end of a paragraph measures each new word prefix once;
+/// the rest of the paragraph's segments hit the cache.
+const TYPING_HIT_RATE_BUDGET: f64 = 0.85;
+/// The cached measurement of one distinct segment in one face, including its
+/// share of the hash table: about 1.5 MB per face for a 10,000-word
+/// vocabulary. Most of it is the per-character advances and the table's
+/// spare capacity.
+const SEGMENT_MEMORY_BUDGET: usize = 160;
+
 /// Repeats of [`PARAGRAPH`] that make one paragraph of about 100 KB.
 const LONG_PARAGRAPH_REPEATS: usize = 600;
 
@@ -291,6 +308,125 @@ fn display_list_for_one_screen() {
 	});
 
 	assert_within("display list, one screen", measured, DISPLAY_LIST_BUDGET);
+}
+
+/// A document of `count` blocks where every [`CODE_EVERY`]th is a code block
+/// in the theme's monospace face.
+fn with_code_blocks(count: usize) -> Document {
+	let content: Vec<serde_json::Value> = (0..count)
+		.map(|index| {
+			if index % CODE_EVERY == 0 {
+				serde_json::json!({
+					"type": "codeBlock",
+					"content": [{ "type": "text", "text": "let width = measure(text, font);" }],
+				})
+			} else {
+				support::paragraph(PARAGRAPH)
+			}
+		})
+		.collect();
+
+	support::doc(serde_json::Value::Array(content))
+}
+
+#[test]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+fn font_load_relays_out_only_affected_blocks() {
+	let doc = with_code_blocks(MEDIUM_DOC);
+	let mut measurer = FixedMeasurer::new();
+	let mut layout = DocumentLayout::new(&doc, Arc::new(Theme::starter_kit()), options());
+	layout
+		.ensure(&doc, &mut measurer, 0.0, SCREEN)
+		.expect("measured");
+	let on_screen = layout.blocks_between(-SCREEN, SCREEN * 2.0).len();
+
+	let mut laid_out = 0;
+	let measured = median_per_call(SCROLL_BATCH, || {
+		let invalidation = layout.forget_fonts(|font| font.uses_family("JetBrains Mono"));
+		let update = layout
+			.ensure(&doc, &mut measurer, 0.0, SCREEN)
+			.expect("measured");
+		laid_out = update.laid_out;
+		std::hint::black_box(invalidation);
+	});
+
+	eprintln!("font load: {laid_out} of {on_screen} blocks on screen laid out again");
+	assert!(laid_out > 0 && laid_out <= on_screen.div_ceil(CODE_EVERY));
+	assert_within("font load relayout @10k", measured, FONT_LOAD_BUDGET);
+}
+
+#[test]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+fn measure_cache_hit_rates() {
+	let (doc, mut layout, mut measurer, block) = opened(MEDIUM_DOC);
+	let before = layout.measure_stats();
+	layout.set_width(&doc, WIDTH / 2.0);
+	layout
+		.ensure(&doc, &mut measurer, 0.0, SCREEN)
+		.expect("measured");
+	let after = layout.measure_stats();
+	let resize = (after.hits - before.hits) as f64
+		/ ((after.hits + after.misses) - (before.hits + before.misses)) as f64;
+
+	let mut doc = doc;
+	let end = doc.inline(block).expect("a paragraph").as_str().len() as u32;
+	let before = layout.measure_stats();
+
+	for (offset, character) in PARAGRAPH.char_indices() {
+		let mut transaction = doc.transaction();
+		let point = Point::new(block, end + offset as u32);
+		transaction
+			.insert_text(point, character.encode_utf8(&mut [0; 4]), MarkSet::empty())
+			.expect("valid point");
+		let commit = transaction.commit();
+		layout.apply(&doc, &commit);
+		layout
+			.ensure(&doc, &mut measurer, 0.0, SCREEN)
+			.expect("measured");
+	}
+
+	let after = layout.measure_stats();
+	let typing = (after.hits - before.hits) as f64
+		/ ((after.hits + after.misses) - (before.hits + before.misses)) as f64;
+
+	eprintln!("hit rate: resize {resize:.3}, typing {typing:.3}");
+	assert!(resize >= RESIZE_HIT_RATE_BUDGET, "resize hit rate {resize}");
+	assert!(typing >= TYPING_HIT_RATE_BUDGET, "typing hit rate {typing}");
+}
+
+#[test]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+fn memory_per_loaded_face() {
+	// Every paragraph starts with a word of its own, so the body face caches
+	// over 10,000 distinct segments.
+	let texts: Vec<String> = (0..MEDIUM_DOC)
+		.map(|index| format!("Paragraph{index} {PARAGRAPH}"))
+		.collect();
+	let texts: Vec<&str> = texts.iter().map(String::as_str).collect();
+	let doc = support::paragraphs(&texts);
+	let mut layout = DocumentLayout::new(&doc, Arc::new(Theme::starter_kit()), options());
+	layout
+		.layout_all(&doc, &mut FixedMeasurer::new())
+		.expect("measured");
+	let stats = layout.measure_stats();
+	let face = stats
+		.fonts
+		.iter()
+		.max_by_key(|font| font.bytes)
+		.copied()
+		.unwrap_or_default();
+	let per_segment = face.bytes / face.segments.max(1);
+
+	eprintln!(
+		"one face caches {} segments in {} KB: {per_segment} bytes per segment",
+		face.segments,
+		face.bytes / 1024
+	);
+	assert!(face.segments > MEDIUM_DOC);
+	assert!(
+		per_segment <= SEGMENT_MEMORY_BUDGET,
+		"{per_segment} bytes per cached segment, over {SEGMENT_MEMORY_BUDGET}"
+	);
 }
 
 #[test]

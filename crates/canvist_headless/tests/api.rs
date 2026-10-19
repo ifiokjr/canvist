@@ -199,3 +199,26 @@ fn engines_register_starter_kit_extensions_by_name() -> Result<(), HeadlessError
 	assert_eq!(error.code(), ErrorCode::Config);
 	Ok(())
 }
+
+#[test]
+fn interactive_hosts_edit_with_their_own_clock() -> Result<(), HeadlessError> {
+	use std::time::Duration;
+
+	use canvist_headless::canvist_editor::ParagraphNavigator;
+
+	let engine = Engine::starter_kit();
+	let mut doc = engine.create()?;
+	let mut lines = ParagraphNavigator;
+
+	// Keystrokes 100 ms apart group into one undo step, as typing does.
+	for (index, text) in ["H", "i"].into_iter().enumerate() {
+		let now = Duration::from_millis(100 * index as u64);
+		let update = doc.edit(now, &mut lines, |editor, env| editor.insert_text(text, env))?;
+		assert!(update.is_some_and(|update| update.doc_changed()));
+	}
+
+	assert_eq!(doc.export(Format::Text), "Hi");
+	assert!(doc.undo()?);
+	assert_eq!(doc.export(Format::Text), "");
+	Ok(())
+}

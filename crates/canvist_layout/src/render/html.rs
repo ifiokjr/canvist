@@ -446,14 +446,15 @@ fn stylesheet(styles: &Styles, width: f32) -> String {
 
 	let _ = write!(
 		css,
-		".cv-doc{{box-sizing:content-box;width:{}px;margin:0;padding:0;{}white-space:pre-wrap;\
-		 overflow-wrap:break-word;word-break:normal;line-break:strict;hyphens:manual;text-align:\
-		 start;text-indent:0;text-transform:none;word-spacing:0;tab-size:{};font-kerning:normal;\
-		 font-variant:normal;font-variant-ligatures:normal;font-feature-settings:normal;\
-		 font-variation-settings:normal;font-size-adjust:none;font-stretch:normal;text-rendering:\
-		 auto;text-wrap:wrap;text-autospace:no-autospace;text-spacing-trim:space-all;\
-		 -webkit-text-size-adjust:100%;text-size-adjust:100%}}",
+		".cv-doc{{box-sizing:content-box;width:{}px;margin:0;padding:0;background-color:{};\
+		 {}white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;line-break:strict;\
+		 hyphens:manual;text-align:start;text-indent:0;text-transform:none;word-spacing:0;\
+		 tab-size:{};font-kerning:normal;font-variant:normal;font-variant-ligatures:normal;\
+		 font-feature-settings:normal;font-variation-settings:normal;font-size-adjust:none;\
+		 font-stretch:normal;text-rendering:auto;text-wrap:wrap;text-autospace:no-autospace;\
+		 text-spacing-trim:normal;-webkit-text-size-adjust:100%;text-size-adjust:100%}}",
 		num(width),
+		theme.chrome().background,
 		text_css(base),
 		theme.tab_size()
 	);

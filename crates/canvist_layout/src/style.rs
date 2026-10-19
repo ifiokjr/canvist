@@ -110,9 +110,18 @@ pub(crate) struct Styles {
 	embeds: FxHashMap<EmbedTypeId, usize>,
 	resolved: Vec<BlockStyle>,
 	interned: FxHashMap<StyleKey, StyleId>,
+	/// Device pixels per CSS pixel that border widths snap to, if any.
+	border_scale: Option<f32>,
 }
 
 impl Styles {
+	/// Snap border widths down to whole multiples of `1 / scale` px (at
+	/// least one), as browsers snap borders to device pixels.
+	pub(crate) fn with_border_scale(mut self, scale: Option<f32>) -> Self {
+		self.border_scale = scale.filter(|scale| scale.is_finite() && *scale > 0.0);
+		self
+	}
+
 	/// Compile `theme` for `schema`. Rules naming types the schema lacks are
 	/// ignored, so one theme serves apps with different extension sets.
 	pub(crate) fn new(theme: Arc<Theme>, schema: Arc<Schema>) -> Self {
@@ -131,6 +140,7 @@ impl Styles {
 			rules,
 			marks,
 			embeds,
+			border_scale: None,
 			resolved: Vec::new(),
 			interned: FxHashMap::default(),
 		}
@@ -235,6 +245,10 @@ impl Styles {
 
 		for (_, compiled) in matched {
 			apply_block_patch(&mut style, &self.theme.block_rules()[compiled.rule].patch);
+		}
+
+		if let (Some(scale), Some(border)) = (self.border_scale, style.border_left.as_mut()) {
+			border.width = snap_border(border.width, scale);
 		}
 
 		style
@@ -357,6 +371,16 @@ pub(crate) fn attr<'a>(attrs: &'a Attrs, defaults: &'a Attrs, key: &str) -> Opti
 		.or_else(|| defaults.get(key))
 }
 
+/// A border width as a browser draws it at `scale` device pixels per CSS
+/// pixel: rounded down to whole device pixels, but never below one.
+fn snap_border(width: f32, scale: f32) -> f32 {
+	if width <= 0.0 {
+		return 0.0;
+	}
+
+	(width * scale).floor().max(1.0) / scale
+}
+
 /// A numeric attribute as pixels.
 pub(crate) fn attr_px(attrs: &Attrs, key: &str) -> Option<f32> {
 	match attrs.get(key)? {
@@ -418,4 +442,26 @@ fn hex_attr(attrs: &Attrs, key: &str) -> Option<Color> {
 		.get(key)
 		.and_then(Value::as_str)
 		.and_then(Color::parse_hex)
+}
+
+#[cfg(test)]
+#[allow(
+	clippy::float_cmp,
+	reason = "the snapped widths are exact multiples of a device pixel"
+)]
+mod tests {
+	use super::snap_border;
+
+	#[test]
+	fn borders_snap_down_to_device_pixels() {
+		assert_eq!(snap_border(3.0, 1.0), 3.0);
+		assert_eq!(snap_border(3.0, 1.25), 2.4, "3.75 device pixels draw as 3");
+		assert_eq!(snap_border(3.0, 2.0), 3.0);
+		assert_eq!(
+			snap_border(0.5, 1.0),
+			1.0,
+			"never thinner than one device pixel"
+		);
+		assert_eq!(snap_border(0.0, 1.5), 0.0);
+	}
 }

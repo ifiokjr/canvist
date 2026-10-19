@@ -1,0 +1,80 @@
+name: "web"
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - main
+  # Every pull request, including stacked ones whose base is another
+  # feature branch.
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # Build @canvist/web, type-check it, run its unit tests, and report the
+  # bundle size against the budget in docs/src/guides/performance.md.
+  check:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
+
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # @canvist/web reads its extension types from @canvist/headless.
+      - name: build @canvist/headless
+        working-directory: packages/canvist-headless
+        run: |
+          npm ci
+          npm run build:wasm
+          npm run build
+
+      - name: install dependencies
+        working-directory: packages/canvist-web
+        run: npm ci
+
+      - name: build wasm
+        working-directory: packages/canvist-web
+        run: npm run build:wasm
+
+      - name: type-check
+        working-directory: packages/canvist-web
+        run: npx tsc --noEmit
+
+      - name: unit tests
+        working-directory: packages/canvist-web
+        run: npm test
+
+      # What an app ships: a Vite build of a page that creates an editor,
+      # tree-shaken and minified, gzipped. Fails over the budget in
+      # docs/src/guides/performance.md.
+      - name: bundle size
+        working-directory: packages/canvist-web
+        run: |
+          {
+            echo "## @canvist/web bundle, gzipped"
+            echo
+            npm run --silent size
+          } | tee -a "$GITHUB_STEP_SUMMARY"

@@ -9,9 +9,9 @@ use std::sync::Arc;
 
 use canvist_model::EmbedTypeId;
 use canvist_model::InlineText;
-use icu_segmenter::GraphemeClusterSegmenter;
 use unicode_bidi::BidiInfo;
 use unicode_bidi::Level;
+use unicode_segmentation::UnicodeSegmentation;
 
 use super::RunStyle;
 use super::paragraph_level;
@@ -19,6 +19,7 @@ use crate::BreakOverride;
 use crate::FontId;
 use crate::FontMetrics;
 use crate::LayoutError;
+use crate::LineBox;
 use crate::measure::MeasureCache;
 use crate::measure::Measured;
 use crate::style::Styles;
@@ -92,6 +93,9 @@ pub(crate) struct Item {
 	pub(crate) kind: ItemKind,
 	/// The advance in pixels. Tabs get theirs during line breaking.
 	pub(crate) width: f32,
+	/// The kerning adjustment with the next item, already included in
+	/// `width` and in the last grapheme's advance.
+	pub(crate) kern: f32,
 	/// Whether a line may end after the item.
 	pub(crate) break_after: BreakAfter,
 }
@@ -460,8 +464,17 @@ impl Builder<'_> {
 		self.push(range, index, DraftKind::Embed(draft));
 	}
 
-	/// Queue every text item and embed label for measurement.
+	/// Queue every text item and embed label for measurement, and every
+	/// kerning pair between touching items in one font.
 	fn request_measurements(&self, cache: &mut MeasureCache) {
+		let mut joined = String::new();
+
+		for pair in self.items.windows(2) {
+			if let Some((font, pair)) = kerning_pair(self.text, &pair[0], &pair[1]) {
+				super::kerning::request(cache, font, pair, &mut joined);
+			}
+		}
+
 		for item in &self.items {
 			match &item.kind {
 				DraftKind::Text(font) => cache.request(*font, slice(self.text, &item.range)),
@@ -509,11 +522,29 @@ impl DraftEmbed {
 impl RunStyle {
 	fn new(style: TextStyle, cache: &mut MeasureCache) -> Self {
 		let font = cache.font(&style.font);
+		cache.request_line_box(font, style.line_height);
+
 		Self {
 			style,
 			font,
 			metrics: FontMetrics::default(),
+			line_box: LineBox::default(),
 		}
+	}
+}
+
+/// The font and graphemes of the kerning pair between two draft items, if
+/// they touch in one font and direction.
+pub(crate) fn kerning_pair<'t>(
+	text: &'t str,
+	left: &DraftItem,
+	right: &DraftItem,
+) -> Option<(FontId, (&'t str, &'t str))> {
+	match (&left.kind, &right.kind) {
+		(DraftKind::Text(a), DraftKind::Text(b)) if a == b && left.level == right.level => {
+			super::kerning::touching(text, &left.range, &right.range).map(|pair| (*a, pair))
+		}
+		_ => None,
 	}
 }
 
@@ -528,6 +559,9 @@ pub(crate) fn measure_items(
 	for style in styles.iter_mut() {
 		style.metrics = cache
 			.metrics(style.font)
+			.ok_or(LayoutError::MissingMeasurement)?;
+		style.line_box = cache
+			.line_box(style.font, style.style.line_height)
 			.ok_or(LayoutError::MissingMeasurement)?;
 	}
 
@@ -574,6 +608,7 @@ impl DraftMeasurer<'_> {
 			level: draft.level,
 			kind,
 			width,
+			kern: 0.0,
 			break_after: draft.break_after,
 		})
 	}
@@ -657,10 +692,14 @@ fn letter_spaced(text: &str, measured: &Arc<Measured>, spacing: f32) -> Arc<Meas
 }
 
 /// Grapheme cluster boundaries of `text`, including 0 and `text.len()`.
+///
+/// Extended grapheme clusters (UAX #29, Unicode 16), found with the same
+/// segmenter the editor moves the caret with, so a caret never stops where
+/// layout has no edge.
 pub(crate) fn grapheme_boundaries(text: &str) -> Vec<u32> {
-	GraphemeClusterSegmenter::new()
-		.segment_str(text)
-		.map(|offset| offset as u32)
+	text.grapheme_indices(true)
+		.map(|(offset, _)| offset as u32)
+		.chain(std::iter::once(text.len() as u32))
 		.collect()
 }
 

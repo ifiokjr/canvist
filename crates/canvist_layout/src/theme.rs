@@ -18,6 +18,9 @@ use crate::Insets;
 
 mod starter_kit;
 
+pub use starter_kit::ColorScheme;
+pub use starter_kit::StarterKitOptions;
+
 /// A font size, either absolute or relative to the inherited size.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FontSize {
@@ -489,9 +492,13 @@ impl EmbedRule {
 	}
 }
 
-/// Selection and caret colours.
+/// The page background, selection, and caret colours.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Chrome {
+	/// The background behind the document. The web canvas is opaque and
+	/// fills it, and server-rendered HTML sets it on `.cv-doc`, so both
+	/// antialias text against the same colour.
+	pub background: Color,
 	/// The selection highlight.
 	pub selection: Color,
 	/// The caret.
@@ -543,6 +550,7 @@ impl Theme {
 				base,
 				tab_size: 8,
 				chrome: Chrome {
+					background: Color::rgb(0xff, 0xff, 0xff),
 					selection: DEFAULT_SELECTION,
 					caret: Color::rgb(0, 0, 0),
 					caret_width: 2.0,

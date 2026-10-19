@@ -32,12 +32,32 @@ impl FontSpec {
 	pub fn css(&self) -> String {
 		self.to_string()
 	}
+
+	/// The family names in [`FontSpec::family`], unquoted, in fallback
+	/// order: `Inter, "Noto Sans", sans-serif` yields `Inter`, `Noto Sans`,
+	/// and `sans-serif`.
+	pub fn families(&self) -> impl Iterator<Item = &str> {
+		self.family
+			.split(',')
+			.map(|name| name.trim().trim_matches(['"', '\'']).trim())
+			.filter(|name| !name.is_empty())
+	}
+
+	/// Whether `family` is in this font's fallback list. Names compare
+	/// ASCII case-insensitively, as CSS family names do.
+	#[must_use]
+	pub fn uses_family(&self, family: &str) -> bool {
+		let family = family.trim().trim_matches(['"', '\'']);
+		self.families()
+			.any(|name| name.eq_ignore_ascii_case(family))
+	}
 }
 
 impl fmt::Display for FontSpec {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let style = if self.italic { "italic" } else { "normal" };
-		write!(f, "{style} {} {}px {}", self.weight, self.size, self.family)
+		let size = crate::render::css_number(self.size);
+		write!(f, "{style} {} {size}px {}", self.weight, self.family)
 	}
 }
 
@@ -63,6 +83,13 @@ impl Hash for FontSpec {
 pub struct FontId(pub(crate) u32);
 
 impl FontId {
+	/// The id of the font at `index` in a [`FontBook`], as a display list's
+	/// [`fonts`](crate::DisplayList::fonts) are indexed.
+	#[must_use]
+	pub const fn from_index(index: usize) -> Self {
+		Self(index as u32)
+	}
+
 	/// The index of this font in [`FontBook::fonts`].
 	#[must_use]
 	pub const fn index(self) -> usize {
@@ -77,6 +104,36 @@ pub struct FontMetrics {
 	pub ascent: f32,
 	/// Distance from the baseline down to the descender line. Positive.
 	pub descent: f32,
+}
+
+/// Where an inline box of one font and line height sits around its
+/// baseline: CSS 2.1 §10.8.1's ascent and descent plus half the leading each.
+///
+/// Layout derives it from [`FontMetrics`] unless the measurer reports it.
+/// Browsers round the parts differently (Blink floors the half-leading to
+/// device pixels, WebKit keeps 1/64 px, Firefox keeps floats), so the web
+/// measurer reads each line box from the DOM to reproduce the browser's
+/// line positions exactly.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct LineBox {
+	/// Distance from the top of the inline box down to the baseline.
+	pub above: f32,
+	/// Distance from the baseline down to the bottom of the inline box.
+	pub below: f32,
+}
+
+impl LineBox {
+	/// The CSS 2.1 line box of a font with `metrics` at `line_height` px:
+	/// half the leading above the ascent and half below the descent.
+	#[must_use]
+	pub fn from_metrics(metrics: FontMetrics, line_height: f32) -> Self {
+		let half_leading = (line_height - metrics.ascent - metrics.descent) / 2.0;
+
+		Self {
+			above: metrics.ascent + half_leading,
+			below: metrics.descent + half_leading,
+		}
+	}
 }
 
 /// Interns the fonts a layout uses.
@@ -162,6 +219,22 @@ mod tests {
 		assert_eq!(book.intern(&inter(BODY_SIZE)), body);
 		assert_eq!(book.get(code).map(|font| font.size), Some(CODE_SIZE));
 		assert_eq!(book.len(), 2);
+	}
+
+	#[test]
+	fn family_lists() {
+		let font = FontSpec {
+			family: Arc::from("Inter, \"Noto Sans JP\", 'Apple Color Emoji' , sans-serif"),
+			..inter(BODY_SIZE)
+		};
+
+		assert_eq!(
+			font.families().collect::<Vec<_>>(),
+			["Inter", "Noto Sans JP", "Apple Color Emoji", "sans-serif"]
+		);
+		assert!(font.uses_family("noto sans jp"));
+		assert!(font.uses_family("\"Inter\""));
+		assert!(!font.uses_family("Noto Sans"));
 	}
 
 	#[test]

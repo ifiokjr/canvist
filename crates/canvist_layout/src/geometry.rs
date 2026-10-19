@@ -224,8 +224,8 @@ impl fmt::Display for Color {
 			return write!(f, "#{:02x}{:02x}{:02x}", self.r, self.g, self.b);
 		}
 
-		let alpha = f32::from(self.a) / 255.0;
-		write!(f, "rgba({}, {}, {}, {alpha:.3})", self.r, self.g, self.b)
+		let alpha = crate::render::fixed(f64::from(self.a) / 255.0, 3);
+		write!(f, "rgba({}, {}, {}, {alpha})", self.r, self.g, self.b)
 	}
 }
 

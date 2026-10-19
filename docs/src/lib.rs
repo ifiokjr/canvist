@@ -32,6 +32,7 @@ pages! {
 	guides_import_export => "guides/import-export.md",
 	guides_server_transforms => "guides/server-transforms.md",
 	guides_theming => "guides/theming.md",
+	guides_fonts => "guides/fonts.md",
 	agents => "agents/readme.md",
 	skill => "../../skills/canvist/SKILL.md",
 }

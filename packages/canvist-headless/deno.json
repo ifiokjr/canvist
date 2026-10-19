@@ -2,7 +2,10 @@
 	"name": "@canvist/headless",
 	"version": "0.1.0",
 	"license": "Unlicense",
-	"exports": "./src/mod.ts",
+	"exports": {
+		".": "./src/mod.ts",
+		"./extensions": "./src/extensions.generated.ts"
+	},
 	"publish": {
 		"include": [
 			"src/**/*.ts",

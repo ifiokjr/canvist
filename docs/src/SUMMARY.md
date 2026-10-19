@@ -39,6 +39,7 @@
 - [Collaboration](./guides/collaboration.md)
 - [Server-side transforms](./guides/server-transforms.md)
 - [Theming and styling](./guides/theming.md)
+- [Fonts and text rendering](./guides/fonts.md)
 - [Performance](./guides/performance.md)
 
 # AI agents

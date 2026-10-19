@@ -6,6 +6,8 @@ use std::borrow::Cow;
 use parley::FontContext;
 use parley::FontFamily;
 use parley::FontStyle;
+use parley::FontVariation;
+use parley::FontVariations;
 use parley::FontWeight;
 use parley::Layout;
 use parley::LayoutContext;
@@ -16,6 +18,7 @@ use parley::fontique::CollectionOptions;
 use parley::fontique::FamilyId;
 use parley::fontique::GenericFamily;
 use parley::fontique::SourceCache;
+use parley::setting::Tag;
 
 use super::MeasureBatch;
 use super::MeasureOutput;
@@ -119,6 +122,12 @@ impl ParleyMeasurer {
 		} else {
 			FontStyle::Normal
 		}));
+		// Browsers set a variable font's optical size to the font size
+		// (`font-optical-sizing: auto`); fonts without the axis ignore it.
+		let optical_size = [FontVariation::new(Tag::new(b"opsz"), font.size)];
+		builder.push_default(StyleProperty::FontVariations(FontVariations::List(
+			Cow::Borrowed(&optical_size),
+		)));
 
 		let mut layout = builder.build(text);
 		layout.break_all_lines(None);

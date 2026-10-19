@@ -99,6 +99,8 @@ pub fn wet_caret(em: f32) -> Arc<Theme> {
 	};
 	let builder = Theme::builder(base)
 		.chrome(Chrome {
+			// The film draws its own backdrop; this only fills exported HTML.
+			background: Color::rgb(0xff, 0xff, 0xff),
 			selection: SELECTION,
 			caret: PAINT,
 			caret_width: (CARET_WIDTH.0 * em).max(CARET_WIDTH.1),
