@@ -102,11 +102,8 @@ impl Writer<'_, '_> {
 			.insert(self.txn, record.id.to_string(), MapPrelim::default());
 		map.insert(self.txn, keys::TYPE, spec.name());
 		map.insert(self.txn, keys::POS, pos.to_any());
-		map.insert(
-			self.txn,
-			keys::PROPS,
-			props_prelim(&record.props, spec.kind()),
-		);
+		let props: MapRef = map.insert(self.txn, keys::PROPS, MapPrelim::default());
+		write_props(self.txn, &props, &record.props, spec.kind());
 
 		if spec.kind() == canvist_scene::NodeKind::Text {
 			let _: yrs::ArrayRef = map.insert(self.txn, keys::TEXT, ArrayPrelim::default());
@@ -214,18 +211,22 @@ fn push_text(work: &mut TextWork, node: NodeId, step: canvist_model::Step, inver
 	commit.inverses.push(inverse.clone());
 }
 
-/// Every prop that differs from its default, as a `Y.Map` prelim.
-pub(crate) fn props_prelim(props: &Props, kind: canvist_scene::NodeKind) -> MapPrelim {
-	props
-		.changed_from(&Props::for_kind(kind))
-		.into_iter()
-		.map(|prop| {
-			(
-				prop.key().to_string(),
-				yrs::In::Any(json_to_any(&prop.to_json())),
-			)
-		})
-		.collect()
+/// Write every prop that differs from its kind's default into `map`, in key
+/// order.
+///
+/// A `MapPrelim` would insert them in hash order, which differs between
+/// processes. Two peers that seed the same scene under the same client id
+/// must give every key the same item id, or a later write, which names the
+/// item it replaces, lands on the wrong key for the other peer.
+pub(crate) fn write_props(
+	txn: &mut TransactionMut<'_>,
+	map: &MapRef,
+	props: &Props,
+	kind: canvist_scene::NodeKind,
+) {
+	for prop in props.changed_from(&Props::for_kind(kind)) {
+		map.insert(txn, prop.key().to_string(), json_to_any(&prop.to_json()));
+	}
 }
 
 /// The map of node `id`.

@@ -449,3 +449,57 @@ fn unknown_types_and_rejected_props_are_ignored_and_kept() -> TestResult {
 	assert_eq!(grace.binding.hidden_nodes(&grace.scene), 1);
 	Ok(())
 }
+
+/// Two peers that seed the same scene under the same client id give every
+/// prop the same item id, so when one edits a prop the other applies the
+/// edit to that prop. (Their bytes can still differ: yrs encodes an
+/// object value's keys in hash order.)
+#[test]
+fn seeding_the_same_scene_is_deterministic() -> TestResult {
+	let schema = schema();
+	let mut scene = Scene::new(schema.clone(), 1)?;
+	let page = scene.pages()[0];
+	let mut transaction = scene.transaction();
+	let star = transaction.insert(
+		page,
+		None,
+		"polygon",
+		Props {
+			name: "Star".into(),
+			transform: Affine::rotate(0.2),
+			size: Vec2::new(170.0, 170.0),
+			opacity: 0.8,
+			radius: [4.0; 4],
+			fills: Arc::new([Paint::solid(Color::rgb(255, 200, 61))]),
+			..Props::default()
+		},
+	)?;
+	let _ = transaction.commit();
+
+	let seed = || -> Result<Vec<u8>, canvist_collab::CollabError> {
+		let mut binding = SceneBinding::with_client_id(schema.clone(), 1)?;
+		binding.seed(&scene)?;
+		Ok(binding.encode_state(Encoding::V1))
+	};
+	let mut ada = Peer::join(&schema, 2, &seed()?);
+	let mut grace = Peer::join(&schema, 3, &seed()?);
+	let edits = [
+		Prop::Name("Moon".into()),
+		Prop::Transform(Affine::translate((40.0, 0.0))),
+		Prop::Size(Vec2::new(90.0, 90.0)),
+		Prop::Opacity(0.5),
+		Prop::Radius([9.0; 4]),
+		Prop::Fills(Arc::new([Paint::solid(Color::rgb(59, 44, 245))])),
+	];
+
+	// Were any two seeded keys swapped, editing one of them would land on
+	// the other for Grace.
+	for prop in edits {
+		ada.edit(|transaction| transaction.set(star, prop))?;
+		let updates = ada.binding.take_updates();
+		grace.receive(&updates);
+		assert_eq!(grace.scene.to_json(), ada.scene.to_json());
+	}
+
+	Ok(())
+}
