@@ -1,0 +1,7 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+
+# Rendered by `npm run ssr`.
+ssr.html

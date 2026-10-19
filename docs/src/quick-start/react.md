@@ -1,13 +1,83 @@
 # Quick start: React
 
-Use this page to see what's planned for React and what you can build with canvist today.
+In this guide you add a canvist editor to a React app with `@canvist/react`, and build a toolbar that re-renders when the selection changes.
 
-**Status: coming soon.** `@canvist/react` isn't available yet. It will wrap the browser editor, `@canvist/core`, in a component, with hooks for commands and active state, so your toolbar re-renders when the selection changes.
+**Status: preview.** `@canvist/react` wraps [`@canvist/web`](./web.md), which is a preview. Its API may still change before 1.0.
 
-## What you can do today
+## 1. Install
 
-- **Work with content on the server.** [`@canvist/headless`](./server-typescript.md) loads, edits, and exports documents in Node, Deno, Bun, and Workers. Use it in API routes and server components.
-- **Learn the model now.** The React package will use the same [extensions](../concepts/extensions.md) and [typed commands](../concepts/commands.md) as the server packages. Code like `doc.commands.toggleBold()` will work the same way in your components.
-- **Try the browser editor.** The [web preview](./web.md) runs in any page.
+```sh
+npm install @canvist/react @canvist/web
+```
 
-Watch [the releases](https://github.com/ifiokjr/canvist/releases) to hear when it ships.
+With Vite, exclude canvist from dependency pre-bundling, as [the web quick start](./web.md#3-set-up-your-bundler) shows.
+
+## 2. Add an editor and a toolbar
+
+`useCanvistEditor` creates the editor in the element you attach `ref` to, and destroys it on unmount. `useEditorState` re-renders the component when the value it reads changes:
+
+```tsx
+import { useCanvistEditor, useEditorState } from "@canvist/react";
+
+export function Notes() {
+	const { ref, editor } = useCanvistEditor({
+		content: { format: "markdown", input: "# Notes\n\nStart typing." },
+		label: "Notes",
+	});
+	const canBold = useEditorState(
+		editor,
+		(current) => current.can.toggleBold(),
+		false,
+	);
+	const isBold = useEditorState(
+		editor,
+		(current) => current.query.isBold(),
+		false,
+	);
+
+	return (
+		<>
+			<button
+				type="button"
+				disabled={!canBold}
+				aria-pressed={isBold}
+				onClick={() => {
+					editor?.commands.toggleBold();
+					editor?.focus();
+				}}
+			>
+				Bold
+			</button>
+			<div ref={ref} style={{ maxWidth: 640 }} />
+		</>
+	);
+}
+```
+
+- **The editor is `null` until its WebAssembly has loaded.** Give `useEditorState` a fallback for that moment.
+- **Options are read once.** Change the document later with `editor.setContent`.
+- **Types follow your extensions.** Pass `extensions: [bold, heading]`, and `editor.commands.toggleItalic()` is a type error.
+- **A selector must return a primitive or a stable object**, as with React's `useSyncExternalStore`.
+
+## 3. Or use the component
+
+`CanvistEditor` takes the same options as props, plus `onReady` and `onUpdate`:
+
+```tsx
+import { CanvistEditor } from "@canvist/react";
+
+export function Comment() {
+	return (
+		<CanvistEditor
+			label="Comment"
+			content={{ format: "markdown", input: "" }}
+			onUpdate={(editor) => console.log(editor.export("markdown"))}
+			style={{ maxWidth: 640 }}
+		/>
+	);
+}
+```
+
+To hydrate server-rendered HTML, pass it as `html`. The editor reads the document from it and swaps in the canvas once fonts are ready, with no layout shift.
+
+`examples/web/src/react.tsx` in the repository is a complete app.

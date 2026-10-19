@@ -1,13 +1,64 @@
 # Quick start: Vue
 
-Use this page to see what's planned for Vue and what you can build with canvist today.
+In this guide you add a canvist editor to a Vue app with `@canvist/vue`, and build a toolbar that follows the selection.
 
-**Status: coming soon.** `@canvist/vue` isn't available yet. It will wrap the browser editor, `@canvist/core`, in a component and composables, with reactive state for commands and active marks.
+**Status: preview.** `@canvist/vue` wraps [`@canvist/web`](./web.md), which is a preview. Its API may still change before 1.0.
 
-## What you can do today
+## 1. Install
 
-- **Work with content on the server.** [`@canvist/headless`](./server-typescript.md) loads, edits, and exports documents in Node, Deno, Bun, and Workers, including Nuxt server routes.
-- **Learn the model now.** The Vue package will use the same [extensions](../concepts/extensions.md) and [typed commands](../concepts/commands.md) as the server packages.
-- **Try the browser editor.** The [web preview](./web.md) runs in any page.
+```sh
+npm install @canvist/vue @canvist/web
+```
 
-Watch [the releases](https://github.com/ifiokjr/canvist/releases) to hear when it ships.
+With Vite, exclude canvist from dependency pre-bundling, as [the web quick start](./web.md#3-set-up-your-bundler) shows.
+
+## 2. Add an editor and a toolbar
+
+`useCanvistEditor` creates the editor in the element bound to `element` when the component mounts, and destroys it on unmount. `useEditorState` returns a ref that updates after every change:
+
+```vue
+<script setup lang="ts">
+import { useCanvistEditor, useEditorState } from "@canvist/vue";
+
+const { element, editor } = useCanvistEditor({
+	content: { format: "markdown", input: "# Notes\n\nStart typing." },
+	label: "Notes",
+});
+const canBold = useEditorState(editor, (current) => current.can.toggleBold(), false);
+const isBold = useEditorState(editor, (current) => current.query.isBold(), false);
+
+function toggleBold(): void {
+	editor.value?.commands.toggleBold();
+	editor.value?.focus();
+}
+</script>
+
+<template>
+	<button type="button" :disabled="!canBold" :aria-pressed="isBold" @click="toggleBold">
+		Bold
+	</button>
+	<div ref="element" style="max-width: 640px" />
+</template>
+```
+
+- **The editor is `null` until its WebAssembly has loaded.** Give `useEditorState` a fallback for that moment.
+- **Options are read once.** Change the document later with `editor.value.setContent`.
+- **Types follow your extensions.** Pass `extensions: [bold, heading]`, and `editor.value.commands.toggleItalic()` is a type error.
+
+## 3. Or use the component
+
+`CanvistEditor` takes the same options as props, and emits `ready` and `update` with the editor:
+
+```vue
+<script setup lang="ts">
+import { CanvistEditor } from "@canvist/vue";
+</script>
+
+<template>
+	<CanvistEditor label="Comment" @update="(editor) => console.log(editor.export('markdown'))" />
+</template>
+```
+
+To hydrate server-rendered HTML, pass it as `html`. The editor reads the document from it and swaps in the canvas once fonts are ready, with no layout shift.
+
+`examples/web/src/App.vue` in the repository is a complete app.

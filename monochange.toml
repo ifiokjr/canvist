@@ -191,6 +191,14 @@ type = "npm"
 path = "packages/canvist-web"
 type = "npm"
 
+[package."@canvist/react"]
+path = "packages/canvist-react"
+type = "npm"
+
+[package."@canvist/vue"]
+path = "packages/canvist-vue"
+type = "npm"
+
 # Dart packages. `mode = "external"` keeps them out of release publishing (the
 # build hook's Rust crate still resolves through the Cargo workspace, which a
 # pub.dev archive cannot include) while placeholder publishing still reserves
@@ -210,6 +218,8 @@ publish = { enabled = true, mode = "external" }
 [group.sdk]
 packages = [
 	"@canvist/headless",
+	"@canvist/react",
+	"@canvist/vue",
 	"@canvist/web",
 	"canvist_v1",
 	"canvist-dart",

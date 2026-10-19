@@ -47,6 +47,10 @@ name = "transform"
 required-features = ["starter-kit"]
 
 [[example]]
+name = "ssr_page"
+required-features = ["ssr", "starter-kit"]
+
+[[example]]
 name = "merge_updates"
 required-features = ["collab", "starter-kit"]
 
