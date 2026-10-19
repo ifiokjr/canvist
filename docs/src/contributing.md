@@ -23,7 +23,7 @@ See [Getting Started](./getting-started.md) for environment setup.
 canvist releases with [monochange](https://github.com/monochange/monochange), configured in `monochange.toml`. Two release units move independently:
 
 - **`sdk`**: every library (the Rust crates, `@canvist/headless` on npm and JSR, the Dart and Flutter packages, and the Swift and Android bindings). They share one version and are tagged `v<version>`.
-- **`app`**: the website (and canvist Cloud), deployed to Railway and tagged `app/v<version>`.
+- **`app`**: the website and canvist Cloud, deployed to Railway and tagged `app/v<version>`.
 
 Every pull request that changes a package needs a file in `.changeset/`. Its frontmatter names the packages and a change type, and its body starts with a `# Summary` heading:
 

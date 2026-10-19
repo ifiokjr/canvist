@@ -6,9 +6,9 @@
 #   Dart and Flutter packages, and the Swift and Android bindings). They share
 #   one Cargo workspace version and one conformance suite, so they release in
 #   lockstep under tags like `v0.2.0`.
-# - `app`: the product people use (the website, and canvist Cloud once it
-#   lands). It deploys to Railway and owns the user-facing changelog that the
-#   website renders at `/changelog`.
+# - `app`: the product people use (the website and canvist Cloud). It deploys
+#   to Railway and owns the user-facing changelog that the website renders at
+#   `/changelog`.
 #
 # Run `mc check` to lint config and changesets, `mc preview` to see the next
 # release, and `mc help` for the commands defined at the bottom of this file.
@@ -229,7 +229,7 @@ versioned_files = [
 changelog = { path = "changelog.md", format = "keep_a_changelog", include = "all" }
 
 # =============================================================================
-# App: the website and (soon) canvist Cloud, deployed to Railway
+# App: the website and canvist Cloud, deployed to Railway
 # =============================================================================
 
 [package.website]
@@ -238,8 +238,15 @@ type = "npm"
 publish = { enabled = false }
 changelog = false
 
+# canvist Cloud: one image that runs as the `sync` and `convert` Railway
+# services. It is versioned with the app, not the SDK.
+[package.canvist_cloud]
+path = "services/cloud"
+publish = { enabled = false }
+changelog = false
+
 [group.app]
-packages = ["website"]
+packages = ["canvist_cloud", "website"]
 tag = true
 release = true
 version_format = "namespaced"

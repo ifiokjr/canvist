@@ -37,6 +37,7 @@ on:
       - "platforms/android/gradle.properties"
       - "platforms/android/gradle/libs.versions.toml"
       - "platforms/apple/build.sh"
+      - "services/cloud/Dockerfile"
       - "website/Dockerfile"
 
 permissions:
@@ -322,8 +323,10 @@ jobs:
           (cd platforms/dart && dart pub publish "$flag")
           (cd platforms/flutter && flutter pub publish "$flag")
 
-  # The app deploys to Railway production: the website today, and canvist
-  # Cloud's `sync` and `convert` services once they join the `app` group.
+  # The app deploys to Railway production: the website, and canvist Cloud's
+  # `sync` and `convert` services. Railway builds each service from the
+  # Dockerfile its service settings name; `sync` and `convert` share one image,
+  # so the dry run builds it once.
   deploy:
     name: deploy ${{ matrix.service }}
     needs: plan
@@ -337,6 +340,11 @@ jobs:
         include:
           - service: website
             dockerfile: website/Dockerfile
+          - service: sync
+            dockerfile: services/cloud/Dockerfile
+          - service: convert
+            dockerfile: services/cloud/Dockerfile
+            same_image_as: sync
     steps:
       - name: checkout release
         uses: actions/checkout@v4
@@ -345,7 +353,7 @@ jobs:
 
       # The dry run builds the image Railway would build.
       - name: build the image
-        if: needs.plan.outputs.dry_run == 'true'
+        if: needs.plan.outputs.dry_run == 'true' && !matrix.same_image_as
         run: docker build --file "${{ matrix.dockerfile }}" --tag "canvist-${{ matrix.service }}:dry-run" .
 
       - name: deploy to railway production
