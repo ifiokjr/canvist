@@ -411,6 +411,14 @@ html:not(.docs-js) .docs-search-open {
 	color: light-dark(var(--shiki-light), var(--shiki-dark));
 }
 
+/*
+ * Both GitHub themes colour comments #6A737D, which is under 4.5:1 on the
+ * dark code background. Lift comments in dark mode only.
+ */
+.docs-article .astro-code span[style*="--shiki-dark:#6A737D"] {
+	color: light-dark(var(--shiki-light), #a1a9b3);
+}
+
 .docs-article .astro-code code {
 	font-size: inherit;
 }

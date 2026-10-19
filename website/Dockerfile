@@ -10,14 +10,18 @@
 # of a project-wide .railway/railway.ts, which is not set up yet).
 
 FROM denoland/deno:2.8.3 AS build
+WORKDIR /repo/website
+COPY website/package.json website/deno.json website/deno.lock ./
+RUN deno install --frozen
 WORKDIR /repo
+# What the site reads from the rest of the repo: the book, the brand assets,
+# crate and package readmes (for /docs), and the v1 engine. The context is
+# trimmed to these by Dockerfile.dockerignore.
 COPY docs/src docs/src
 COPY assets/brand assets/brand
-COPY packages/canvist/src packages/canvist/src
-COPY packages/canvist/wasm packages/canvist/wasm
-COPY website/package.json website/deno.json website/deno.lock website/
+COPY crates crates
+COPY packages packages
 WORKDIR /repo/website
-RUN deno install --frozen
 COPY website .
 # Railway passes the service's public domain as a build variable, which sets
 # the canonical URL; SITE_URL overrides it.

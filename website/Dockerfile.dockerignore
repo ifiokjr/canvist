@@ -6,3 +6,11 @@ website/dist
 website/.astro
 website/test-results
 website/playwright-report
+
+# From crates and packages the site needs only the readmes and the v1 engine.
+crates/**
+!crates/*/readme.md
+packages/**
+!packages/*/README.md
+!packages/canvist/src/**
+!packages/canvist/wasm/**

@@ -84,6 +84,32 @@ jobs:
             website/test-results
             website/.lighthouseci
 
+  image:
+    name: docker image
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: build the image railway deploys
+        run: docker build -f website/Dockerfile -t canvist-website --build-arg SITE_URL=https://canvist.example .
+
+      - name: smoke test the container
+        run: |
+          docker run -d --name website -e PORT=8080 -p 8080:8080 canvist-website
+          for attempt in $(seq 1 20); do curl -fsS -o /dev/null http://127.0.0.1:8080/ && break; sleep 1; done
+          for path in / /pricing /services/sync /docs /docs/v2/architecture /docs/crates/canvist_core /docs/packages/canvist /rive/wet-caret.riv /pagefind/pagefind.js; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080$path")
+            echo "$status $path"
+            test "$status" = 200
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/no-such-page)" = 404
+          curl -s http://127.0.0.1:8080/pricing | grep -q '<link rel="canonical" href="https://canvist.example/pricing">'
+
   book:
     name: mdbook build
     timeout-minutes: 15
