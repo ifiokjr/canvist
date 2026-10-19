@@ -67,21 +67,14 @@ jobs:
         working-directory: packages/canvist-web
         run: npm test
 
+      # What an app ships: a Vite build of a page that creates an editor,
+      # tree-shaken and minified, gzipped. Fails over the budget in
+      # docs/src/guides/performance.md.
       - name: bundle size
         working-directory: packages/canvist-web
         run: |
-          npm run build
-          wasm=$(gzip -9 -c wasm/canvist_web_bg.wasm | wc -c)
-          glue=$(gzip -9 -c wasm/canvist_web.js | wc -c)
-          script=$(cat dist/editor.js dist/font-watcher.js dist/load.js dist/measure.js dist/mod.js ../canvist-headless/dist/extensions.generated.js | gzip -9 | wc -c)
-          total=$((wasm + glue + script))
           {
             echo "## @canvist/web bundle, gzipped"
             echo
-            echo "| Part | Bytes |"
-            echo "| ---- | ----- |"
-            echo "| WebAssembly | $wasm |"
-            echo "| wasm-bindgen glue | $glue |"
-            echo "| Editor scripts and extension descriptors | $script |"
-            echo "| Total (budget 350,000) | $total |"
-          } >> "$GITHUB_STEP_SUMMARY"
+            npm run --silent size
+          } | tee -a "$GITHUB_STEP_SUMMARY"

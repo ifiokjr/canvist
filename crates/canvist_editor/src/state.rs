@@ -194,6 +194,21 @@ impl EditorState {
 		kind: EditKind,
 		build: impl FnOnce(&mut EditorTransaction<'_>) -> Result<bool, EditorError>,
 	) -> CommandResult {
+		let mut build = Some(build);
+
+		self.change_with(kind, &mut |transaction| {
+			build.take().map_or(Ok(false), |build| build(transaction))
+		})
+	}
+
+	/// [`EditorState::change`] without the generic closure, so every command
+	/// shares one copy of the transaction logic instead of one each: in
+	/// WebAssembly that is tens of KB.
+	fn change_with(
+		&mut self,
+		kind: EditKind,
+		build: &mut dyn FnMut(&mut EditorTransaction<'_>) -> Result<bool, EditorError>,
+	) -> CommandResult {
 		let mut transaction = EditorTransaction::new(self.doc.transaction(), self.selection, kind);
 		let outcome = build(&mut transaction);
 		let (inner, effects) = transaction.finish();

@@ -1,6 +1,7 @@
 //! The engine: a set of extensions, configured once and shared.
 
 use std::sync::Arc;
+use std::sync::OnceLock;
 
 use canvist_editor::Editor;
 use canvist_editor::EditorBuilder;
@@ -38,7 +39,8 @@ pub struct Engine<H = ()> {
 	configure: Arc<Configure<H>>,
 	handles: H,
 	schema: Arc<Schema>,
-	metadata: Arc<Json>,
+	/// Built on first use: most hosts never ask for it.
+	metadata: Arc<OnceLock<Json>>,
 	client: u32,
 }
 
@@ -120,7 +122,7 @@ impl<H: Copy> Engine<H> {
 			configure: Arc::new(configure),
 			handles,
 			schema: editor.schema().clone(),
-			metadata: Arc::new(editor.metadata_json()),
+			metadata: Arc::new(OnceLock::new()),
 			client: 1,
 		})
 	}
@@ -149,7 +151,14 @@ impl<H: Copy> Engine<H> {
 	/// and their argument types) as JSON: the input binding generators read.
 	#[must_use]
 	pub fn metadata(&self) -> &Json {
-		&self.metadata
+		self.metadata.get_or_init(|| {
+			let mut builder = Editor::builder();
+			(self.configure)(&mut builder);
+			builder
+				.build()
+				.expect("`Engine::new` built the same extensions without error")
+				.metadata_json()
+		})
 	}
 
 	/// The client id new blocks are allocated under.

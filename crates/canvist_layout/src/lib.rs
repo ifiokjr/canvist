@@ -112,6 +112,7 @@ pub use navigate::LineEdge;
 pub use navigate::VerticalDirection;
 pub use navigate::VerticalMotion;
 pub use render::HtmlDocument;
+pub use render::css_number;
 pub use render::HtmlOptions;
 pub use render::to_html;
 pub use render::to_svg;

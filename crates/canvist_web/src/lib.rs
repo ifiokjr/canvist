@@ -44,7 +44,6 @@ use canvist_layout::HtmlOptions;
 use canvist_layout::LayoutOptions;
 use canvist_layout::Rect;
 use serde_json::Value as Json;
-use serde_json::json;
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
 
@@ -66,10 +65,11 @@ use crate::paint::Surface;
 /// a handful, clipping costs more than it saves.
 const MAX_DIRTY_RECTS: usize = 16;
 
-/// What one [`WebEditor::frame`] did.
-#[wasm_bindgen]
+/// What one [`WebEditor::frame`] did. It crosses to JavaScript as a
+/// `Float64Array` (see [`Frame::to_array`]): a class would cost the bundle
+/// a wrapper, a finalizer, and a getter per field.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Frame {
+struct Frame {
 	/// The document's height in CSS pixels, including estimates for blocks
 	/// not laid out yet. The host sizes its scroll area to it.
 	pub height: f32,
@@ -78,7 +78,6 @@ pub struct Frame {
 	/// still.
 	pub shift: f32,
 	/// Blocks laid out this frame.
-	#[wasm_bindgen(js_name = laidOut)]
 	pub laid_out: u32,
 	/// Measurer calls this frame: 0 when every segment was cached.
 	pub measured: u32,
@@ -88,6 +87,22 @@ pub struct Frame {
 	pub full: bool,
 	/// Whether anything was painted at all.
 	pub painted: bool,
+}
+
+impl Frame {
+	/// `[height, shift, laidOut, measured, drawn, full, painted]`, the two
+	/// flags as 0 or 1.
+	fn to_array(self) -> Vec<f64> {
+		vec![
+			f64::from(self.height),
+			f64::from(self.shift),
+			f64::from(self.laid_out),
+			f64::from(self.measured),
+			f64::from(self.drawn),
+			f64::from(u8::from(self.full)),
+			f64::from(u8::from(self.painted)),
+		]
+	}
 }
 
 /// One editor on one canvas.
@@ -156,11 +171,6 @@ impl WebEditor {
 			focused: false,
 			caret_on: true,
 		})
-	}
-
-	/// The registered extensions' metadata as JSON.
-	pub fn metadata(&self) -> String {
-		self.engine.metadata().to_string()
 	}
 
 	/// Replace the document with `input` read as `format` (`json`, `html`,
@@ -253,7 +263,11 @@ impl WebEditor {
 	}
 
 	/// Lay out the viewport and paint whatever changed since the last frame.
-	pub fn frame(&mut self) -> JsResult<Frame> {
+	/// Returns what it did as `[height, shift, laidOut, measured, drawn,
+	/// full, painted]`: `height` is the document's height in CSS px, `shift`
+	/// how far content at the viewport's top moved (add it to the scroll
+	/// position), and the flags are 0 or 1.
+	pub fn frame(&mut self) -> JsResult<Vec<f64>> {
 		let surface = self.painter.surface();
 		let bottom = self.top + surface.height;
 		let update = self
@@ -285,7 +299,7 @@ impl WebEditor {
 		self.dirty.clear();
 		self.full_repaint = false;
 		self.painted = Some(list);
-		Ok(frame)
+		Ok(frame.to_array())
 	}
 
 	/// Font faces of `families` finished loading: forget only the
@@ -399,16 +413,16 @@ impl WebEditor {
 	/// The anchor and head as JSON positions, or `null` for a block
 	/// selection.
 	pub fn selection(&self) -> String {
-		let side =
-			|position: &Position| json!({ "path": position.path, "offset": position.offset });
-
-		self.doc
-			.selected_range()
-			.map_or(
-				Json::Null,
-				|(anchor, head)| json!({ "anchor": side(&anchor), "head": side(&head) }),
-			)
-			.to_string()
+		self.doc.selected_range().map_or_else(
+			|| "null".to_owned(),
+			|(anchor, head)| {
+				format!(
+					r#"{{"anchor":{},"head":{}}}"#,
+					position_json(&anchor),
+					position_json(&head)
+				)
+			},
+		)
 	}
 
 	/// Select from (`anchor_path`, `anchor_offset`) to (`head_path`,
@@ -475,34 +489,35 @@ impl WebEditor {
 		Ok(canvist_layout::to_svg(&list))
 	}
 
-	/// Measurement and cache statistics as JSON: cache hits and misses, the
-	/// hit rate, cached bytes per font, and how many segments and batches
-	/// the browser measured.
+	/// Measurement and cache statistics as JSON: cache hits and misses,
+	/// cached bytes per font, and how many segments and batches the browser
+	/// measured. The host derives the hit rate, so no float is formatted here
+	/// (see `canvist_layout::css_number`).
 	pub fn stats(&self) -> String {
 		let stats = self.layout.measure_stats();
-		let fonts: Vec<Json> = stats
+		let fonts: Vec<String> = stats
 			.fonts
 			.iter()
 			.enumerate()
 			.map(|(index, font)| {
-				json!({
-					"font": self.font_css(index),
-					"segments": font.segments,
-					"bytes": font.bytes,
-				})
+				format!(
+					r#"{{"font":{},"segments":{},"bytes":{}}}"#,
+					Json::from(self.font_css(index)),
+					font.segments,
+					font.bytes
+				)
 			})
 			.collect();
 
-		json!({
-			"hits": stats.hits,
-			"misses": stats.misses,
-			"hitRate": stats.hit_rate(),
-			"bytes": stats.bytes(),
-			"measuredSegments": self.measurer.segments(),
-			"measureCalls": self.measurer.calls(),
-			"fonts": fonts,
-		})
-		.to_string()
+		format!(
+			r#"{{"hits":{},"misses":{},"bytes":{},"measuredSegments":{},"measureCalls":{},"fonts":[{}]}}"#,
+			stats.hits,
+			stats.misses,
+			stats.bytes(),
+			self.measurer.segments(),
+			self.measurer.calls(),
+			fonts.join(",")
+		)
 	}
 }
 
@@ -601,6 +616,16 @@ impl WebEditor {
 			.get(index)
 			.map(canvist_layout::FontSpec::css)
 	}
+}
+
+/// A position as JSON: `{"path":[…],"offset":n}`.
+fn position_json(position: &Position) -> String {
+	let path: Vec<String> = position.path.iter().map(u32::to_string).collect();
+	format!(
+		r#"{{"path":[{}],"offset":{}}}"#,
+		path.join(","),
+		position.offset
+	)
 }
 
 fn layout_options(options: &Options, width: f32) -> LayoutOptions {

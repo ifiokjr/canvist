@@ -43,13 +43,13 @@ Every number below has a budget, and a test fails the build when an operation go
 | Keystroke → paint on the web (Event Timing), p95   | < 8 ms                                      | Coming soon          |
 | Typing burst: 1,000 key events in one task         | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
 | Open a 10k-paragraph document → first paint        | < 50 ms                                     | layout 0.6 ms        |
-| Web bundle (core + StarterKit), gzipped            | < 350 KB                                    | 379 KB ³             |
+| Web bundle (core + StarterKit), gzipped            | < 350 KB                                    | 349.8 KB ³           |
 
 ¹ Pressing Enter grows slowly with document size, about 10 ns per block, because every later line moves down one row. It stays well under a frame at 100,000 blocks.
 
 ² Structural edits, such as splitting or joining blocks, cost time in proportion to the number of blocks beside them, because Yjs walks the list of siblings. Budgets use 10,000 top-level blocks.
 
-³ Over budget. The editor's WebAssembly is 357 KB, its glue 7 KB, and its scripts 14 KB. Most of the module is the editing engine with every StarterKit extension, the Markdown and HTML codecs that paste and import need, and the Unicode tables for line breaking, bidi, and graphemes. Splitting the codecs and the regular-expression engine that input rules use into a module that loads on first paste is the next step.
+³ Measured as an app ships it: a Vite build of a page that creates an editor, minified and gzipped (336 KB of WebAssembly, 14 KB of script). CI fails above the budget. The module is optimized without inlining, which gzips smaller even though it is larger raw. Line breaking's Unicode data is 13.6 KB of it, and browsers offer no line-break segmenter to use instead.
 
 ## Keep your app fast
 

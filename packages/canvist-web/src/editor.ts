@@ -386,7 +386,10 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 
 	/** Measurement cache statistics. */
 	stats(): EditorStats {
-		return JSON.parse(this.#wasm.stats());
+		const stats: Omit<EditorStats, "hitRate"> = JSON.parse(this.#wasm.stats());
+		const lookups = stats.hits + stats.misses;
+
+		return { ...stats, hitRate: lookups === 0 ? 1 : stats.hits / lookups };
 	}
 
 	/** The CSS `font` of every font the layout has used. */
@@ -522,19 +525,25 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		for (let pass = 0; pass < 2; pass += 1) {
 			const changed = this.#syncSize();
 			this.#wasm.setTop(this.#viewportTop());
-			const frame = this.#wasm.frame();
+			const [
+				height = 0,
+				shift = 0,
+				laidOut = 0,
+				measured = 0,
+				drawn = 0,
+				full = 0,
+				painted = 0,
+			] = this.#wasm.frame();
 			this.#lastFrame = {
-				height: frame.height,
-				laidOut: frame.laidOut,
-				measured: frame.measured,
-				drawn: frame.drawn,
-				full: frame.full,
-				painted: frame.painted,
+				height,
+				laidOut,
+				measured,
+				drawn,
+				full: full === 1,
+				painted: painted === 1,
 			};
-			const shift = frame.shift;
-			const heightChanged = frame.height !== this.#height;
-			this.#height = frame.height;
-			frame.free();
+			const heightChanged = height !== this.#height;
+			this.#height = height;
 
 			if (shift !== 0) {
 				this.#scroller().scrollBy(0, shift);

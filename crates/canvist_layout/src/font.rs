@@ -56,7 +56,8 @@ impl FontSpec {
 impl fmt::Display for FontSpec {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		let style = if self.italic { "italic" } else { "normal" };
-		write!(f, "{style} {} {}px {}", self.weight, self.size, self.family)
+		let size = crate::render::css_number(self.size);
+		write!(f, "{style} {} {size}px {}", self.weight, self.family)
 	}
 }
 
