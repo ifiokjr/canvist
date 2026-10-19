@@ -1,0 +1,34 @@
+---
+import type { DocsGroup } from "../../lib/docs-nav.ts";
+
+interface Props {
+	groups: readonly DocsGroup[];
+	currentRoute: string;
+	/** The sidebar renders twice (inline and in the drawer); ids must differ. */
+	idPrefix: string;
+}
+
+const { groups, currentRoute, idPrefix } = Astro.props;
+const groupId = (index: number) => `${idPrefix}-docs-group-${index}`;
+---
+
+<nav class="docs-nav" aria-label="Docs">
+	{
+		groups.map((group, index) => (
+			<div class="docs-nav__group">
+				<p class="docs-nav__title" id={groupId(index)}>
+					{group.title}
+				</p>
+				<ul aria-labelledby={groupId(index)}>
+					{group.links.map((link) => (
+						<li>
+							<a href={link.route} aria-current={link.route === currentRoute ? "page" : undefined} data-astro-prefetch>
+								{link.label}
+							</a>
+						</li>
+					))}
+				</ul>
+			</div>
+		))
+	}
+</nav>

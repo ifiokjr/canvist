@@ -1,0 +1,255 @@
+---
+import type { GetStaticPaths } from "astro";
+import { type Service, services } from "../../data/services.ts";
+import Base from "../../layouts/Base.astro";
+import { GITHUB_URL } from "../../lib/brand.ts";
+import { cloudDocsFor } from "../../lib/cloud-docs.ts";
+
+export const getStaticPaths = (() =>
+	services.map((service) => ({ params: { service: service.id }, props: { service } }))) satisfies GetStaticPaths;
+
+interface Props {
+	service: Service;
+}
+
+const { service } = Astro.props;
+const docs = cloudDocsFor(service.id);
+const others = services.filter((entry) => entry.id !== service.id);
+const index = services.indexOf(service);
+---
+
+<Base title={`canvist ${service.name}`} description={`canvist ${service.name}: ${service.summary}`} preloadMono>
+	<div class="service" style={`--sw: var(--chip-${index + 1});`}>
+		<section class="service__hero" aria-labelledby="service-title">
+			<p class="service__crumb code-label"><a href="/services">Services</a> / {service.name}</p>
+			<div class="service__title-row">
+				<h1 id="service-title" class="service__title">{service.name}</h1>
+				<span class="status" data-status={service.status === "next" ? "planned" : "building"}>{service.statusText}</span>
+			</div>
+			<p class="service__tagline">{service.tagline}</p>
+			<p class="service__summary">{service.summary}</p>
+			<div class="service__actions">
+				<a class="btn" href={docs.href} data-astro-prefetch>{docs.published ? `Read the ${service.name} docs` : "Follow the roadmap"}</a>
+				<a class="btn btn--ghost" href="/pricing" data-astro-prefetch>Preview pricing</a>
+			</div>
+			{!docs.published && <p class="service__note code-label">The canvist Cloud docs are being written alongside the service.</p>}
+		</section>
+
+		<section class="service__body" aria-label={`What ${service.name} does`}>
+			<div class="service__does">
+				<h2 class="service__h2">What it does</h2>
+				<ul>
+					{service.does.map((line) => <li>{line}</li>)}
+				</ul>
+			</div>
+			<figure class="service__example">
+				<figcaption class="code-label">{service.example.label}</figcaption>
+				<pre tabindex="0"><code>{service.example.code}</code></pre>
+			</figure>
+		</section>
+
+		<section class="selfhost" aria-labelledby="selfhost-title">
+			<p class="code-label selfhost__kicker">Same binary, your servers</p>
+			<h2 id="selfhost-title" class="selfhost__title">Self-host the exact binary we run.</h2>
+			<p class="selfhost__body">
+				{service.selfHost} canvist charges for operating the service, never for the code: the server is public domain like the editor, and the binary canvist deploys is the one it publishes.
+			</p>
+			<a class="selfhost__link" href={GITHUB_URL}>Source on GitHub</a>
+		</section>
+
+		<nav class="service__others" aria-label="Other services">
+			{
+				others.map((other) => (
+					<a href={`/services/${other.id}`} data-astro-prefetch>
+						<span class="code-label">canvist</span>
+						<span class="service__other-name">{other.name}</span>
+						<span>{other.tagline}</span>
+					</a>
+				))
+			}
+		</nav>
+	</div>
+</Base>
+
+<style>
+	.service {
+		display: grid;
+		gap: var(--section-gap);
+		padding: 0 var(--gutter) var(--section-gap);
+	}
+
+	.service > * {
+		border-radius: var(--r-chip);
+		padding: var(--chip-pad);
+	}
+
+	.service__hero {
+		display: grid;
+		gap: var(--s-5);
+		background: var(--sw);
+		color: var(--chip-ink);
+	}
+
+	.service__crumb a {
+		color: inherit;
+	}
+
+	.service__title-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--s-4);
+	}
+
+	.service__title {
+		font-size: var(--t-mega);
+		line-height: 0.85;
+		font-weight: 800;
+		letter-spacing: -0.05em;
+	}
+
+	.service__tagline {
+		font-size: var(--t-2);
+		line-height: 1.1;
+		font-weight: 680;
+		letter-spacing: -0.02em;
+		max-width: 22ch;
+	}
+
+	.service__summary {
+		font-size: var(--t-3);
+		line-height: 1.4;
+		max-width: 52ch;
+	}
+
+	.service__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s-3);
+	}
+
+	.service__note {
+		color: color-mix(in oklab, var(--chip-ink) 75%, var(--sw));
+	}
+
+	.service__body {
+		display: grid;
+		grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+		gap: var(--s-7) var(--s-8);
+		background: var(--chip-0);
+	}
+
+	.service__h2 {
+		font-size: var(--t-2);
+		letter-spacing: -0.03em;
+		margin-bottom: var(--s-4);
+	}
+
+	.service__does ul {
+		display: grid;
+		gap: var(--s-3);
+		padding: 0;
+		list-style: none;
+	}
+
+	.service__does li {
+		display: grid;
+		grid-template-columns: 1.25rem minmax(0, 1fr);
+		gap: var(--s-2);
+		font-size: var(--t-3);
+		line-height: 1.35;
+	}
+
+	.service__does li::before {
+		content: "";
+		width: 3px;
+		height: 1.15em;
+		margin-top: 0.15em;
+		border-radius: 2px;
+		background: var(--accent);
+	}
+
+	.service__example {
+		display: grid;
+		gap: var(--s-3);
+		align-content: start;
+	}
+
+	.service__example figcaption {
+		color: var(--text-muted);
+	}
+
+	.service__example pre {
+		padding: var(--s-5);
+		border-radius: var(--r-2);
+		background: #121019;
+		color: #e6e3f5;
+		overflow-x: auto;
+		font-size: var(--t-small);
+		line-height: 1.7;
+	}
+
+	.selfhost {
+		display: grid;
+		gap: var(--s-4);
+		background: var(--chip-7);
+		color: light-dark(var(--paper), var(--ink));
+	}
+
+	.selfhost__kicker {
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.selfhost__title {
+		font-size: var(--t-1);
+		line-height: 0.95;
+		letter-spacing: -0.04em;
+		max-width: 16ch;
+	}
+
+	.selfhost__body {
+		font-size: var(--t-3);
+		line-height: 1.4;
+		max-width: 52ch;
+	}
+
+	.selfhost__link {
+		font-weight: 680;
+		width: fit-content;
+	}
+
+	.service > .service__others {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--s-3);
+		padding: 0;
+	}
+
+	.service__others a {
+		display: grid;
+		gap: var(--s-2);
+		padding: var(--s-6) var(--s-5);
+		border-radius: var(--r-2);
+		background: var(--chip-1);
+		text-decoration: none;
+		transition: transform var(--dur-2) var(--ease-out);
+	}
+
+	.service__others a:hover {
+		transform: translateY(-4px);
+	}
+
+	.service__other-name {
+		font-size: var(--t-2);
+		font-weight: 800;
+		letter-spacing: -0.03em;
+	}
+
+	@media (max-width: 56rem) {
+		.service__body,
+		.service__others {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>
