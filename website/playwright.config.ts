@@ -3,6 +3,8 @@ import process from "node:process";
 
 const PORT = 4600;
 const CI = Boolean(process.env["CI"]);
+/** Set to test a deployed site (staging, production) instead of the local build. */
+const BASE_URL = process.env["BASE_URL"];
 
 /**
  * End-to-end tests against the production build (`deno task build` first).
@@ -27,16 +29,20 @@ export default defineConfig({
 		},
 	},
 	use: {
-		baseURL: `http://127.0.0.1:${PORT}`,
+		baseURL: BASE_URL ?? `http://127.0.0.1:${PORT}`,
 		trace: "retain-on-failure",
 	},
 	projects: [
 		{ name: "chromium", use: { ...devices["Desktop Chrome"] } },
 	],
-	webServer: {
-		command: `deno run --allow-net --allow-read tests/serve.ts ${PORT}`,
-		url: `http://127.0.0.1:${PORT}/`,
-		reuseExistingServer: !CI,
-		timeout: 30_000,
-	},
+	...(BASE_URL === undefined
+		? {
+			webServer: {
+				command: `deno run --allow-net --allow-read tests/serve.ts ${PORT}`,
+				url: `http://127.0.0.1:${PORT}/`,
+				reuseExistingServer: !CI,
+				timeout: 30_000,
+			},
+		}
+		: {}),
 });

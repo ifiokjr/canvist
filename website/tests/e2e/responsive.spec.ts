@@ -45,7 +45,7 @@ test.describe("responsive", () => {
 		await page.goto("/");
 		const small = await page.evaluate(() =>
 			[...document.querySelectorAll<HTMLElement>(
-				"header a, header button, .btn, .hosts button, .switch",
+				"header a, header button, .btn, .hosts button",
 			)]
 				.filter((element) => {
 					const box = element.getBoundingClientRect();

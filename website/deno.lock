@@ -28,7 +28,6 @@
     "npm:@types/node@24.19.2": "24.19.2",
     "npm:astro@*": "7.3.8_@astrojs+markdown-remark@7.3.2",
     "npm:astro@7.3.8": "7.3.8_@astrojs+markdown-remark@7.3.2",
-    "npm:gsap@3.15.0": "3.15.0",
     "npm:pagefind@*": "1.5.2",
     "npm:pagefind@1.5.2": "1.5.2",
     "npm:playwright@1.64.0": "1.64.0",
@@ -1470,9 +1469,6 @@
     },
     "github-slugger@2.0.0": {
       "integrity": "sha512-IaOQ9puYtjrkq7Y0Ygl9KDZnrf/aiUJYUpVf89y8kyaxbRG7Y1SrX/jaumrv81vc61+kiMempujsM3Yw7w5qcw=="
-    },
-    "gsap@3.15.0": {
-      "integrity": "sha512-dMW4CWBTUK1AEEDeZc1g4xpPGIrSf9fJF960qbTZmN/QwZIWY5wgliS6JWl9/25fpTGJrMRtSjGtOmPnfjZB+A=="
     },
     "h3@1.15.11": {
       "integrity": "sha512-L3THSe2MPeBwgIZVSH5zLdBBU90TOxarvhK9d04IDY2AmVS8j2Jz2LIWtwsGOU3lu2I5jCN7FNvVfY2+XyF+mg==",
@@ -3301,7 +3297,6 @@
         "npm:@types/hast@3.0.4",
         "npm:@types/node@24.19.2",
         "npm:astro@7.3.8",
-        "npm:gsap@3.15.0",
         "npm:pagefind@1.5.2",
         "npm:sharp@0.35.5",
         "npm:subset-font@2.9.0",

@@ -1,83 +1,17 @@
 /**
- * Shared motion setup for the landing page.
+ * Shared motion helpers for the landing page.
  *
- * GSAP and ScrollTrigger load once, on demand, and never when the visitor
- * asks for reduced motion: every section renders its final, readable state
- * without them, and motion only ever adds to that.
- *
- * Every effect they drive responds to scrolling, so they load on the
- * visitor's first sign of moving through the page (or at once when the page
- * opens already scrolled). That keeps ScrollTrigger's layout measurement
- * out of the initial load, where it cost a 430 ms task on a throttled phone.
+ * There is no scroll-linked JavaScript: nothing runs per scroll event, and
+ * nothing is pinned. Motion is CSS transitions on `transform` and `opacity`,
+ * started once by an IntersectionObserver, plus loops (the caret demos) that
+ * run only while their element is on screen. Under reduced motion none of it
+ * runs, and every section's resting state is its final state.
  */
-import type { gsap as GsapNamespace } from "gsap";
-import type { ScrollTrigger as ScrollTriggerClass } from "gsap/ScrollTrigger";
-
-export interface ScrollKit {
-	gsap: typeof GsapNamespace;
-	ScrollTrigger: typeof ScrollTriggerClass;
-}
 
 const reducedQuery = matchMedia("(prefers-reduced-motion: reduce)");
 
 export function prefersReducedMotion(): boolean {
 	return reducedQuery.matches;
-}
-
-const INTENT_EVENTS = [
-	"scroll",
-	"wheel",
-	"touchstart",
-	"keydown",
-	"pointerdown",
-] as const;
-
-/** Resolves on the first scroll, wheel, touch, key or pointer press. */
-function firstIntent(): Promise<void> {
-	if (scrollY > 0) return Promise.resolve();
-	return new Promise((resolve) => {
-		const controller = new AbortController();
-		const done = () => {
-			controller.abort();
-			resolve();
-		};
-		for (const type of INTENT_EVENTS) {
-			addEventListener(type, done, {
-				passive: true,
-				signal: controller.signal,
-			});
-		}
-	});
-}
-
-/**
- * Callers create their scroll triggers when the kit resolves, and pinned
- * sections insert scroll space above whatever follows them. If the visitor
- * is looking at a `#section` they jumped to, bring it back once that layout
- * change has happened.
- */
-function keepAnchorInView(): void {
-	const id = decodeURIComponent(location.hash.slice(1));
-	const anchor = id === "" ? null : document.getElementById(id);
-	if (anchor === null) return;
-	const box = anchor.getBoundingClientRect();
-	if (box.bottom <= 0 || box.top >= innerHeight) return;
-	requestAnimationFrame(() => anchor.scrollIntoView());
-}
-
-let kit: Promise<ScrollKit> | undefined;
-
-/** Resolves to GSAP with ScrollTrigger registered, or `null` under reduced motion. */
-export async function loadScrollKit(): Promise<ScrollKit | null> {
-	if (prefersReducedMotion()) return null;
-	kit ??= firstIntent()
-		.then(() => Promise.all([import("gsap"), import("gsap/ScrollTrigger")]))
-		.then(([core, plugin]) => {
-			core.gsap.registerPlugin(plugin.ScrollTrigger);
-			keepAnchorInView();
-			return { gsap: core.gsap, ScrollTrigger: plugin.ScrollTrigger };
-		});
-	return kit;
 }
 
 /** Calls `callback` once the element first comes within `margin` of the viewport. */
@@ -109,8 +43,68 @@ export function trackVisibility(
 	observer.observe(element);
 }
 
-export const isDesktopLayout = (): boolean =>
-	matchMedia("(min-width: 64.0625rem)").matches;
+/**
+ * Resolves once the page has not scrolled for `quietMs`, so heavy start-up
+ * work (like initialising the wasm editor) never lands on a scrolling frame.
+ */
+export function whenScrollSettles(quietMs = 300): Promise<void> {
+	return new Promise((resolve) => {
+		const controller = new AbortController();
+		let timer = window.setTimeout(done, quietMs);
+		function done(): void {
+			controller.abort();
+			resolve();
+		}
+		addEventListener(
+			"scroll",
+			() => {
+				clearTimeout(timer);
+				timer = window.setTimeout(done, quietMs);
+			},
+			{ passive: true, signal: controller.signal },
+		);
+	});
+}
+
+/**
+ * Chips below the fold settle onto the deck as they scroll in: they wait
+ * slightly low and transparent, then a single CSS transition brings them
+ * home. Chips already on screen are left alone, and nothing is hidden unless
+ * this script runs, so a failed script never hides content.
+ */
+export function settleChips(chips: Iterable<HTMLElement>): void {
+	if (prefersReducedMotion()) return;
+	const waiting = [...chips].filter((chip) =>
+		chip.getBoundingClientRect().top > innerHeight
+	);
+	if (waiting.length === 0) return;
+	for (const chip of waiting) chip.classList.add("is-waiting");
+
+	const observer = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) {
+				if (!entry.isIntersecting) continue;
+				const chip = entry.target as HTMLElement;
+				observer.unobserve(chip);
+				chip.classList.add("is-settling");
+				// Let the waiting state paint before moving, so the transition runs.
+				requestAnimationFrame(() => chip.classList.remove("is-waiting"));
+				// Opacity finishes first; the settle ends when the transform does.
+				const settled = (event: TransitionEvent) => {
+					if (event.target !== chip || event.propertyName !== "transform") {
+						return;
+					}
+					chip.classList.remove("is-settling");
+					chip.removeEventListener("transitionend", settled);
+				};
+				chip.addEventListener("transitionend", settled);
+			}
+		},
+		// Start a little before the chip's top reaches the viewport.
+		{ rootMargin: "0px 0px 10% 0px" },
+	);
+	for (const chip of waiting) observer.observe(chip);
+}
 
 /**
  * Resolves a CSS colour expression (tokens use `light-dark()`, which

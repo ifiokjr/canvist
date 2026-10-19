@@ -1,76 +1,84 @@
 ---
 import { platforms } from "../../data/platforms.ts";
-import ChipLabel from "../ChipLabel.astro";
+
+/** One small document, the same in every frame. */
+const doc = {
+	title: "Field notes",
+	body: "The caret is still <strong>wet</strong>. One Rust core painted every glyph here.",
+	items: [
+		{ text: "Measure", done: true },
+		{ text: "Lay out", done: true },
+		{ text: "Paint", done: false },
+	],
+};
 ---
 
-<section class="chip everywhere" data-chip="2" id="everywhere" aria-labelledby="everywhere-title">
+<section class="chip everywhere" data-chip="2" id="everywhere" aria-labelledby="everywhere-title" data-settle>
 	<div class="chip-inner everywhere__grid" data-everywhere>
 		<div class="everywhere__copy">
-			<p class="eyebrow">03 / Everywhere</p>
-			<h2 id="everywhere-title" class="section-title">One document. Seven hosts. The same pixels.</h2>
+			<h2 id="everywhere-title" class="section-title">One core. Every platform.</h2>
 			<p class="lede chip-muted">
-				Every host runs the same Rust core and only supplies a surface to paint on and a way to read keys. Line breaks, carets and selections don't drift between platforms, because there is only one implementation of them.
+				Each host only gives canvist a surface to paint on and a way to read keys, so the same document looks the same everywhere.
 			</p>
-			<ol class="hosts" role="tablist" aria-label="Platforms" aria-orientation="vertical">
+			<div class="hosts" role="tablist" aria-label="Platforms">
 				{
 					platforms.map((platform, index) => (
-						<li role="presentation">
-							<button
-								type="button"
-								role="tab"
-								id={`host-tab-${platform.id}`}
-								aria-controls="host-frame"
-								aria-selected={index === 0 ? "true" : "false"}
-								tabindex={index === 0 ? 0 : -1}
-								data-host={platform.id}
-							>
-								<span class="hosts__name">{platform.name}</span>
-								<span class="status" data-status={platform.status}>{platform.statusText}</span>
-							</button>
-						</li>
+						<button
+							type="button"
+							role="tab"
+							id={`host-tab-${platform.id}`}
+							aria-controls={`host-${platform.id}`}
+							aria-selected={index === 0 ? "true" : "false"}
+							tabindex={index === 0 ? 0 : -1}
+							data-host={platform.id}
+							data-live={platform.status === "live" ? "" : undefined}
+						>
+							{platform.name}
+						</button>
 					))
 				}
-			</ol>
+			</div>
+			<p class="everywhere__note chip-muted">
+				<span class="dot dot--live" aria-hidden="true"></span> runs today. The others are on <a href="/docs/v2/roadmap" data-astro-prefetch>the roadmap</a>.
+			</p>
 		</div>
 
-		<div class="everywhere__stage">
-			<div class="device" id="host-frame" role="tabpanel" aria-labelledby="host-tab-web" data-device data-platform="web">
-				<div class="device__chrome device__chrome--top" aria-hidden="true">
-					<span class="device__dots"><i></i><i></i><i></i></span>
-					<span class="device__url">notes.example</span>
-					<span class="device__title">Field notes</span>
-					<span class="device__island"></span>
-					<span class="device__clock">9:41</span>
-				</div>
-				<div class="device__screen">
-					<span class="device__banner" aria-hidden="true">Debug</span>
-					<article class="doc" aria-label="Sample document">
-						<h3>Field notes</h3>
-						<p>The caret is still <strong>wet</strong>. Every glyph on this page was <em>measured, laid out and painted</em> by one Rust core.</p>
-						<ul>
-							<li data-done>Measure the words</li>
-							<li data-done>Break the lines</li>
-							<li>Paint the frame<span class="doc__caret" aria-hidden="true"></span></li>
-						</ul>
-					</article>
-				</div>
-				<div class="device__chrome device__chrome--bottom" aria-hidden="true">
-					<span class="device__tabs"><i></i><i></i><i></i><i></i></span>
-					<span class="device__home"></span>
-				</div>
-			</div>
-			<p class="everywhere__how code-label" data-host-how aria-live="polite">
-				<span data-host-name>Web</span>: <span data-host-detail>{platforms[0]?.how}</span>
-			</p>
-			<p class="everywhere__note code-label chip-muted">Illustration. The status of each host is from the roadmap.</p>
+		<div class="stage" aria-live="polite">
+			{
+				platforms.map((platform, index) => (
+					<div
+						class="device"
+						id={`host-${platform.id}`}
+						role="tabpanel"
+						aria-labelledby={`host-tab-${platform.id}`}
+						data-device={platform.id}
+						data-active={index === 0 ? "" : undefined}
+						hidden={index === 0 ? undefined : true}
+					>
+						<div class="device__bar" aria-hidden="true">
+							<i />
+							<i />
+							<i />
+						</div>
+						<div class="device__screen">
+							<article class="doc">
+								<h3>{doc.title}</h3>
+								<p set:html={doc.body} />
+								<ul>
+									{doc.items.map((item) => <li data-done={item.done ? "" : undefined}>{item.text}</li>)}
+								</ul>
+							</article>
+						</div>
+					</div>
+				))
+			}
 		</div>
 	</div>
-	<ChipLabel id="everywhere" code="7 hosts · 1 core · 0 contenteditable" />
 </section>
 
 <script>
-	import { mountEverywhere } from "../../scripts/everywhere.ts";
 	import { platforms } from "../../data/platforms.ts";
+	import { mountEverywhere } from "../../scripts/everywhere.ts";
 
 	const root = document.querySelector<HTMLElement>("[data-everywhere]");
 	if (root) mountEverywhere(root, platforms);
@@ -81,313 +89,185 @@ import ChipLabel from "../ChipLabel.astro";
 		display: grid;
 		grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
 		gap: var(--s-7) var(--s-8);
-		align-items: start;
+		align-items: center;
 	}
 
 	.everywhere__copy {
 		display: grid;
 		gap: var(--s-5);
+		align-content: start;
 	}
 
 	.hosts {
-		display: grid;
-		gap: 2px;
-		padding: 0;
-		margin-top: var(--s-3);
-		list-style: none;
-		border-top: 1px solid color-mix(in oklab, var(--chip-fg) 18%, transparent);
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s-2);
 	}
 
 	.hosts button {
-		display: flex;
-		flex-wrap: wrap;
+		display: inline-flex;
 		align-items: center;
-		justify-content: space-between;
 		gap: var(--s-2);
-		width: 100%;
-		min-height: 3rem;
-		padding: var(--s-2) var(--s-3);
-		border: 0;
-		border-bottom: 1px solid color-mix(in oklab, var(--chip-fg) 18%, transparent);
+		min-height: 2.75rem;
+		padding: 0 var(--s-4);
+		border: 1px solid color-mix(in oklab, var(--chip-fg) 28%, transparent);
+		border-radius: 999px;
 		background: transparent;
-		text-align: left;
+		font-size: var(--t-small);
+		font-weight: 600;
 		cursor: pointer;
-		transition: background-color var(--dur-1) var(--ease-out);
+		transition:
+			background-color var(--dur-2) var(--ease-wet),
+			color var(--dur-2) var(--ease-wet);
 	}
 
-	.hosts button:hover {
-		background: color-mix(in oklab, var(--chip-fg) 6%, transparent);
-	}
-
-	.hosts__name {
-		font-size: var(--t-3);
-		font-weight: 680;
-		letter-spacing: -0.01em;
+	.hosts button[data-live]::before,
+	.dot--live {
+		content: "";
+		display: inline-block;
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 50%;
+		background: var(--accent);
 	}
 
 	.hosts button[aria-selected="true"] {
 		background: var(--chip-fg);
 		color: var(--chip-bg);
-		border-radius: var(--r-1);
+		border-color: var(--chip-fg);
 	}
 
-	.everywhere__stage {
-		position: sticky;
-		top: var(--s-6);
-		display: grid;
-		justify-items: center;
-		align-content: center;
-		gap: var(--s-3);
-		min-height: min(42rem, 88vh);
+	.hosts button[aria-selected="true"][data-live]::before {
+		background: var(--chip-bg);
 	}
 
-	.everywhere__how,
 	.everywhere__note {
-		text-align: center;
-		max-width: 46ch;
+		font-size: var(--t-small);
 	}
 
-	/* ---------- The device: one frame whose chrome changes per host ---------- */
+	/* ---------- The stage: every device is stacked here and crossfades ---------- */
+
+	.stage {
+		position: relative;
+		aspect-ratio: 4 / 3;
+	}
 
 	.device {
-		--w: 100%;
-		--ratio: 16 / 10.5;
-		--radius: 0.875rem;
-		--bezel: 0px;
-		--chrome-top: 2.5rem;
-		--chrome-bottom: 0px;
+		--ratio: 16 / 10;
+		position: absolute;
+		inset: 0;
+		margin: auto;
 		display: grid;
-		grid-template-rows: var(--chrome-top) minmax(0, 1fr) var(--chrome-bottom);
-		width: var(--w);
+		grid-template-rows: 1.75rem minmax(0, 1fr);
+		width: 100%;
 		max-width: 100%;
+		max-height: 100%;
 		aspect-ratio: var(--ratio);
-		max-height: 80vh;
-		padding: var(--bezel);
-		border-radius: var(--radius);
+		padding: 0 0.375rem 0.375rem;
+		border-radius: 0.875rem;
 		background: var(--ink);
-		color: var(--paper);
-		box-shadow: 0 30px 60px -36px color-mix(in oklab, var(--ink) 70%, transparent);
-		overflow: hidden;
+		box-shadow: 0 30px 50px -34px color-mix(in oklab, var(--ink) 70%, transparent);
+		opacity: 1;
+		transform: none;
 		transition:
-			width 520ms var(--ease-out),
-			border-radius 520ms var(--ease-out),
-			padding 520ms var(--ease-out);
+			opacity 450ms var(--ease-wet),
+			transform 650ms var(--ease-wet);
 	}
 
-	.device[data-platform="desktop"] {
-		--w: 88%;
+	/* The hidden frames stay in the stack so the crossfade has something to fade. */
+	.device[hidden] {
+		display: grid;
+		visibility: hidden;
+		opacity: 0;
+		transform: translateY(0.75rem) scale(0.97);
+		transition:
+			opacity 300ms var(--ease-wet),
+			transform 300ms var(--ease-wet),
+			visibility 0s linear 300ms;
+	}
+
+	.device[data-device="desktop"] {
 		--ratio: 4 / 3;
-		--radius: 0.75rem;
-		--chrome-top: 2.25rem;
+		width: 92%;
 	}
 
-	.device[data-platform="ios"],
-	.device[data-platform="android"],
-	.device[data-platform="react-native"],
-	.device[data-platform="lynx"] {
-		--w: min(19rem, 70%);
-		--ratio: 9 / 19.2;
-		--radius: 2.75rem;
-		--bezel: 0.5rem;
-		--chrome-top: 2.75rem;
-		--chrome-bottom: 1.75rem;
-	}
-
-	.device[data-platform="android"] {
-		--radius: 1.75rem;
-	}
-
-	.device[data-platform="react-native"] {
-		--chrome-bottom: 3.5rem;
-	}
-
-	.device[data-platform="flutter"] {
-		--w: 92%;
+	.device[data-device="flutter"] {
 		--ratio: 4 / 3;
-		--radius: 1.5rem;
-		--bezel: 0.875rem;
-		--chrome-top: 1.75rem;
+		width: 88%;
+		padding: 0 0.75rem 0.75rem;
+		border-radius: 1.25rem;
 	}
 
-	.device__chrome {
-		position: relative;
+	.device:is([data-device="ios"], [data-device="android"], [data-device="react-native"], [data-device="lynx"]) {
+		--ratio: 9 / 18;
+		width: auto;
+		height: 100%;
+		padding: 0 0.5rem 0.5rem;
+		border-radius: 2rem;
+	}
+
+	.device[data-device="android"] {
+		border-radius: 1.5rem;
+	}
+
+	.device__bar {
 		display: flex;
 		align-items: center;
-		gap: var(--s-3);
-		padding: 0 var(--s-4);
-		font-family: var(--font-mono);
-		font-size: 0.6875rem;
-		color: color-mix(in oklab, var(--paper) 70%, transparent);
-		overflow: hidden;
+		gap: 5px;
+		padding-inline: 0.5rem;
 	}
 
-	.device__chrome > span {
-		display: none;
-	}
-
-	.device__dots {
-		gap: 6px;
-	}
-
-	.device__dots i {
-		width: 10px;
-		height: 10px;
+	.device__bar i {
+		width: 8px;
+		height: 8px;
 		border-radius: 50%;
 		background: color-mix(in oklab, var(--paper) 35%, transparent);
 	}
 
-	.device__url {
-		flex: 1;
-		max-width: 22rem;
-		margin-inline: auto;
-		padding: 0.2rem 0.75rem;
-		border-radius: 999px;
-		background: color-mix(in oklab, var(--paper) 12%, transparent);
-		text-align: center;
-	}
-
-	.device__title {
-		flex: 1;
-		text-align: center;
-	}
-
-	.device__island {
-		position: absolute;
-		left: 50%;
-		top: 0.5rem;
-		width: 5.5rem;
-		height: 1.5rem;
-		margin-left: -2.75rem;
-		border-radius: 999px;
-		background: #000;
-	}
-
-	.device__clock {
-		font-weight: 600;
-		color: var(--paper);
-	}
-
-	/* Which chrome each host shows. */
-	.device[data-platform="web"] :is(.device__dots, .device__url),
-	.device[data-platform="desktop"] :is(.device__dots, .device__title),
-	.device[data-platform="ios"] :is(.device__island, .device__clock),
-	.device[data-platform="android"] .device__clock,
-	.device[data-platform="react-native"] :is(.device__island, .device__clock),
-	.device[data-platform="lynx"] :is(.device__island, .device__clock) {
-		display: flex;
-	}
-
-	.device[data-platform="android"] .device__chrome--top::after {
-		content: "";
-		position: absolute;
-		left: 50%;
-		top: 0.875rem;
-		width: 0.875rem;
-		height: 0.875rem;
-		margin-left: -0.4375rem;
-		border-radius: 50%;
-		background: #000;
-	}
-
-	.device__chrome--bottom {
+	.device:is([data-device="ios"], [data-device="android"], [data-device="react-native"], [data-device="lynx"]) .device__bar {
 		justify-content: center;
 	}
 
-	.device__home {
-		width: 7rem;
-		height: 0.3125rem;
+	.device:is([data-device="ios"], [data-device="android"], [data-device="react-native"], [data-device="lynx"]) .device__bar i:not(:first-child) {
+		display: none;
+	}
+
+	.device:is([data-device="ios"], [data-device="react-native"], [data-device="lynx"]) .device__bar i:first-child {
+		width: 3.5rem;
+		height: 0.875rem;
 		border-radius: 999px;
-		background: color-mix(in oklab, var(--paper) 70%, transparent);
-	}
-
-	.device:is([data-platform="ios"], [data-platform="android"], [data-platform="lynx"]) .device__home {
-		display: block;
-	}
-
-	.device__tabs {
-		width: 100%;
-		justify-content: space-around;
-	}
-
-	.device__tabs i {
-		width: 1.25rem;
-		height: 1.25rem;
-		border-radius: 0.375rem;
-		background: color-mix(in oklab, var(--paper) 30%, transparent);
-	}
-
-	.device__tabs i:first-child {
-		background: var(--paint-on-dark);
-	}
-
-	.device[data-platform="react-native"] .device__tabs {
-		display: flex;
+		background: #000;
 	}
 
 	.device__screen {
-		position: relative;
+		/* Text scales with the screen, so every frame fits its document. */
+		container-type: size;
 		min-height: 0;
-		border-radius: max(0px, calc(var(--radius) - var(--bezel) - 0.25rem));
+		border-radius: calc(0.875rem - 0.375rem);
 		background: var(--paper);
 		color: var(--ink);
 		overflow: hidden;
 	}
 
-	.device:is([data-platform="web"], [data-platform="desktop"]) .device__screen {
-		border-radius: 0 0 calc(var(--radius) - 2px) calc(var(--radius) - 2px);
-	}
-
-	/* Lynx apps often live as cards inside a feed. */
-	.device[data-platform="lynx"] .device__screen {
-		background:
-			linear-gradient(var(--paper), var(--paper)) 0.75rem 3.25rem / calc(100% - 1.5rem) calc(100% - 6.5rem) no-repeat,
-			repeating-linear-gradient(#2c2639 0 2.5rem, #221d2e 2.5rem 2.75rem);
-	}
-
-	.device[data-platform="lynx"] .doc {
-		margin: 3.25rem 0.75rem;
-	}
-
-	.device__banner {
-		display: none;
-		position: absolute;
-		top: 0.75rem;
-		right: -1.75rem;
-		width: 6.5rem;
-		padding: 0.15rem 0;
-		background: #b3261e;
-		color: #fff;
-		font-family: var(--font-mono);
-		font-size: 0.625rem;
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-align: center;
-		text-transform: uppercase;
-		transform: rotate(45deg);
-	}
-
-	.device[data-platform="flutter"] .device__banner {
-		display: block;
+	.device:is([data-device="ios"], [data-device="android"], [data-device="react-native"], [data-device="lynx"]) .device__screen {
+		border-radius: 1.5rem;
 	}
 
 	.doc {
 		display: grid;
+		align-content: start;
 		gap: 0.6em;
-		padding: clamp(1rem, 4%, 2rem);
-		font-size: clamp(0.875rem, 1.3vw, 1.0625rem);
-		line-height: 1.5;
-	}
-
-	.device:is([data-platform="ios"], [data-platform="android"], [data-platform="react-native"], [data-platform="lynx"]) .doc {
-		font-size: 0.875rem;
+		padding: 8cqmin;
+		font-size: clamp(0.5rem, min(4.6cqi, 7cqb), 1.0625rem);
+		line-height: 1.45;
 	}
 
 	.doc h3 {
-		font-size: 1.6em;
+		font-size: 1.55em;
 		line-height: 1.05;
 	}
 
-	.doc strong {
+	.doc :global(strong) {
 		color: var(--paint);
 	}
 
@@ -409,71 +289,18 @@ import ChipLabel from "../ChipLabel.astro";
 		flex: none;
 		width: 1em;
 		height: 1em;
-		border: 2px solid var(--ink);
+		border: 0.12em solid var(--ink);
 		border-radius: 0.25em;
 	}
 
 	.doc li[data-done]::before {
 		border-color: var(--paint);
-		background: var(--paint) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23F5F3FF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 80% no-repeat;
-	}
-
-	.doc__caret {
-		display: inline-block;
-		width: 2px;
-		height: 1.15em;
-		margin-left: 1px;
 		background: var(--paint);
-		animation: doc-blink 1.06s steps(1, end) infinite;
-	}
-
-	@keyframes doc-blink {
-		50% {
-			opacity: 0;
-		}
 	}
 
 	@media (max-width: 64rem) {
 		.everywhere__grid {
 			grid-template-columns: minmax(0, 1fr);
-		}
-
-		.everywhere__stage {
-			position: relative;
-			top: auto;
-			min-height: 0;
-			order: -1;
-		}
-
-		.hosts {
-			display: flex;
-			flex-wrap: wrap;
-			gap: var(--s-2);
-			border: 0;
-		}
-
-		.hosts button {
-			width: auto;
-			min-height: 2.75rem;
-			border: 1px solid color-mix(in oklab, var(--chip-fg) 30%, transparent);
-			border-radius: 999px;
-			padding: 0 var(--s-4);
-		}
-
-		.hosts button[aria-selected="true"] {
-			border-radius: 999px;
-		}
-
-		.hosts__name {
-			font-size: var(--t-small);
-		}
-
-		.hosts .status {
-			display: none;
-		}
-
-		.device {
-			max-height: 70vh;
 		}
 	}
 </style>

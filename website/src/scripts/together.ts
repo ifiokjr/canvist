@@ -1,5 +1,4 @@
 import {
-	loadScrollKit,
 	prefersReducedMotion,
 	resolveColor,
 	trackVisibility,
@@ -11,8 +10,9 @@ import {
  * it, the way canvist maps selections through remote steps, so carets after
  * an insertion shift right and nobody's cursor jumps.
  *
- * Painted on a canvas, like the editor itself. The approach is scrubbed by
- * scroll; the typing runs on a clock while the room is visible.
+ * Painted on a canvas, like the editor itself. The carets fly in once when
+ * the room first comes into view, then type on a clock; the loop runs only
+ * while the room is visible and repaints only when something changed.
  */
 
 interface Actor {
@@ -76,6 +76,7 @@ const FILLER_BEFORE = [
 ];
 const FILLER_AFTER = ["Nobody leaves until the drips are dry."];
 const HOLD_MS = 2600;
+const APPROACH_MS = 1100;
 
 interface Caret {
 	actor: Actor;
@@ -153,6 +154,8 @@ export function mountTogether(root: HTMLElement): void {
 	let height = 0;
 	let room = prefersReducedMotion() ? finishedRoom() : freshRoom();
 	let approach = prefersReducedMotion() ? 1 : 0;
+	let approachStartedAt: number | undefined;
+	let painted = "";
 	let typingStartedAt: number | undefined;
 	let visible = false;
 	let frame = 0;
@@ -270,6 +273,8 @@ export function mountTogether(root: HTMLElement): void {
 
 	function tick(now: number): void {
 		frame = 0;
+		approachStartedAt ??= now;
+		approach = Math.min(1, (now - approachStartedAt) / APPROACH_MS);
 		if (approach >= 1) {
 			typingStartedAt ??= now;
 			const elapsed = now - typingStartedAt;
@@ -309,8 +314,15 @@ export function mountTogether(root: HTMLElement): void {
 				approach > 0 ? "Ada, Mei and Kofi joined" : "4 people in this document",
 			);
 		}
-		draw();
-		if (visible && approach >= 1) frame = requestAnimationFrame(tick);
+		// Repaint only when the text or the carets moved.
+		const state = `${approach}|${room.text}|${
+			room.carets.map((caret) => caret.offset).join(",")
+		}`;
+		if (state !== painted) {
+			painted = state;
+			draw();
+		}
+		if (visible) frame = requestAnimationFrame(tick);
 	}
 
 	function schedule(): void {
@@ -329,23 +341,5 @@ export function mountTogether(root: HTMLElement): void {
 	trackVisibility(canvas, (isVisible) => {
 		visible = isVisible;
 		if (visible) schedule();
-	});
-
-	void loadScrollKit().then((kit) => {
-		if (!kit) return;
-		kit.ScrollTrigger.create({
-			trigger: root,
-			start: "top 85%",
-			end: "center 55%",
-			onUpdate: (self) => {
-				approach = self.progress;
-				if (approach < 1) typingStartedAt = undefined;
-				schedule();
-			},
-			onLeave: () => {
-				approach = 1;
-				schedule();
-			},
-		});
 	});
 }

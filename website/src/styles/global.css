@@ -167,7 +167,7 @@ pre {
 	font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Chips: every section is a swatch on the deck ---------- */
+/* ---------- The deck: swatch chips on a white table ---------- */
 
 .deck {
 	display: grid;
@@ -176,6 +176,11 @@ pre {
 	padding-bottom: var(--section-gap);
 }
 
+/*
+ * A swatch chip: a full-width colour field punched with a rivet. Chips size to
+ * their content; nothing on the page uses viewport heights, so nothing can be
+ * cut off on a short screen.
+ */
 .chip {
 	--chip-bg: var(--chip-0);
 	--chip-fg: var(--chip-ink);
@@ -183,21 +188,18 @@ pre {
 	/* Secondary text on a chip: the most a muted tone can fade and still pass AA. */
 	--chip-muted: color-mix(in oklab, var(--chip-fg) 86%, var(--chip-bg));
 	position: relative;
-	isolation: isolate;
 	background: var(--chip-bg);
 	color: var(--chip-fg);
 	border-radius: var(--r-chip);
-	padding: calc(var(--chip-pad) + var(--s-4)) var(--chip-pad) calc(var(--chip-pad) * 0.42);
-	transform-origin: calc(var(--chip-pad) * 0.5 + var(--rivet) * 0.5) calc(var(--chip-pad) * 0.5 + var(--rivet) * 0.5);
-	overflow: clip;
+	padding: var(--chip-pad);
 }
 
 /* The rivet hole every swatch on a fan deck is punched with. */
 .chip::before {
 	content: "";
 	position: absolute;
-	top: calc(var(--chip-pad) * 0.5);
-	left: calc(var(--chip-pad) * 0.5);
+	top: calc(var(--chip-pad) * 0.42);
+	left: calc(var(--chip-pad) * 0.42);
 	width: var(--rivet);
 	height: var(--rivet);
 	border-radius: 50%;
@@ -223,55 +225,14 @@ pre {
 	--chip-caret: var(--paper);
 }
 
-.chip[data-chip="5"],
-.chip[data-chip="6"],
 .chip[data-chip="7"] {
+	--chip-bg: var(--chip-7);
 	--chip-fg: light-dark(var(--paper), var(--ink));
 	--chip-caret: light-dark(var(--paint-on-dark), var(--paint));
 }
 
-.chip[data-chip="5"] {
-	--chip-bg: var(--chip-5);
-	--chip-caret: light-dark(var(--paper), var(--ink));
-}
-
-.chip[data-chip="6"] {
-	--chip-bg: var(--chip-6);
-}
-
-.chip[data-chip="7"] {
-	--chip-bg: var(--chip-7);
-}
-
 .chip-muted {
 	color: var(--chip-muted);
-}
-
-/* The label strip printed along the bottom of each swatch. */
-.chip-label {
-	position: relative;
-	max-width: var(--content);
-	margin: calc(var(--chip-pad) * 0.9) auto 0;
-	display: flex;
-	flex-wrap: wrap;
-	align-items: baseline;
-	gap: var(--s-1) var(--s-4);
-	padding-top: var(--s-2);
-	border-top: 1px solid color-mix(in oklab, var(--chip-fg) 22%, transparent);
-	font-family: var(--font-mono);
-	font-size: var(--t-micro);
-	letter-spacing: 0.02em;
-	font-variant-numeric: tabular-nums;
-	color: var(--chip-muted);
-}
-
-.chip-label b {
-	font-weight: 600;
-	color: var(--chip-fg);
-}
-
-.chip-label .chip-label__code {
-	margin-left: auto;
 }
 
 .chip-inner {
@@ -279,29 +240,43 @@ pre {
 	margin-inline: auto;
 }
 
-.eyebrow {
-	display: inline-flex;
-	gap: var(--s-2);
-	align-items: center;
-	font-family: var(--font-mono);
-	font-size: var(--t-micro);
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-	color: var(--chip-muted, var(--text-muted));
+/* An open beat: no chip, just the page, so chips stay the exception. */
+.beat {
+	padding: var(--s-9) var(--chip-pad);
+}
+
+.beat-muted {
+	color: var(--text-muted);
 }
 
 .section-title {
 	font-size: var(--t-1);
-	line-height: var(--lh-tight);
+	line-height: 0.98;
 	letter-spacing: -0.035em;
 	font-weight: 780;
-	max-width: 14ch;
+	max-width: 15ch;
 }
 
 .lede {
 	font-size: var(--t-3);
-	line-height: 1.4;
-	max-width: 40ch;
+	line-height: 1.42;
+	max-width: 36ch;
+}
+
+/*
+ * Settling: a chip below the fold waits slightly low and transparent, then
+ * settles onto the deck as it scrolls in. Only transform and opacity move,
+ * once, and only for chips the script marks (content is visible without it).
+ */
+.chip.is-waiting {
+	opacity: 0;
+	transform: translateY(2.5rem);
+}
+
+.chip.is-settling {
+	transition:
+		opacity 600ms var(--ease-wet),
+		transform 900ms var(--ease-wet);
 }
 
 /* Status tags: what exists today versus what is being built. */

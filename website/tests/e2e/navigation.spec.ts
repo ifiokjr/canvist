@@ -46,22 +46,25 @@ test.describe("navigation", () => {
 
 	test("the landing page has every deck section in order", async ({ page }) => {
 		await page.goto("/");
-		const ids = await page.locator(".deck .chip").evaluateAll((sections) =>
+		const ids = await page.locator(".deck > section").evaluateAll((sections) =>
 			sections.map((section) => section.id)
 		);
 		expect(ids).toEqual([...SECTIONS]);
 	});
 
-	test("the hero fan links jump to sections", async ({ page }) => {
-		await page.setViewportSize({ width: 1440, height: 900 });
+	test("the platform tabs switch the device frame", async ({ page }) => {
 		await page.goto("/");
-		// Strips overlap near the rivet, so use the keyboard like a visitor tabbing through the fan.
-		await page.getByRole("navigation", { name: "Sections" }).getByRole("link", {
-			name: /Free forever/,
-		}).focus();
-		await page.keyboard.press("Enter");
-		await expect(page).toHaveURL(/#free$/);
-		await expect(page.locator("#free")).toBeInViewport();
+		const tabs = page.getByRole("tablist", { name: "Platforms" });
+		await tabs.getByRole("tab", { name: "Flutter" }).click();
+		await expect(tabs.getByRole("tab", { name: "Flutter" })).toHaveAttribute(
+			"aria-selected",
+			"true",
+		);
+		await expect(page.locator("#host-flutter")).toBeVisible();
+		await expect(page.locator("#host-web")).toBeHidden();
+		await page.keyboard.press("ArrowRight");
+		await expect(tabs.getByRole("tab", { name: "React Native" })).toBeFocused();
+		await expect(page.locator("#host-react-native")).toBeVisible();
 	});
 
 	test("internal links all resolve", async ({ page, request }) => {

@@ -1,0 +1,112 @@
+---
+import { services } from "../../data/services.ts";
+---
+
+<section class="chip free" data-chip="7" id="free" aria-labelledby="free-title" data-settle>
+	<div class="chip-inner free__inner">
+		<div class="free__copy">
+			<h2 id="free-title" class="section-title">Free forever. Pay only to run the servers.</h2>
+			<p class="lede chip-muted">
+				The editor, its server and every binding are public domain. canvist Cloud runs the servers for you, or you can run the same binary yourself.
+			</p>
+		</div>
+
+		<ul class="services">
+			{
+				services.map((service) => (
+					<li>
+						<a href={`/services/${service.id}`} data-astro-prefetch>
+							<span class="services__name">{service.name}</span>
+							<span class="services__line chip-muted">{service.tagline}</span>
+						</a>
+					</li>
+				))
+			}
+		</ul>
+
+		<p class="free__pricing">
+			<a href="/pricing" data-astro-prefetch>See preview pricing</a>
+			<span class="chip-muted">Hobby is free up to 1,000 monthly active documents.</span>
+		</p>
+	</div>
+</section>
+
+<style>
+	.free__inner {
+		display: grid;
+		gap: var(--s-7);
+	}
+
+	.free__copy {
+		display: grid;
+		gap: var(--s-5);
+	}
+
+	.free__copy .section-title {
+		max-width: 18ch;
+	}
+
+	/* Three services as a ruled list, not cards. */
+	.services {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		padding: 0;
+		margin: 0;
+		list-style: none;
+		border-top: 1px solid color-mix(in oklab, var(--chip-fg) 24%, transparent);
+	}
+
+	.services li + li {
+		border-left: 1px solid color-mix(in oklab, var(--chip-fg) 24%, transparent);
+	}
+
+	.services a {
+		display: grid;
+		gap: var(--s-2);
+		height: 100%;
+		padding: var(--s-5) var(--s-5) var(--s-5) 0;
+		text-decoration: none;
+	}
+
+	.services li + li a {
+		padding-left: var(--s-5);
+	}
+
+	.services__name {
+		font-size: var(--t-2);
+		font-weight: 780;
+		letter-spacing: -0.03em;
+		line-height: 1;
+	}
+
+	.services a:hover .services__name {
+		text-decoration: underline;
+		text-decoration-thickness: 0.06em;
+	}
+
+	.free__pricing {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--s-2) var(--s-4);
+	}
+
+	.free__pricing a {
+		font-weight: 680;
+	}
+
+	@media (max-width: 48rem) {
+		.services {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.services li + li {
+			border-left: 0;
+			border-top: 1px solid color-mix(in oklab, var(--chip-fg) 24%, transparent);
+		}
+
+		.services li + li a {
+			padding-left: 0;
+		}
+	}
+</style>

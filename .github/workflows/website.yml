@@ -83,12 +83,25 @@ jobs:
         if: success() || failure()
         run: deno task lighthouse:summary
 
-      - name: upload lighthouse reports
+      # Scrolls the landing page end to end on desktop and with the CPU
+      # throttled 4x. Reported in the run summary rather than gating, since
+      # shared runners make frame timing noisy.
+      - name: scroll performance
+        if: success() || failure()
+        continue-on-error: true
+        run: |
+          deno run --allow-net --allow-read tests/serve.ts 4900 &
+          sleep 2
+          deno task perf:scroll http://127.0.0.1:4900/ perf-reports
+
+      - name: upload performance reports
         if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
-          name: lighthouse-reports
-          path: website/lighthouse-reports
+          name: performance-reports
+          path: |
+            website/lighthouse-reports
+            website/perf-reports
           if-no-files-found: ignore
 
       - name: upload reports

@@ -4,20 +4,15 @@ test.describe("reduced motion", () => {
 	test.use({ reducedMotion: "reduce" });
 
 	test("the landing page renders its final state without loading motion code", async ({ page }) => {
-		const scripts: string[] = [];
-		page.on("request", (request) => {
-			if (
-				request.resourceType() === "script" ||
-				request.url().endsWith(".wasm") || request.url().endsWith(".riv")
-			) {
-				scripts.push(request.url());
-			}
-		});
+		const requests: string[] = [];
+		page.on("request", (request) => requests.push(request.url()));
 		await page.goto("/");
 
 		// The lockup is shown as is: no Rive, no painted stroke, no waiting caret.
-		const stage = page.locator("[data-hero-stage]");
-		await expect(stage).toHaveAttribute("data-state", "static");
+		await expect(page.locator("[data-hero-stage]")).toHaveAttribute(
+			"data-state",
+			"static",
+		);
 		await expect(page.locator("html")).not.toHaveClass(/motion-ok/);
 		const wordmark = page.locator("[data-hero-lockup] path").first();
 		expect(
@@ -27,56 +22,40 @@ test.describe("reduced motion", () => {
 		await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
 		await page.waitForLoadState("networkidle");
 
-		// GSAP, Rive and the auto-loading v1 engine all stay unloaded.
-		expect(
-			scripts.filter((url) =>
-				/gsap|ScrollTrigger|rive|canvist_wasm/i.test(url)
-			),
-		).toEqual([]);
-
-		// Chips sit flat; nothing is mid-animation.
-		const transforms = await page.locator("[data-fan-chip]").evaluateAll((
-			chips,
-		) => chips.map((chip) => getComputedStyle(chip).transform));
-		for (const transform of transforms) {
-			expect(["none", "matrix(1, 0, 0, 1, 0, 0)"]).toContain(transform);
-		}
-
+		// Rive and the auto-loading v1 engine stay unloaded.
+		expect(requests.filter((url) => /rive|canvist_wasm|\.wasm$/i.test(url)))
+			.toEqual([]);
+		// No chip ever waits to settle; everything sits in place.
+		await expect(page.locator(".chip.is-waiting")).toHaveCount(0);
 		// The collaboration demo shows the merged result straight away.
 		await expect(page.locator("[data-together-log]")).toContainText(
 			"All four edits merged",
 		);
-		// The typed demo starts valid and only changes when asked.
-		await expect(page.locator("[data-typed]")).toHaveAttribute(
-			"data-highlight",
-			"on",
+		// The platform tabs still work, without auto-advancing.
+		await page.waitForTimeout(3500);
+		await expect(page.getByRole("tab", { name: "Web" })).toHaveAttribute(
+			"aria-selected",
+			"true",
 		);
-		await page.getByRole("switch", { name: /Register Highlight/ }).click();
-		await expect(page.locator("[data-typed]")).toHaveAttribute(
-			"data-highlight",
-			"off",
-		);
-		await expect(page.locator("[data-typed-problems]")).toHaveText("1 problem");
 	});
 
 	test("the v1 engine still loads on request", async ({ page }) => {
 		await page.goto("/#every-pixel");
-		await page.getByRole("button", { name: "Load the engine and type" })
-			.click();
+		await page.getByRole("button", { name: "Load the editor" }).click();
 		await expect(page.locator("[data-pixel-demo]")).toHaveAttribute(
 			"data-state",
 			"ready",
 			{ timeout: 20_000 },
 		);
 		await page.keyboard.type("hi");
-		await expect(page.locator("[data-pixel-count]")).toHaveText("2");
+		await expect(page.locator("[data-pixel-last]")).not.toHaveText("–");
 	});
 });
 
 test.describe("full motion", () => {
 	test.use({ reducedMotion: "no-preference" });
 
-	test("the hero paints the wordmark and the deck fans open", async ({ page }) => {
+	test("the hero paints the wordmark", async ({ page }) => {
 		await page.setViewportSize({ width: 1440, height: 900 });
 		await page.goto("/");
 		await expect(page.locator("html")).toHaveClass(/motion-ok/);
@@ -86,12 +65,31 @@ test.describe("full motion", () => {
 			/rive|css/,
 			{ timeout: 10_000 },
 		);
+	});
 
-		const chip = page.locator("#typed");
+	test("chips below the fold settle in as they scroll into view, and only once", async ({ page }) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.goto("/");
+		const chip = page.locator("#free");
+		await expect(chip).toHaveClass(/is-waiting/);
 		await chip.scrollIntoViewIfNeeded();
-		await expect.poll(() =>
-			chip.evaluate((element) => getComputedStyle(element).transform)
-		).toMatch(/matrix/);
+		await expect(chip).not.toHaveClass(/is-waiting/);
+		await expect(chip).not.toHaveClass(/is-settling/, { timeout: 3000 });
+		expect(
+			await chip.evaluate((element) => getComputedStyle(element).transform),
+		).toBe("none");
+	});
+
+	test("nothing is pinned and nothing listens to scroll", async ({ page }) => {
+		await page.goto("/");
+		await page.evaluate(() => scrollTo(0, document.body.scrollHeight / 2));
+		const pinned = await page.evaluate(() =>
+			[...document.querySelectorAll("body *")].filter((element) => {
+				const position = getComputedStyle(element).position;
+				return position === "fixed" || position === "sticky";
+			}).length
+		);
+		expect(pinned).toBe(0);
 	});
 
 	test("the v1 engine loads near the viewport and types by itself", async ({ page }) => {
@@ -102,8 +100,8 @@ test.describe("full motion", () => {
 			"ready",
 			{ timeout: 20_000 },
 		);
-		await expect.poll(async () =>
-			Number(await page.locator("[data-pixel-count]").textContent())
-		).toBeGreaterThan(3);
+		await expect(page.locator("[data-pixel-last]")).not.toHaveText("–", {
+			timeout: 10_000,
+		});
 	});
 });
