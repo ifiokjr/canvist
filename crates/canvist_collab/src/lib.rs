@@ -104,8 +104,10 @@
 //! - **Moving a block** deletes its map and writes a copy with the same id.
 //!   Text typed into the block concurrently goes to the deleted map and is
 //!   lost. When two peers move the same block at once, both copies survive
-//!   in Yjs; the one with the smallest yrs item id keeps the block and the
-//!   others are deleted (see [`Binding::apply_update`]).
+//!   in Yjs; of the copies the model can show, the one with the smallest
+//!   yrs item id keeps the block and the others are deleted (see
+//!   [`Binding::apply_update`]). A hidden copy claims nothing until it
+//!   becomes valid.
 //! - **Splitting a block** moves its tail into a new `Y.Text`. Edits a peer
 //!   makes to that tail concurrently target the deleted original: inserted
 //!   text survives but lands at the end of the first block, while deletions

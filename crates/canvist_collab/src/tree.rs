@@ -65,7 +65,7 @@ pub(crate) struct Reader<'a, T: ReadTxn> {
 }
 
 /// The content a block map holds, matching its type.
-enum Shape {
+pub(crate) enum Shape {
 	Text(TextRef),
 	Children(ArrayRef),
 	Leaf,
@@ -80,7 +80,7 @@ impl<T: ReadTxn> Reader<'_, T> {
 		registration: &mut Registration,
 	) -> Option<BlockTree> {
 		let map_id = branch_id(map)?;
-		let (id, kind, shape) = self.header(map, parent)?;
+		let (id, kind, shape) = header(map, parent.kind, self.txn, self.schema)?;
 
 		if !self.claims.claim(id, &map_id) {
 			registration.losers.push((map_id, parent.id));
@@ -155,23 +155,29 @@ impl<T: ReadTxn> Reader<'_, T> {
 
 		trees
 	}
+}
 
-	/// The id, type, and content of a valid block map inside `parent`.
-	fn header(&self, map: &MapRef, parent: Parent) -> Option<(BlockId, BlockTypeId, Shape)> {
-		let (id, kind) = identity(map, self.txn, self.schema)?;
+/// The id, type, and content of a block map that is valid inside a parent
+/// of type `parent` (`None` for the root), or `None` if the model hides it.
+pub(crate) fn header<T: ReadTxn>(
+	map: &MapRef,
+	parent: Option<BlockTypeId>,
+	txn: &T,
+	schema: &Schema,
+) -> Option<(BlockId, BlockTypeId, Shape)> {
+	let (id, kind) = identity(map, txn, schema)?;
 
-		if !self.schema.allows_child(parent.kind, kind) {
-			return None;
-		}
-
-		let shape = match &self.schema.block(kind).content {
-			ContentKind::Inline => Shape::Text(text_of(map, self.txn)?),
-			ContentKind::Blocks(_) => Shape::Children(children_of(map, self.txn)?),
-			ContentKind::Leaf => Shape::Leaf,
-		};
-
-		Some((id, kind, shape))
+	if !schema.allows_child(parent, kind) {
+		return None;
 	}
+
+	let shape = match &schema.block(kind).content {
+		ContentKind::Inline => Shape::Text(text_of(map, txn)?),
+		ContentKind::Blocks(_) => Shape::Children(children_of(map, txn)?),
+		ContentKind::Leaf => Shape::Leaf,
+	};
+
+	Some((id, kind, shape))
 }
 
 /// The parsed id and type of a block map.

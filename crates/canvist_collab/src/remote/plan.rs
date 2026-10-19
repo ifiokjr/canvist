@@ -394,10 +394,12 @@ impl<T: ReadTxn> Remote<'_, '_, T> {
 		}
 
 		for block in evicted {
-			if let Some((map, anchor)) = self.anchor_of(block) {
-				anchors.insert(map, anchor);
-				self.evict(block)?;
-			}
+			let Some(found) = self.registry.block(block) else {
+				continue;
+			};
+			let anchor = self.anchor_in_array(found.parent, &found.map, &anchors)?;
+			anchors.insert(found.map, anchor);
+			self.evict(block)?;
 		}
 
 		let mut batch = Batch::default();
@@ -458,7 +460,8 @@ impl<T: ReadTxn> Remote<'_, '_, T> {
 
 		for insert in inserts {
 			if let Some(map) = map_ref(self.txn, &insert.map) {
-				owners.scan(&map, self.txn);
+				let parent = self.parent_kind(insert.parent);
+				owners.scan(&map, parent, self.txn, self.schema);
 			}
 		}
 
@@ -643,17 +646,38 @@ impl<T: ReadTxn> Remote<'_, '_, T> {
 		0
 	}
 
-	/// The map of `block` and the anchor its position corresponds to.
-	fn anchor_of(&self, block: BlockId) -> Option<(ID, Anchor)> {
-		let doc = self.tx.doc();
-		let map = self.registry.block(block)?.map;
-		let index = doc.index_in_parent(block)?;
-		let parent = doc.block(block)?.parent();
-		let anchor = index
-			.checked_sub(1)
-			.and_then(|previous| doc.children(parent).get(previous))
-			.and_then(|&previous| self.registry.block(previous))
-			.map_or(Anchor::Start, |previous| Anchor::After(previous.map));
-		Some((map, anchor))
+	/// The anchor of `map` in the final children array of `parent`: the
+	/// nearest map before it that is shown or inserted in this transaction.
+	///
+	/// Maps inserted in this transaction may anchor after `map`, so the
+	/// anchor has to come from the final array. The model cannot give it:
+	/// `map`'s block still sits where it was before the transaction, ahead of
+	/// insertions that precede it in the final array.
+	fn anchor_in_array(
+		&self,
+		parent: Option<BlockId>,
+		map: &ID,
+		anchors: &FxHashMap<ID, Anchor>,
+	) -> Result<Anchor, CollabError> {
+		let mut anchor = Anchor::Start;
+
+		for item in self.array(parent)?.iter(self.txn) {
+			let Some(found) = (match item {
+				Out::YMap(found) => branch_id(&found),
+				_ => None,
+			}) else {
+				continue;
+			};
+
+			if found == *map {
+				return Ok(anchor);
+			}
+
+			if anchors.contains_key(&found) || self.registry.block_of_map(&found).is_some() {
+				anchor = Anchor::After(found);
+			}
+		}
+
+		Err(CollabError::Diverged)
 	}
 }

@@ -186,7 +186,7 @@ impl Binding {
 		let mut doc = Document::empty(self.schema.clone(), client);
 		let txn = self.doc.transact();
 		let mut owners = Owners::default();
-		owners.scan_array(&self.root, &txn);
+		owners.scan_array(&self.root, None, &txn, &self.schema);
 		let mut registration = Registration::default();
 		let mut reader = Reader {
 			txn: &txn,
@@ -311,37 +311,26 @@ impl Binding {
 		};
 
 		self.reorder.hold(update);
-		let mut combined: Option<Commit> = None;
 
-		loop {
-			let state = self.doc.transact().state_vector();
-			let ready = self.reorder.take_ready(&state);
-
-			if ready.is_empty() {
-				break;
-			}
-
-			self.integrate(ready)?;
-			let commit = self.mirror(doc)?;
-			combined = Some(match combined {
-				Some(first) => compose(first, commit, doc),
-				None => commit,
-			});
+		if !self.integrate()? {
+			return Ok(doc.transaction().commit());
 		}
 
-		Ok(combined.unwrap_or_else(|| doc.transaction().commit()))
+		self.mirror(doc)
 	}
 
-	/// Integrate updates whose dependencies are all present, in one yrs
-	/// transaction.
-	fn integrate(&self, ready: Vec<Update>) -> Result<(), CollabError> {
+	/// Integrate every held update whose dependencies are present, in one
+	/// yrs transaction, returning whether any was.
+	fn integrate(&mut self) -> Result<bool, CollabError> {
 		let mut txn = self.doc.transact_mut_with(REMOTE);
+		let mut integrated = false;
 
-		for update in ready {
+		while let Some(update) = self.reorder.take_next(&txn.state_vector()) {
 			txn.apply_update(update)?;
+			integrated = true;
 		}
 
-		Ok(())
+		Ok(integrated)
 	}
 
 	/// Whether updates are waiting for earlier updates that have not arrived.

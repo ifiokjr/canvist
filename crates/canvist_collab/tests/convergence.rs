@@ -74,8 +74,48 @@ fn session(peer_count: usize, events: &[Event]) -> Result<(), TestCaseError> {
 	Ok(())
 }
 
+fn edit(peer: u8, kind: u8, a: u32, b: u32, c: u32) -> Event {
+	Event::Edit(peer, Op { kind, a, b, c })
+}
+
+/// `many_peers_converge` on CI run 39252191275, shrunk. Peer 3 receives
+/// peer 0's edits all at once, evicting peer 1's copy of a concurrently
+/// moved divider from a quote while inserting paragraphs on either side of
+/// it, and used to place the second paragraph first.
+#[test]
+fn evicted_copy_between_inserted_blocks() -> Result<(), TestCaseError> {
+	let events = [
+		edit(2, 107, 1_486_224_861, 3, 1),
+		edit(0, 55, 1_770_934_208, 0, 0),
+		edit(1, 146, 1_205_679_720, 0, 0),
+		Event::Deliver(0, false),
+		edit(0, 149, 71_369_396, 0, 2_690_654_918),
+		edit(0, 255, 1_274_211_420, 0, 0),
+		edit(0, 109, 4_244_883_301, 0, 3_665_200_409),
+		edit(0, 227, 480_744_729, 1, 2),
+		edit(0, 98, 213_536_967, 1, 0),
+		edit(0, 27, 3_497_156_359, 0, 0),
+		edit(0, 146, 102_718_218, 0, 0),
+		edit(1, 49, 135_389_168, 2_084_783_315, 0),
+		edit(0, 7, 695_974_006, 1, 0),
+		edit(0, 139, 3_929_116_515, 0, 0),
+	];
+
+	session(4, &events)
+}
+
+/// 128 cases per property, or `PROPTEST_CASES` for stress runs.
+/// `ProptestConfig::with_cases` would ignore the variable.
+fn config() -> ProptestConfig {
+	let cases = std::env::var("PROPTEST_CASES")
+		.ok()
+		.and_then(|cases| cases.parse().ok())
+		.unwrap_or(128);
+	ProptestConfig::with_cases(cases)
+}
+
 proptest! {
-	#![proptest_config(ProptestConfig::with_cases(128))]
+	#![proptest_config(config())]
 
 	#[test]
 	fn two_peers_converge(events in prop::collection::vec(event(2), 1..60)) {
