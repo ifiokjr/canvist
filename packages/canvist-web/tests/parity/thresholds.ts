@@ -82,11 +82,33 @@ const ENGINES: Readonly<Record<string, Thresholds>> = {
 };
 
 /**
- * Per-platform adjustments, by `${browser}-${platform}`. Linux runners
- * render with different system fonts and FreeType; their limits are
- * recorded here once CI has measured them.
+ * Per-platform adjustments, by `${browser}-${platform}`, measured on CI's
+ * Ubuntu runners.
  */
-const PLATFORMS: Readonly<Record<string, Partial<Thresholds>>> = {};
+const PLATFORMS: Readonly<Record<string, Partial<Thresholds>>> = {
+	/**
+	 * Firefox draws text on an opaque canvas with subpixel (LCD)
+	 * antialiasing, but headless Firefox draws DOM text in grayscale, so
+	 * every glyph edge differs in colour: up to 6.64% of pixels (10 px text
+	 * at 1×), SSIM down to 0.990. Geometry is exact. Above 40 px Firefox
+	 * drops subpixel antialiasing on the canvas too, and those cases match.
+	 * No web API sets canvas text antialiasing in Firefox.
+	 */
+	"firefox-linux": { pixels: 0.07, ssim: 0.985 },
+	/**
+	 * At the fractional ratios browser zoom produces (1.25×, 1.5×), Chromium
+	 * on Linux rasterizes glyph edges slightly differently in canvas and
+	 * DOM: up to 0.61% of pixels, SSIM 0.994 or more, with every glyph
+	 * within 0.04 px of the DOM's. Whole ratios match as on macOS.
+	 */
+	"chromium-linux": { pixels: 0.0075 },
+	/**
+	 * The same at 1.25× in WebKit on Linux: glyph edges shade differently in
+	 * canvas and DOM, up to 0.98% of pixels and SSIM 0.973, with every glyph
+	 * within 0.02 px of the DOM's.
+	 */
+	"webkit-linux": { pixels: 0.01, ssim: 0.97 },
+};
 
 /** Known differences, by `${browser}-${fixture}`. */
 const EXCEPTIONS: Readonly<Record<string, Exception>> = {
@@ -108,21 +130,40 @@ const EXCEPTIONS: Readonly<Record<string, Exception>> = {
 		vertical: 24,
 		horizontal: 480,
 		pixels: 0.025,
-		ssim: 0.9,
+		// A line that wraps differently shifts everything after it: 0.893 on
+		// Linux, where subpixel antialiasing adds to it.
+		ssim: 0.88,
 		reason:
 			"Firefox applies contextual half-width spacing (OpenType chws) to full-width punctuation by its neighbours on both sides; layout measures CJK one character at a time, so a line holding 「。」 before Latin can wrap one character differently.",
 	},
 };
 
-/** The thresholds for `fixture` in `browser` on `platform` (`darwin`, `linux`, …). */
+/**
+ * The thresholds for `fixture` in `browser` on `platform` (`darwin`,
+ * `linux`, …). A platform allowance and a fixture's exception are separate
+ * causes that can both apply, so each limit is the more lenient of the
+ * two.
+ */
 export function thresholds(
 	browser: string,
 	platform: string,
 	fixture: string,
 ): Thresholds & { reason?: string } {
+	const engine = ENGINES[browser] ?? CHROMIUM;
+	const host = { ...engine, ...PLATFORMS[`${browser}-${platform}`] };
+	const exception = EXCEPTIONS[`${browser}-${fixture}`];
+
+	if (exception === undefined) {
+		return host;
+	}
+
+	const own = { ...engine, ...exception };
+
 	return {
-		...(ENGINES[browser] ?? CHROMIUM),
-		...PLATFORMS[`${browser}-${platform}`],
-		...EXCEPTIONS[`${browser}-${fixture}`],
+		vertical: Math.max(host.vertical, own.vertical),
+		horizontal: Math.max(host.horizontal, own.horizontal),
+		pixels: Math.max(host.pixels, own.pixels),
+		ssim: Math.min(host.ssim, own.ssim),
+		reason: exception.reason,
 	};
 }

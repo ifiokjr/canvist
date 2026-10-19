@@ -41,6 +41,8 @@ The first runs found real differences. Each was fixed in the web host or in layo
 - **Line breaking in WebKit.** WebKit follows ICU's defaults (it breaks after `/` in URLs), not Blink's tailoring. Only Chromium gets the tailored rules now.
 - **Fonts that resolve differently.** WebKit's DOM skips `ui-monospace` after a missing family, but its canvas honours it, so code drew in a different face. Fonts are now resolved against the DOM, and the StarterKit's code stack names fonts instead of `ui-monospace`.
 - **Firefox font sizes.** Firefox's canvas snaps fractional font sizes (22.4 px headings) to steps its DOM does not use. Those fonts are now measured by the DOM.
+- **Ligatures.** Linux system fonts draw `fi`, `fl`, and `ffi` as one glyph, and browsers split its width evenly between the letters for caret stops. The measurer now probes each face for ligatures and places carets inside them the same way.
+- **Kerning across spaces.** Times-compatible fonts such as Liberation Serif, Chromium's serif on Linux, kern a space against the capital after it. Layout measures word by word, so a line drifted 1.75 px by its end. A trailing space now kerns with the next word, measured beside its neighbour: browsers measure a space on its own wider than it lays out (Firefox by 19/60 px).
 - **Device pixels.** Baselines snap to the grid the browser snaps DOM text to. Borders snap down to device pixels, which put a blockquote's text 0.6 px off at 1.25×. On a high-density screen the backing store follows `devicePixelContentBoxSize`, unless an emulator reports CSS pixels there.
 
 ## Results
@@ -55,7 +57,15 @@ Largest difference across all fixtures and ratios, on macOS (Apple silicon):
 
 Excluding the documented exceptions below.
 
-¹ WebKit reports text ranges as whole-pixel rectangles, so the tests can only locate a DOM caret stop to within a pixel. ² Firefox's character rectangles for some glyphs end 19/60 px past where the next character starts. ³ Glyph positions match, but Firefox draws optical sizes in canvas at quantized steps, so edges shade slightly differently.
+And on Linux (CI's Ubuntu runners):
+
+| Browser  | Lines, blocks, baselines | Runs and caret stops | Differing pixels | Lowest SSIM |
+| -------- | ------------------------ | -------------------- | ---------------- | ----------- |
+| Chromium | 0.009 px                 | 0.045 px             | 0.61%⁴           | 0.994       |
+| WebKit   | 0.016 px                 | 0.17 px¹             | 0.98%⁴           | 0.973⁴      |
+| Firefox  | 0.022 px                 | 0.022 px             | 6.64%⁵           | 0.990       |
+
+¹ WebKit reports text ranges as whole-pixel rectangles, so the tests can only locate a DOM caret stop to within a pixel. ² Firefox's character rectangles for some glyphs end 19/60 px past where the next character starts. ³ Glyph positions match, but Firefox draws optical sizes in canvas at quantized steps, so edges shade slightly differently. ⁴ At 1.25× and 1.5× only; see below. ⁵ Subpixel antialiasing; see below.
 
 ## Irreducible differences
 
@@ -69,4 +79,10 @@ These remain, are covered by explicit limits in `tests/parity/thresholds.ts`, an
 
 **WebKit: caret stops inside Arabic words** come from DOM ranges, which WebKit rounds to whole pixels. They can sit up to 2 px from the DOM's. Glyphs are unaffected.
 
-**Antialiasing.** On macOS every engine renders canvas and DOM text with the same grayscale antialiasing: macOS has had no subpixel text since 10.14, and the canvas is opaque, so Chromium may use the same mode as the page. Remaining edge shading differences (the "edge shading" column in the report) come from glyphs a fraction of a pixel apart. Where a platform renders DOM text with LCD (subpixel) antialiasing, such as Chromium on Windows or Linux with a non-headless display, an opaque canvas lets Chromium use LCD text too. Firefox and WebKit draw canvas text in grayscale, which would show as colour fringes in the difference heatmap.
+**Antialiasing.** On macOS every engine renders canvas and DOM text with the same grayscale antialiasing: macOS has had no subpixel text since 10.14, and the canvas is opaque, so Chromium may use the same mode as the page. Remaining edge shading differences (the "edge shading" column in the report) come from glyphs a fraction of a pixel apart.
+
+**Firefox on Linux: subpixel antialiasing on the canvas.** Firefox draws text on an opaque canvas with subpixel (LCD) antialiasing, while headless Firefox draws DOM text in grayscale. Every glyph edge differs in colour, up to 6.64% of pixels at 10 px, but glyphs sit where the DOM puts them. Above 40 px Firefox drops subpixel antialiasing on the canvas too, and those cases match. No web API sets canvas text antialiasing in Firefox. Top is the canvas, bottom the DOM, enlarged four times:
+
+![Firefox on Linux: the canvas text has colour fringes from subpixel antialiasing; the DOM text is grayscale](../images/parity/firefox-linux-antialiasing.png)
+
+**Fractional zoom on Linux.** At 1.25× and 1.5× in Chromium and WebKit on Linux, glyph edges shade slightly differently in canvas and DOM: up to 0.98% of pixels and SSIM 0.973, with every glyph within 0.04 px of the DOM's. Whole ratios match.
