@@ -167,6 +167,24 @@ in
       description = "Build @canvist/headless and run its tests in Node and Deno.";
       binary = "bash";
     };
+    "test:web" = {
+      exec = ''
+        set -e
+        cd "$DEVENV_ROOT/packages/canvist-headless"
+        npm ci
+        npm run build:wasm
+        npm run build
+        cd "$DEVENV_ROOT/packages/canvist-web"
+        npm ci
+        npm run build:wasm
+        npx tsc --noEmit
+        npm test
+        npx playwright test
+        node scripts/parity-report.ts
+      '';
+      description = "Build @canvist/web, type-check it, and run its unit and pixel parity tests (CANVIST_BROWSERS narrows the browsers).";
+      binary = "bash";
+    };
     "test:all" = {
       exec = ''
         set -e

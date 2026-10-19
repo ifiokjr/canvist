@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width">
+		<title>canvas vs DOM</title>
+		<style>
+			body { margin: 0; background: #ddd; display: flex; gap: 8px; padding: 8px; align-items: flex-start; }
+			.pane { background: white; }
+		</style>
+	</head>
+	<body>
+		<div class="pane"><div id="canvas" style="width: 360px"></div></div>
+		<div class="pane"><div id="dom"></div></div>
+		<script type="module" src="./compare.ts"></script>
+	</body>
+</html>

@@ -126,4 +126,4 @@ fn main() -> Result<(), canvist_headless::HeadlessError> {
 
 ## Why the canvas matches the HTML
 
-The editor never guesses how text looks. The browser measures every word with the same text settings the canvas paints with and the server-rendered CSS declares, so a line wraps at the same character in both. Line heights and baselines come from the browser's own line layout. Glyphs are drawn on the browser's pixel grid. canvist's tests compare the canvas with server-rendered HTML, pixel by pixel, in Chromium, Firefox, and WebKit.
+The editor never guesses how text looks. The browser measures every word with the same text settings the canvas paints with and the server-rendered CSS declares, so a line wraps at the same character in both. Line heights and baselines come from the browser's own line layout. Glyphs are drawn on the browser's pixel grid. canvist's tests compare the canvas with server-rendered HTML, pixel by pixel, in Chromium, Firefox, and WebKit. [Rendering parity](./rendering-parity.md) shows the results.
