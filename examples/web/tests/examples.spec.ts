@@ -7,6 +7,9 @@
 import type { Editor, StarterKit } from "@canvist/web";
 import { expect, type Page, test } from "@playwright/test";
 
+/** How far, in CSS px, content may move when the editor hydrates: one engine layout unit. */
+const LAYOUT_UNIT_TOLERANCE = 1 / 32;
+
 declare global {
 	var editor: Editor<StarterKit> | null | undefined;
 	var shifts: number;
@@ -75,11 +78,15 @@ test("ssr: the editor replaces server-rendered HTML without moving it", async ({
 	expect(served?.html).toBe(true);
 	await expect(page.locator("#editor > .cv-doc")).toHaveCount(0);
 	await expect(page.locator("#editor > canvas")).toBeVisible();
-	expect(
-		await page.evaluate(() =>
-			document.querySelector("#after")!.getBoundingClientRect().top
-		),
-	).toBe(served?.after);
+	// Within one layout unit: WebKit rounds boxes to 1/64 px and Firefox to
+	// 1/60 px, while the canvas's height sums unrounded line boxes. Nothing
+	// moves by a device pixel; the parity tests hold lines to the same 1/32.
+	const after = await page.evaluate(() =>
+		document.querySelector("#after")!.getBoundingClientRect().top
+	);
+	expect(Math.abs(after - (served?.after ?? Number.NaN))).toBeLessThanOrEqual(
+		LAYOUT_UNIT_TOLERANCE,
+	);
 	expect(await page.evaluate(() => globalThis.shifts)).toBe(0);
 
 	// The document came from the server's HTML.
