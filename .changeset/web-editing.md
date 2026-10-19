@@ -4,7 +4,7 @@
 "canvist_headless": minor
 ---
 
-# Edit on the web: EditContext input, IME, the clipboard, drag and drop, and a screen-reader mirror
+# Edit on the web: EditContext input, IME, clipboard, drag and drop, accessibility
 
 - Text arrives through `EditContext` in Chromium, with the paragraph and caret bounds the platform's input methods need, and through a hidden textarea everywhere else. `input: "textarea"` forces the textarea, as a kill switch for `EditContext` problems.
 - Compositions from input methods and dead keys show as preedit text and commit in place. Key bindings follow the platform (`Mod` is Cmd on Apple devices), detected from the browser or set with `platform`.
