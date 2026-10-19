@@ -61,18 +61,7 @@ Read the admin token from the Railway dashboard (service, Variables) when you ne
 
 Both environments watch `main`, so staging runs each commit first and production follows when CI is green. To gate production harder, point its services at a release branch.
 
-Every service is connected to `ifiokjr/canvist@main`, but Railway can only create the push triggers once its GitHub app may read the repository. Until then, deploy with `railway up --service sync --environment staging --ci` (and likewise for `convert` and `production`). After granting the [Railway GitHub app](https://github.com/apps/railway-app) access to `ifiokjr/canvist`, create the triggers once:
-
-```sh
-for environment in staging production; do
-	for service in sync convert; do
-		railway service source connect --repo ifiokjr/canvist --branch main \
-			--service "$service" --environment "$environment"
-	done
-done
-```
-
-Then turn on **Wait for CI** for the production services in their settings.
+Every service has a GitHub deploy trigger on `ifiokjr/canvist@main`; production's has **Wait for CI** on. The [Railway GitHub app](https://github.com/apps/railway-app) is installed on that repository only. Until the cloud stack merges, `main` has no `services/cloud/Dockerfile`, so pushes there fail to build and the running deployments stay up; deploy a branch by hand with `railway up --service sync --environment staging --ci` (and likewise for `convert` and `production`).
 
 ## Why there is no `railway.json`
 
