@@ -50,7 +50,6 @@ Deno.test("the performance page's budgets parse, and every measurement is within
 	}
 	// The landing page headline depends on this row.
 	assertEquals(findBudget(table, "Apply one keystroke").today.text, "0.29 µs");
-	assert(
-		table.pending.some((row) => row.metric.startsWith("Keystroke → paint")),
-	);
+	// Measured by @canvist/web's browser tests: input to painted canvas.
+	assertEquals(findBudget(table, "Keystroke → paint").today.text, "0.5 ms");
 });

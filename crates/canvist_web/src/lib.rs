@@ -21,6 +21,7 @@
 //! painter repaints only the rectangles that differ from the last frame.
 mod error;
 mod geometry;
+mod input;
 mod lines;
 mod measure;
 mod options;
@@ -35,6 +36,7 @@ use canvist_headless::Position;
 use canvist_headless::canvist_editor::CommandResult;
 use canvist_headless::canvist_editor::Editor;
 use canvist_headless::canvist_editor::Env;
+use canvist_headless::canvist_editor::Update;
 use canvist_headless::canvist_model::Selection;
 use canvist_layout::Caret;
 use canvist_layout::DisplayList;
@@ -126,6 +128,8 @@ pub struct WebEditor {
 	/// it is in the visible half of its blink.
 	focused: bool,
 	caret_on: bool,
+	/// The pointer drag selecting text, while the pointer is pressed.
+	drag: Option<input::Drag>,
 }
 
 #[wasm_bindgen]
@@ -149,7 +153,8 @@ impl WebEditor {
 		let options = options::parse(&json).map_err(|reason| invalid_options(&reason))?;
 		let engine = Engine::named(&extensions)
 			.map_err(headless)?
-			.with_client(options.client);
+			.with_client(options.client)
+			.with_platform(options.platform);
 		let doc = engine.create().map_err(headless)?;
 		let layout = DocumentLayout::new(
 			doc.document(),
@@ -170,6 +175,7 @@ impl WebEditor {
 			top: 0.0,
 			focused: false,
 			caret_on: true,
+			drag: None,
 		})
 	}
 
@@ -528,12 +534,35 @@ impl WebEditor {
 		&mut self,
 		change: impl FnOnce(&mut Editor, &mut Env<'_>) -> CommandResult,
 	) -> JsResult<bool> {
+		Ok(self
+			.edit_update(change)?
+			.is_some_and(|update| update.doc_changed() || update.selection_changed()))
+	}
+
+	/// [`WebEditor::edit`], returning the update it applied.
+	fn edit_update(
+		&mut self,
+		change: impl FnOnce(&mut Editor, &mut Env<'_>) -> CommandResult,
+	) -> JsResult<Option<Update>> {
+		let mut change = Some(change);
+
+		self.apply_change(&mut |editor, env| {
+			change.take().map_or(Ok(None), |change| change(editor, env))
+		})
+	}
+
+	/// [`WebEditor::edit_update`] without the generic closure, so the many
+	/// input methods share one copy of it in the WebAssembly module.
+	fn apply_change(
+		&mut self,
+		change: &mut dyn FnMut(&mut Editor, &mut Env<'_>) -> CommandResult,
+	) -> JsResult<Option<Update>> {
 		let now = Duration::from_secs_f64(js_sys::Date::now() / 1000.0);
 		let mut lines = HostLines::new(&mut self.layout, &mut self.measurer);
 		let update = self.doc.edit(now, &mut lines, change).map_err(headless)?;
 
 		let Some(update) = update else {
-			return Ok(false);
+			return Ok(None);
 		};
 
 		let damage = self.layout.apply(self.doc.document(), &update.commit);
@@ -543,7 +572,7 @@ impl WebEditor {
 		}
 
 		self.caret_on = true;
-		Ok(update.doc_changed() || update.selection_changed())
+		Ok(Some(update))
 	}
 
 	fn full_display_list(&mut self) -> JsResult<DisplayList> {

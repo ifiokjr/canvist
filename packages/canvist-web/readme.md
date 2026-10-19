@@ -36,6 +36,10 @@ await editor.plugins.fonts.local(); // installed fonts, where the browser allows
 
 Installed fonts and every web font the page already declares work with no configuration. `@canvist/web/fonts` loads faces the way `@font-face` does (URLs or bytes, `unicode-range`, `font-display`), adds metric-compatible fallbacks so a font swap barely moves anything, lists local fonts through the Local Font Access API, and writes the same faces as `@font-face` CSS for server rendering. See [Fonts and text rendering](../../docs/src/guides/fonts.md).
 
+## Editing
+
+Text arrives through `EditContext` in Chromium, so input methods, dictation, and autocorrect work as they do in a text field, and through a hidden textarea elsewhere; `input: "textarea"` forces the textarea. Key bindings follow the platform, compositions show in place, copy and paste carry HTML and plain text, the selection drags to move, and a visually hidden copy of the document lets screen readers read it. Every input event is painted in its own task; `editor.inputLatency()` reports how long that took. See [Text input on the web](../../docs/src/guides/web-input.md).
+
 ## Development
 
 ```sh
@@ -43,7 +47,7 @@ npm ci
 npm run build:wasm     # builds crates/canvist_web into wasm/
 npx tsc --noEmit
 npm test               # unit tests in Node
-npx playwright test    # pixel parity with server-rendered HTML in Chromium, Firefox, and WebKit
+npx playwright test    # parity with server-rendered HTML, editing, and input latency in Chromium, Firefox, and WebKit
 node scripts/parity-report.ts
 ```
 

@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 
 use canvist_editor::Editor;
 use canvist_editor::EditorBuilder;
+use canvist_editor::Platform;
 use canvist_model::Document;
 use canvist_model::Schema;
 use serde_json::Value as Json;
@@ -42,6 +43,7 @@ pub struct Engine<H = ()> {
 	/// Built on first use: most hosts never ask for it.
 	metadata: Arc<OnceLock<Json>>,
 	client: u32,
+	platform: Platform,
 }
 
 impl<H: Copy> Clone for Engine<H> {
@@ -52,6 +54,7 @@ impl<H: Copy> Clone for Engine<H> {
 			schema: self.schema.clone(),
 			metadata: self.metadata.clone(),
 			client: self.client,
+			platform: self.platform,
 		}
 	}
 }
@@ -124,6 +127,7 @@ impl<H: Copy> Engine<H> {
 			schema: editor.schema().clone(),
 			metadata: Arc::new(OnceLock::new()),
 			client: 1,
+			platform: Platform::default(),
 		})
 	}
 
@@ -132,6 +136,14 @@ impl<H: Copy> Engine<H> {
 	#[must_use]
 	pub fn with_client(mut self, client: u32) -> Self {
 		self.client = client;
+		self
+	}
+
+	/// Read key bindings for `platform`, which decides whether `Mod` is Cmd
+	/// or Ctrl. The default is [`Platform::Other`], where it is Ctrl.
+	#[must_use]
+	pub fn with_platform(mut self, platform: Platform) -> Self {
+		self.platform = platform;
 		self
 	}
 
@@ -205,7 +217,9 @@ impl<H: Copy> Engine<H> {
 	/// must use this engine's schema.
 	pub(crate) fn editor(&self, doc: Document) -> Result<Editor, HeadlessError> {
 		debug_assert!(Arc::ptr_eq(doc.schema(), &self.schema));
-		let mut builder = Editor::builder().client(self.client);
+		let mut builder = Editor::builder()
+			.client(self.client)
+			.platform(self.platform);
 		(self.configure)(&mut builder);
 		builder
 			.build_with(|_, _| Ok(doc))

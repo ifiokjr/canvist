@@ -25,12 +25,18 @@ import type {
 import { core, starterKit } from "@canvist/headless/extensions";
 import { WebEditor } from "../wasm/canvist_web.js";
 import { FontWatcher } from "./font-watcher.ts";
+import { Input, type InputMode } from "./input.ts";
 import { load, type WasmSource } from "./load.ts";
 import { CanvasMeasurer } from "./measure.ts";
+import { AccessibilityMirror } from "./mirror.ts";
+import { detectPlatform, type KeyPlatform } from "./platform.ts";
 import type { PluginApis, PluginContext, Plugins } from "./plugin.ts";
 
 /** How the caret blinks: on and off for this long each. */
 const CARET_BLINK_MS = 530;
+
+/** How many recent input-to-paint times {@link Editor.inputLatency} summarizes. */
+const LATENCY_SAMPLES = 1024;
 
 /** How close, in CSS px, a measured border width must be to a snapped one to count as snapped. */
 const BORDER_SNAP_TOLERANCE = 1 / 128;
@@ -76,6 +82,31 @@ export interface EditorOptions<E extends Extensions, P extends Plugins> {
 	readonly overscan?: number;
 	/** Where to load the WebAssembly module from. */
 	readonly wasm?: WasmSource;
+	/**
+	 * How text input arrives: `EditContext` where the browser has it
+	 * (`"auto"`, the default), or always a hidden textarea (`"textarea"`),
+	 * the kill switch for EditContext problems.
+	 */
+	readonly input?: InputMode;
+	/** The editor's accessible name. Default `"Editor"`. */
+	readonly label?: string;
+	/**
+	 * Whether `Mod` in key bindings is Cmd (`"apple"`) or Ctrl (`"other"`);
+	 * detected from the browser by default.
+	 */
+	readonly platform?: KeyPlatform;
+}
+
+/**
+ * How long input took to reach the canvas: from each input event's
+ * timestamp until the change was painted, in milliseconds, over the most
+ * recent events.
+ */
+export interface InputLatency {
+	readonly samples: number;
+	readonly p50: number;
+	readonly p95: number;
+	readonly max: number;
 }
 
 /** Measurement statistics, from {@link Editor.stats}. */
@@ -180,6 +211,11 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	readonly #abort = new AbortController();
 	readonly #waits = new Set<Promise<unknown>>();
 	readonly #resize: ResizeObserver;
+	readonly #input: Input;
+	readonly #mirror: AccessibilityMirror;
+	/** A ring of recent input-to-paint times. */
+	readonly #latency = new Float64Array(LATENCY_SAMPLES);
+	#latencySamples = 0;
 	#frame = 0;
 	#blink = 0;
 	#height = 0;
@@ -231,6 +267,23 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		);
 		this.plugins = this.#setupPlugins(options.plugins ?? []);
 
+		const label = options.label ?? "Editor";
+		this.#mirror = new AccessibilityMirror(
+			element,
+			label,
+			() => this.#wasm.html()[0] ?? "",
+		);
+		this.#input = new Input({
+			element,
+			canvas: this.#canvas,
+			wasm: this.#wasm,
+			signal: this.#abort.signal,
+			label,
+			viewportTop: () => this.#viewportTop(),
+			changed: (since) => this.#inputChanged(since),
+			focusChanged: (focused) => this.setFocused(focused),
+		}, options.input ?? "auto");
+
 		this.#resize = new ResizeObserver((entries) => this.#observe(entries));
 		this.#resize.observe(element, { box: "content-box" });
 		this.#listenForViewportChanges();
@@ -253,6 +306,30 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	/** What the last frame did. */
 	get lastFrame(): FrameReport | undefined {
 		return this.#lastFrame;
+	}
+
+	/** How text input arrives in this browser: through `EditContext` or a hidden textarea. */
+	get inputMode(): "editcontext" | "textarea" {
+		return this.#input.mode;
+	}
+
+	/** Focus the editor without scrolling. */
+	focus(): void {
+		this.#input.focus();
+	}
+
+	/**
+	 * Input-to-paint times over the most recent input events: from each
+	 * keystroke, composition, paste, drop, or pointer event's timestamp
+	 * until the editor painted the change.
+	 */
+	inputLatency(): InputLatency {
+		const count = Math.min(this.#latencySamples, LATENCY_SAMPLES);
+		const sorted = this.#latency.slice(0, count).sort();
+		const at = (share: number) =>
+			sorted[Math.min(count - 1, Math.floor(share * count))] ?? 0;
+
+		return { samples: count, p50: at(0.5), p95: at(0.95), max: at(1) };
 	}
 
 	/**
@@ -295,7 +372,7 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	/** Replace the document. */
 	setContent(content: Content<E>): void {
 		this.#load(content);
-		this.#invalidate();
+		this.#edited();
 	}
 
 	/** The document as `format`. */
@@ -341,13 +418,13 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 			Uint32Array.from(head.path),
 			head.offset,
 		);
-		this.#invalidate();
+		this.#edited();
 	}
 
 	/** Replace the selection with `text`, as typing does (input rules apply). */
 	insertText(text: string): boolean {
 		const changed = this.#wasm.insertText(text);
-		this.#invalidate();
+		this.#edited();
 
 		return changed;
 	}
@@ -355,7 +432,7 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	/** Undo the last change. */
 	undo(): boolean {
 		const changed = this.#wasm.undo();
-		this.#invalidate();
+		this.#edited();
 
 		return changed;
 	}
@@ -363,13 +440,17 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	/** Redo the last undone change. */
 	redo(): boolean {
 		const changed = this.#wasm.redo();
-		this.#invalidate();
+		this.#edited();
 
 		return changed;
 	}
 
 	/** Show the caret and blink it, as when the editor has focus. */
 	setFocused(focused: boolean): void {
+		if (focused === this.#focused) {
+			return;
+		}
+
 		this.#focused = focused;
 		this.#wasm.setFocused(focused);
 		this.#restartBlink();
@@ -413,6 +494,8 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		clearTimeout(this.#blink);
 		this.#resize.disconnect();
 		this.#fonts.dispose();
+		this.#mirror.dispose();
+		this.#input.dispose();
 		this.#canvas.remove();
 		this.#spacer.remove();
 		this.#wasm.free();
@@ -493,7 +576,7 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	/** Run the command named `name` with `args` and repaint on the next frame. */
 	#runEncoded(name: string, args: unknown): boolean {
 		const applied = this.#wasm.run(name, encode(args));
-		this.#invalidate();
+		this.#edited();
 
 		return applied;
 	}
@@ -502,11 +585,67 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	#listenForViewportChanges(): void {
 		const signal = this.#abort.signal;
 
-		this.#scroller().addEventListener("scroll", () => this.#invalidate(), {
-			passive: true,
-			signal,
-		});
+		this.#scroller().addEventListener("scroll", () => {
+			this.#invalidate();
+
+			if (this.#focused) {
+				this.#input.syncBounds();
+			}
+		}, { passive: true, signal });
 		window.addEventListener("resize", () => this.#invalidate(), { signal });
+	}
+
+	/** The document or selection changed outside input events. */
+	#edited(): void {
+		this.#invalidate();
+		this.#input.sync();
+		this.#mirror.schedule();
+	}
+
+	/**
+	 * An input event changed the document or selection: paint in the same
+	 * task, so the change reaches the screen in the next frame, and record
+	 * how long that took.
+	 */
+	#inputChanged(since: number): void {
+		this.#wasm.setCaretOn(true);
+		this.#restartBlink();
+		this.#render();
+		this.#revealCaret();
+		this.#mirror.schedule();
+		this.#latency[this.#latencySamples % LATENCY_SAMPLES] = performance.now() -
+			since;
+		this.#latencySamples += 1;
+	}
+
+	/** Scroll the caret into view. */
+	#revealCaret(): void {
+		const caret = this.caretRect();
+
+		if (caret === null) {
+			return;
+		}
+
+		const scroller = this.#scroller();
+
+		if (scroller instanceof HTMLElement) {
+			const top = scroller.scrollTop;
+			const bottom = top + scroller.clientHeight;
+			const delta = caret.top < top
+				? caret.top - top
+				: Math.max(0, caret.bottom - bottom);
+			scroller.scrollTop += delta;
+			return;
+		}
+
+		const element = this.#element.getBoundingClientRect();
+		const top = element.top + this.#element.clientTop + caret.top;
+		const bottom = top + caret.height;
+		const delta = top < 0 ? top : Math.max(0, bottom - window.innerHeight);
+
+		if (delta !== 0) {
+			window.scrollBy(0, delta);
+		}
 	}
 
 	#invalidate(): void {
@@ -771,6 +910,7 @@ function wasmOptions<E extends Extensions, P extends Plugins>(
 		client: options.client ?? 1,
 		breaks: options.breaks ?? detectBreaks(navigator.userAgent),
 		overscan: options.overscan ?? window.innerHeight,
+		platform: options.platform ?? detectPlatform(navigator),
 		theme: options.theme ?? {},
 	});
 }
