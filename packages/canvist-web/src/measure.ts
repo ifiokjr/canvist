@@ -28,6 +28,18 @@ const RESOLUTION_SAMPLE =
 /** How far the DOM and canvas widths of the sample may differ and still be one face. */
 const SAME_FACE_TOLERANCE = 0.05;
 
+/** Letter sequences that fonts commonly draw as one ligature glyph, longest first. */
+const LIGATURE_CANDIDATES = ["ffi", "ffl", "ff", "fi", "fl", "fj", "ft", "Th"];
+/** The font size ligatures are probed at, in CSS px: large, so whole-pixel DOM rectangles barely round. */
+const LIGATURE_PROBE_PX = 200;
+/**
+ * How far, as a share of the sequence's width, the DOM's caret edge inside
+ * a sequence may sit from the canvas's before the sequence counts as a
+ * ligature. Ligatures move it by 5% or more; WebKit's rounding at the
+ * probe size moves it under 0.5%.
+ */
+const LIGATURE_TOLERANCE = 0.02;
+
 /** Called after each batch with the fonts it used and the text in each. */
 export type MeasureListener = (used: ReadonlyMap<string, string>) => void;
 
@@ -128,9 +140,19 @@ export class CanvasMeasurer implements HostMeasurer {
 		const match = /^(\S+ \S+ \S+px) (.+)$/.exec(css);
 
 		if (match === null) {
-			return { font: css, domWidths: false };
+			return { font: css, domWidths: false, ligatures: [] };
 		}
 
+		const face = this.#face(css, match);
+
+		return { ...face, ligatures: this.#ligatures(face.font, css) };
+	}
+
+	/** The canvas font that draws `css`'s face, and whether its widths come from the DOM. */
+	#face(
+		css: string,
+		match: RegExpExecArray,
+	): Omit<Resolution, "ligatures"> {
 		const [, prefix = "", list = ""] = match;
 		const dom = this.#domWidth(css, RESOLUTION_SAMPLE);
 		const families = splitFamilies(list);
@@ -213,7 +235,7 @@ export class CanvasMeasurer implements HostMeasurer {
 			const joined = JOINING.test(segment);
 			const domWidths = this.#resolution(id).domWidths;
 
-			this.#pushAdvances(segment, joined, out);
+			this.#pushAdvances(segment, joined, out, this.#resolution(id).ligatures);
 
 			if (joined || domWidths) {
 				const canvas = this.#context.measureText(segment).width;
@@ -243,9 +265,14 @@ export class CanvasMeasurer implements HostMeasurer {
 	}
 
 	/** Push `segment`'s advances, or zero placeholders for the DOM to replace when its letters join. */
-	#pushAdvances(segment: string, joined: boolean, out: number[]): void {
+	#pushAdvances(
+		segment: string,
+		joined: boolean,
+		out: number[],
+		ligatures: readonly Ligature[],
+	): void {
 		if (!joined) {
-			this.#advances(segment, out);
+			this.#advances(segment, out, ligatures);
 
 			return;
 		}
@@ -435,25 +462,94 @@ export class CanvasMeasurer implements HostMeasurer {
 	 * So the edge after grapheme `k` is the width of the first `k + 1`
 	 * graphemes less the next grapheme's own width, and the last edge is the
 	 * whole segment's width: the advances sum to what `fillText` paints, and
-	 * each edge sits where the DOM puts it.
+	 * each edge sits where the DOM puts it. Inside a ligature the browser
+	 * splits the glyph's width instead, so edges there follow `ligatures`.
 	 */
-	#advances(segment: string, out: number[]): void {
+	#advances(
+		segment: string,
+		out: number[],
+		ligatures: readonly Ligature[],
+	): void {
 		const clusters = this.#clusters(segment);
-		let previous = 0;
+		const edges: number[] = [];
 		let end = 0;
 
 		for (let index = 0; index < clusters.length; index += 1) {
-			const cluster = clusters[index] ?? "";
-			end += cluster.length;
-			const edge = this.#edge(segment, end, clusters[index + 1]);
+			end += (clusters[index] ?? "").length;
+			edges.push(this.#edge(segment, end, clusters[index + 1]));
+		}
 
+		splitLigatures(clusters, edges, ligatures);
+		let previous = 0;
+
+		clusters.forEach((cluster, index) => {
+			const edge = edges[index] ?? previous;
 			out.push(edge - previous);
 			previous = edge;
 
 			for (let scalars = countScalars(cluster); scalars > 1; scalars -= 1) {
 				out.push(0);
 			}
-		}
+		});
+	}
+
+	/**
+	 * The sequences `canvasFont` draws as ligatures, found by comparing caret
+	 * edges inside each candidate in the DOM (in `css`) with the canvas's, at
+	 * a large size so whole-pixel rectangles barely round.
+	 */
+	#ligatures(canvasFont: string, css: string): Ligature[] {
+		const document = this.#document;
+		const host = document.createElement("div");
+		host.setAttribute("aria-hidden", "true");
+		host.style.cssText =
+			"position:absolute;left:0;top:0;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none";
+		const rows = LIGATURE_CANDIDATES.map((text) => {
+			const row = document.createElement("div");
+			row.style.cssText = `font:${
+				atSize(css, LIGATURE_PROBE_PX)
+			};white-space:pre;width:max-content;font-kerning:normal;font-variant:normal;letter-spacing:0;word-spacing:0`;
+			row.textContent = text;
+			host.append(row);
+			return row;
+		});
+		document.body.append(host);
+		this.#context.font = atSize(canvasFont, LIGATURE_PROBE_PX);
+		this.#font = "";
+		const range = document.createRange();
+		const found: Ligature[] = [];
+
+		LIGATURE_CANDIDATES.forEach((text, index) => {
+			const node = rows[index]?.firstChild;
+
+			if (node === null || node === undefined) {
+				return;
+			}
+
+			const domWidth = rows[index]?.getBoundingClientRect().width ?? 0;
+			const canvasWidth = this.#context.measureText(text).width;
+			const edges: number[] = [];
+			let ligated = false;
+
+			for (let split = 1; split < text.length; split += 1) {
+				range.setStart(node, 0);
+				range.setEnd(node, split);
+				const dom = range.getBoundingClientRect().width / domWidth;
+				const canvas = (this.#context.measureText(text.slice(0, split + 1))
+					.width - this.#context.measureText(text.charAt(split)).width) /
+					canvasWidth;
+				ligated ||= Math.abs(dom - canvas) > LIGATURE_TOLERANCE;
+				edges.push(dom);
+			}
+
+			if (ligated && domWidth > 0 && canvasWidth > 0) {
+				found.push({ text, edges });
+			}
+		});
+
+		host.remove();
+
+		return found;
 	}
 
 	/**
@@ -500,6 +596,19 @@ interface Resolution {
 	readonly font: string;
 	/** Whether segment widths must come from the DOM. */
 	readonly domWidths: boolean;
+	/** The sequences the face draws as ligatures, and where the DOM puts carets inside them. */
+	readonly ligatures: readonly Ligature[];
+}
+
+/**
+ * A sequence a face draws as one glyph. Browsers place caret stops inside
+ * a ligature at fractions of its width (in equal parts, unless the font
+ * says otherwise), not where each letter's own advance would end.
+ */
+export interface Ligature {
+	readonly text: string;
+	/** Each inner caret edge, as a share of the ligature's width. */
+	readonly edges: readonly number[];
 }
 
 /** A segment whose advances the DOM supplies, at `at` in the output. */
@@ -509,6 +618,43 @@ interface DomSegment {
 	readonly at: number;
 	readonly joined: boolean;
 	readonly width: number | null;
+}
+
+/**
+ * Move the edges inside each ligature in `clusters` to where the DOM puts
+ * them: at the ligature's fractions of the width between its outer edges,
+ * which stay where the canvas measured them.
+ */
+export function splitLigatures(
+	clusters: readonly string[],
+	edges: number[],
+	ligatures: readonly Ligature[],
+): void {
+	for (let index = 0; index < clusters.length && ligatures.length > 0;) {
+		const ligature = ligatures.find(({ text }) =>
+			text.split("").every((letter, offset) =>
+				clusters[index + offset] === letter
+			)
+		);
+
+		if (ligature === undefined) {
+			index += 1;
+			continue;
+		}
+
+		const start = index === 0 ? 0 : edges[index - 1] ?? 0;
+		const last = index + ligature.text.length - 1;
+		const width = (edges[last] ?? start) - start;
+		ligature.edges.forEach((share, offset) => {
+			edges[index + offset] = start + share * width;
+		});
+		index = last + 1;
+	}
+}
+
+/** `font` (a CSS `font` shorthand) at `size` CSS px. */
+function atSize(font: string, size: number): string {
+	return font.replace(/^(\S+ \S+ )\S+px/, `$1${size}px`);
 }
 
 /** Scale `count` advances from `at` so they sum to `total`. */

@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { fontFaceCss, stack } from "../src/fonts.ts";
-import { splitFamilies } from "../src/measure.ts";
+import { splitFamilies, splitLigatures } from "../src/measure.ts";
 
 describe("splitFamilies", () => {
 	it("splits on commas outside quotes", () => {
@@ -18,6 +18,28 @@ describe("splitFamilies", () => {
 
 	it("drops empty entries", () => {
 		assert.deepEqual(splitFamilies(" , serif,"), ["serif"]);
+	});
+});
+
+describe("splitLigatures", () => {
+	it("moves edges inside a ligature to the DOM's shares of its width", () => {
+		// "a" then an "fi" ligature 10 px wide, then "x".
+		const clusters = ["a", "f", "i", "x"];
+		const edges = [5, 11.6, 15, 20];
+		splitLigatures(clusters, edges, [{ text: "fi", edges: [0.5] }]);
+
+		assert.deepEqual(edges, [5, 10, 15, 20]);
+	});
+
+	it("prefers the first listed (longest) ligature and leaves other text alone", () => {
+		const clusters = ["f", "f", "i", "f"];
+		const edges = [4, 8, 12, 16];
+		splitLigatures(clusters, edges, [
+			{ text: "ffi", edges: [0.25, 0.5] },
+			{ text: "ff", edges: [0.5] },
+		]);
+
+		assert.deepEqual(edges, [3, 6, 12, 16]);
 	});
 });
 
