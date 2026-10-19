@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Add edge-case tests for paragraphs, serialization, and cross-boundary formatting
+# Add edge-case tests for paragraphs, serialization, and cross-boundary formatting
 
 6 new tests covering critical edge cases:
 

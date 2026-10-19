@@ -2,7 +2,7 @@
 "canvist_core": minor
 ---
 
-Add run compaction, collaboration wiring, and demo persistence
+# Add run compaction, collaboration wiring, and demo persistence
 
 ### Run compaction
 

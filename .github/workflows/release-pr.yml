@@ -1,0 +1,200 @@
+name: release-pr
+
+# Every push to `main` opens or refreshes the release pull request with the
+# version bumps and changelogs from `.changeset/`, then dry-runs the whole
+# publish pipeline against it. Merging that pull request lands a release
+# commit: this workflow then tags it, drafts the GitHub releases, and hands
+# each tag to `publish.yml`.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  create:
+    if: github.repository_owner == 'ifiokjr'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # A pull request opened with the default GITHUB_TOKEN never triggers CI,
+      # so release automation uses a token that does.
+      - name: configure release git credentials
+        env:
+          RELEASE_PR_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RELEASE_PR_TOKEN" ]; then
+            echo "::error::RELEASE_PR_TOKEN is required for release pull request automation." >&2
+            exit 1
+          fi
+          git remote set-url origin "https://x-access-token:${RELEASE_PR_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --force --tags origin
+
+      - name: detect current release commit
+        id: release_record
+        run: |
+          set -euo pipefail
+          errors="$(mktemp)"
+          if is_release_commit="$(mc step release-record --from HEAD --format json --jq '.resolved_commit == .record_commit' 2>"$errors")"; then
+            echo "is_release_commit=${is_release_commit}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          subject="$(git log -1 --pretty=%s)"
+          body="$(git log -1 --pretty=%B)"
+          if [[ "$subject" == chore\(release\):\ prepare\ release* ]] || grep -q '<!-- monochange:release-record:start -->' <<<"$body"; then
+            echo "::error::A release-looking commit could not be read as a release record; failing instead of skipping release automation."
+            cat "$errors" >&2
+            exit 1
+          fi
+          echo "is_release_commit=false" >> "$GITHUB_OUTPUT"
+        shell: devenv shell -- bash -e {0}
+
+      - name: detect pending changesets
+        id: pending
+        if: steps.release_record.outputs.is_release_commit != 'true'
+        run: |
+          set -euo pipefail
+          if find .changeset -type f -name '*.md' -print -quit | grep -q .; then
+            echo "has_changesets=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changesets=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: refresh release pull request
+        if: steps.pending.outputs.has_changesets == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+        run: mc --log-level=info run release --commit --create-pr --no-verify=true
+        shell: devenv shell -- bash -e {0}
+
+      # Simulate every publish against the release pull request's own commit:
+      # each job builds its artifacts and runs its registry's dry run, but no
+      # tag, release, package, or deployment is created.
+      - name: dispatch publish dry runs
+        if: steps.pending.outputs.has_changesets == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+        run: |
+          set -euo pipefail
+          branch="monochange/release/release"
+          git fetch --force origin "$branch"
+          mc step release-record --from "origin/$branch" --format json |
+            jq -r '.record.release_targets[] | select(.tag == true) | .tag_name' |
+            while read -r tag; do
+              gh workflow run publish.yml --repo "$GITHUB_REPOSITORY" --ref "$branch" \
+                -f "tag=$tag" -f "checkout_ref=$branch" -f dry_run=true
+            done
+        shell: devenv shell -- bash -e {0}
+
+  tag:
+    if: github.repository_owner == 'ifiokjr'
+    needs: create
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+      issues: write
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: configure release git credentials
+        env:
+          RELEASE_PR_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RELEASE_PR_TOKEN" ]; then
+            echo "::error::RELEASE_PR_TOKEN is required for release tagging." >&2
+            exit 1
+          fi
+          git remote set-url origin "https://x-access-token:${RELEASE_PR_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+      - name: tag the release commit
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! is_release_commit="$(mc step release-record --from HEAD --format json --jq '.resolved_commit == .record_commit')"; then
+            subject="$(git log -1 --pretty=%s)"
+            if [[ "$subject" == chore\(release\):\ prepare\ release* ]]; then
+              echo "::error::A release-looking commit could not be read as a release record."
+              exit 1
+            fi
+            is_release_commit=false
+          fi
+          echo "is_release_commit=${is_release_commit}" >> "$GITHUB_OUTPUT"
+          if [ "$is_release_commit" = "true" ]; then
+            mc --log-level=info step tag-release --from HEAD --push=true --format json
+          fi
+        shell: devenv shell -- bash -e {0}
+
+      # Releases stay drafts until `publish.yml` has published every package
+      # or deployed the app for that tag.
+      - name: draft GitHub releases
+        if: steps.tag.outputs.is_release_commit == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+        run: mc --log-level=info step publish-release --from-ref=HEAD --draft --format json
+        shell: devenv shell -- bash -e {0}
+
+      - name: comment on released issues
+        if: steps.tag.outputs.is_release_commit == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+        run: mc --log-level=info step comment-released-issues --from-ref=HEAD --auto-close-issues
+        shell: devenv shell -- bash -e {0}
+
+      # Dispatched on the tag itself: pub.dev and the registries' trusted
+      # publishing verify the run's ref.
+      - name: publish each release
+        if: steps.tag.outputs.is_release_commit == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PR_TOKEN }}
+        run: |
+          set -euo pipefail
+          mc step release-record --from HEAD --format json |
+            jq -r '.record.release_targets[] | select(.tag == true) | .tag_name' |
+            while read -r tag; do
+              echo "Publishing $tag"
+              gh workflow run publish.yml --repo "$GITHUB_REPOSITORY" --ref "$tag" -f "tag=$tag"
+            done
+        shell: devenv shell -- bash -e {0}

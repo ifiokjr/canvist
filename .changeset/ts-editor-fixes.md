@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Fix TypeScript editor wrapper and update types
+# Fix TypeScript editor wrapper and update types
 
 ### TypeScript editor fixes
 

@@ -1,0 +1,380 @@
+name: publish
+
+# Publishes one release tag. `release-pr.yml` dispatches it:
+#
+# - for real, on each tag after the release pull request merges: `v<version>`
+#   for the SDK, `app/v<version>` for the website (and canvist Cloud);
+# - as a dry run, against the release pull request's branch, every time that
+#   pull request is refreshed.
+#
+# Pull requests that change the release pipeline also run it as a dry run, on
+# a simulated release commit. A dry run builds every artifact and runs each
+# registry's own dry run, but publishes, uploads, and deploys nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, such as v0.2.0 or app/v0.2.0."
+        required: true
+        type: string
+      dry_run:
+        description: "Build and validate everything, but publish nothing."
+        required: false
+        type: boolean
+        default: false
+      checkout_ref:
+        description: "Ref to check out instead of the tag (dry runs against the release pull request's branch)."
+        required: false
+        type: string
+  pull_request:
+    paths:
+      - ".github/workflows/publish.yml"
+      - ".github/workflows/release-pr.yml"
+      - "monochange.toml"
+      - "packages/canvist-headless/deno.json"
+      - "packages/canvist-headless/package.json"
+      - "platforms/android/**/*.gradle.kts"
+      - "platforms/android/gradle.properties"
+      - "platforms/android/gradle/libs.versions.toml"
+      - "platforms/apple/build.sh"
+      - "website/Dockerfile"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref }}
+  # Never cancel a publish midway: a partial registry publish is worse than a
+  # queued run.
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || 'pull-request' }}
+  DRY_RUN: ${{ github.event_name == 'pull_request' || inputs.dry_run == true }}
+
+jobs:
+  plan:
+    name: plan
+    if: github.repository_owner == 'ifiokjr'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sdk: ${{ steps.plan.outputs.sdk }}
+      app: ${{ steps.plan.outputs.app }}
+      dry_run: ${{ env.DRY_RUN }}
+    steps:
+      - name: choose jobs for the tag
+        id: plan
+        run: |
+          set -euo pipefail
+          case "$RELEASE_TAG" in
+            pull-request) echo "sdk=true" >> "$GITHUB_OUTPUT"; echo "app=true" >> "$GITHUB_OUTPUT" ;;
+            app/v*) echo "sdk=false" >> "$GITHUB_OUTPUT"; echo "app=true" >> "$GITHUB_OUTPUT" ;;
+            v*) echo "sdk=true" >> "$GITHUB_OUTPUT"; echo "app=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::Unknown release tag '$RELEASE_TAG'." >&2; exit 1 ;;
+          esac
+
+  # crates.io and npm through monochange, then JSR, all with OIDC trusted
+  # publishing: no registry token is stored anywhere.
+  packages:
+    name: crates.io, npm, and JSR
+    needs: plan
+    if: needs.plan.outputs.sdk == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: ${{ needs.plan.outputs.dry_run != 'true' && 'publisher' || '' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: checkout release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || inputs.tag || github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: verify the tag is on main
+        if: needs.plan.outputs.dry_run != 'true'
+        run: |
+          set -euo pipefail
+          git fetch --force --tags origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-list -n1 "refs/tags/$RELEASE_TAG")"
+          git merge-base --is-ancestor HEAD origin/main
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # npm trusted publishing needs npm 11.5 or newer.
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # A pull request has no release commit yet: make one locally, exactly
+      # as the release pull request would, so the dry run checks the versions
+      # and manifests that would ship.
+      - name: simulate the release commit
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mc run release --commit --no-verify=true --format text
+        shell: devenv shell -- bash -e {0}
+
+      - name: build @canvist/headless
+        working-directory: packages/canvist-headless
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run build:wasm
+          npm run build
+        shell: devenv shell -- bash -e {0}
+
+      - name: get a crates.io token through OIDC
+        if: needs.plan.outputs.dry_run != 'true'
+        id: crates
+        uses: rust-lang/crates-io-auth-action@v1
+
+      - name: check publish readiness
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates.outputs.token }}
+        run: mc step publish-readiness --from HEAD --output "$RUNNER_TEMP/publish-readiness.json" --format json
+        shell: devenv shell -- bash -e {0}
+
+      - name: publish crates and npm packages
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates.outputs.token }}
+          NPM_CONFIG_PROVENANCE: "true"
+          NPM_CONFIG_IGNORE_SCRIPTS: "true"
+        run: |
+          set -euo pipefail
+          # Trusted publishing refuses a long-lived npm token.
+          unset NODE_AUTH_TOKEN
+          args=(step publish-packages --all --output "$RUNNER_TEMP/publish-result.json" --format json)
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          mc --log-level=info "${args[@]}"
+        shell: devenv shell -- bash -e {0}
+
+      - name: publish @canvist/headless to JSR
+        working-directory: packages/canvist-headless
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" = "true" ]; then
+            deno publish --dry-run --allow-dirty
+          else
+            deno publish
+          fi
+        shell: devenv shell -- bash -e {0}
+
+      - name: keep publish reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-reports
+          path: ${{ runner.temp }}/publish-*.json
+          if-no-files-found: ignore
+
+  # The Swift package's binary: `CanvistFFI.xcframework.zip`, its SwiftPM
+  # checksum, and the generated `Canvist.swift`, attached to the release.
+  apple:
+    name: Swift package
+    needs: plan
+    if: needs.plan.outputs.sdk == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - name: checkout release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || inputs.tag || github.event.pull_request.head.sha }}
+
+      - name: cache rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: publish-apple
+
+      - name: build CanvistFFI.xcframework
+        run: platforms/apple/build.sh
+
+      - name: package the binary target
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/apple"
+          mkdir -p "$out"
+          (cd platforms/apple/Frameworks && zip -qry "$out/CanvistFFI.xcframework.zip" CanvistFFI.xcframework)
+          swift package compute-checksum "$out/CanvistFFI.xcframework.zip" > "$out/CanvistFFI.xcframework.zip.checksum"
+          cp platforms/apple/Sources/Canvist/Canvist.swift "$out/Canvist.swift"
+          ls -l "$out"
+          cat "$out/CanvistFFI.xcframework.zip.checksum"
+
+      - name: attach to the release
+        if: needs.plan.outputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP"/apple/* --clobber --repo "$GITHUB_REPOSITORY"
+
+  # The Android library on Maven Central as `io.github.ifiokjr:canvist-android`.
+  # Until `CANVIST_PUBLISH_MAVEN_CENTRAL` is `true` (it needs the Central
+  # Portal and signing secrets), releases publish to the job's local Maven
+  # repository only, which validates the publication.
+  android:
+    name: Android library
+    needs: plan
+    if: needs.plan.outputs.sdk == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: ${{ needs.plan.outputs.dry_run != 'true' && vars.CANVIST_PUBLISH_MAVEN_CENTRAL == 'true' && 'publisher' || '' }}
+    steps:
+      - name: checkout release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || inputs.tag || github.event.pull_request.head.sha }}
+
+      - name: setup java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: cache rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: publish-android
+
+      - name: install cargo-run-bin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-run-bin
+
+      - name: build the android library
+        run: platforms/android/build.sh
+
+      - name: publish to the local maven repository
+        if: needs.plan.outputs.dry_run == 'true' || vars.CANVIST_PUBLISH_MAVEN_CENTRAL != 'true'
+        working-directory: platforms/android
+        run: ./gradlew :canvist:publishToMavenLocal
+
+      - name: publish to maven central
+        if: needs.plan.outputs.dry_run != 'true' && vars.CANVIST_PUBLISH_MAVEN_CENTRAL == 'true'
+        working-directory: platforms/android
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_SIGNING_KEY_PASSWORD }}
+        run: ./gradlew :canvist:publishAndReleaseToMavenCentral --no-configuration-cache
+
+  # pub.dev. monochange marks both Dart packages `external` until they can be
+  # published: the build hook's Rust crate still resolves through the Cargo
+  # workspace, which a pub.dev archive cannot include, and the package needs
+  # its own LICENSE. Set `CANVIST_PUBLISH_PUB_DEV` to `true` once that lands.
+  pub:
+    name: pub.dev
+    needs: plan
+    if: needs.plan.outputs.sdk == 'true' && vars.CANVIST_PUBLISH_PUB_DEV == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ needs.plan.outputs.dry_run != 'true' && 'publisher' || '' }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: checkout release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || inputs.tag || github.event.pull_request.head.sha }}
+
+      - name: setup flutter
+        uses: kuhnroyal/flutter-fvm-config-action/setup@v3
+        with:
+          path: platforms/flutter/.fvmrc
+
+      # Requests the pub.dev OIDC token for this tagged run.
+      - name: setup dart
+        uses: dart-lang/setup-dart@v1
+
+      - name: publish canvist, then canvist_flutter
+        run: |
+          set -euo pipefail
+          flag="--force"
+          if [ "$DRY_RUN" = "true" ]; then flag="--dry-run"; fi
+          (cd platforms/dart && dart pub publish "$flag")
+          (cd platforms/flutter && flutter pub publish "$flag")
+
+  # The app deploys to Railway production: the website today, and canvist
+  # Cloud's `sync` and `convert` services once they join the `app` group.
+  deploy:
+    name: deploy ${{ matrix.service }}
+    needs: plan
+    if: needs.plan.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ needs.plan.outputs.dry_run != 'true' && 'production' || '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: website
+            dockerfile: website/Dockerfile
+    steps:
+      - name: checkout release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.checkout_ref || inputs.tag || github.event.pull_request.head.sha }}
+
+      # The dry run builds the image Railway would build.
+      - name: build the image
+        if: needs.plan.outputs.dry_run == 'true'
+        run: docker build --file "${{ matrix.dockerfile }}" --tag "canvist-${{ matrix.service }}:dry-run" .
+
+      - name: deploy to railway production
+        if: needs.plan.outputs.dry_run != 'true'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::error::RAILWAY_TOKEN (a project token for the production environment) is required to deploy." >&2
+            exit 1
+          fi
+          npm install --global @railway/cli@4
+          # Upload the tagged tree only. Railway's uploader honours nested
+          # .gitignore files, which would drop committed build inputs.
+          source="$RUNNER_TEMP/source"
+          mkdir -p "$source"
+          git archive HEAD | tar -x -C "$source"
+          find "$source" -name .gitignore -delete
+          railway up "$source" --path-as-root --service "${{ matrix.service }}" --environment production --ci
+
+  # Publish the drafted GitHub release once everything for its tag shipped.
+  release:
+    name: publish the GitHub release
+    needs: [plan, packages, apple, android, pub, deploy]
+    if: >-
+      always() &&
+      needs.plan.outputs.dry_run != 'true' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: publish the draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          latest="--latest=false"
+          if [[ "$RELEASE_TAG" == v* ]]; then latest="--latest"; fi
+          gh release edit "$RELEASE_TAG" --draft=false "$latest" --repo "$GITHUB_REPOSITORY"

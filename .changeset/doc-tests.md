@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Add doc tests for core public API
+# Add doc tests for core public API
 
 Added runnable doc examples to key public methods:
 

@@ -2,7 +2,7 @@
 "canvist_core": minor
 ---
 
-Proper paragraph splitting and merging for multi-paragraph documents
+# Proper paragraph splitting and merging for multi-paragraph documents
 
 ### Paragraph splitting on newline
 

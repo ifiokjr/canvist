@@ -1,0 +1,442 @@
+# :schema https://monochange.github.io/monochange/schemas/monochange.schema.json
+
+# monochange plans canvist's releases. Two release units move independently:
+#
+# - `sdk`: every library canvist ships (Rust crates, the npm/JSR package, the
+#   Dart and Flutter packages, and the Swift and Android bindings). They share
+#   one Cargo workspace version and one conformance suite, so they release in
+#   lockstep under tags like `v0.2.0`.
+# - `app`: the product people use (the website, and canvist Cloud once it
+#   lands). It deploys to Railway and owns the user-facing changelog that the
+#   website renders at `/changelog`.
+#
+# Run `mc check` to lint config and changesets, `mc preview` to see the next
+# release, and `mc help` for the commands defined at the bottom of this file.
+
+[defaults]
+parent_bump = "patch"
+include_private = false
+warn_on_group_mismatch = true
+package_type = "cargo"
+
+[defaults.changelog]
+path = "{{ path }}/changelog.md"
+format = "keep_a_changelog"
+initial_header = """
+All notable changes to this project will be documented in this file.
+This changelog is managed by [monochange](https://github.com/monochange/monochange).
+"""
+
+# =============================================================================
+# Changelog streams, sections and types
+# =============================================================================
+
+[changelog]
+templates = [
+	"#### {{ summary }}\n\n{{ details }}\n\n{{ context }}",
+	"#### {{ summary }}\n\n{{ context }}",
+	"#### {{ summary }}\n\n{{ details }}",
+	"- {{ summary }}",
+]
+
+[changelog.style]
+metadata_style = "inline"
+
+# The `default` stream (developer notes) always exists. `user` is the product
+# changelog: the only stream the website reads.
+[changelog.streams.user]
+description = "What changed for people who use canvist: the editor they type in, the website, canvist Cloud, and their plan and price. Never deployment, CI, credentials, APIs, or internal maintenance."
+
+[changelog.sections]
+breaking = { heading = "💥 Breaking Change", description = "Breaking changes that require consumer updates or migration", priority = 10 }
+feat = { heading = "🚀 Feature", description = "New features, enhancements, and additions", priority = 20 }
+change = { heading = "📝 Changed", description = "Changes to existing behavior, functionality, or API semantics", priority = 25 }
+fix = { heading = "🐛 Fixed", description = "Bug fixes and error corrections", priority = 30 }
+test = { heading = "🧪 Testing", description = "Test suite improvements and additions", priority = 40 }
+refactor = { heading = "🔨 Refactor", description = "Code refactoring with no functional changes", priority = 40 }
+docs = { heading = "📖 Documentation", description = "Documentation updates and improvements", priority = 40 }
+security = { heading = "🔒 Security", description = "Security vulnerabilities, patches, and hardening", priority = 40 }
+perf = { heading = "⚡ Performance", description = "Performance optimizations and improvements", priority = 40 }
+other = { heading = "📦 Other", description = "Miscellaneous changes not categorized elsewhere", priority = 50 }
+user_pricing = { heading = "Plans and pricing", description = "Changes to plans, prices, limits, or billing that people see", priority = 10 }
+user_changed = { heading = "Changed", description = "Things that work differently now", priority = 15 }
+user_new = { heading = "New", description = "Things people can do that they could not before", priority = 20 }
+user_fixed = { heading = "Fixed", description = "Problems people ran into that no longer happen", priority = 30 }
+
+[changelog.section_thresholds]
+collapse = 40
+ignored = 45
+
+[changelog.types]
+# Developer stream (`default`): API contracts, packaging, deployment, CI and
+# maintenance. These never reach the website.
+major = { bump = "major", section = "breaking", description = "Major version bump including breaking API changes requiring migration" }
+breaking = { bump = "major", section = "breaking", description = "Breaking changes that require consumers to update their code" }
+minor = { bump = "minor", section = "feat", description = "Minor version bump including new features and enhancements" }
+feat = { bump = "minor", section = "feat", description = "New functionality or capabilities added to the package" }
+change = { bump = "minor", section = "change", description = "Changes to existing behavior or API semantics" }
+patch = { bump = "patch", section = "fix", description = "Patch version bump for bug fixes and small corrections" }
+fix = { bump = "patch", section = "fix", description = "Bug fixes and error corrections" }
+refactor = { bump = "patch", section = "refactor", description = "Internal code restructuring without changing external behavior" }
+test = { bump = "none", section = "test", description = "Additions or improvements to the test suite only" }
+docs = { bump = "none", section = "docs", description = "Documentation updates and clarifications only" }
+security = { bump = "none", section = "security", description = "Security improvements, advisories, and vulnerability fixes" }
+perf = { bump = "none", section = "perf", description = "Performance and benchmarking improvements" }
+none = { bump = "none", section = "other", description = "Changes with no version impact such as tooling or formatting" }
+# User stream (`user`): plain product language for the website's changelog.
+# Target the `app` group; the SDK has no user-facing output.
+user_feature = { bump = "minor", section = "user_new", stream = "user", description = "Something people can now do in canvist, on the website, or in canvist Cloud" }
+user_fix = { bump = "patch", section = "user_fixed", stream = "user", description = "A problem people ran into that no longer happens" }
+user_change = { bump = "minor", section = "user_changed", stream = "user", description = "Something that works differently now, which people may need to adjust to" }
+pricing = { bump = "minor", section = "user_pricing", stream = "user", description = "A change to plans, prices, included usage, limits, or billing" }
+
+# The website's changelog: one JSON file per app release, user stream only.
+# `website/src/content.config.ts` loads these files into the `changelog`
+# collection that `/changelog` renders.
+[changelog.outputs.website]
+stream = "user"
+targets = ["app"]
+path = "website/src/content/changelog/{{ version }}.json"
+format = "json"
+mode = "release"
+
+# Developer notes for the app. Nothing on the website reads this file.
+[changelog.outputs.app_developer]
+stream = "default"
+targets = ["app"]
+path = "website/developer-changelog.md"
+format = "keep_a_changelog"
+mode = "append"
+initial_header = """
+# canvist app: developer changelog
+
+Deployment, infrastructure, and implementation notes for the website and canvist Cloud. The user-facing changelog lives at `/changelog` on the website.
+"""
+
+# =============================================================================
+# SDK packages
+# =============================================================================
+
+# Published v2 crates.
+[package.canvist_model]
+path = "crates/canvist_model"
+
+[package.canvist_editor]
+path = "crates/canvist_editor"
+
+[package.canvist_extensions]
+path = "crates/canvist_extensions"
+
+[package.canvist_layout]
+path = "crates/canvist_layout"
+
+[package.canvist_collab]
+path = "crates/canvist_collab"
+
+[package.canvist_headless]
+path = "crates/canvist_headless"
+
+# Binding crates. They are versioned with the SDK so the bindings they back
+# report the right version, but they are never published on their own:
+# `canvist_ffi` ships inside the Swift and Android artifacts and
+# `canvist_headless_wasm` inside `@canvist/headless`.
+[package.canvist_ffi]
+path = "crates/canvist_ffi"
+publish = { enabled = false }
+changelog = false
+
+[package.canvist_headless_wasm]
+path = "crates/canvist_headless_wasm"
+publish = { enabled = false }
+changelog = false
+
+# The v1 engine, slated for removal. It still inherits the workspace version,
+# so it stays in the group to keep `workspace.dependencies` consistent, but it
+# is never published.
+[package.canvist_v1]
+path = "crates/canvist"
+publish = { enabled = false }
+changelog = false
+
+[package.canvist_core]
+path = "crates/canvist_core"
+publish = { enabled = false }
+changelog = false
+
+[package.canvist_render]
+path = "crates/canvist_render"
+publish = { enabled = false }
+changelog = false
+
+[package.canvist_wasm]
+path = "crates/canvist_wasm"
+publish = { enabled = false }
+changelog = false
+
+# npm owns `packages/canvist-headless` (one owner per path); the release
+# workflow publishes the same version to JSR with `deno publish`, and the
+# `deno.json` version moves with it through the group's versioned files.
+[package."@canvist/headless"]
+path = "packages/canvist-headless"
+type = "npm"
+
+# Dart packages. `mode = "external"` keeps them out of release publishing (the
+# build hook's Rust crate still resolves through the Cargo workspace, which a
+# pub.dev archive cannot include) while placeholder publishing still reserves
+# the names on pub.dev.
+[package."canvist-dart"]
+path = "platforms/dart"
+type = "dart"
+changelog = { path = "platforms/dart/CHANGELOG.md", format = "keep_a_changelog" }
+publish = { enabled = true, mode = "external" }
+
+[package.canvist_flutter]
+path = "platforms/flutter"
+type = "flutter"
+changelog = { path = "platforms/flutter/CHANGELOG.md", format = "keep_a_changelog" }
+publish = { enabled = true, mode = "external" }
+
+[group.sdk]
+packages = [
+	"@canvist/headless",
+	"canvist_v1",
+	"canvist-dart",
+	"canvist_collab",
+	"canvist_core",
+	"canvist_editor",
+	"canvist_extensions",
+	"canvist_ffi",
+	"canvist_flutter",
+	"canvist_headless",
+	"canvist_headless_wasm",
+	"canvist_layout",
+	"canvist_model",
+	"canvist_render",
+	"canvist_wasm",
+]
+tag = true
+release = true
+version_format = "primary"
+release_title = "canvist {{ version }}"
+versioned_files = [
+	{ path = "Cargo.toml", type = "cargo", fields = ["workspace.package.version"] },
+	# JSR reads its version from deno.json.
+	{ path = "packages/canvist-headless/deno.json", format = "json", fields = ["version"] },
+	# The Swift package is versioned by its git tag; the Android library by
+	# `VERSION_NAME`, which the Maven Central publication reads.
+	{ path = "platforms/android/gradle.properties", format = "env", fields = ["VERSION_NAME"] },
+]
+changelog = { path = "changelog.md", format = "keep_a_changelog", include = "all" }
+
+# =============================================================================
+# App: the website and (soon) canvist Cloud, deployed to Railway
+# =============================================================================
+
+[package.website]
+path = "website"
+type = "npm"
+publish = { enabled = false }
+changelog = false
+
+[group.app]
+packages = ["website"]
+tag = true
+release = true
+version_format = "namespaced"
+release_title = "canvist app {{ version }}"
+# The website parses this title into the version and release date.
+changelog_version_title = "{{ version }} ({{ date }})"
+changelog = false
+
+# =============================================================================
+# Ecosystems and publishing
+# =============================================================================
+
+[ecosystems.cargo]
+enabled = true
+
+[ecosystems.cargo.publish]
+enabled = true
+mode = "builtin"
+registry = "crates_io"
+
+[ecosystems.cargo.publish.trusted_publishing]
+repository = "ifiokjr/canvist"
+workflow = "publish.yml"
+environment = "publisher"
+
+[ecosystems.npm]
+enabled = true
+
+[ecosystems.npm.publish]
+enabled = true
+mode = "builtin"
+registry = "npm"
+
+[ecosystems.npm.publish.trusted_publishing]
+repository = "ifiokjr/canvist"
+workflow = "publish.yml"
+environment = "publisher"
+
+[ecosystems.npm.publish.attestations]
+require_registry_provenance = true
+
+[ecosystems.deno]
+enabled = false
+
+[ecosystems.dart]
+enabled = true
+
+[ecosystems.dart.publish]
+enabled = true
+mode = "external"
+registry = "pub_dev"
+
+[ecosystems.dart.publish.trusted_publishing]
+repository = "ifiokjr/canvist"
+workflow = "publish.yml"
+environment = "publisher"
+
+[ecosystems.flutter]
+enabled = true
+
+[ecosystems.flutter.publish]
+enabled = true
+mode = "external"
+registry = "pub_dev"
+
+[ecosystems.flutter.publish.trusted_publishing]
+repository = "ifiokjr/canvist"
+workflow = "publish.yml"
+environment = "publisher"
+
+[source]
+provider = "github"
+owner = "ifiokjr"
+repo = "canvist"
+
+[source.releases]
+enabled = true
+draft = false
+prerelease = false
+source = "monochange"
+
+[source.pull_requests]
+enabled = true
+branch_prefix = "monochange/release"
+base = "main"
+title = "chore(release): prepare release"
+labels = ["release", "automated"]
+auto_merge = false
+verified_commits = true
+body_style = "full"
+
+[changesets.affected]
+enabled = true
+required = true
+skip_labels = ["no-changeset-required", "release"]
+comment_on_failure = true
+ignored_paths = [
+	"**/tests/**",
+	"**/test/**",
+	"**/benches/**",
+	"**/snapshots/**",
+	"**/changelog.md",
+	"**/CHANGELOG.md",
+	"**/*.md",
+	"website/src/content/changelog/**",
+]
+
+# =============================================================================
+# Lints
+# =============================================================================
+
+[lints]
+include = [".changeset/**"]
+
+[lints.rules]
+"changesets/duplicate" = "error"
+"changesets/summary" = { level = "error", required = true, heading_level = 1, min_length = 8, max_length = 90, forbid_trailing_period = true, forbid_conventional_commit_prefix = true }
+"changesets/bump/major" = { level = "error", min_body_chars = 120, require_code_block = true }
+"changesets/types/breaking" = { level = "error", required_bump = "major", forbidden_headings = ["User impact", "Breaking", "Breaking change", "Breaking changes"] }
+"changesets/types/major" = { level = "error", required_bump = "major", forbidden_headings = ["User impact", "Major", "Breaking", "Breaking change", "Breaking changes"] }
+"changesets/types/feat" = { level = "error", required_bump = "minor", forbidden_headings = ["User impact", "Feat", "Feature"] }
+"changesets/types/change" = { level = "error", forbidden_headings = ["User impact"] }
+"changesets/types/fix" = { level = "error", required_bump = "patch", forbidden_headings = ["User impact", "Fix", "Fixed"] }
+"changesets/types/refactor" = { level = "error", forbidden_headings = ["User impact"] }
+"changesets/types/perf" = { level = "error", forbidden_headings = ["User impact"] }
+"changesets/types/security" = { level = "error", forbidden_headings = ["User impact"] }
+"changesets/types/docs" = { level = "error", forbidden_headings = ["User impact"] }
+"changesets/types/test" = { level = "error", forbidden_headings = ["User impact"] }
+"changesets/types/none" = { level = "error", forbidden_headings = ["User impact"] }
+# User-facing changesets explain the outcome in product language under a
+# "User impact" heading and leave implementation detail to a separate
+# developer changeset.
+"changesets/types/user_feature" = { level = "error", required_bump = "minor", required_sections = ["User impact"], forbidden_headings = ["Developer notes"], min_body_chars = 60 }
+"changesets/types/user_fix" = { level = "error", required_bump = "patch", required_sections = ["User impact"], forbidden_headings = ["Developer notes"], min_body_chars = 60 }
+"changesets/types/user_change" = { level = "error", required_bump = "minor", required_sections = ["User impact"], forbidden_headings = ["Developer notes"], min_body_chars = 60 }
+"changesets/types/pricing" = { level = "error", required_bump = "minor", required_sections = ["User impact"], forbidden_headings = ["Developer notes"], min_body_chars = 60 }
+
+# =============================================================================
+# Commands (`mc <name>` / `monochange run <name>`)
+# =============================================================================
+
+[cli.change]
+help_text = "Record a developer-facing change for one or more SDK or app packages"
+inputs = [
+	{ name = "interactive", type = "boolean", default = false, short = "i" },
+	{ name = "package", type = "string_list", required = true },
+	{ name = "type", type = "choice", choices = ["breaking", "feat", "change", "fix", "refactor", "perf", "security", "docs", "test", "none"], default = "fix" },
+	{ name = "reason", type = "string", required = true },
+	{ name = "details", type = "string" },
+	{ name = "caused_by", type = "string_list" },
+	{ name = "output", type = "path" },
+]
+steps = [
+	{ name = "create change file", type = "CreateChangeFile", inputs = ["interactive", "package", "type", "reason", "details", "caused_by", "output"] },
+]
+
+[cli.user-change]
+help_text = "Record a user-facing change for the website changelog (write the details under a `## User impact` heading)"
+inputs = [
+	{ name = "interactive", type = "boolean", default = false, short = "i" },
+	{ name = "type", type = "choice", choices = ["user_feature", "user_fix", "user_change", "pricing"], required = true },
+	{ name = "reason", type = "string", required = true },
+	{ name = "details", type = "string" },
+	{ name = "output", type = "path" },
+]
+steps = [
+	{ name = "create user change file", type = "CreateChangeFile", inputs = { interactive = "{{ inputs.interactive }}", package = ["app"], type = "{{ inputs.type }}", reason = "{{ inputs.reason }}", details = "{{ inputs.details }}", output = "{{ inputs.output }}" } },
+]
+
+[cli.release]
+help_text = "Prepare the release: bump versions, write changelogs, and optionally commit and open the release pull request"
+inputs = [
+	{ name = "format", type = "choice", choices = ["text", "json", "json-min", "markdown"], default = "markdown" },
+	{ name = "no_verify", type = "boolean", default = true },
+	{ name = "commit", help_text = "Commit the prepared release", type = "boolean", default = false },
+	{ name = "create_pr", help_text = "Open or update the release pull request after committing", type = "boolean", default = false },
+]
+steps = [
+	{ type = "PrepareRelease", name = "plan release", allow_empty_changesets = true, inputs = { format = "{{ inputs.format }}" } },
+	{ type = "Command", name = "refresh cargo lockfile", when = "{{ number_of_changesets > 0 }}", command = "cargo update --workspace" },
+	{ type = "Command", name = "format changed files", when = "{{ number_of_changesets > 0 }}", command = "dprint fmt --allow-no-files" },
+	{ type = "CommitRelease", name = "create release commit", when = "{{ number_of_changesets > 0 && inputs.commit }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },
+	{ type = "OpenReleaseRequest", name = "open release pull request", when = "{{ number_of_changesets > 0 && inputs.commit && inputs.create_pr }}", inputs = { no_verify = "{{ inputs.no_verify }}", stage_all = true } },
+]
+
+[cli.publish-check]
+help_text = "Validate the release and preview package publishing without publishing anything"
+dry_run = true
+steps = [
+	{ type = "PublishPackages", name = "publish packages dry run" },
+]
+
+[cli.placeholder]
+help_text = "Reserve every public package name with a placeholder version (pass --dry-run first)"
+inputs = [
+	{ name = "format", type = "choice", choices = ["text", "json", "md"], default = "md" },
+]
+steps = [
+	{ type = "PlaceholderPublish", name = "publish placeholders", inputs = { format = "{{ inputs.format }}" } },
+]

@@ -5,6 +5,7 @@
 // UniFFI Kotlin sources into `src/main/kotlin`.
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.maven.publish)
 }
 
 android {
@@ -35,4 +36,42 @@ dependencies {
 
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.runner)
+}
+
+// Published to Maven Central as `io.github.ifiokjr:canvist-android` by the
+// release workflow. monochange keeps `VERSION_NAME` in `gradle.properties` in
+// step with the rest of the SDK.
+mavenPublishing {
+    publishToMavenCentral()
+    // CI passes the key as `ORG_GRADLE_PROJECT_signingInMemoryKey`; local
+    // `publishToMavenLocal` runs stay unsigned.
+    if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+        signAllPublications()
+    }
+    coordinates("io.github.ifiokjr", "canvist-android", providers.gradleProperty("VERSION_NAME").get())
+    pom {
+        name = "canvist"
+        description = "Android binding for canvist, the canvas-based rich-text editor with a Rust core."
+        inceptionYear = "2026"
+        url = "https://github.com/ifiokjr/canvist"
+        licenses {
+            license {
+                name = "The Unlicense"
+                url = "https://unlicense.org"
+                distribution = "repo"
+            }
+        }
+        developers {
+            developer {
+                id = "ifiokjr"
+                name = "Ifiok Jr."
+                url = "https://github.com/ifiokjr"
+            }
+        }
+        scm {
+            url = "https://github.com/ifiokjr/canvist"
+            connection = "scm:git:git://github.com/ifiokjr/canvist.git"
+            developerConnection = "scm:git:ssh://git@github.com/ifiokjr/canvist.git"
+        }
+    }
 }

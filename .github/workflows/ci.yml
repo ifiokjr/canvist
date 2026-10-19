@@ -136,7 +136,8 @@ jobs:
           FAILED_PACKAGES=""
           FULL_OUTPUT=""
 
-          PACKAGES=("canvist" "canvist_core" "canvist_render" "canvist_wasm")
+          # The crates monochange publishes (`monochange.toml`).
+          PACKAGES=("canvist_model" "canvist_editor" "canvist_extensions" "canvist_layout" "canvist_collab" "canvist_headless")
 
           for pkg in "${PACKAGES[@]}"; do
             echo "::group::Checking $pkg"
@@ -198,7 +199,7 @@ jobs:
             FOUND=false
             for f in .changeset/*.md; do
               [ -f "$f" ] || continue
-              if grep -qP "^${pkg}:\s*major\s*$" "$f"; then
+              if grep -qP "^\"?${pkg}\"?:\s*(major|breaking)\s*$" "$f"; then
                 FOUND=true
                 break
               fi
@@ -226,12 +227,12 @@ jobs:
             const body = [
               '## :warning: Breaking API changes detected',
               '',
-              `The following package(s) have breaking API changes but are missing a \`major\` changeset: ${missing.map(p => '`' + p + '`').join(', ')}`,
+              `The following package(s) have breaking API changes but are missing a \`breaking\` changeset: ${missing.map(p => '`' + p + '`').join(', ')}`,
               '',
               'Please add a changeset file in `.changeset/` with the breaking change documented:',
               '',
               '```sh',
-              'knope document-change',
+              'mc change --package <crate> --type breaking --reason "<what broke and how to migrate>"',
               '```',
             ].join('\n');
 
@@ -266,5 +267,5 @@ jobs:
         if: steps.verify.outputs.has_missing == 'true'
         run: |
           echo "::error::Breaking API changes detected in:${{ steps.verify.outputs.missing }}"
-          echo "Please add a changeset with 'major' change type for each affected package."
+          echo "Please add a changeset with the 'breaking' change type for each affected package."
           exit 1

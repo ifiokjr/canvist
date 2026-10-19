@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Clean up all clippy warnings across the workspace
+# Clean up all clippy warnings across the workspace
 
 Applied `cargo clippy --fix` and manually resolved remaining warnings:
 

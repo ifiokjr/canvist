@@ -2,7 +2,7 @@
 "canvist_model": minor
 ---
 
-Add `canvist_model`, the v2 block-based document model.
+# Add `canvist_model`, the v2 block-based document model
 
 - `Schema` built from block, mark, and embed specs that extensions contribute.
 - `Document` with stable `BlockId`s, nested containers, and `InlineText` that stores formatting as mark runs and embeds as single characters.

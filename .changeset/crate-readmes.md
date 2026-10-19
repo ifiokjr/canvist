@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Improve crate READMEs and add license files for publishing
+# Improve crate READMEs and add license files for publishing
 
 ### crate READMEs
 

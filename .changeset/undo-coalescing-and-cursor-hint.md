@@ -2,7 +2,7 @@
 "canvist_core": minor
 ---
 
-Add undo coalescing and improved cursor positioning after undo/redo
+# Add undo coalescing and improved cursor positioning after undo/redo
 
 ### Undo coalescing
 

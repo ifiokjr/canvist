@@ -2,6 +2,7 @@
 export const PAGES = [
 	{ path: "/", title: /canvist: the editor that owns every pixel/ },
 	{ path: "/pricing", title: /Pricing · canvist/ },
+	{ path: "/changelog", title: /Changelog · canvist/ },
 	{ path: "/services", title: /Services · canvist/ },
 	{ path: "/services/sync", title: /canvist Sync · canvist/ },
 	{ path: "/services/convert", title: /canvist Convert · canvist/ },

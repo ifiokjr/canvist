@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Add collaboration demo, Ctrl+S save, and convergence tests
+# Add collaboration demo, Ctrl+S save, and convergence tests
 
 ### Collaboration demo
 
