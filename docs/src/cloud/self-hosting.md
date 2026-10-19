@@ -59,6 +59,7 @@ curl -X POST http://localhost:8080/v1/admin/projects \
 | `CANVIST_CONVERT_CONCURRENCY`   | twice the CPUs            | Conversions running at once.                                                                   |
 | `CANVIST_PAUSE_RECHECK_SECONDS` | `30`                      | How often a session paused by a full free plan checks again.                                   |
 | `STRIPE_SECRET_KEY`             | off                       | A Stripe **test-mode** key (`sk_test_` or `rk_test_`); live keys are refused.                  |
+| `STRIPE_WEBHOOK_SECRET`         | off                       | The signing secret of the Stripe webhook endpoint; turns on `POST /v1/stripe/webhook`.         |
 | `STRIPE_METER_EVENT`            | `canvist_active_document` | The Stripe Billing Meter event name.                                                           |
 | `CANVIST_LOG_FORMAT`            | text                      | `json` for structured logs.                                                                    |
 | `RUST_LOG`                      | `info`                    | Log filter, such as `canvist_cloud=debug`.                                                     |

@@ -360,3 +360,79 @@ fn decode(text: &str) -> String {
 
 	String::from_utf8(out).expect("utf-8")
 }
+
+/// `body` signed as Stripe signs webhooks.
+fn stripe_signature(secret: &str, body: &str) -> String {
+	use hmac::Mac;
+
+	let timestamp = canvist_cloud::auth::unix_now();
+	let mut mac = hmac::Hmac::<sha2::Sha256>::new_from_slice(secret.as_bytes()).expect("any key");
+	mac.update(format!("{timestamp}.{body}").as_bytes());
+	let digest = mac.finalize().into_bytes();
+	let hex = digest.iter().fold(String::new(), |mut out, byte| {
+		use std::fmt::Write;
+		let _ = write!(out, "{byte:02x}");
+		out
+	});
+	format!("t={timestamp},v1={hex}")
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_stripe_subscription_lifts_the_cap() {
+	const SECRET: &str = "whsec_canvist_test";
+	let mut config = support::config();
+	config.sync.pause_recheck = Duration::from_millis(200);
+	config.stripe_webhook_secret = Some(Secret::new(SECRET));
+	let fixture = Fixture::start_with(config, support::store().await).await;
+	let capped_terms = Terms {
+		included_documents: Some(0),
+		..Terms::of(Plan::Hobby)
+	};
+	fixture
+		.store
+		.set_terms(&fixture.project, &capped_terms)
+		.await
+		.expect("sets terms");
+	let token = fixture.token("*", Scope::Write);
+	let mut client = Client::spawn();
+	let attempt = client.connect_within(
+		Transport::YWebsocket,
+		(&fixture.sync_url(), "doc", &token),
+		1000,
+	);
+	assert!(!attempt.synced);
+
+	let body = json!({
+		"type": "customer.subscription.created",
+		"data": { "object": {
+			"customer": "cus_test",
+			"status": "active",
+			"metadata": { "canvist_project": fixture.project.as_str() },
+			"items": { "data": [{ "price": { "lookup_key": "canvist_builder_monthly" } }] },
+		} },
+	})
+	.to_string();
+	let http = reqwest::Client::new();
+	let forged = http
+		.post(fixture.http("/v1/stripe/webhook"))
+		.header("stripe-signature", stripe_signature("whsec_wrong", &body))
+		.body(body.clone())
+		.send()
+		.await
+		.expect("responds");
+	assert_eq!(forged.status(), 400);
+
+	let genuine = http
+		.post(fixture.http("/v1/stripe/webhook"))
+		.header("stripe-signature", stripe_signature(SECRET, &body))
+		.body(body)
+		.send()
+		.await
+		.expect("responds");
+	assert_eq!(genuine.status(), 200);
+	assert!(
+		client.wait_synced(),
+		"the paused session syncs once Stripe reports the upgrade"
+	);
+	assert_eq!(usage(&fixture).await["plan"], "builder");
+}

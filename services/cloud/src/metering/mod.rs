@@ -14,6 +14,7 @@
 
 mod plan;
 pub mod stripe;
+pub mod stripe_webhook;
 
 pub use plan::InvalidMonth;
 pub use plan::Month;

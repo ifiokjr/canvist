@@ -17,4 +17,5 @@
 - [canvist Cloud](./cloud/readme.md)
   - [API](./cloud/api.md)
   - [Self-hosting](./cloud/self-hosting.md)
+  - [Billing](./cloud/billing.md)
   - [Railway](./cloud/railway.md)

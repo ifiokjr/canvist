@@ -169,6 +169,7 @@ With `Authorization: Bearer $CANVIST_ADMIN_TOKEN`:
 - `POST /v1/admin/projects` with `{ "name": "acme", "environments": ["production", "staging"] }` creates a project and returns one API key per environment. Keys are shown once.
 - `POST /v1/admin/projects/{project}/keys` with `{ "environment": "staging" }` adds a key.
 - `PUT /v1/admin/projects/{project}/terms` with `{ "plan": "builder", "included_documents": 20000, "stripe_customer": "cus_…" }` changes a project's plan (`hobby`, `builder`, `scale`, or `enterprise`). `included_documents` overrides the plan's default; `stripe_customer` turns on metered billing.
+- `POST /v1/stripe/webhook` receives Stripe's subscription events (signed with `STRIPE_WEBHOOK_SECRET`) and sets the plan of the project in `metadata.canvist_project`. See [billing](./billing.md).
 - `GET /v1/admin/stats` returns loaded documents and connected peers.
 
 ## Health

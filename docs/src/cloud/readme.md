@@ -9,4 +9,5 @@ Read on:
 
 - [API reference](./api.md): credentials, sync, tokens, documents, conversions, usage, and webhooks.
 - [Self-hosting](./self-hosting.md): run the same image, its configuration, durability, and measured capacity.
+- [Billing](./billing.md): plans, Stripe meters and prices, and the subscription webhook.
 - [Railway](./railway.md): how canvist Cloud itself is deployed, and what a document costs to run.
