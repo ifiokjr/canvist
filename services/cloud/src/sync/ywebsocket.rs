@@ -192,7 +192,7 @@ async fn hold(
 	}
 }
 
-async fn send_or_gone(sink: &mut Sink, message: Vec<u8>) -> Result<(), End> {
+async fn send_or_gone(sink: &mut Sink, message: impl Into<axum::body::Bytes>) -> Result<(), End> {
 	socket::send(sink, message)
 		.await
 		.then_some(())
@@ -249,10 +249,22 @@ impl Connection {
 		}
 
 		for message in greeting {
-			socket::send(&mut self.sink, message)
-				.await
-				.then_some(())
-				.ok_or(End::Gone)?;
+			self.send(message).await?;
+		}
+
+		Ok(())
+	}
+
+	async fn send(&mut self, bytes: impl Into<axum::body::Bytes>) -> Result<(), End> {
+		self.liveness.sent();
+		send_or_gone(&mut self.sink, bytes).await
+	}
+
+	/// Send a keepalive if the peer has heard nothing for a while, so an idle
+	/// client does not reconnect.
+	async fn keepalive(&mut self) -> Result<(), End> {
+		if self.liveness.is_quiet() {
+			self.send(protocol::keepalive()).await?;
 		}
 
 		Ok(())
@@ -266,12 +278,15 @@ impl Connection {
 	) -> End {
 		let mut ping = tokio::time::interval(socket::PING_INTERVAL);
 		ping.tick().await;
+		let mut keepalive = tokio::time::interval(socket::KEEPALIVE_INTERVAL);
+		keepalive.tick().await;
 
 		loop {
 			let step = tokio::select! {
 				frame = stream.next() => self.incoming(frame).await,
 				event = fanout.recv() => self.outgoing(event).await,
 				_ = ping.tick() => self.ping().await,
+				_ = keepalive.tick() => self.keepalive().await,
 				_ = shutdown.changed() => Err(End::Close(codes::RESTART, "server restarting")),
 			};
 
@@ -312,10 +327,7 @@ impl Connection {
 		});
 
 		for message in messages {
-			socket::send(&mut self.sink, message)
-				.await
-				.then_some(())
-				.ok_or(End::Gone)?;
+			self.send(message).await?;
 		}
 
 		Ok(())
@@ -325,11 +337,7 @@ impl Connection {
 		match event {
 			Ok(Fanout::Message { from, .. }) if from == Some(self.session.peer()) => Ok(()),
 			Ok(Fanout::Message { message, .. }) => {
-				let bytes = axum::body::Bytes::from_owner(message);
-				socket::send(&mut self.sink, bytes)
-					.await
-					.then_some(())
-					.ok_or(End::Gone)
+				self.send(axum::body::Bytes::from_owner(message)).await
 			}
 			Ok(Fanout::Closed) => Err(End::Close(codes::NORMAL, "document deleted")),
 			Err(RecvError::Lagged(_)) => {

@@ -513,3 +513,52 @@ async fn a_ten_thousand_paragraph_document_converts_quickly() {
 		Duration::from_millis(200),
 	);
 }
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+async fn one_tick_flushes_a_thousand_edited_documents() {
+	const ROOMS: usize = 1_000;
+	let mut config = support::config();
+	config.sync.flush_interval = Duration::from_hours(1);
+	let fixture = Fixture::start_with(config, support::store().await).await;
+	let rooms = &fixture.server.app().rooms;
+	let limits = Limits {
+		max_update_bytes: usize::MAX,
+		max_document_bytes: usize::MAX,
+	};
+	let editor: Arc<str> = Arc::from("perf");
+	let mut joined = Vec::with_capacity(ROOMS);
+
+	// Every room gets a paragraph and then a burst of keystrokes, as a
+	// quarter-second of typing across a busy instance leaves them.
+	for index in 0..ROOMS {
+		let (room, membership) = rooms
+			.join(&key(&fixture, &format!("flush-{index}")))
+			.await
+			.expect("loads");
+		for update in keystrokes(index as u64 + 1, 1).iter().take(4) {
+			room.apply(None, &editor, update, limits).expect("applies");
+		}
+		joined.push((room, membership));
+	}
+
+	let start = Instant::now();
+	rooms.tick(Instant::now()).await;
+	let elapsed = start.elapsed();
+	assert!(
+		joined.iter().all(|(room, _)| !room.is_dirty()),
+		"one tick flushes every room"
+	);
+
+	for (room, membership) in joined {
+		room.leave(membership.peer);
+	}
+
+	// Measured on Apple silicon: 3 ms in memory; 20 ms against a local
+	// Postgres, down from 155 ms when each room wrote its own transaction.
+	assert_time(
+		"flushing 1,000 edited documents in one tick",
+		elapsed,
+		Duration::from_millis(50),
+	);
+}

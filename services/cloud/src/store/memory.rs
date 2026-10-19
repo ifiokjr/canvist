@@ -6,6 +6,8 @@ use std::sync::Mutex;
 use std::sync::MutexGuard;
 
 use super::Admit;
+use super::Appended;
+use super::AppendedRows;
 use super::DocumentSummary;
 use super::PendingConversions;
 use super::PendingDocument;
@@ -337,17 +339,28 @@ impl MemoryStore {
 		}
 	}
 
-	pub(super) fn append(&self, key: &DocumentKey, update: &[u8]) -> i64 {
+	pub(super) fn append_batch(&self, rows: &[(&DocumentKey, &[u8])]) -> Appended {
 		let mut inner = self.lock();
-		inner.next_seq += 1;
-		let seq = inner.next_seq;
-		inner
-			.documents
-			.entry(key.clone())
-			.or_default()
-			.updates
-			.push((seq, update.to_vec()));
-		seq
+		let mut appended = Appended::new();
+
+		for (key, update) in rows {
+			inner.next_seq += 1;
+			let seq = inner.next_seq;
+			inner
+				.documents
+				.entry((*key).clone())
+				.or_default()
+				.updates
+				.push((seq, update.to_vec()));
+			let entry = appended.entry((*key).clone()).or_insert(AppendedRows {
+				rows: 0,
+				last_seq: seq,
+			});
+			entry.rows += 1;
+			entry.last_seq = seq;
+		}
+
+		appended
 	}
 
 	pub(super) fn compact(&self, key: &DocumentKey, snapshot: &[u8], through_seq: i64) {

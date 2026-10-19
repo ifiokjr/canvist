@@ -244,3 +244,113 @@ fn forge(fixture: &Fixture) -> String {
 		.expect("genuine");
 	canvist_cloud::auth::TokenSigner::new("an attacker's key that is long enough").sign(&claims)
 }
+
+mod raw {
+	//! Raw y-websocket peers, to see exactly which frames the relay sends.
+
+	use std::time::Duration;
+
+	use futures_util::SinkExt;
+	use futures_util::StreamExt;
+	use tokio_tungstenite::tungstenite::Message;
+
+	pub type Socket = tokio_tungstenite::WebSocketStream<
+		tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
+	>;
+
+	/// Connect and read past the greeting (sync step 1).
+	pub async fn connect(url: &str) -> Socket {
+		let (mut socket, _) = tokio_tungstenite::connect_async(url)
+			.await
+			.expect("connects");
+		next(&mut socket, Duration::from_secs(5))
+			.await
+			.expect("a greeting");
+		socket
+	}
+
+	/// The next binary frame within `wait`.
+	pub async fn next(socket: &mut Socket, wait: Duration) -> Option<Vec<u8>> {
+		let deadline = tokio::time::Instant::now() + wait;
+
+		loop {
+			let frame = tokio::time::timeout_at(deadline, socket.next())
+				.await
+				.ok()??
+				.ok()?;
+
+			if let Message::Binary(bytes) = frame {
+				return Some(bytes.to_vec());
+			}
+		}
+	}
+
+	/// An awareness update setting client `client`'s state to `json`.
+	pub fn awareness(client: u64, json: &str) -> Vec<u8> {
+		use yrs::block::ClientID;
+		use yrs::sync::AwarenessUpdate;
+		use yrs::sync::awareness::AwarenessUpdateEntry;
+
+		canvist_cloud::sync::protocol::awareness(AwarenessUpdate {
+			clients: std::collections::HashMap::from([(
+				ClientID::new(client),
+				AwarenessUpdateEntry {
+					clock: 1,
+					json: json.into(),
+				},
+			)]),
+		})
+	}
+
+	pub async fn send(socket: &mut Socket, bytes: Vec<u8>) {
+		socket
+			.send(Message::Binary(bytes.into()))
+			.await
+			.expect("sends");
+	}
+}
+
+/// The y-protocols message type of a frame: 1 is awareness.
+const AWARENESS: u8 = 1;
+
+#[tokio::test(flavor = "multi_thread")]
+async fn carets_reach_others_but_are_not_echoed() {
+	let fixture = Fixture::start().await;
+	let url = format!(
+		"{}/doc?token={}",
+		fixture.sync_url(),
+		fixture.token("doc", Scope::Write)
+	);
+	let mut alice = raw::connect(&url).await;
+	let mut bob = raw::connect(&url).await;
+
+	raw::send(
+		&mut alice,
+		raw::awareness(11, r#"{"user":{"name":"alice"}}"#),
+	)
+	.await;
+
+	let to_bob = raw::next(&mut bob, std::time::Duration::from_secs(2)).await;
+	assert_eq!(
+		to_bob.as_ref().map(|frame| frame[0]),
+		Some(AWARENESS),
+		"the other peer sees the caret"
+	);
+	let to_alice = raw::next(&mut alice, std::time::Duration::from_millis(500)).await;
+	assert_eq!(to_alice, None, "the sender does not get its own caret back");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn quiet_sockets_get_a_keepalive_before_clients_time_out() {
+	let fixture = Fixture::start().await;
+	let url = format!(
+		"{}/doc?token={}",
+		fixture.sync_url(),
+		fixture.token("doc", Scope::Write)
+	);
+	let mut alone = raw::connect(&url).await;
+
+	// y-websocket and Hocuspocus clients reconnect after 30 silent seconds.
+	let keepalive = raw::next(&mut alone, std::time::Duration::from_secs(26)).await;
+	assert_eq!(keepalive, Some(canvist_cloud::sync::protocol::keepalive()));
+}

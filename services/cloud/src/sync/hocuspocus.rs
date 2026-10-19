@@ -140,7 +140,7 @@ async fn run(app: SharedApp, socket: WebSocket) {
 			frame = stream.next() => connection.incoming(frame).await,
 			Some(out) = inbox.recv() => connection.outgoing(out).await,
 			_ = ping.tick() => connection.ping().await,
-			_ = keepalive.tick() => connection.keep_paused().await,
+			_ = keepalive.tick() => connection.keep_alive().await,
 			_ = shutdown.changed() => Err(Some((codes::RESTART, "server restarting"))),
 		};
 
@@ -183,6 +183,7 @@ impl Connection {
 	}
 
 	async fn send(&mut self, frame: Vec<u8>) -> Step {
+		self.liveness.sent();
 		socket::send(&mut self.sink, frame)
 			.await
 			.then_some(())
@@ -303,6 +304,19 @@ impl Connection {
 			Some(awareness) => self.send(frame(address, &awareness)).await,
 			None => Ok(()),
 		}
+	}
+
+	/// Send a keepalive if the socket has been quiet, then tend the paused
+	/// documents. The provider times out the whole socket, not a document,
+	/// so one keepalive on any open document's address is enough.
+	async fn keep_alive(&mut self) -> Step {
+		let open = self.documents.keys().next().cloned();
+
+		if let (true, Some(address)) = (self.liveness.is_quiet(), open) {
+			self.send(frame(&address, &protocol::keepalive())).await?;
+		}
+
+		self.keep_paused().await
 	}
 
 	/// Keep paused documents alive, and sync any that may now: they get the

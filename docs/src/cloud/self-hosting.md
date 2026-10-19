@@ -93,18 +93,19 @@ One instance holds each document it serves in memory, so every client of a docum
 
 `cargo test --release -p canvist_cloud --test perf_budgets -- --ignored --nocapture` measures, on Apple silicon:
 
-| Measure                                  | Measured | Budget   |
-| ---------------------------------------- | -------- | -------- |
-| One keystroke to the last of 100 peers   | 0.6 ms   | 10 ms    |
-| Applying one keystroke                   | 1.5 µs   | 20 µs    |
-| Persisting a 42,000-update backlog       | 21 ms    | 150 ms   |
-| Opening one connection                   | 0.1 ms   | 2 ms     |
-| Memory per idle connection (both ends)   | 17 KiB   | 64 KiB   |
-| Memory per loaded 5-paragraph document   | 22 KiB   | 32 KiB   |
-| Memory per loaded 50-paragraph document  | 132 KiB  | 192 KiB  |
-| 10,000 paragraphs, Markdown to HTML      | 14 ms    | 60 ms    |
-| 10,000 paragraphs, HTML to Markdown      | 16 ms    | 60 ms    |
-| 10,000 paragraphs, JSON to Markdown      | 52 ms    | 200 ms   |
-| Memory per loaded 500-paragraph document | 1.2 MiB  | 1.75 MiB |
+| Measure                                    | Measured | Budget            |
+| ------------------------------------------ | -------- | ----------------- |
+| One keystroke to the last of 100 peers     | 0.6 ms   | 10 ms             |
+| Applying one keystroke                     | 1.5 µs   | 20 µs             |
+| Persisting a 42,000-update backlog         | 21 ms    | 150 ms            |
+| Flushing 1,000 edited documents (Postgres) | 20 ms    | 50 ms (in memory) |
+| Opening one connection                     | 0.1 ms   | 2 ms              |
+| Memory per idle connection (both ends)     | 17 KiB   | 64 KiB            |
+| Memory per loaded 5-paragraph document     | 22 KiB   | 32 KiB            |
+| Memory per loaded 50-paragraph document    | 132 KiB  | 192 KiB           |
+| 10,000 paragraphs, Markdown to HTML        | 14 ms    | 60 ms             |
+| 10,000 paragraphs, HTML to Markdown        | 16 ms    | 60 ms             |
+| 10,000 paragraphs, JSON to Markdown        | 52 ms    | 200 ms            |
+| Memory per loaded 500-paragraph document   | 1.2 MiB  | 1.75 MiB          |
 
 A loaded document costs about 2.4 KiB per block plus 10 KiB. Documents only stay in memory while someone is connected and for the idle eviction period after, so memory follows concurrent documents, not total ones.
