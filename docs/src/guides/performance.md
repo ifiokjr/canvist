@@ -24,9 +24,9 @@ Every number below has a budget, and a test fails the build when an operation go
 | Hit test / caret rectangle                         | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
 | Display list for one screen                        | < 100 µs                                    | 5 µs                 |
 | Scroll one screen into unmeasured blocks           | < 1 ms                                      | 53 µs                |
-| Relayout after a web font loads, 10k blocks        | < 200 µs                                    | 37 µs                |
-| Measure cache hit rate: resize / typing            | ≥ 99% / ≥ 85%                               | 100% / 93%           |
-| Measure cache memory per segment, per face         | ≤ 160 B                                     | 145 B                |
+| Relayout after a web font loads, 10k blocks        | < 200 µs                                    | 43 µs                |
+| Measure cache hit rate: resize / typing            | ≥ 99% / ≥ 85%                               | 100% / 98.5%         |
+| Measure cache memory per segment, per face         | ≤ 160 B                                     | 144 B                |
 | Mirror a keystroke into a Yjs update, 100k blocks  | < 20 µs                                     | 1.9 µs               |
 | Apply a collaborator's keystroke, 100k blocks      | < 20 µs                                     | 2.7 µs               |
 | Mirror Enter into Yjs, 10k blocks²                 | < 150 µs                                    | 45 µs                |
