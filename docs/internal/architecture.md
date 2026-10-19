@@ -1,6 +1,6 @@
 # canvist v2 architecture
 
-canvist is a rich-text editor that owns every pixel. One Rust core holds the document, the editing logic, and text layout. Thin hosts on each platform turn native input into editor commands and paint a display list with the platform's own drawing API. This page records the decisions behind v2 and why they were made. [The roadmap](./roadmap.md) splits the work into milestones, and [the research brief](../research/editor-landscape.md) holds the evidence.
+canvist is a rich-text editor that owns every pixel. One Rust core holds the document, the editing logic, and text layout. Thin hosts on each platform turn native input into editor commands and paint a display list with the platform's own drawing API. This page records the decisions behind v2 and why they were made. [The roadmap](./roadmap.md) splits the work into milestones, and [the research brief](./research/editor-landscape.md) holds the evidence.
 
 ## Goals
 
@@ -205,44 +205,15 @@ To make this automatic, every extension declares machine-readable metadata. It l
 
 ## Performance budgets
 
-These budgets are enforced by benchmarks and checked in CI once each host exists.
-
-| Metric                                             | Budget                                      | Today                |
-| -------------------------------------------------- | ------------------------------------------- | -------------------- |
-| Apply one keystroke (model), 100k blocks           | < 2 µs                                      | 0.29 µs              |
-| Enter / Backspace across blocks, 100k blocks       | < 100 µs                                    | 45 µs                |
-| Keystroke in a 100 KB paragraph                    | < 5 µs                                      | 0.94 µs              |
-| Relayout one edited paragraph, 10k or 100k blocks  | < 100 µs                                    | 2.5 µs               |
-| Relayout after a keystroke in a 100 KB paragraph   | < 100 µs                                    | 25 µs                |
-| Relayout after Enter, 10k / 100k blocks ¹          | < 200 µs / < 2 ms                           | 83 µs / 1.4 ms       |
-| Hit test / caret rectangle                         | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
-| Display list for one screen                        | < 100 µs                                    | 5 µs                 |
-| Scroll one screen into unmeasured blocks           | < 1 ms                                      | 53 µs                |
-| Mirror a keystroke into a Yjs update, 100k blocks  | < 20 µs                                     | 1.9 µs               |
-| Apply a collaborator's keystroke, 100k blocks      | < 20 µs                                     | 2.7 µs               |
-| Mirror Enter into yrs, 10k blocks²                 | < 150 µs                                    | 45 µs                |
-| Apply a collaborator's Enter, 10k blocks²          | < 400 µs                                    | 114 µs               |
-| Join a 10k-paragraph document from Yjs state       | < 50 ms                                     | 24 ms                |
-| Headless: load 10k paragraphs (Markdown / JSON)    | < 50 ms / < 50 ms                           | 10 ms / 17 ms        |
-| Headless: export 10k paragraphs (JSON / MD / HTML) | < 50 / 25 / 25 ms                           | 19 / 7 / 2.4 ms      |
-| Headless: run one command, 10k paragraphs          | < 2 µs                                      | 0.21 µs              |
-| Headless: create a StarterKit document             | < 250 µs                                    | 56 µs                |
-| Headless: apply one Yjs keystroke, 10k paragraphs  | < 20 µs                                     | 2.3 µs               |
-| Headless TypeScript: one command / Yjs update      | < 5 µs / < 30 µs                            | 0.71 µs / 4.6 µs     |
-| Headless TypeScript wasm module, after `wasm-opt`  | < 1,200 KB raw                              | 1,058 KB (433 KB gz) |
-| Headless Dart: one command / Yjs update            | < 10 µs / < 30 µs                           | 2.0 µs / 3.5 µs      |
-| Keystroke → paint on the web (Event Timing), p95   | < 8 ms                                      | (M3)                 |
-| Typing burst: 1,000 key events in one task         | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
-| Open a 10k-paragraph document → first paint        | < 50 ms                                     | layout 0.6 ms (M2)   |
-| Web bundle (core + StarterKit), gzipped            | < 350 KB                                    | (M3)                 |
+The budget table, with today's measurements, lives in the user docs at [`docs/src/guides/performance.md`](../src/guides/performance.md#performance-budgets), because the website and the launch film read it from there. Each row is enforced by a release-mode test in `tests/perf_budgets.rs` in its crate.
 
 For reference, the best public number the research found is Lexical issue #7422: about 1.8 ms per keystroke at 5,000 paragraphs, spent copying state.
 
-¹ **Recorded exception: Enter grows with the document.** Layout re-flattens only the root-level subtrees a structural commit changed and reuses every other block's row and layout. But rows are stored in one array, so splicing a row in shifts the index of every row after it. That work is plain memory moves and integer updates, with no hashing, styling, or measuring, and costs about 10 ns per row. Chunked row storage would make it `O(log n)`, and is the follow-up if documents grow past 100k blocks.
-
-² Structural edits cost `O(siblings)`: yrs computes an array event's delta by walking the whole array (Yjs does the same) and walks to an insertion index. Budgets use 10,000 root blocks, where the array stays in cache. At 100,000 the walk is bound by memory latency and varies about 14 times between machines (0.9 ms for a remote Enter on CI's x86 runners, 13 ms on Apple silicon).
-
 Layout's numbers use the deterministic `FixedMeasurer`, so they measure layout itself. Measuring with the browser or `parley` adds the host's own cost, but only for words the cache hasn't seen.
+
+**Enter grows with the document.** Layout re-flattens only the root-level subtrees a structural commit changed and reuses every other block's row and layout. But rows are stored in one array, so splicing a row in shifts the index of every row after it. That work is plain memory moves and integer updates, with no hashing, styling, or measuring, and costs about 10 ns per row. Chunked row storage would make it `O(log n)`, and is the follow-up if documents grow past 100k blocks.
+
+**Structural edits cost `O(siblings)`:** yrs computes an array event's delta by walking the whole array (Yjs does the same) and walks to an insertion index. Budgets use 10,000 root blocks, where the array stays in cache. At 100,000 the walk is bound by memory latency and varies about 14 times between machines (0.9 ms for a remote Enter on CI's x86 runners, 13 ms on Apple silicon).
 
 ## Performance is a first-class primitive
 

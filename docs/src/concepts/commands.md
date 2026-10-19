@@ -48,7 +48,10 @@ Queries answer questions about the selection: is bold active, what heading level
 import { createEngine } from "@canvist/headless";
 
 const engine = await createEngine();
-const doc = engine.parse("markdown", "## Title\n\nSee [the docs](https://canvist.dev)");
+const doc = engine.parse(
+	"markdown",
+	"## Title\n\nSee [the docs](https://example.com)",
+);
 
 doc.select({ path: [0], offset: 0 });
 console.log(doc.query.headingLevel());
@@ -56,7 +59,7 @@ console.log(doc.query.headingLevel());
 
 doc.select({ path: [1], offset: 6 });
 console.log(doc.query.linkHref());
-// https://canvist.dev
+// https://example.com
 ```
 
 ## Keys and typing
@@ -85,11 +88,11 @@ console.log(doc.export("markdown"));
 
 Commands and queries only exist for extensions you registered. Each language enforces that in its own way:
 
-| Language   | How you reach a command                | Calling an unregistered extension |
-| ---------- | -------------------------------------- | --------------------------------- |
-| TypeScript | `doc.commands.toggleBold()`            | Type error                        |
-| Rust       | `doc.run(&bold.toggle())`, with the handle `builder.add(Bold)` returned | Compile error: there's no handle |
-| Dart       | `doc.run(bold.toggleBold())`, with the handle `builder.add(Extensions.bold)` returned | Compile error: there's no handle |
+| Language   | How you reach a command                                                               | Calling an unregistered extension |
+| ---------- | ------------------------------------------------------------------------------------- | --------------------------------- |
+| TypeScript | `doc.commands.toggleBold()`                                                           | Type error                        |
+| Rust       | `doc.run(&bold.toggle())`, with the handle `builder.add(Bold)` returned               | Compile error: there's no handle  |
+| Dart       | `doc.run(bold.toggleBold())`, with the handle `builder.add(Extensions.bold)` returned | Compile error: there's no handle  |
 
 Arguments are typed too. A heading level is `1 | 2 | 3 | 4 | 5 | 6` in TypeScript, and the engine checks it again at runtime for code that skips the types.
 

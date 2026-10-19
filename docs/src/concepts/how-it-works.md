@@ -22,7 +22,7 @@ The core is the same code on every platform. A host is a thin layer that turns t
 ## From keystroke to pixels
 
 1. **You press a key.** The host receives it through the platform's own text input: `EditContext` in the browser, `UITextInput` on iOS, `InputConnection` on Android. That's what makes autocorrect, dictation, and IME composition work.
-2. **The engine decides what it means.** Keyboard shortcuts and input rules from your extensions run first. `**` might close a bold run; `## ` might turn the line into a heading.
+2. **The engine decides what it means.** Keyboard shortcuts and input rules from your extensions run first. `**` might close a bold run; `##` might turn the line into a heading.
 3. **The document changes in small steps.** Every change is a step that can be undone exactly, and that maps one-to-one onto a Yjs operation for collaboration.
 4. **Only the edited paragraph is laid out again.** Layout breaks lines with the same Unicode rules browsers use, and reuses every line the edit didn't touch.
 5. **The host paints a display list.** Layout produces a list of positioned text runs, rectangles, and decorations. The browser paints it on a canvas; native platforms paint it with their own graphics APIs.

@@ -1,9 +1,8 @@
 # Summary
 
+# Get started
+
 - [Introduction](./readme.md)
-
-# Quick start
-
 - [Pick your platform](./quick-start/readme.md)
   - [Server: Rust](./quick-start/server-rust.md)
   - [Server: TypeScript](./quick-start/server-typescript.md)

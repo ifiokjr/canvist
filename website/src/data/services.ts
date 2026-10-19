@@ -1,5 +1,5 @@
 /**
- * canvist's hosted services, from docs/src/v2/business.md. The software for
+ * canvist's hosted services, from docs/src/cloud/readme.md. The software for
  * each is free and self-hostable; the paid product is running it.
  */
 export type ServiceId = "sync" | "convert" | "history";

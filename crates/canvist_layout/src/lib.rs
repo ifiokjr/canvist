@@ -23,7 +23,7 @@
 //!   node-view slots, with [`DisplayList::damage`] for dirty rectangles.
 //! - Server rendering: [`to_svg`] paints a display list, and [`to_html`]
 //!   writes semantic HTML plus CSS that wraps lines exactly where the canvas
-//!   does. See the [CSS contract](https://github.com/ifiokjr/canvist/blob/main/docs/src/v2/ssr-css-contract.md).
+//!   does. See the [CSS contract](https://github.com/ifiokjr/canvist/blob/main/docs/internal/ssr-css-contract.md).
 //!
 //! # Example
 //!

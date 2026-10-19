@@ -49,12 +49,12 @@ In TypeScript, `toJson()` and `fromJson()` are typed by the engine's extensions,
 
 A document reads and writes four formats. See [Import and export](../guides/import-export.md) for the details of each.
 
-| Format     | Name in code | Reading it                                              | Writing it                                  |
-| ---------- | ------------ | ------------------------------------------------------- | ------------------------------------------- |
-| JSON       | `json`       | Must fit the schema, or loading fails                   | Keeps everything, including block ids       |
+| Format     | Name in code | Reading it                                                 | Writing it                                  |
+| ---------- | ------------ | ---------------------------------------------------------- | ------------------------------------------- |
+| JSON       | `json`       | Must fit the schema, or loading fails                      | Keeps everything, including block ids       |
 | HTML       | `html`       | Never fails; unknown tags fall back to paragraphs and text | Semantic HTML: `<p>`, `<h1>`, `<strong>`, … |
-| Markdown   | `markdown`   | Never fails; GitHub task lists and strikethrough included | Markdown                                  |
-| Plain text | `text`       | One paragraph per line                                  | One line per text block                     |
+| Markdown   | `markdown`   | Never fails; GitHub task lists and strikethrough included  | Markdown                                    |
+| Plain text | `text`       | One paragraph per line                                     | One line per text block                     |
 
 Use JSON to store documents. It is the only format that keeps everything, including attributes that HTML and Markdown can't express.
 

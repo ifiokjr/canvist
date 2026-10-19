@@ -8,29 +8,76 @@ const page = (path: string, body = "") => ({
 	body,
 });
 
+Deno.test("SUMMARY.md part headings become sidebar groups, in summary order", () => {
+	const summary = parseSummary(
+		[
+			"# Summary",
+			"",
+			"# Get started",
+			"",
+			"- [Introduction](./readme.md)",
+			"- [Pick your platform](./quick-start/readme.md)",
+			"  - [Server: Rust](./quick-start/server-rust.md)",
+			"",
+			"# canvist Cloud",
+			"",
+			"- [Overview](./cloud/readme.md)",
+			"  - [Sync](./cloud/sync.md)",
+			"",
+			"# Reference",
+			"",
+			"- [Errors](./reference/errors.md)",
+		].join("\n"),
+	);
+	assertEquals(summary.get("readme.md"), {
+		title: "Introduction",
+		part: "Get started",
+	});
+
+	const nav = buildDocsNav(
+		[
+			page("reference/errors.md", "# Errors"),
+			page("cloud/sync.md", "# canvist Cloud Sync"),
+			page("cloud/readme.md", "# canvist Cloud"),
+			page("quick-start/server-rust.md", "# Quick start: Rust"),
+			page("quick-start/readme.md", "# Pick your platform"),
+			page("readme.md", "# canvist"),
+		],
+		summary,
+	);
+	assertEquals(
+		nav.map((group) => [group.title, group.links.map((link) => link.label)]),
+		[
+			["Get started", ["Introduction", "Pick your platform", "Server: Rust"]],
+			["canvist Cloud", ["Overview", "Sync"]],
+			["Reference", ["Errors"]],
+		],
+	);
+});
+
 Deno.test("pages missing from SUMMARY.md still land in the sidebar, in their folder's group", () => {
 	const summary = parseSummary(
-		"- [Introduction](./readme.md)\n- [v2 Roadmap](./v2/roadmap.md)\n",
+		"# Summary\n\n- [Introduction](./readme.md)\n- [Collaboration](./guides/collaboration.md)\n",
 	);
 	const nav = buildDocsNav(
 		[
 			page("readme.md", "# canvist"),
-			page("v2/roadmap.md", "# Roadmap"),
+			page("guides/collaboration.md", "# Collaboration"),
 			page("cloud/self-hosting.md", "# Self-hosting canvist Cloud"),
-			page("cloud/api.md", "# Cloud API"),
+			page("cloud/api.md", "# canvist Cloud API reference"),
 			page("brand-new/notes.md", "# Notes"),
 		],
 		summary,
 	);
 	assertEquals(nav.map((group) => group.title), [
+		"Get started",
 		"Guides",
-		"v2 design",
 		"canvist Cloud",
 		"Brand new",
 	]);
 	const cloud = nav.find((group) => group.title === "canvist Cloud");
 	assertEquals(cloud?.links.map((link) => [link.route, link.label]), [
-		["/docs/cloud/api", "API"],
+		["/docs/cloud/api", "API reference"],
 		["/docs/cloud/self-hosting", "Self-hosting canvist Cloud"],
 	]);
 });

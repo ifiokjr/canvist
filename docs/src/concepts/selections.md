@@ -86,7 +86,10 @@ fn main() -> Result<(), canvist_headless::HeadlessError> {
 		}
 	}
 
-	assert_eq!(doc.export(Format::Markdown), "Status: DONE\n\nNext: **TODO**");
+	assert_eq!(
+		doc.export(Format::Markdown),
+		"Status: DONE\n\nNext: **TODO**"
+	);
 	Ok(())
 }
 ```

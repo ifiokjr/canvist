@@ -75,7 +75,7 @@ toolchain spike (UniFFI, simulators) and logo: in parallel, now
 
 ## M8: TipTap-parity extensions
 
-This list covers everything in TipTap v3's MIT set. See [the research brief](../research/editor-landscape.md#1-tiptap-v3-the-parity-checklist) for the full checklist.
+This list covers everything in TipTap v3's MIT set. See [the research brief](./research/editor-landscape.md#1-tiptap-v3-the-parity-checklist) for the full checklist.
 
 - **Tables:** colspan and rowspan, column resizing, cell selection, merge and split.
 - **Images** (resizable), YouTube, audio, and file handler.

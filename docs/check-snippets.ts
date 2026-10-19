@@ -5,10 +5,10 @@
  * - `rust`: compiled and run as doc tests. `docs/src/lib.rs` includes each
  *   page; this script fails if a page with Rust samples is missing there.
  * - `ts`: type-checked with `deno check`, then run with `deno run`. A sample
- *   whose info string has `no-run` (it needs a network peer, for example) is
+ *   whose info string has `no_run` (it needs a network peer, for example) is
  *   only type-checked.
  * - `dart`: analyzed with `dart analyze --fatal-infos` inside the `canvist`
- *   package, then run with `dart run` unless marked `no-run`. Samples that
+ *   package, then run with `dart run` unless marked `no_run`. Samples that
  *   import Flutter are analyzed inside the Flutter example app instead.
  *
  * Output a sample prints is checked too: the comment lines straight after a
@@ -78,11 +78,19 @@ export function samples(file: string, markdown: string): Sample[] {
 		const [lang = "", ...meta] = info.trim().split(/\s+/).filter(Boolean);
 		const body: string[] = [];
 		let end = index + 1;
-		while (end < lines.length && !(lines[end] ?? "").startsWith(indent + fence)) {
+		while (
+			end < lines.length && !(lines[end] ?? "").startsWith(indent + fence)
+		) {
 			body.push((lines[end] ?? "").slice(indent.length));
 			end++;
 		}
-		found.push({ file, line: index + 1, lang, meta, code: body.join("\n") + "\n" });
+		found.push({
+			file,
+			line: index + 1,
+			lang,
+			meta,
+			code: body.join("\n") + "\n",
+		});
 		index = end;
 	}
 	return found;
@@ -117,7 +125,12 @@ async function run(
 	args: string[],
 	cwd: string,
 ): Promise<{ ok: boolean; stdout: string; stderr: string }> {
-	const output = await new Deno.Command(command, { args, cwd, stdout: "piped", stderr: "piped" })
+	const output = await new Deno.Command(command, {
+		args,
+		cwd,
+		stdout: "piped",
+		stderr: "piped",
+	})
 		.output();
 	const decoder = new TextDecoder();
 	return {
@@ -128,14 +141,19 @@ async function run(
 }
 
 function fileName(sample: Sample, index: number, extension: string): string {
-	const stem = relative(ROOT, sample.file).replace(/[^a-z0-9]+/gi, "_");
+	const stem = relative(ROOT, sample.file).toLowerCase().replace(
+		/[^a-z0-9]+/g,
+		"_",
+	);
 	return `${stem}_${sample.line}_${index}.${extension}`;
 }
 
 class Failures {
 	readonly messages: string[] = [];
 	add(sample: Sample | undefined, message: string): void {
-		this.messages.push(sample === undefined ? message : `${where(sample)}: ${message}`);
+		this.messages.push(
+			sample === undefined ? message : `${where(sample)}: ${message}`,
+		);
 	}
 }
 
@@ -146,12 +164,17 @@ function checkOutput(sample: Sample, stdout: string, failures: Failures): void {
 	if (actual.join("\n") !== expected.join("\n")) {
 		failures.add(
 			sample,
-			`printed\n${actual.join("\n")}\nbut the comments promise\n${expected.join("\n")}`,
+			`printed\n${actual.join("\n")}\nbut the comments promise\n${
+				expected.join("\n")
+			}`,
 		);
 	}
 }
 
-async function checkTypeScript(found: Sample[], failures: Failures): Promise<void> {
+async function checkTypeScript(
+	found: Sample[],
+	failures: Failures,
+): Promise<void> {
 	const dir = join(ROOT, "target/doc-snippets/ts");
 	await Deno.remove(dir, { recursive: true }).catch(() => {});
 	await Deno.mkdir(dir, { recursive: true });
@@ -162,7 +185,8 @@ async function checkTypeScript(found: Sample[], failures: Failures): Promise<voi
 			imports: {
 				"@canvist/headless": `${headless}/src/mod.ts`,
 				// Workers import the module through their bundler; it is a WebAssembly.Module.
-				"@canvist/headless/wasm/canvist_headless_wasm_bg.wasm": "./worker-wasm.ts",
+				"@canvist/headless/wasm/canvist_headless_wasm_bg.wasm":
+					"./worker-wasm.ts",
 				"yjs": "npm:yjs@^13.6.33",
 				"y-websocket": "npm:y-websocket@^3.0.0",
 				"y-protocols/": "npm:/y-protocols@^1.0.7/",
@@ -179,15 +203,27 @@ async function checkTypeScript(found: Sample[], failures: Failures): Promise<voi
 		const name = fileName(sample, index, "ts");
 		return { sample, name, path: join(dir, name) };
 	});
-	for (const { sample, path } of files) await Deno.writeTextFile(path, sample.code);
+	for (const { sample, path } of files) {
+		await Deno.writeTextFile(path, sample.code);
+	}
 	if (files.length === 0) return;
 
-	const check = await run("deno", ["check", "--quiet", ...files.map((file) => file.name)], dir);
+	const check = await run("deno", [
+		"check",
+		"--quiet",
+		...files.map((file) => file.name),
+	], dir);
 	if (!check.ok) failures.add(undefined, `deno check failed:\n${check.stderr}`);
 
 	for (const { sample, name } of files) {
-		if (sample.meta.includes("no-run")) continue;
-		const result = await run("deno", ["run", "--quiet", "--allow-read", "--allow-env", name], dir);
+		if (sample.meta.includes("no_run")) continue;
+		const result = await run("deno", [
+			"run",
+			"--quiet",
+			"--allow-read",
+			"--allow-env",
+			name,
+		], dir);
 		if (!result.ok) failures.add(sample, `deno run failed:\n${result.stderr}`);
 		else checkOutput(sample, result.stdout, failures);
 	}
@@ -208,18 +244,30 @@ async function checkDart(
 	await Deno.remove(dir, { recursive: true }).catch(() => {});
 	if (found.length === 0) return;
 	await Deno.mkdir(dir, { recursive: true });
-	const files = found.map((sample, index) => ({ sample, name: fileName(sample, index, "dart") }));
-	for (const { sample, name } of files) await Deno.writeTextFile(join(dir, name), sample.code);
+	const files = found.map((sample, index) => ({
+		sample,
+		name: fileName(sample, index, "dart"),
+	}));
+	for (const { sample, name } of files) {
+		await Deno.writeTextFile(join(dir, name), sample.code);
+	}
 
 	const tool = target === "dart" ? DART : FLUTTER;
-	const analyze = await run(tool, ["analyze", "--fatal-infos", "doc_snippets"], pkg);
+	const analyze = await run(
+		tool,
+		["analyze", "--fatal-infos", "doc_snippets"],
+		pkg,
+	);
 	if (!analyze.ok) {
-		failures.add(undefined, `${tool} analyze failed:\n${analyze.stdout}${analyze.stderr}`);
+		failures.add(
+			undefined,
+			`${tool} analyze failed:\n${analyze.stdout}${analyze.stderr}`,
+		);
 	}
 
 	if (target === "flutter") return;
 	for (const { sample, name } of files) {
-		if (sample.meta.includes("no-run")) continue;
+		if (sample.meta.includes("no_run")) continue;
 		const result = await run(DART, ["run", join("doc_snippets", name)], pkg);
 		if (!result.ok) failures.add(sample, `dart run failed:\n${result.stderr}`);
 		else checkOutput(sample, result.stdout, failures);
@@ -227,14 +275,18 @@ async function checkDart(
 }
 
 /** Pages with Rust samples must be doc tests, or their samples go unchecked. */
-async function checkRustHarness(found: Sample[], failures: Failures): Promise<void> {
+async function checkRustHarness(
+	found: Sample[],
+	failures: Failures,
+): Promise<void> {
 	const harness = await Deno.readTextFile(RUST_HARNESS);
 	const pages = new Set(found.map((sample) => relative(DOCS, sample.file)));
 	for (const page of pages) {
-		if (page.startsWith("..")) {
-			failures.add(undefined, `${page} has Rust samples outside docs/src, which no doc test covers`);
-		} else if (!harness.includes(`"${page}"`)) {
-			failures.add(undefined, `docs/src/lib.rs does not include ${page}, so its Rust samples are untested`);
+		if (!harness.includes(`"${page}"`)) {
+			failures.add(
+				undefined,
+				`docs/src/lib.rs does not include ${page}, so its Rust samples are untested`,
+			);
 		}
 	}
 }
@@ -242,7 +294,9 @@ async function checkRustHarness(found: Sample[], failures: Failures): Promise<vo
 function targetOf(sample: Sample): Target | undefined {
 	if (sample.lang === "ts") return "ts";
 	if (sample.lang !== "dart") return undefined;
-	return /package:(flutter|canvist_flutter)\//.test(sample.code) ? "flutter" : "dart";
+	return /package:(flutter|canvist_flutter)\//.test(sample.code)
+		? "flutter"
+		: "dart";
 }
 
 if (import.meta.main) {
@@ -256,25 +310,44 @@ if (import.meta.main) {
 	}
 
 	for (const sample of all) {
-		if (sample.lang === "") failures.add(sample, "a fence needs a language (rustdoc compiles untagged fences as Rust)");
-		else if (!CHECKED.has(sample.lang) && !SHOWN.has(sample.lang)) {
-			failures.add(sample, `unknown fence language \`${sample.lang}\`; add it to SHOWN or check it`);
+		if (sample.lang === "") {
+			failures.add(
+				sample,
+				"a fence needs a language (rustdoc compiles untagged fences as Rust)",
+			);
+		} else if (!CHECKED.has(sample.lang) && !SHOWN.has(sample.lang)) {
+			failures.add(
+				sample,
+				`unknown fence language \`${sample.lang}\`; add it to SHOWN or check it`,
+			);
 		}
 	}
-	await checkRustHarness(all.filter((sample) => sample.lang === "rust"), failures);
+	await checkRustHarness(
+		all.filter((sample) => sample.lang === "rust"),
+		failures,
+	);
 
-	const byTarget = (target: Target) => all.filter((sample) => targetOf(sample) === target);
+	const byTarget = (target: Target) =>
+		all.filter((sample) => targetOf(sample) === target);
 	if (targets.has("ts")) await checkTypeScript(byTarget("ts"), failures);
 	if (targets.has("dart")) await checkDart(byTarget("dart"), failures, "dart");
-	if (targets.has("flutter")) await checkDart(byTarget("flutter"), failures, "flutter");
+	if (targets.has("flutter")) {
+		await checkDart(byTarget("flutter"), failures, "flutter");
+	}
 
 	const counts = ["rust", "ts", "dart"].map((lang) =>
 		`${all.filter((sample) => sample.lang === lang).length} ${lang}`
 	);
 	if (failures.messages.length > 0) {
 		console.error(failures.messages.join("\n\n"));
-		console.error(`\n${failures.messages.length} problem(s) in the docs samples.`);
+		console.error(
+			`\n${failures.messages.length} problem(s) in the docs samples.`,
+		);
 		Deno.exit(1);
 	}
-	console.log(`Docs samples OK (${counts.join(", ")}; checked: ${[...targets].join(", ") || "fences only"}).`);
+	console.log(
+		`Docs samples OK (${counts.join(", ")}; checked: ${
+			[...targets].join(", ") || "fences only"
+		}).`,
+	);
 }

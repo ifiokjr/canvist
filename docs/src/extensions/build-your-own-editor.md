@@ -24,14 +24,21 @@ console.log(doc.export("text"));
 Add the marks people expect in a comment, plus undo:
 
 ```ts
-import { bold, code, createEngine, history, italic, link } from "@canvist/headless";
+import {
+	bold,
+	code,
+	createEngine,
+	history,
+	italic,
+	link,
+} from "@canvist/headless";
 
 const engine = await createEngine([bold, italic, code, link, history]);
 const doc = engine.create();
 
-doc.typeText("Looks **good**, see https://canvist.dev ");
+doc.typeText("Looks **good**, see https://example.com ");
 console.log(doc.export("markdown"));
-// Looks **good**, see [https://canvist.dev](https://canvist.dev)
+// Looks **good**, see [https://example.com](https://example.com)
 ```
 
 Typing `**good**` made it bold, and the URL became a link when the space followed it.
@@ -87,16 +94,16 @@ In a real app, each peer sends `takeUpdates()` to the server and applies what ar
 
 What else a Google Docs-style editor needs, and where it stands:
 
-| Feature                         | Status                                                                 |
-| ------------------------------- | ---------------------------------------------------------------------- |
-| Headings, lists, tasks, quotes  | Available: the StarterKit                                              |
-| Real-time collaboration         | Available: Yjs, y-websocket, Hocuspocus, canvist Cloud Sync            |
-| Server-rendered previews        | Available in Rust: [server-side rendering](../quick-start/ssr.md)     |
-| Import and export               | Available: JSON, HTML, Markdown, and text; DOCX and PDF later         |
-| Live carets of other people     | Coming with the editor hosts                                           |
-| Tables and images               | Coming soon                                                            |
-| Comments and suggestions        | Coming soon                                                            |
-| Version history                 | Coming soon, as canvist Cloud History                                  |
+| Feature                        | Status                                                            |
+| ------------------------------ | ----------------------------------------------------------------- |
+| Headings, lists, tasks, quotes | Available: the StarterKit                                         |
+| Real-time collaboration        | Available: Yjs, y-websocket, Hocuspocus, canvist Cloud Sync       |
+| Server-rendered previews       | Available in Rust: [server-side rendering](../quick-start/ssr.md) |
+| Import and export              | Available: JSON, HTML, Markdown, and text; DOCX and PDF later     |
+| Live carets of other people    | Coming with the editor hosts                                      |
+| Tables and images              | Coming soon                                                       |
+| Comments and suggestions       | Coming soon                                                       |
+| Version history                | Coming soon, as canvist Cloud History                             |
 
 ## Add your own extension
 
@@ -161,7 +168,9 @@ impl TypedExtension for Signature {
 	type Handle = SignatureHandle;
 
 	fn handle(&self, registration: Registration) -> SignatureHandle {
-		SignatureHandle { _registration: registration }
+		SignatureHandle {
+			_registration: registration,
+		}
 	}
 }
 

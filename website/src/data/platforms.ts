@@ -1,5 +1,5 @@
 /**
- * The seven hosts and where each one stands, from docs/src/v2/roadmap.md.
+ * The seven hosts and where each one stands, from docs/src/quick-start/readme.md.
  * Keep the status lines honest: only the v1 web editor runs today.
  */
 export type PlatformId =

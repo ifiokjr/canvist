@@ -8,18 +8,18 @@ canvist starts with almost nothing: a document, paragraphs, and the standard edi
 
 - **Bold** adds the `bold` mark, `Mod-b`, `**text**` as you type, and the `toggleBold` command.
 - **Heading** adds the `heading` block, `#` to `######` as you type, `Mod-Alt-1` to `Mod-Alt-6`, and the `setHeading` command.
-- **Task list** adds task lists and task items, `[ ] ` as you type, and commands to check and uncheck tasks.
+- **Task list** adds task lists and task items, `[ ]` as you type, and commands to check and uncheck tasks.
 
 An extension can contribute any of these:
 
-| Part           | What it does                                         | Example                         |
-| -------------- | ---------------------------------------------------- | ------------------------------- |
-| Schema         | The blocks, marks, and embeds documents may contain  | `heading`, `bold`, `hardBreak`  |
-| Commands       | Changes you can run against the selection            | `toggleBold`, `setHeading`      |
-| Queries        | Questions about the selection                        | `isBold`, `headingLevel`        |
-| Keyboard shortcuts | Keys that run commands                           | `Mod-b`, `Mod-Shift-8`          |
-| Input rules    | Text patterns that format as you type                | `## ` → heading, `- ` → list    |
-| Paste rules    | Formatting applied to pasted text                    | A pasted URL becomes a link     |
+| Part               | What it does                                        | Example                        |
+| ------------------ | --------------------------------------------------- | ------------------------------ |
+| Schema             | The blocks, marks, and embeds documents may contain | `heading`, `bold`, `hardBreak` |
+| Commands           | Changes you can run against the selection           | `toggleBold`, `setHeading`     |
+| Queries            | Questions about the selection                       | `isBold`, `headingLevel`       |
+| Keyboard shortcuts | Keys that run commands                              | `Mod-b`, `Mod-Shift-8`         |
+| Input rules        | Text patterns that format as you type               | `##` → heading, `-` → list     |
+| Paste rules        | Formatting applied to pasted text                   | A pasted URL becomes a link    |
 
 The [extension catalogue](../extensions/readme.md) lists every extension with its commands.
 

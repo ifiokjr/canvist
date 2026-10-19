@@ -46,4 +46,6 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Docs samples, written by docs/check-snippets.ts
 /doc_snippets/

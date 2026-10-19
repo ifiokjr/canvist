@@ -18,7 +18,8 @@ use canvist_headless::Format;
 use canvist_headless::Renderer;
 
 fn main() -> Result<(), canvist_headless::HeadlessError> {
-	let doc = Engine::starter_kit().parse(Format::Markdown, "# Release notes\n\n- Faster **typing**")?;
+	let doc =
+		Engine::starter_kit().parse(Format::Markdown, "# Release notes\n\n- Faster **typing**")?;
 
 	// Keep one renderer per thread: it caches text measurements.
 	let mut renderer = Renderer::new();

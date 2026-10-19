@@ -1,7 +1,7 @@
 //! Performance budgets for the collaboration hot paths.
 //!
 //! These tests fail when an operation exceeds the budget recorded in
-//! `docs/src/v2/architecture.md`. They only mean something in release mode:
+//! `docs/src/guides/performance.md`. They only mean something in release mode:
 //!
 //! ```sh
 //! cargo test --release -p canvist_collab --test perf_budgets -- --ignored

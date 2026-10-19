@@ -12,13 +12,13 @@ So you never fight a built-in toolbar's styling, and you never hide features you
 
 Every capability an extension adds is a call you can make:
 
-| You want to…                               | Call                                     |
-| ------------------------------------------ | ---------------------------------------- |
-| Make a "Bold" button work                  | `doc.commands.toggleBold()`              |
-| Disable it where bold isn't allowed        | `doc.can.toggleBold()`                   |
-| Show it pressed when the selection is bold | `doc.query.isBold()`                     |
-| Show "Heading 2" in a dropdown             | `doc.query.headingLevel()`               |
-| Prefill a link dialog                      | `doc.query.linkHref()`                   |
+| You want to…                               | Call                        |
+| ------------------------------------------ | --------------------------- |
+| Make a "Bold" button work                  | `doc.commands.toggleBold()` |
+| Disable it where bold isn't allowed        | `doc.can.toggleBold()`      |
+| Show it pressed when the selection is bold | `doc.query.isBold()`        |
+| Show "Heading 2" in a dropdown             | `doc.query.headingLevel()`  |
+| Prefill a link dialog                      | `doc.query.linkHref()`      |
 
 Nothing happens by magic. If your UI shows something, it came from a query you made, so it's always in sync with the document.
 

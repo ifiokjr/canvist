@@ -27,7 +27,7 @@ The only editor whose one Rust core renders the same document, pixel for pixel, 
 
 ## Operating Context
 
-- Source: github.com/ifiokjr/canvist. Docs source: `docs/src` (mdBook markdown). v2 architecture and budgets: `docs/src/v2/architecture.md`. Business model: `docs/src/v2/business.md` (branch `docs/business-model`).
+- Source: github.com/ifiokjr/canvist. Docs source: `docs/src` (mdBook markdown). Design records: `docs/internal/architecture.md`. Budgets: `docs/src/guides/performance.md`. Business model: `docs/internal/business.md`; plans: `docs/src/cloud/billing.md`.
 - The v1 web editor (`packages/canvist`, wasm) works today and can be embedded live. The v2 web host (M3) is not built yet.
 - canvist Cloud (Sync, Convert, History) is being built on Railway in the same project.
 
@@ -49,7 +49,7 @@ The only editor whose one Rust core renders the same document, pixel for pixel, 
 
 ## Evidence on Hand
 
-- Benchmarks: the performance budget table in `docs/src/v2/architecture.md` (budget and today's measurement per hot path), enforced by `tests/perf_budgets.rs` in each crate.
+- Benchmarks: the performance budget table in `docs/src/guides/performance.md` (budget and today's measurement per hot path), enforced by `tests/perf_budgets.rs` in each crate.
 - Live v1 editor: `packages/canvist` (wasm, ~420 KB gzipped).
 - No customers, testimonials, logos, star counts or press exist. Do not fabricate any.
 - A Remotion demo video is being produced separately; the hero keeps a slot for it.

@@ -102,7 +102,7 @@ jobs:
         run: |
           docker run -d --name website -e PORT=8080 -p 8080:8080 canvist-website
           for attempt in $(seq 1 20); do curl -fsS -o /dev/null http://127.0.0.1:8080/ && break; sleep 1; done
-          for path in / /pricing /services/sync /docs /docs/v2/architecture /docs/crates/canvist_core /docs/packages/canvist /rive/wet-caret.riv /pagefind/pagefind.js; do
+          for path in / /pricing /services/sync /docs /docs/concepts/how-it-works /docs/crates/canvist_core /docs/packages/canvist /rive/wet-caret.riv /pagefind/pagefind.js; do
             status=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080$path")
             echo "$status $path"
             test "$status" = 200

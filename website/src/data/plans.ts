@@ -1,5 +1,5 @@
 /**
- * The provisional plans from `docs/src/v2/business.md`. They are not final:
+ * The provisional plans from `docs/src/cloud/billing.md`. They are not final:
  * every surface that shows them labels them as a preview.
  *
  * `tests/plans.test.ts` checks these values against the business doc.

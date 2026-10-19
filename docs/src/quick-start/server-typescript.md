@@ -85,7 +85,7 @@ The types come from the same metadata the engine checks arguments against at run
 
 In Cloudflare Workers and similar runtimes, import the WebAssembly module and pass it in:
 
-```ts no-run
+```ts no_run
 import { createEngine } from "@canvist/headless";
 import wasm from "@canvist/headless/wasm/canvist_headless_wasm_bg.wasm";
 

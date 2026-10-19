@@ -19,7 +19,7 @@ npm run render
 That one command:
 
 1. Records the footage: `cargo run --release -p canvist_footage` (`tools/footage`) types scripts into StarterKit editors, lays them out with the `parley` measurer and the bundled Atkinson Hyperlegible faces, runs three `canvist_collab` peers over Yjs, and writes the frames to `public/footage/`. Keystroke timings are measured while recording, so the numbers on screen come from the machine that rendered them.
-2. Reads the performance budget table from `docs/src/v2/architecture.md`.
+2. Reads the performance budget table from `docs/src/guides/performance.md`.
 3. Generates TypeScript declarations from the StarterKit's `metadata_json()` and type-checks a snippet that uses an extension the editor never registered, keeping `tsc`'s real error for the "headless and typed" scene.
 4. Renders every cut into `out/` and the poster into `../assets/brand/video-poster.png`, and writes timings to `out/report.json`.
 
@@ -53,8 +53,8 @@ The footage, fonts, and brand paths in `public/` are generated, so rerun `npm ru
 | 05 | Reflow       | The same document laid out at 49 widths from 1040 to 368 pixels.                                                              |
 | 06 | Everywhere   | The document at each platform's viewport and text size. The device frames are drawings; the screens are real layouts.         |
 | 07 | Headless     | Declarations generated from `metadata_json()`, and the error `tsc` printed for them.                                          |
-| 08 | Fast         | Rows of the budget table in `docs/src/v2/architecture.md`; each bar is the budget, its paint today's number.                  |
-| 09 | Free forever | The Unlicense and the hosted services from `docs/src/v2/business.md`.                                                         |
+| 08 | Fast         | Rows of the budget table in `docs/src/guides/performance.md`; each bar is the budget, its paint today's number.               |
+| 09 | Free forever | The Unlicense and the hosted services from `docs/src/cloud/readme.md`.                                                        |
 
 ## Motion language
 

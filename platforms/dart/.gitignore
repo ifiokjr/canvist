@@ -31,4 +31,7 @@ migrate_working_dir/
 /coverage/
 
 # FVM Version Cache
-.fvm//doc_snippets/
+.fvm/
+
+# Docs samples, written by docs/check-snippets.ts
+/doc_snippets/

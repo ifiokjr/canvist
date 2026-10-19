@@ -1,6 +1,6 @@
 # canvist business model
 
-The editor, its server, and every binding are free forever under the Unlicense. canvist charges for **running** the service, never for the code. [The monetisation research](../research/monetisation.md) has the evidence behind this.
+The editor, its server, and every binding are free forever under the Unlicense. canvist charges for **running** the service, never for the code. [The monetisation research](./research/monetisation.md) has the evidence behind this.
 
 ## Principles
 
@@ -24,12 +24,7 @@ The editor, its server, and every binding are free forever under the Unlicense. 
 
 ## Plans (provisional, pending real cost benchmarks)
 
-| Plan       | Price                     | Included MADs | Overage         |
-| ---------- | ------------------------- | ------------- | --------------- |
-| Hobby      | $0                        | 1,000         | Hard cap        |
-| Builder    | $29/month ($24 annual)    | 10,000        | $2 per 1,000    |
-| Scale      | $349/month ($299 annual)  | 150,000       | $1.50 per 1,000 |
-| Enterprise | From $2,000/month, annual | Custom        | Negotiated      |
+The plan table lives in the user docs, at [`docs/src/cloud/billing.md`](../src/cloud/billing.md#plans), where the website's pricing page is tested against it.
 
 OSI-licensed projects get Builder free. Companies with fewer than five people get 50% off for the first year.
 

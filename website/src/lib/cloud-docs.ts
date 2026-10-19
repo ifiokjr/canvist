@@ -12,7 +12,7 @@ export interface CloudDocsLink {
 /**
  * The docs page for a hosted service. canvist Cloud's docs are being written
  * alongside the service; until `docs/src/cloud/` exists the link goes to the
- * roadmap and the page says the docs are coming.
+ * platform overview and the page says the docs are coming.
  */
 export function cloudDocsFor(service: ServiceId): CloudDocsLink {
 	for (const candidate of [`cloud/${service}.md`, "cloud/readme.md"]) {
@@ -20,5 +20,5 @@ export function cloudDocsFor(service: ServiceId): CloudDocsLink {
 			return { href: docsRoute(candidate), published: true };
 		}
 	}
-	return { href: "/docs/v2/roadmap", published: false };
+	return { href: "/docs/quick-start", published: false };
 }

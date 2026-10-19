@@ -14,10 +14,10 @@ cargo add canvist_headless --git https://github.com/ifiokjr/canvist
 
 The default build includes the StarterKit (paragraphs, headings, lists, tasks, quotes, code blocks, bold, italic, underline, strike, code, links, and undo). Two optional features add more:
 
-| Feature  | Adds                                                                 |
-| -------- | -------------------------------------------------------------------- |
+| Feature  | Adds                                                                  |
+| -------- | --------------------------------------------------------------------- |
 | `collab` | Yjs collaboration: join, merge updates, and serve y-websocket clients |
-| `ssr`    | Server-side rendering to HTML and SVG                                |
+| `ssr`    | Server-side rendering to HTML and SVG                                 |
 
 ```sh
 cargo add canvist_headless --git https://github.com/ifiokjr/canvist --features collab,ssr
@@ -44,7 +44,10 @@ fn main() -> Result<(), canvist_headless::HeadlessError> {
 	doc.select_range(&Position::new([1], 9), &Position::new([1], 13))?;
 	doc.run(&kit.bold.toggle())?;
 
-	assert_eq!(doc.export(Format::Html), "<h1>Plan</h1><p>Ship the <strong>docs</strong></p>");
+	assert_eq!(
+		doc.export(Format::Html),
+		"<h1>Plan</h1><p>Ship the <strong>docs</strong></p>"
+	);
 	assert_eq!(doc.export(Format::Markdown), "# Plan\n\nShip the **docs**");
 	Ok(())
 }
