@@ -1,14 +1,14 @@
 ---
 import { GITHUB_URL, lockup } from "../lib/brand.ts";
 import ThemeToggle from "./ThemeToggle.astro";
+import { routePath } from "../lib/route.ts";
 
 const links = [
 	{ href: "/docs", label: "Docs" },
 	{ href: "/services", label: "Services" },
 	{ href: "/pricing", label: "Pricing" },
 ];
-// Pages build as `name.html`, but are linked and served without the extension.
-const path = Astro.url.pathname.replace(/\.html$/, "");
+const path = routePath(Astro.url.pathname);
 const isCurrent = (href: string) => path === href || path.startsWith(`${href}/`);
 ---
 

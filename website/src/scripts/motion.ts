@@ -4,6 +4,11 @@
  * GSAP and ScrollTrigger load once, on demand, and never when the visitor
  * asks for reduced motion: every section renders its final, readable state
  * without them, and motion only ever adds to that.
+ *
+ * Every effect they drive responds to scrolling, so they load on the
+ * visitor's first sign of moving through the page (or at once when the page
+ * opens already scrolled). That keeps ScrollTrigger's layout measurement
+ * out of the initial load, where it cost a 430 ms task on a throttled phone.
  */
 import type { gsap as GsapNamespace } from "gsap";
 import type { ScrollTrigger as ScrollTriggerClass } from "gsap/ScrollTrigger";
@@ -19,25 +24,44 @@ export function prefersReducedMotion(): boolean {
 	return reducedQuery.matches;
 }
 
+const INTENT_EVENTS = [
+	"scroll",
+	"wheel",
+	"touchstart",
+	"keydown",
+	"pointerdown",
+] as const;
+
+/** Resolves on the first scroll, wheel, touch, key or pointer press. */
+function firstIntent(): Promise<void> {
+	if (scrollY > 0) return Promise.resolve();
+	return new Promise((resolve) => {
+		const controller = new AbortController();
+		const done = () => {
+			controller.abort();
+			resolve();
+		};
+		for (const type of INTENT_EVENTS) {
+			addEventListener(type, done, {
+				passive: true,
+				signal: controller.signal,
+			});
+		}
+	});
+}
+
 let kit: Promise<ScrollKit> | undefined;
 
 /** Resolves to GSAP with ScrollTrigger registered, or `null` under reduced motion. */
 export async function loadScrollKit(): Promise<ScrollKit | null> {
 	if (prefersReducedMotion()) return null;
-	kit ??= Promise.all([import("gsap"), import("gsap/ScrollTrigger")]).then(
-		([core, plugin]) => {
+	kit ??= firstIntent()
+		.then(() => Promise.all([import("gsap"), import("gsap/ScrollTrigger")]))
+		.then(([core, plugin]) => {
 			core.gsap.registerPlugin(plugin.ScrollTrigger);
 			return { gsap: core.gsap, ScrollTrigger: plugin.ScrollTrigger };
-		},
-	);
+		});
 	return kit;
-}
-
-/** Runs `onChange` when the visitor flips reduced motion, so pages can reload into the right mode. */
-export function onReducedMotionChange(
-	onChange: (reduced: boolean) => void,
-): void {
-	reducedQuery.addEventListener("change", (event) => onChange(event.matches));
 }
 
 /** Calls `callback` once the element first comes within `margin` of the viewport. */

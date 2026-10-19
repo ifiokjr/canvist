@@ -108,3 +108,18 @@ test.describe("navigation", () => {
 		await expect(dialog.getByRole("option").first()).toBeVisible();
 	});
 });
+
+test("canonical URLs have no .html and the home page is /", async ({ page }) => {
+	for (
+		const [path, expected] of [["/", "/"], ["/pricing", "/pricing"], [
+			"/docs",
+			"/docs",
+		]] as const
+	) {
+		await page.goto(path);
+		const canonical = await page.locator('link[rel="canonical"]').getAttribute(
+			"href",
+		);
+		expect(new URL(canonical ?? "").pathname).toBe(expected);
+	}
+});

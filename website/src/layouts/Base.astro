@@ -4,6 +4,7 @@ import bricolage from "../fonts/bricolage-grotesque-subset.woff2?url";
 import geistMono from "../fonts/geist-mono-subset.woff2?url";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
+import { routePath } from "../lib/route.ts";
 
 interface Props {
 	title: string;
@@ -13,7 +14,7 @@ interface Props {
 }
 
 const { title, description, preloadMono = false } = Astro.props;
-const canonical = new URL(Astro.url.pathname, Astro.site);
+const canonical = new URL(routePath(Astro.url.pathname), Astro.site);
 const ogImage = new URL("/og-image.png", Astro.site);
 const fullTitle = title === "canvist" ? "canvist: the editor that owns every pixel" : `${title} · canvist`;
 ---
