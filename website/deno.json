@@ -1,0 +1,21 @@
+{
+	"nodeModulesDir": "auto",
+	"imports": {
+		"@std/assert": "jsr:@std/assert@^1",
+		"@std/http": "jsr:@std/http@^1",
+		"@std/fs": "jsr:@std/fs@^1",
+		"@std/path": "jsr:@std/path@^1",
+		"hast": "npm:@types/hast@3.0.4"
+	},
+	"tasks": {
+		"dev": "deno run -A npm:astro dev",
+		"build": "deno run -A npm:astro build && deno run -A npm:pagefind --site dist",
+		"preview": "deno run --allow-net --allow-read tests/serve.ts 4321",
+		"check": "node node_modules/astro/bin/astro.mjs check && deno check tests/serve.ts rive/generate.ts scripts/subset-fonts.ts scripts/check-links.ts && deno test --no-run tests/unit",
+		"test:unit": "deno test --allow-read tests/unit",
+		"test:e2e": "node node_modules/@playwright/test/cli.js test",
+		"rive": "deno run --allow-read --allow-write rive/generate.ts && rive rive --once",
+		"fonts": "deno run --allow-read --allow-write --allow-env scripts/subset-fonts.ts",
+		"check:links": "deno run --allow-read scripts/check-links.ts"
+	}
+}

@@ -1,0 +1,116 @@
+/*
+ * canvist design tokens.
+ *
+ * Brand colours come from assets/brand/readme.md. Everything else is the
+ * "fan deck": a ramp of Paint tints that the landing page steps through, one
+ * chip per section, from Paper down to Ink (and back up in dark mode).
+ *
+ * Themes use `light-dark()`, so each token is declared once. `color-scheme`
+ * follows the system unless `data-theme` pins it.
+ */
+
+@font-face {
+	font-family: "Bricolage";
+	font-style: normal;
+	font-display: optional;
+	font-weight: 200 800;
+	src: url("../fonts/bricolage-grotesque-subset.woff2") format("woff2-variations");
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	font-style: normal;
+	font-display: optional;
+	font-weight: 100 900;
+	src: url("../fonts/geist-mono-subset.woff2") format("woff2-variations");
+}
+
+:root {
+	color-scheme: light dark;
+
+	/* Brand */
+	--ink: #17141f;
+	--paint: #3b2cf5;
+	--paper: #f5f3ff;
+	--paint-on-dark: #8a80ff;
+	--tile: #ffffff;
+	/* Semantic: a type error, a failed budget. Never used for the caret. */
+	--error: light-dark(#c4153b, #ff7a93);
+
+	/* Surfaces */
+	--page: light-dark(#ffffff, #0d0b13);
+	--surface: light-dark(var(--paper), var(--ink));
+	--raised: light-dark(#ffffff, #201c2b);
+	--text: light-dark(var(--ink), var(--paper));
+	--text-muted: light-dark(#4d4762, #b9b3d3);
+	--line: light-dark(#dedaf2, #2e2940);
+	--accent: light-dark(var(--paint), var(--paint-on-dark));
+	--accent-text: light-dark(var(--paper), var(--ink));
+	--focus: light-dark(var(--paint), var(--paint-on-dark));
+	--logo-ink: light-dark(var(--ink), var(--paper));
+	--logo-paint: light-dark(var(--paint), var(--paint-on-dark));
+
+	/*
+	 * The deck. Light mode dries from Paper to Ink; dark mode lifts from Ink to
+	 * Paper-violet. Chip 4 is Paint itself in both themes.
+	 */
+	--chip-0: light-dark(#f5f3ff, #17141f);
+	--chip-1: light-dark(#ebe8ff, #1c1831);
+	--chip-2: light-dark(#dcd6ff, #231d42);
+	--chip-3: light-dark(#c4bbff, #2c2260);
+	--chip-4: #3b2cf5;
+	--chip-5: light-dark(#2a1fb8, #a49cff);
+	--chip-6: light-dark(#1f1950, #cfc8ff);
+	--chip-7: light-dark(#17141f, #ebe8ff);
+	--chip-ink: light-dark(var(--ink), var(--paper));
+
+	/* Type */
+	--font-sans: "Bricolage", ui-sans-serif, system-ui, sans-serif;
+	--font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+	--t-mega: clamp(3.25rem, 10.5vw, 10.5rem);
+	--t-1: clamp(2.375rem, 6.2vw, 5.75rem);
+	--t-2: clamp(1.75rem, 3.4vw, 3rem);
+	--t-3: clamp(1.25rem, 1.8vw, 1.5rem);
+	--t-body: 1.0625rem;
+	--t-small: 0.9375rem;
+	--t-micro: 0.8125rem;
+	--lh-tight: 0.92;
+	--lh-snug: 1.12;
+	--lh-body: 1.55;
+
+	/* Space: one 4 px rhythm, fluid at section scale */
+	--s-1: 0.25rem;
+	--s-2: 0.5rem;
+	--s-3: 0.75rem;
+	--s-4: 1rem;
+	--s-5: 1.5rem;
+	--s-6: 2rem;
+	--s-7: 3rem;
+	--s-8: 4rem;
+	--s-9: 6rem;
+	--gutter: clamp(1rem, 3.2vw, 2.5rem);
+	--chip-pad: clamp(1.25rem, 5vw, 5rem);
+	--section-gap: clamp(0.5rem, 1vw, 0.75rem);
+	--measure: 64ch;
+	--content: 78rem;
+
+	/* Shape */
+	--r-chip: clamp(1.25rem, 2.6vw, 2.25rem);
+	--r-2: 0.75rem;
+	--r-1: 0.375rem;
+	--rivet: clamp(0.875rem, 1.4vw, 1.25rem);
+
+	/* Motion */
+	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+	--ease-paint: cubic-bezier(0.65, 0, 0.35, 1);
+	--dur-1: 140ms;
+	--dur-2: 280ms;
+}
+
+:root[data-theme="light"] {
+	color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+}

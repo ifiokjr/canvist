@@ -1,0 +1,115 @@
+---
+import { GITHUB_URL, lockup } from "../lib/brand.ts";
+
+const columns = [
+	{
+		title: "Product",
+		links: [
+			{ href: "/docs", label: "Docs" },
+			{ href: "/pricing", label: "Pricing" },
+			{ href: "/services/sync", label: "Sync" },
+			{ href: "/services/convert", label: "Convert" },
+			{ href: "/services/history", label: "History" },
+		],
+	},
+	{
+		title: "Project",
+		links: [
+			{ href: GITHUB_URL, label: "GitHub" },
+			{ href: "/docs/v2/roadmap", label: "Roadmap" },
+			{ href: "/docs/contributing", label: "Contributing" },
+			{ href: `${GITHUB_URL}/blob/main/license`, label: "Unlicense" },
+		],
+	},
+];
+---
+
+<footer class="site-footer">
+	<div class="site-footer__inner">
+		<div class="site-footer__brand">
+			<a href="/" class="site-footer__logo" aria-label="canvist home" set:html={lockup} />
+			<p>The editor, its server and every binding are free forever, released into the public domain under the Unlicense.</p>
+		</div>
+		{
+			columns.map((column) => (
+				<nav aria-label={column.title}>
+					<h2 class="code-label">{column.title}</h2>
+					<ul>
+						{column.links.map((link) => (
+							<li>
+								<a href={link.href}>{link.label}</a>
+							</li>
+						))}
+					</ul>
+				</nav>
+			))
+		}
+	</div>
+</footer>
+
+<style>
+	.site-footer {
+		padding: var(--s-8) var(--gutter) var(--s-7);
+		color: var(--text-muted);
+		font-size: var(--t-small);
+	}
+
+	.site-footer__inner {
+		display: grid;
+		grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+		gap: var(--s-7) var(--s-6);
+		max-width: calc(var(--content) + 2 * var(--chip-pad));
+		margin-inline: auto;
+	}
+
+	.site-footer__logo {
+		display: block;
+		width: 8rem;
+		margin-bottom: var(--s-4);
+		border-radius: var(--r-1);
+	}
+
+	.site-footer__logo :global(svg) {
+		width: 100%;
+		height: auto;
+	}
+
+	.site-footer__brand p {
+		max-width: 34ch;
+	}
+
+	h2 {
+		margin-bottom: var(--s-3);
+		color: var(--text);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	ul {
+		display: grid;
+		gap: var(--s-1);
+		padding: 0;
+		list-style: none;
+	}
+
+	a {
+		display: inline-block;
+		padding-block: var(--s-1);
+		text-decoration: none;
+	}
+
+	a:hover {
+		color: var(--text);
+		text-decoration: underline;
+	}
+
+	@media (max-width: 40rem) {
+		.site-footer__inner {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.site-footer__brand {
+			grid-column: 1 / -1;
+		}
+	}
+</style>

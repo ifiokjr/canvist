@@ -1,0 +1,152 @@
+---
+import ChipLabel from "../ChipLabel.astro";
+
+const refused = ["Licence keys", "Watermarks", "Private registries", "Per-seat editor fees", "Loader-based billing"];
+---
+
+<section class="chip free" data-chip="6" id="free" aria-labelledby="free-title" data-fan-chip>
+	<div class="chip-inner free__grid" data-free>
+		<div class="free__copy">
+			<p class="eyebrow">07 / Free forever</p>
+			<h2 id="free-title" class="section-title">The editor is free. Forever. Really.</h2>
+			<p class="lede chip-muted">
+				The editor, its server and every binding are released into the public domain. No tier unlocks a feature of the editor, and nothing you ship ever phones home.
+			</p>
+		</div>
+
+		<blockquote class="free__licence">
+			<p>This is free and unencumbered software released into the public domain.</p>
+			<footer class="code-label">The Unlicense, line one · <a href="https://github.com/ifiokjr/canvist/blob/main/license">read it all</a></footer>
+		</blockquote>
+
+		<div class="free__refused">
+			<h3 class="code-label">Things canvist will never ship</h3>
+			<ul>
+				{
+					refused.map((item) => (
+						<li>
+							<span class="free__word">{item}</span>
+							<svg class="free__stroke" viewBox="0 0 200 20" preserveAspectRatio="none" aria-hidden="true">
+								<path d="M2 12 C 40 6, 80 15, 120 9 S 180 8, 198 10" pathLength="1" data-free-stroke />
+							</svg>
+						</li>
+					))
+				}
+			</ul>
+		</div>
+	</div>
+	<ChipLabel id="free" code="Unlicense · public domain" />
+</section>
+
+<script>
+	import { mountFree } from "../../scripts/free.ts";
+
+	const root = document.querySelector<HTMLElement>("[data-free]");
+	if (root) mountFree(root);
+</script>
+
+<style>
+	.free__grid {
+		display: grid;
+		grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+		grid-template-areas:
+			"copy refused"
+			"licence refused";
+		gap: var(--s-7) var(--s-8);
+	}
+
+	.free__copy {
+		grid-area: copy;
+		display: grid;
+		gap: var(--s-5);
+	}
+
+	.free__licence {
+		grid-area: licence;
+		display: grid;
+		gap: var(--s-3);
+		margin: 0;
+	}
+
+	/* A hanging opening quote in the caret colour, set outside the measure. */
+	.free__licence p::before {
+		content: "“";
+		margin-left: -0.5em;
+		color: var(--chip-caret);
+	}
+
+	.free__licence p {
+		font-size: var(--t-2);
+		line-height: 1.12;
+		font-weight: 640;
+		letter-spacing: -0.02em;
+		max-width: 26ch;
+	}
+
+	.free__licence footer {
+		color: var(--chip-muted);
+	}
+
+	.free__refused {
+		grid-area: refused;
+		display: grid;
+		align-content: start;
+		gap: var(--s-4);
+	}
+
+	.free__refused h3 {
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.free__refused ul {
+		display: grid;
+		gap: var(--s-2);
+		padding: 0;
+		list-style: none;
+	}
+
+	.free__refused li {
+		position: relative;
+		width: fit-content;
+	}
+
+	.free__word {
+		font-size: var(--t-2);
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.2;
+		color: var(--chip-muted);
+	}
+
+	/* A wet stroke of paint through each word. */
+	.free__stroke {
+		position: absolute;
+		left: -4%;
+		top: 38%;
+		width: 108%;
+		height: 0.5em;
+		overflow: visible;
+		pointer-events: none;
+	}
+
+	.free__stroke path {
+		fill: none;
+		stroke: var(--chip-caret);
+		stroke-width: 5;
+		stroke-linecap: round;
+		vector-effect: non-scaling-stroke;
+		stroke-dasharray: 1;
+		stroke-dashoffset: 0;
+	}
+
+	@media (max-width: 64rem) {
+		.free__grid {
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-areas:
+				"copy"
+				"licence"
+				"refused";
+		}
+	}
+</style>
