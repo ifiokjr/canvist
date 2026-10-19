@@ -32,6 +32,8 @@ serde_json = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+canvist_editor = { workspace = true }
+canvist_extensions = { workspace = true, features = ["starter-kit"] }
 divan = { workspace = true }
 proptest = { workspace = true, features = ["std"] }
 

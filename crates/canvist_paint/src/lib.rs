@@ -73,6 +73,7 @@ mod painter;
 mod record;
 mod svg;
 mod text;
+mod transformed;
 mod walk;
 
 pub use assets::Assets;
@@ -98,6 +99,7 @@ pub use text::BUNDLED_FONT;
 pub use text::Glyph;
 pub use text::ShapedRun;
 pub use text::Shaper;
+pub use transformed::Transformed;
 #[cfg(feature = "gpu")]
 pub use vello;
 pub use walk::GREEK_PIXELS;

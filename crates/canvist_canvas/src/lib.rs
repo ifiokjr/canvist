@@ -67,6 +67,8 @@ mod state;
 mod hit;
 mod index;
 mod selection;
+#[cfg(feature = "editor")]
+mod session;
 mod snap;
 mod transform;
 
@@ -122,6 +124,8 @@ pub use rulers::Tick;
 pub use rulers::ticks;
 pub use selection::Frame;
 pub use selection::Selection;
+#[cfg(feature = "editor")]
+pub use session::TextSession;
 pub use snap::Axis;
 pub use snap::Guide;
 pub use snap::Snap;

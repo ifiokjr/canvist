@@ -417,6 +417,7 @@ name = "canvist_canvas"
 version = "0.1.0"
 dependencies = [
  "canvist_editor",
+ "canvist_extensions",
  "canvist_layout",
  "canvist_model",
  "canvist_scene",

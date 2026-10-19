@@ -27,6 +27,8 @@ pub struct ChromeStyle {
 	pub guide: Color,
 	/// Handle fill.
 	pub handle_fill: Color,
+	/// The text caret.
+	pub caret: Color,
 	/// Outline width in pixels.
 	pub width: f64,
 }
@@ -42,11 +44,16 @@ impl Default for ChromeStyle {
 			accent: PAINT_BLUE,
 			guide: GUIDE_RED,
 			handle_fill: Color::WHITE,
+			caret: CARET_INK,
 			width: 1.0,
 		}
 	}
 }
 
+/// The caret: canvist's ink colour.
+const CARET_INK: Color = Color::from_rgba8(23, 20, 31, 255);
+/// Selected text's highlight: the accent at this opacity.
+const HIGHLIGHT_ALPHA: f32 = 0.25;
 /// The marquee's fill: the accent at this opacity.
 const MARQUEE_ALPHA: f32 = 0.08;
 /// The radius of pen anchors and control points, in pixels.
@@ -112,6 +119,14 @@ fn paint_item<P: Painter + ?Sized>(painter: &mut P, item: &OverlayItem, style: &
 
 			fill(painter, &dot, &Brush::Solid(inside));
 			stroke(painter, &dot, &accent, &line);
+		}
+		OverlayItem::Caret { path } => fill(painter, path, &Brush::Solid(style.caret)),
+		OverlayItem::TextHighlight { path } => {
+			fill(
+				painter,
+				path,
+				&Brush::Solid(style.accent.multiply_alpha(HIGHLIGHT_ALPHA)),
+			);
 		}
 		// Labels are text in the host's UI font; hosts draw them.
 		OverlayItem::Label { .. } => {}

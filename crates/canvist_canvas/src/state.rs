@@ -234,6 +234,14 @@ impl CanvasState {
 		Ok(true)
 	}
 
+	/// Recompute the geometry of `nodes` (and what depends on them) from the
+	/// scene, for changes made outside commits, such as a text frame's
+	/// document coming back from an editor.
+	pub fn refresh_nodes(&mut self, nodes: &[canvist_scene::NodeId]) -> Result<(), CanvasError> {
+		self.index.refresh(&self.scene, nodes, &mut self.texts)?;
+		Ok(())
+	}
+
 	/// Recompute text layout and geometry for a lent text frame whose
 	/// document an editor changed.
 	pub fn refresh_text(
