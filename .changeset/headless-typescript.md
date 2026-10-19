@@ -1,6 +1,9 @@
 ---
 "canvist_headless_wasm": minor
+"@canvist/headless": minor
 ---
+
+# Add `@canvist/headless`, the document model for JavaScript runtimes with no DOM
 
 Add `@canvist/headless` (`packages/canvist-headless`), canvist's document model for JavaScript runtimes with no DOM, over a new `canvist_headless_wasm` crate (wasm-bindgen, no `web-sys`).
 

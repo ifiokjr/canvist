@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Dynamic line height for mixed font sizes
+# Dynamic line height for mixed font sizes
 
 The layout engine now computes line height dynamically from the tallest styled run on each line, instead of using the default style's font size for all lines.
 

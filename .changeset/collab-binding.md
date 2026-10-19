@@ -2,7 +2,7 @@
 "canvist_collab": minor
 ---
 
-Add `canvist_collab`, the Yjs collaboration binding for `canvist_model` documents.
+# Add `canvist_collab`, the Yjs collaboration binding for `canvist_model` documents
 
 - `Binding` translates committed steps into yrs operations (UTF-8 offsets become UTF-16) and remote yrs events into steps, with no tree diffing. A keystroke costs about 2 µs each way, independent of document size.
 - A documented Yjs schema (`Y.Map` blocks, `Y.Text` with marks as formatting and embeds as values, nested `Y.Array`s) that JavaScript Yjs peers read and write directly.

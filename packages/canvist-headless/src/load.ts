@@ -47,6 +47,11 @@ async function bundled(): Promise<WasmSource> {
 		return BUNDLED;
 	}
 
-	const { readFile } = await import("node:fs/promises");
-	return readFile(BUNDLED);
+	const [{ readFile }, { fileURLToPath }] = await Promise.all([
+		import("node:fs/promises"),
+		import("node:url"),
+	]);
+	// Pass strings: some type environments (`deno publish` with @types/node)
+	// see the global `URL` and Node's `URL` as different types.
+	return readFile(fileURLToPath(BUNDLED.href));
 }

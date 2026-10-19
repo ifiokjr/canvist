@@ -3,6 +3,8 @@
 "canvist_model": minor
 ---
 
+# Add `canvist_editor`, the platform-agnostic editing engine
+
 Add `canvist_editor`, the platform-agnostic editing engine, and `Transaction::allocate_id` in `canvist_model` so commands can create blocks inside a transaction.
 
 - `EditorState` holds the document, selection, stored marks, and IME composition. Every change goes through `EditorState::change` or `EditorState::apply_steps`, which map the selection and composition, clear stale stored marks, and keep the document non-empty.

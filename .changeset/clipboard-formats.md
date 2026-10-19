@@ -3,6 +3,8 @@
 "canvist_editor": patch
 ---
 
+# Add clipboard formats to `canvist_extensions` behind the `clipboard` feature
+
 Add clipboard formats to `canvist_extensions` behind the `clipboard` feature (part of `starter-kit`).
 
 - `clipboard::to_html`, `to_markdown`, and `to_plain_text` serialize a copied `Slice` in the markup TipTap renders and in CommonMark with GitHub task lists and strikethrough.

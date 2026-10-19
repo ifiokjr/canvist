@@ -2,7 +2,7 @@
 "canvist_core": minor
 ---
 
-Fix selection-scoped formatting, mouse interaction, and toolbar layout
+# Fix selection-scoped formatting, mouse interaction, and toolbar layout
 
 ### Breaking changes to `Document::apply_style`
 

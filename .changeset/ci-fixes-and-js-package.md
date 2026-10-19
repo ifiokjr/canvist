@@ -1,9 +1,11 @@
 ---
-canvist: minor
+canvist_v1: minor
 canvist_core: minor
 canvist_render: minor
 canvist_wasm: minor
 ---
+
+# Add cursor-aware wasm editing and the `@canvist/canvist` TypeScript package
 
 ### Features
 

@@ -2,7 +2,7 @@
 "canvist_core": minor
 ---
 
-Add Markdown import/paste and improved README
+# Add Markdown import/paste and improved README
 
 ### Markdown import
 

@@ -1,0 +1,5 @@
+# Build against the `canvist` package in this repository instead of the
+# pub.dev release. pub reads this file locally and never publishes it.
+dependency_overrides:
+  canvist:
+    path: ../../dart

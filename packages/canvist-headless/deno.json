@@ -10,7 +10,8 @@
 			"wasm/*.d.ts",
 			"wasm/*.wasm",
 			"readme.md"
-		]
+		],
+		"exclude": ["!wasm/"]
 	},
 	"tasks": {
 		"test": "deno test --allow-read --allow-net --allow-env tests/ examples/",

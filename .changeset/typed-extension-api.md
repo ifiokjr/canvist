@@ -4,7 +4,7 @@
 "canvist_extensions": minor
 ---
 
-Add the headless, typed extension API (architecture Decision 8).
+# Add the headless, typed extension API (architecture Decision 8)
 
 - `canvist_model`: `Document::savepoint`, `rollback_to`, and `release`. A rollback restores the content, the version counter, every block revision, and id allocation exactly, so a dry run leaves layout caches warm. Savepoints nest.
 - `canvist_editor`:

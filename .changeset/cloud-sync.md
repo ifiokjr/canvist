@@ -3,7 +3,7 @@
 "canvist_collab": minor
 ---
 
-Add `canvist_cloud`, the canvist Cloud server, starting with Sync: a multi-tenant y-sync relay.
+# Add `canvist_cloud`, starting with Sync: a multi-tenant y-sync relay
 
 - Stock `y-websocket` and Hocuspocus clients connect to `/v1/sync/{document}` and `/v1/hocuspocus`, with presence, read-only sessions, and per-document access from short-lived HS256 tokens that API keys mint.
 - Documents persist to Postgres as merged Yjs updates, compact into snapshots, and leave memory once idle. Updates that write outside the `blocks` root or put bare values in it are refused.

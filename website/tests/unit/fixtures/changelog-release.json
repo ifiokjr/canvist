@@ -1,0 +1,26 @@
+{
+  "title": "0.1.1 (2026-10-19)",
+  "summary": [
+    "Grouped release for `app`."
+  ],
+  "sections": [
+    {
+      "title": "New",
+      "collapsed": false,
+      "entries": [
+        {
+          "summary": "The canvist website is live",
+          "details_markdown": "##### User impact\n\nYou can now see what canvist is and try the editor in your browser. The pricing page estimates your monthly bill from the number of documents you edit each month. The documentation has built-in search. Every animation respects your reduced-motion setting.",
+          "change_type": "user_feature",
+          "bump": "minor",
+          "stream": "user",
+          "style": "expanded",
+          "provenance": {
+            "source_path": ".changeset/website-launch-user.md",
+            "changeset_path": ".changeset/website-launch-user.md"
+          }
+        }
+      ]
+    }
+  ]
+}

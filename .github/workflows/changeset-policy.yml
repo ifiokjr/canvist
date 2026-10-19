@@ -1,0 +1,62 @@
+name: changeset-policy
+
+# Every pull request: lint the changesets, require one for each changed
+# package, prove the website only receives user-facing notes, and dry-run the
+# placeholder publish. `publish.yml` dry-runs the registry publishes.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: setup
+        uses: ./.github/actions/devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: lint config and changesets
+        run: mc check
+        shell: devenv shell -- bash -e {0}
+
+      - name: require changesets for changed packages
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          args=(step affected-packages --format md --verify)
+          while read -r path; do
+            args+=(--changed-paths "$path")
+          done < <(git diff --name-only "$BASE_SHA" HEAD)
+          while read -r label; do
+            [ -n "$label" ] && args+=(--label "$label")
+          done < <(jq -r '.[]' <<<"$LABELS_JSON")
+          mc "${args[@]}"
+        shell: devenv shell -- bash -e {0}
+
+      - name: preview the release
+        run: mc preview --format md
+        shell: devenv shell -- bash -e {0}
+
+      - name: website changelog receives only user-facing notes
+        run: deno test --allow-read --allow-write --allow-run=git,monochange tools/release/
+        shell: devenv shell -- bash -e {0}
+
+      - name: placeholder publish dry run
+        run: mc publish placeholder --dry-run --format md
+        shell: devenv shell -- bash -e {0}

@@ -2,7 +2,7 @@
 "canvist_core": patch
 ---
 
-Fix TypeScript type checking — 586 errors → 0
+# Fix TypeScript type checking — 586 errors → 0
 
 ### Root cause
 
