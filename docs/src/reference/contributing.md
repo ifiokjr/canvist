@@ -38,7 +38,7 @@ canvist releases with [monochange](https://github.com/monochange/monochange), co
 
 Every pull request that changes a package needs a file in `.changeset/`. Its frontmatter names the packages and a change type, and its body starts with a `# Summary` heading:
 
-```md
+```markdown
 ---
 canvist_editor: feat
 ---
