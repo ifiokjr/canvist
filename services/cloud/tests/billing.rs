@@ -4,7 +4,6 @@
 
 mod support;
 
-use std::sync::LazyLock;
 use std::time::Duration;
 
 use canvist_cloud::Config;
@@ -22,20 +21,6 @@ use support::stripe::FakeStripe;
 
 const WEBHOOK_SECRET: &str = "whsec_canvist_test";
 
-/// Billing tests share the test database, and every server reports the
-/// whole database's unreported usage, so they take turns and drain their
-/// server before the next one starts.
-static TURN: LazyLock<tokio::sync::Mutex<()>> = LazyLock::new(Default::default);
-
-async fn turn() -> tokio::sync::MutexGuard<'static, ()> {
-	TURN.lock().await
-}
-
-/// Stop `fixture`'s server, which reports what is still unreported.
-async fn finish(fixture: Fixture) {
-	assert_eq!(fixture.server.shutdown().await.persist_failures, 0);
-}
-
 fn billing_config(stripe: &FakeStripe) -> Config {
 	let mut config = support::config();
 	config.stripe = Some(stripe.config());
@@ -44,8 +29,14 @@ fn billing_config(stripe: &FakeStripe) -> Config {
 	config
 }
 
+/// A server with Stripe over its own database: every server with Stripe
+/// reports its whole database's usage, so billing tests never share one.
 async fn start(stripe: &FakeStripe) -> Fixture {
-	Fixture::start_with(billing_config(stripe), support::store().await).await
+	start_over(stripe, support::isolated_database().await.as_deref()).await
+}
+
+async fn start_over(stripe: &FakeStripe, database: Option<&str>) -> Fixture {
+	Fixture::start_with(billing_config(stripe), support::store_at(database).await).await
 }
 
 /// Put the fixture's project on Builder, billed to `cus_test`.
@@ -150,7 +141,6 @@ async fn post(fixture: &Fixture, path: &str, body: Json) -> reqwest::Response {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn new_paid_documents_send_one_meter_event_each() {
-	let _turn = turn().await;
 	let mut stripe = FakeStripe::start().await;
 	let fixture = start(&stripe).await;
 	write(&fixture, "before").await;
@@ -180,14 +170,13 @@ async fn new_paid_documents_send_one_meter_event_each() {
 			.await,
 		"a document counts once a month, and Hobby documents are never billed"
 	);
-	finish(fixture).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn usage_survives_stripe_outages_and_restarts() {
-	let _turn = turn().await;
 	let mut stripe = FakeStripe::start().await;
-	let fixture = start(&stripe).await;
+	let database = support::isolated_database().await;
+	let fixture = start_over(&stripe, database.as_deref()).await;
 	on_builder(&fixture).await;
 	stripe.fail_meter_events(usize::MAX);
 	write(&fixture, "during-the-outage").await;
@@ -197,7 +186,13 @@ async fn usage_survives_stripe_outages_and_restarts() {
 		"the reporter keeps retrying"
 	);
 
-	let fixture = fixture.restart(billing_config(&stripe)).await;
+	// A deploy: a new process over the same database.
+	let store = match &database {
+		Some(_) => support::store_at(database.as_deref()).await,
+		None => fixture.store.clone(),
+	};
+	// Kept alive until the end, so its reporter is the one that delivers.
+	let _restarted = fixture.restart_with(billing_config(&stripe), store).await;
 	stripe.fail_meter_events(0);
 	let event = stripe.next_meter_event().await;
 	assert_eq!(event.field("payload[value]"), Some("1"));
@@ -207,12 +202,10 @@ async fn usage_survives_stripe_outages_and_restarts() {
 			.await,
 		"once accepted, it is not sent again"
 	);
-	finish(fixture).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn conversions_are_reported_as_changes_in_the_count() {
-	let _turn = turn().await;
 	let mut stripe = FakeStripe::start().await;
 	let fixture = start(&stripe).await;
 	convert(&fixture).await;
@@ -249,12 +242,10 @@ async fn conversions_are_reported_as_changes_in_the_count() {
 			.no_meter_event_within(Duration::from_millis(300))
 			.await
 	);
-	finish(fixture).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn checkout_starts_a_subscription_anchored_to_the_month() {
-	let _turn = turn().await;
 	let stripe = FakeStripe::start().await;
 	let fixture = start(&stripe).await;
 	let response = post(
@@ -331,7 +322,6 @@ async fn checkout_starts_a_subscription_anchored_to_the_month() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn a_completed_checkout_lifts_the_free_cap() {
-	let _turn = turn().await;
 	let stripe = FakeStripe::start().await;
 	let fixture = start(&stripe).await;
 	let capped = Terms {
@@ -385,12 +375,10 @@ async fn a_completed_checkout_lifts_the_free_cap() {
 		409,
 		"a paying project switches plans instead"
 	);
-	finish(fixture).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn webhooks_apply_the_subscription_as_it_is_now() {
-	let _turn = turn().await;
 	let stripe = FakeStripe::start().await;
 	let fixture = start(&stripe).await;
 	let project = fixture.project.as_str();
@@ -443,12 +431,10 @@ async fn webhooks_apply_the_subscription_as_it_is_now() {
 		ignored.json::<Json>().await.expect("json")["handled"],
 		false
 	);
-	finish(fixture).await;
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn plans_switch_between_builder_and_scale() {
-	let _turn = turn().await;
 	let stripe = FakeStripe::start().await;
 	let fixture = start(&stripe).await;
 	let refused = post(&fixture, "/v1/billing/plan", json!({ "plan": "scale" })).await;
@@ -493,7 +479,6 @@ async fn plans_switch_between_builder_and_scale() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn the_portal_opens_for_projects_with_a_customer() {
-	let _turn = turn().await;
 	let stripe = FakeStripe::start().await;
 	let fixture = start(&stripe).await;
 	let request = json!({ "return_url": "https://app.example/billing" });
@@ -520,7 +505,6 @@ async fn the_portal_opens_for_projects_with_a_customer() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn billing_is_off_without_stripe() {
-	let _turn = turn().await;
 	let fixture = Fixture::start().await;
 
 	for (path, body) in [
