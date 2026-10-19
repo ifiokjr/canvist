@@ -18,7 +18,7 @@ import { characters, FIXTURES } from "../tests/parity/fixtures.ts";
 
 const GOOGLE = "https://github.com/google/fonts/raw/main/ofl";
 
-/** Where each source font comes from. All are under the SIL Open Font License. */
+/** Where each source font comes from. `tests/fonts/NOTICE.md` lists each one's copyright and license. */
 const SOURCES = {
 	inter: `${GOOGLE}/inter/Inter%5Bopsz,wght%5D.ttf`,
 	interItalic: `${GOOGLE}/inter/Inter-Italic%5Bopsz,wght%5D.ttf`,
