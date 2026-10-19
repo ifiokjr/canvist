@@ -14,3 +14,5 @@
 - [Guide: Extensions and Plugins](./guide/extensions.md)
 - [Testing Capability Matrix](./testing-capability-matrix.md)
 - [Native Toolchain (iOS, Android, Flutter)](./platforms/native-toolchain.md)
+- [canvist Cloud API](./cloud/api.md)
+- [Self-hosting canvist Cloud](./cloud/self-hosting.md)

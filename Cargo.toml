@@ -15,6 +15,7 @@ members = [
 	"crates/canvist_wasm",
 	"docs",
 	"platforms/dart/rust",
+	"services/cloud",
 ]
 default-members = [
 	"crates/canvist",
@@ -30,6 +31,7 @@ default-members = [
 	"crates/canvist_render",
 	"crates/canvist_wasm",
 	"docs",
+	"services/cloud",
 ]
 resolver = "2"
 
@@ -46,9 +48,15 @@ repository = "https://github.com/ifiokjr/canvist"
 rust-version = "1.95.0"
 
 [workspace.dependencies]
+axum = { default-features = false, version = "^0.8" }
+base64 = { default-features = false, version = "^0.22" }
+deadpool-postgres = { default-features = false, version = "^0.14" }
 divan = { default-features = false, version = "^0.1" }
 flutter_rust_bridge = { default-features = true, version = "=2.13.0" }
 fontdue = { default-features = false, version = "^0.9" }
+futures-util = { default-features = false, version = "^0.3" }
+getrandom = { default-features = false, version = "^0.3" }
+hmac = { default-features = false, version = "^0.12" }
 insta = { default-features = false, version = "^1" }
 js-sys = { default-features = false, version = "^0.3" }
 lib0 = { default-features = false, version = "^0.16" }
@@ -56,11 +64,19 @@ log = { default-features = false, version = "^0.4" }
 playwright-rs = { default-features = false, version = "^0.8" }
 proptest = { default-features = false, version = "^1" }
 regex-lite = { default-features = false, version = "^0.1" }
+reqwest = { default-features = false, version = "^0.12" }
 rustc-hash = { default-features = false, version = "^2" }
 serde = { default-features = false, version = "^1" }
 serde_json = { default-features = false, version = "^1" }
+sha2 = { default-features = false, version = "^0.10" }
 thiserror = { default-features = false, version = "^2" }
 tokio = { default-features = false, version = "^1" }
+tokio-postgres = { default-features = false, version = "^0.7" }
+tokio-tungstenite = { default-features = false, version = "^0.28" }
+tokio-util = { default-features = false, version = "^0.7" }
+tower-http = { default-features = false, version = "^0.6" }
+tracing = { default-features = false, version = "^0.1" }
+tracing-subscriber = { default-features = false, version = "^0.3" }
 typed-builder = { default-features = false, version = "^0.23" }
 unicode-linebreak = { default-features = false, version = "^0.1" }
 unicode-segmentation = { default-features = false, version = "^1" }
