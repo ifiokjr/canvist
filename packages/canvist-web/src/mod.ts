@@ -49,11 +49,14 @@ export {
 	type EditorStats,
 	type FrameReport,
 	type Geometry,
+	type InputLatency,
 	type LineBreaks,
 	pixelGrid,
 	type ThemeOptions,
 } from "./editor.ts";
 export { familyName, FontWatcher } from "./font-watcher.ts";
+export { type InputMode, usesEditContext } from "./input.ts";
 export { load, type WasmSource } from "./load.ts";
 export { CanvasMeasurer, type MeasureListener } from "./measure.ts";
+export { detectPlatform, type KeyPlatform } from "./platform.ts";
 export type { Plugin, PluginApis, PluginContext, Plugins } from "./plugin.ts";

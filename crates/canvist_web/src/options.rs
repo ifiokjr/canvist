@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use canvist_headless::canvist_editor::Platform;
 use canvist_layout::BreakOverride;
 use canvist_layout::ColorScheme;
 use canvist_layout::StarterKitOptions;
@@ -37,6 +38,8 @@ pub(crate) struct Options {
 	pub(crate) breaks: Breaks,
 	/// How far beyond the viewport to lay out, in pixels.
 	pub(crate) overscan: f32,
+	/// Whether `Mod` in key bindings is Cmd (`"apple"`) or Ctrl.
+	pub(crate) platform: Platform,
 }
 
 /// Read options from JSON, rejecting values of the wrong type instead of
@@ -47,6 +50,7 @@ pub(crate) struct Options {
 ///   "client": 1,
 ///   "breaks": "chromium",
 ///   "overscan": 600,
+///   "platform": "apple",
 ///   "theme": { "scheme": "dark", "bodyFamily": "Inter, sans-serif", "codeFamily": "monospace", "size": 16, "lineHeight": 1.5 }
 /// }
 /// ```
@@ -60,6 +64,7 @@ pub(crate) fn parse(json: &Json) -> Result<Options, String> {
 		theme: Arc::new(Theme::starter_kit_with(&starter)),
 		breaks,
 		overscan: number(json, "overscan")?.unwrap_or(0.0),
+		platform: platform(json)?,
 	})
 }
 
@@ -120,6 +125,18 @@ fn breaks(json: &Json) -> Result<Breaks, String> {
 	}
 }
 
+fn platform(json: &Json) -> Result<Platform, String> {
+	match string(json, "platform")? {
+		None | Some("other") => Ok(Platform::Other),
+		Some("apple") => Ok(Platform::Apple),
+		Some(other) => {
+			Err(format!(
+				"platform must be \"apple\" or \"other\", not {other:?}"
+			))
+		}
+	}
+}
+
 fn string<'a>(json: &'a Json, key: &str) -> Result<Option<&'a str>, String> {
 	match json.get(key) {
 		None | Some(Json::Null) => Ok(None),
@@ -164,6 +181,13 @@ mod tests {
 		assert_eq!(options.client, 1);
 		assert_eq!(options.breaks, Breaks::Chromium);
 		assert_eq!(options.theme.base().font.size, 16.0);
+		assert_eq!(options.platform, Platform::Other);
+		assert_eq!(
+			parse(&json!({ "platform": "apple" }))
+				.expect("valid")
+				.platform,
+			Platform::Apple
+		);
 	}
 
 	#[test]
@@ -189,5 +213,6 @@ mod tests {
 		assert!(parse(&json!({ "theme": { "size": "16px" } })).is_err());
 		assert!(parse(&json!({ "theme": { "size": -1 } })).is_err());
 		assert!(parse(&json!({ "breaks": 1 })).is_err());
+		assert!(parse(&json!({ "platform": "mac" })).is_err());
 	}
 }

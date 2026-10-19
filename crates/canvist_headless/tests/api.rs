@@ -222,3 +222,38 @@ fn interactive_hosts_edit_with_their_own_clock() -> Result<(), HeadlessError> {
 	assert_eq!(doc.export(Format::Text), "");
 	Ok(())
 }
+
+#[test]
+fn key_bindings_follow_the_engine_platform() -> Result<(), HeadlessError> {
+	use std::time::Duration;
+
+	use canvist_headless::canvist_editor::KeyPress;
+	use canvist_headless::canvist_editor::Modifiers;
+	use canvist_headless::canvist_editor::ParagraphNavigator;
+	use canvist_headless::canvist_editor::Platform;
+
+	let cmd_b = KeyPress::new(
+		"b",
+		Modifiers {
+			meta: true,
+			..Modifiers::NONE
+		},
+	);
+
+	for (platform, bolds) in [(Platform::Apple, true), (Platform::Other, false)] {
+		let engine = Engine::starter_kit().with_platform(platform);
+		let mut doc = engine.parse(Format::Text, "Hello")?;
+		doc.select_all()?;
+		doc.edit(Duration::ZERO, &mut ParagraphNavigator, |editor, env| {
+			editor.handle_key(cmd_b, env)
+		})?;
+
+		assert_eq!(
+			doc.export(Format::Markdown) == "**Hello**",
+			bolds,
+			"{platform:?}"
+		);
+	}
+
+	Ok(())
+}

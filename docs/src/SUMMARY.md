@@ -40,6 +40,7 @@
 - [Server-side transforms](./guides/server-transforms.md)
 - [Theming and styling](./guides/theming.md)
 - [Fonts and text rendering](./guides/fonts.md)
+- [Text input on the web](./guides/web-input.md)
 - [Rendering parity](./guides/rendering-parity.md)
 - [Performance](./guides/performance.md)
 

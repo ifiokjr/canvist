@@ -142,7 +142,7 @@ jobs:
         timeout-minutes: 10
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: pixel parity
+      - name: pixel parity, editing, and input latency
         working-directory: packages/canvist-web
         run: npx playwright test
 
@@ -159,10 +159,25 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: input latency
+        if: ${{ !cancelled() }}
+        working-directory: packages/canvist-web
+        run: |
+          {
+            echo "## Input latency: ${{ matrix.browser }} on ${{ matrix.os }}"
+            echo
+            echo '```json'
+            cat report/perf/*.json 2>/dev/null || echo "not measured"
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: upload the report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: parity-${{ matrix.browser }}-${{ matrix.os }}
-          path: packages/canvist-web/report/parity/
+          path: |
+            packages/canvist-web/report/parity/
+            packages/canvist-web/report/perf/
           retention-days: 30
