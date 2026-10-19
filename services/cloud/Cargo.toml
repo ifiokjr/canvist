@@ -41,6 +41,8 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "json"
 yrs = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
+hmac = { workspace = true }
+sha2 = { workspace = true }
 tokio-tungstenite = { workspace = true, features = ["connect"] }
 
 [lints]

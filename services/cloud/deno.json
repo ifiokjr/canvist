@@ -1,0 +1,10 @@
+{
+	"tasks": {
+		"stripe:setup": "deno run --allow-net=api.stripe.com --allow-env=STRIPE_SECRET_KEY --allow-run=stripe,railway stripe/setup.ts",
+		"stripe:test": "deno test stripe/"
+	},
+	"imports": {
+		"@std/assert": "jsr:@std/assert@1.0.13",
+		"@std/cli": "jsr:@std/cli@1.0.17"
+	}
+}

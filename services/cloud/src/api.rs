@@ -34,6 +34,7 @@ use crate::metering::Month;
 use crate::metering::Plan;
 use crate::metering::Standing;
 use crate::metering::Terms;
+use crate::metering::stripe_webhook;
 use crate::names::DocumentKey;
 use crate::names::DocumentName;
 use crate::names::Environment;
@@ -61,7 +62,8 @@ pub fn router(app: SharedApp) -> Router {
 		.route("/v1/admin/projects/{project}/keys", post(create_key))
 		.route("/v1/admin/stats", get(stats))
 		.route("/v1/admin/projects/{project}/terms", put(set_terms))
-		.route("/v1/usage", get(usage));
+		.route("/v1/usage", get(usage))
+		.route("/v1/stripe/webhook", post(stripe_webhook));
 
 	if app.config.role.serves_sync() {
 		router = router.merge(sync_routes().layer(body_limit(max_body)));
@@ -456,6 +458,43 @@ async fn usage(
 		"standing": Standing::of(&terms, active),
 		"environments": environments,
 	})))
+}
+
+/// `POST /v1/stripe/webhook`: Stripe's subscription events set project
+/// plans. Off (`404`) without `STRIPE_WEBHOOK_SECRET`. Events for unknown
+/// projects or prices are acknowledged and ignored, so Stripe does not
+/// retry them.
+async fn stripe_webhook(
+	State(app): State<SharedApp>,
+	headers: HeaderMap,
+	body: Bytes,
+) -> Result<Json<JsonValue>, ApiError> {
+	let Some(secret) = &app.config.stripe_webhook_secret else {
+		return Err(ApiError::not_found("Stripe webhooks are not configured"));
+	};
+	let signature = headers
+		.get("stripe-signature")
+		.and_then(|value| value.to_str().ok())
+		.unwrap_or_default();
+	stripe_webhook::verify(secret.expose(), signature, &body, auth::unix_now())
+		.map_err(|error| ApiError::bad_request(error.to_string()))?;
+	let event: JsonValue = serde_json::from_slice(&body)
+		.map_err(|_| ApiError::bad_request(stripe_webhook::WebhookError::Payload.to_string()))?;
+	let Some(change) = stripe_webhook::plan_change(&event) else {
+		return Ok(Json(json!({ "handled": false })));
+	};
+
+	match app.store.set_terms(&change.project, &change.terms).await {
+		Ok(()) => {
+			tracing::info!(project = %change.project, plan = change.terms.plan.as_str(), "plan changed by Stripe");
+			Ok(Json(json!({ "handled": true })))
+		}
+		Err(crate::store::StoreError::UnknownProject) => {
+			tracing::warn!(project = %change.project, "Stripe subscription for an unknown project");
+			Ok(Json(json!({ "handled": false })))
+		}
+		Err(error) => Err(error.into()),
+	}
 }
 
 #[derive(Debug, Deserialize)]

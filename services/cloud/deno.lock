@@ -1,0 +1,83 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@std/assert@1.0.13": "1.0.13",
+    "jsr:@std/cli@1.0.17": "1.0.17",
+    "jsr:@std/internal@^1.0.6": "1.0.14",
+    "npm:@hocuspocus/provider@4.7.0": "4.7.0_y-protocols@1.0.7__yjs@13.6.33_yjs@13.6.33",
+    "npm:y-websocket@3.0.0": "3.0.0_yjs@13.6.33",
+    "npm:yjs@13.6.33": "13.6.33"
+  },
+  "jsr": {
+    "@std/assert@1.0.13": {
+      "integrity": "ae0d31e41919b12c656c742b22522c32fb26ed0cba32975cb0de2a273cb68b29",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/cli@1.0.17": {
+      "integrity": "e15b9abe629e17be90cc6216327f03a29eae613365f1353837fa749aad29ce7b"
+    },
+    "@std/internal@1.0.14": {
+      "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
+    }
+  },
+  "npm": {
+    "@hocuspocus/common@4.7.1": {
+      "integrity": "sha512-+N4t8AdBIWBUK+yHsuBvCcBm96eV2E3quIewma9+TYomqVMXhrovAf3dA6XFbYHRM7ggtXklHt2mFqTcpiMdAQ==",
+      "dependencies": [
+        "lib0"
+      ]
+    },
+    "@hocuspocus/provider@4.7.0_y-protocols@1.0.7__yjs@13.6.33_yjs@13.6.33": {
+      "integrity": "sha512-BOAqoj6g4EZQ9pTwIiR7bNl1QkMAnrr8EY69jMcdhSLFtTrsKaE8hsDIEncPFnGq+khWRFCAPEJSM7F9HC7fvQ==",
+      "dependencies": [
+        "@hocuspocus/common",
+        "@lifeomic/attempt",
+        "lib0",
+        "y-protocols",
+        "yjs"
+      ]
+    },
+    "@lifeomic/attempt@3.1.0": {
+      "integrity": "sha512-QZqem4QuAnAyzfz+Gj5/+SLxqwCAw2qmt7732ZXodr6VDWGeYLG6w1i/vYLa55JQM9wRuBKLmXmiZ2P0LtE5rw=="
+    },
+    "isomorphic.js@0.2.5": {
+      "integrity": "sha512-PIeMbHqMt4DnUP3MA/Flc0HElYjMXArsw1qwJZcm9sqR8mq3l8NYizFMty0pWwE/tzIGH3EKK5+jes5mAr85yw=="
+    },
+    "lib0@0.2.119": {
+      "integrity": "sha512-vh+TiejVy8Xm+hCdnRfn9BthGNvNUZdEXltNjVZL3TzRIKP3s1lnQh8pWd/Q0wCgY0FPAGVVjFF4ZiHUV3LFgA==",
+      "dependencies": [
+        "isomorphic.js"
+      ],
+      "bin": true
+    },
+    "y-protocols@1.0.7_yjs@13.6.33": {
+      "integrity": "sha512-YSVsLoXxO67J6eE/nV4AtFtT3QEotZf5sK5BHxFBXso7VDUT3Tx07IfA6hsu5Q5OmBdMkQVmFZ9QOA7fikWvnw==",
+      "dependencies": [
+        "lib0",
+        "yjs"
+      ]
+    },
+    "y-websocket@3.0.0_yjs@13.6.33": {
+      "integrity": "sha512-mUHy7AzkOZ834T/7piqtlA8Yk6AchqKqcrCXjKW8J1w2lPtRDjz8W5/CvXz9higKAHgKRKqpI3T33YkRFLkPtg==",
+      "dependencies": [
+        "lib0",
+        "y-protocols",
+        "yjs"
+      ]
+    },
+    "yjs@13.6.33": {
+      "integrity": "sha512-q/UYvr1gOk4XII+Cu1CW2dINjYqJJFifTzogEaIARznrvX7uOlHsdTEXcnOBMuIsrCGEEKdNxi74kyMLZlKVfw==",
+      "dependencies": [
+        "lib0"
+      ]
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@std/assert@1.0.13",
+      "jsr:@std/cli@1.0.17"
+    ]
+  }
+}

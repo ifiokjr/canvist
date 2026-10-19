@@ -180,6 +180,9 @@ pub struct Config {
 	pub convert: ConvertConfig,
 	/// Stripe metering, off when `None`.
 	pub stripe: Option<StripeConfig>,
+	/// The signing secret of the Stripe webhook endpoint; the endpoint is off
+	/// without it.
+	pub stripe_webhook_secret: Option<Secret>,
 }
 
 impl Config {
@@ -195,6 +198,7 @@ impl Config {
 			sync: SyncConfig::default(),
 			convert: ConvertConfig::default(),
 			stripe: None,
+			stripe_webhook_secret: None,
 		}
 	}
 
@@ -228,6 +232,7 @@ impl Config {
 			sync: sync_config(&env)?,
 			convert: convert_config(&env)?,
 			stripe: stripe_config(&env)?,
+			stripe_webhook_secret: env.get("STRIPE_WEBHOOK_SECRET").map(Secret::new),
 		})
 	}
 }
