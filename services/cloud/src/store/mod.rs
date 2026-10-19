@@ -237,6 +237,27 @@ impl Store {
 		}
 	}
 
+	/// Count `count` conversions for a project environment in `month`.
+	pub async fn add_conversions(
+		&self,
+		project: &ProjectId,
+		environment: &Environment,
+		month: Month,
+		count: u64,
+	) -> Result<(), StoreError> {
+		match self {
+			Self::Memory(store) => {
+				store.add_conversions(project, environment, month, count);
+				Ok(())
+			}
+			Self::Postgres(store) => {
+				store
+					.add_conversions(project, environment, month, count)
+					.await
+			}
+		}
+	}
+
 	/// Everything stored for `key`.
 	pub async fn load(&self, key: &DocumentKey) -> Result<StoredDocument, StoreError> {
 		match self {

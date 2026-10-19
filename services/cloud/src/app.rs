@@ -14,6 +14,7 @@ use crate::auth::AuthError;
 use crate::auth::Principal;
 use crate::auth::TokenSigner;
 use crate::config::Config;
+use crate::convert::Converter;
 use crate::error::ApiError;
 use crate::metering::Admission;
 use crate::metering::Meter;
@@ -36,6 +37,8 @@ pub struct App {
 	pub rooms: Rooms,
 	/// Counts active documents and enforces caps.
 	pub meter: Meter,
+	/// Runs conversions.
+	pub converter: Converter,
 	shutdown: watch::Receiver<bool>,
 	sockets: TaskTracker,
 }
@@ -54,6 +57,7 @@ impl App {
 	) -> Self {
 		Self {
 			signer: TokenSigner::new(config.token_secret.expose()),
+			converter: Converter::new(config.convert.clone()),
 			config,
 			store,
 			rooms,

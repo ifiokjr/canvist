@@ -25,6 +25,7 @@
 
 mod api;
 mod app;
+mod convert;
 mod documents;
 mod error;
 mod server;

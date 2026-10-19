@@ -137,6 +137,20 @@ impl MemoryStore {
 		})
 	}
 
+	pub(super) fn add_conversions(
+		&self,
+		project: &ProjectId,
+		environment: &Environment,
+		month: Month,
+		count: u64,
+	) {
+		self.lock()
+			.usage
+			.entry((project.clone(), month, environment.clone()))
+			.or_default()
+			.conversions += count;
+	}
+
 	pub(super) fn usage(&self, project: &ProjectId, month: Month) -> Vec<UsageRow> {
 		self.lock()
 			.usage

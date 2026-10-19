@@ -433,3 +433,83 @@ async fn idle_connections_are_cheap() {
 		CONNECTIONS + tokens.len()
 	);
 }
+
+/// Median time of `samples` conversions of `input` from `from` to `to`
+/// through `POST /v1/convert`.
+async fn conversion_time(
+	fixture: &Fixture,
+	(from, to): (&str, &str),
+	input: &serde_json::Value,
+) -> Duration {
+	const CONVERSIONS: usize = 5;
+	let api = fixture.api();
+	let mut samples = Vec::with_capacity(CONVERSIONS);
+
+	for _ in 0..CONVERSIONS {
+		let start = Instant::now();
+		let response = api
+			.post("/v1/convert")
+			.json(&serde_json::json!({ "from": from, "to": to, "input": input }))
+			.send()
+			.await
+			.expect("responds");
+		assert_eq!(response.status(), 200, "{from} to {to}");
+		response.bytes().await.expect("body");
+		samples.push(start.elapsed());
+	}
+
+	samples.sort_unstable();
+	samples[CONVERSIONS / 2]
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+async fn a_ten_thousand_paragraph_document_converts_quickly() {
+	const PARAGRAPHS: usize = 10_000;
+	let mut config = support::config();
+	config.convert.max_input_bytes = 64 * 1024 * 1024;
+	let fixture = Fixture::start_with(config, support::store().await).await;
+	let markdown = serde_json::Value::String(vec![PARAGRAPH; PARAGRAPHS].join("\n\n"));
+	let html: serde_json::Value = fixture
+		.api()
+		.post("/v1/convert")
+		.json(&serde_json::json!({ "from": "markdown", "to": "html", "input": markdown }))
+		.send()
+		.await
+		.expect("responds")
+		.json()
+		.await
+		.expect("json");
+	let json: serde_json::Value = fixture
+		.api()
+		.post("/v1/convert")
+		.json(&serde_json::json!({ "from": "markdown", "to": "json", "input": markdown }))
+		.send()
+		.await
+		.expect("responds")
+		.json()
+		.await
+		.expect("json");
+
+	let to_html = conversion_time(&fixture, ("markdown", "html"), &markdown).await;
+	let from_html = conversion_time(&fixture, ("html", "markdown"), &html["output"]).await;
+	let from_json = conversion_time(&fixture, ("json", "markdown"), &json["output"]).await;
+
+	// Measured on Apple silicon, including HTTP and JSON: 14, 16, and
+	// 52 ms.
+	assert_time(
+		"10,000 paragraphs from Markdown to HTML",
+		to_html,
+		Duration::from_millis(60),
+	);
+	assert_time(
+		"10,000 paragraphs from HTML to Markdown",
+		from_html,
+		Duration::from_millis(60),
+	);
+	assert_time(
+		"10,000 paragraphs from JSON to Markdown",
+		from_json,
+		Duration::from_millis(200),
+	);
+}

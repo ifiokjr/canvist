@@ -94,6 +94,27 @@ Returns `{ "token": "eyJ…", "expires_at": 1792400000 }`. Tokens are HS256 JWTs
 
 `POST` refuses updates that break the rules above with `422`, and oversized ones with `413`.
 
+## Convert
+
+`POST /v1/convert` (API key) converts a document between `json` (ProseMirror and TipTap JSON), `html`, `markdown`, and `text`, with the same StarterKit schema the editor uses:
+
+```json
+{ "from": "markdown", "to": "html", "input": "# Plan\n\n- ship **it**" }
+```
+
+returns
+
+```json
+{
+	"format": "html",
+	"output": "<h1>Plan</h1><ul><li><p>ship <strong>it</strong></p></li></ul>"
+}
+```
+
+`input` is a string, or for `json` an object (a string holding JSON works too); `output` is an object for `json` and a string otherwise. A stored document converts with `GET /v1/documents/{name}?format=markdown` (or `json`, `html`, `text`; the default `yjs` returns the raw state).
+
+Limits: 8 MiB per request (`413` past it), 10 seconds per conversion (`504`), and a bounded number of conversions at once per instance. Unknown formats and wrong input types are `400`; input that does not parse is `422` with code `unconvertible`. Every conversion counts toward the month's usage. A 10,000-paragraph document converts in 15 to 50 ms.
+
 ## Usage and plans
 
 A document is **active** in a month (UTC) once a sync session opens it or `POST /v1/documents/{name}` writes it. canvist Cloud bills per monthly active document (MAD), counted once per document per month however often it is used.

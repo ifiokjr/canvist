@@ -80,6 +80,8 @@ const MAX_DOCUMENT_MEBIBYTES: usize = 16;
 const WEBHOOK_DEBOUNCE_SECONDS: u64 = 2;
 const WEBHOOK_MAX_WAIT_SECONDS: u64 = 30;
 const PAUSE_RECHECK_SECONDS: u64 = 30;
+const MAX_CONVERT_MEBIBYTES: usize = 8;
+const CONVERT_TIMEOUT_SECONDS: u64 = 10;
 /// The port when `PORT` is unset; Railway always sets it.
 const DEFAULT_PORT: u16 = 8080;
 /// The shortest token secret: 256 bits, HS256's key size.
@@ -127,6 +129,27 @@ impl Default for SyncConfig {
 	}
 }
 
+/// Settings for conversions.
+#[derive(Clone, Debug)]
+pub struct ConvertConfig {
+	/// The largest request body accepted, in bytes.
+	pub max_input_bytes: usize,
+	/// The longest one conversion may run before the request gives up.
+	pub timeout: Duration,
+	/// Conversions running at once on this instance.
+	pub concurrency: usize,
+}
+
+impl Default for ConvertConfig {
+	fn default() -> Self {
+		Self {
+			max_input_bytes: MAX_CONVERT_MEBIBYTES * MEBIBYTE,
+			timeout: Duration::from_secs(CONVERT_TIMEOUT_SECONDS),
+			concurrency: std::thread::available_parallelism().map_or(2, |count| count.get() * 2),
+		}
+	}
+}
+
 /// Stripe Billing Meters, test mode only.
 #[derive(Clone, Debug)]
 pub struct StripeConfig {
@@ -153,6 +176,8 @@ pub struct Config {
 	pub admin_token: Option<Secret>,
 	/// Sync relay settings.
 	pub sync: SyncConfig,
+	/// Conversion settings.
+	pub convert: ConvertConfig,
 	/// Stripe metering, off when `None`.
 	pub stripe: Option<StripeConfig>,
 }
@@ -168,6 +193,7 @@ impl Config {
 			token_secret: Secret::new(token_secret),
 			admin_token: None,
 			sync: SyncConfig::default(),
+			convert: ConvertConfig::default(),
 			stripe: None,
 		}
 	}
@@ -200,6 +226,7 @@ impl Config {
 			token_secret: Secret::new(token_secret),
 			admin_token: env.get("CANVIST_ADMIN_TOKEN").map(Secret::new),
 			sync: sync_config(&env)?,
+			convert: convert_config(&env)?,
 			stripe: stripe_config(&env)?,
 		})
 	}
@@ -221,6 +248,16 @@ fn sync_config(env: &Env<'_>) -> Result<SyncConfig, ConfigError> {
 			defaults.webhook_allow_private,
 		)?,
 		pause_recheck: env.seconds("CANVIST_PAUSE_RECHECK_SECONDS", defaults.pause_recheck)?,
+	})
+}
+
+fn convert_config(env: &Env<'_>) -> Result<ConvertConfig, ConfigError> {
+	let defaults = ConvertConfig::default();
+
+	Ok(ConvertConfig {
+		max_input_bytes: env.parse("CANVIST_CONVERT_MAX_BYTES", defaults.max_input_bytes)?,
+		timeout: env.millis("CANVIST_CONVERT_TIMEOUT_MS", defaults.timeout)?,
+		concurrency: env.parse("CANVIST_CONVERT_CONCURRENCY", defaults.concurrency)?,
 	})
 }
 

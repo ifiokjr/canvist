@@ -383,6 +383,33 @@ impl PgStore {
 		})
 	}
 
+	pub(super) async fn add_conversions(
+		&self,
+		project: &ProjectId,
+		environment: &Environment,
+		month: Month,
+		count: u64,
+	) -> Result<(), StoreError> {
+		let count = i64::try_from(count).unwrap_or(i64::MAX);
+		self.pool
+			.get()
+			.await?
+			.execute(
+				"INSERT INTO usage (project_id, environment, month, conversions)
+				VALUES ($1, $2, $3, $4)
+				ON CONFLICT (project_id, environment, month)
+				DO UPDATE SET conversions = usage.conversions + EXCLUDED.conversions",
+				&[
+					&project.as_str(),
+					&environment.as_str(),
+					&month.to_string(),
+					&count,
+				],
+			)
+			.await?;
+		Ok(())
+	}
+
 	pub(super) async fn usage(
 		&self,
 		project: &ProjectId,
