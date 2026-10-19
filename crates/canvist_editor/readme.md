@@ -1,3 +1,12 @@
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
+      <img alt="canvist" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" width="220">
+    </picture>
+  </a>
+</p>
+
 # canvist_editor
 
 The platform-agnostic editing engine behind [canvist](https://github.com/ifiokjr/canvist), built on [`canvist_model`](../canvist_model).

@@ -1,0 +1,40 @@
+/* canvist brand: a logo that follows mdBook's theme picker, and the mark beside the menu title. */
+
+.brand-title {
+	margin-block: 0.4em 0.9em;
+	line-height: 0;
+}
+
+.brand-title img {
+	height: 72px;
+	width: auto;
+}
+
+.brand-dark,
+.coal .brand-light,
+.navy .brand-light,
+.ayu .brand-light {
+	display: none;
+}
+
+.coal .brand-dark,
+.navy .brand-dark,
+.ayu .brand-dark {
+	display: inline;
+}
+
+.menu-title::before {
+	content: "";
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	margin-inline-end: 0.35em;
+	vertical-align: -0.12em;
+	background: url("../images/brand/mark-small.svg") center / contain no-repeat;
+}
+
+.coal .menu-title::before,
+.navy .menu-title::before,
+.ayu .menu-title::before {
+	background-image: url("../images/brand/mark-small-dark.svg");
+}
