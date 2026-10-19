@@ -68,7 +68,6 @@ jobs:
         id: plan
         run: |
           set -euo pipefail
-          deno --version
           case "$RELEASE_TAG" in
             pull-request) echo "sdk=true" >> "$GITHUB_OUTPUT"; echo "app=true" >> "$GITHUB_OUTPUT" ;;
             app/v*) echo "sdk=false" >> "$GITHUB_OUTPUT"; echo "app=true" >> "$GITHUB_OUTPUT" ;;
@@ -177,6 +176,7 @@ jobs:
         working-directory: packages/canvist-headless
         run: |
           set -euo pipefail
+          deno --version
           if [ "$DRY_RUN" = "true" ]; then
             deno publish --dry-run --allow-dirty
           else
