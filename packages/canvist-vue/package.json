@@ -1,0 +1,32 @@
+{
+	"name": "@canvist/vue",
+	"version": "0.1.0",
+	"description": "Vue bindings for the canvist canvas editor: a component, and composables typed from the extensions you register.",
+	"license": "Unlicense",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/mod.d.ts",
+			"default": "./dist/mod.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"check:types": "tsc --noEmit",
+		"build": "tsc -p tsconfig.build.json",
+		"prepack": "npm run build"
+	},
+	"dependencies": {
+		"@canvist/web": "file:../canvist-web"
+	},
+	"peerDependencies": {
+		"vue": "^3.4.0"
+	},
+	"devDependencies": {
+		"typescript": "^7.0.2",
+		"vue": "^3.5.0"
+	}
+}

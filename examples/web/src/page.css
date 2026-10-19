@@ -1,0 +1,30 @@
+body {
+	margin: 0;
+	background: #f6f5f3;
+	color: #1d1b19;
+	font: 15px/1.5 system-ui, sans-serif;
+}
+
+main {
+	max-width: 640px;
+	margin: 48px auto;
+	padding: 0 16px;
+}
+
+.toolbar {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 12px;
+}
+
+.toolbar button[aria-pressed="true"] {
+	background: #1d1b19;
+	color: #fff;
+}
+
+.editor {
+	width: 100%;
+	max-width: 640px;
+	background: #fff;
+	box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}

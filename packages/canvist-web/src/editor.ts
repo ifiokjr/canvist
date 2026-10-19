@@ -215,6 +215,9 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	readonly #mirror: AccessibilityMirror;
 	/** A ring of recent input-to-paint times. */
 	readonly #latency = new Float64Array(LATENCY_SAMPLES);
+	readonly #subscribers = new Set<() => void>();
+	/** Server-rendered HTML shown in the editor's place until the canvas has painted with settled fonts. */
+	#server: HTMLElement | null;
 	#latencySamples = 0;
 	#frame = 0;
 	#blink = 0;
@@ -231,6 +234,7 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		this.#canvas = document.createElement("canvas");
 		this.#spacer = document.createElement("div");
 		this.#measurer = new CanvasMeasurer(element.ownerDocument);
+		this.#server = element.querySelector<HTMLElement>(":scope > .cv-doc");
 		this.#prepareDom();
 		this.#width = contentWidth(element);
 
@@ -249,6 +253,8 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 
 		if (options.content !== undefined) {
 			this.#load(options.content);
+		} else if (this.#server !== null) {
+			this.#wasm.load("html", this.#server.outerHTML);
 		}
 
 		const commands = registeredNames(this.#extensions, "commands");
@@ -291,6 +297,10 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 
 		this.#syncSize();
 		this.#render();
+
+		if (this.#server !== null) {
+			void this.ready();
+		}
 	}
 
 	/** The registered extensions, including the ones every editor has. */
@@ -350,7 +360,24 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		// ResizeObserver. Fonts can finish loading while observers are being
 		// notified, and resizing the canvas then is a ResizeObserver loop.
 		await nextFrame();
+		this.#hydrate();
 		this.#render();
+	}
+
+	/**
+	 * Call `listener` after every change to the document or selection, from
+	 * input, commands, or the API. Returns a function that unsubscribes. Its
+	 * shape suits React's `useSyncExternalStore`.
+	 */
+	subscribe(listener: () => void): () => void {
+		this.#subscribers.add(listener);
+
+		return () => this.#subscribers.delete(listener);
+	}
+
+	/** Whether server-rendered HTML still stands in for the canvas. */
+	get hydrating(): boolean {
+		return this.#server !== null;
 	}
 
 	/** Run the command named `name`, for callers that pick commands at runtime. */
@@ -533,6 +560,13 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		this.#spacer.className = "cv-spacer";
 		this.#spacer.setAttribute("aria-hidden", "true");
 		element.append(canvas, this.#spacer);
+
+		// Until fonts settle, the server's HTML holds the space the canvas
+		// will take; both laid out at once would double the height.
+		if (this.#server !== null) {
+			canvas.style.display = "none";
+			this.#spacer.style.display = "none";
+		}
 	}
 
 	#setupPlugins(plugins: Plugins): PluginApis<P> {
@@ -600,6 +634,32 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		this.#invalidate();
 		this.#input.sync();
 		this.#mirror.schedule();
+		this.#notify();
+	}
+
+	#notify(): void {
+		for (const listener of this.#subscribers) {
+			listener();
+		}
+	}
+
+	/**
+	 * Swap server-rendered HTML for the canvas in one task, so no frame
+	 * shows both or neither. The canvas was laid out with the same fonts and
+	 * the same measurements as the HTML, so nothing moves.
+	 */
+	#hydrate(): void {
+		const server = this.#server;
+
+		// A destroyed editor leaves the HTML to whichever editor replaces it.
+		if (server === null || this.#abort.signal.aborted) {
+			return;
+		}
+
+		this.#server = null;
+		server.remove();
+		this.#canvas.style.display = "block";
+		this.#spacer.style.display = "";
 	}
 
 	/**
@@ -616,6 +676,7 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		this.#latency[this.#latencySamples % LATENCY_SAMPLES] = performance.now() -
 			since;
 		this.#latencySamples += 1;
+		this.#notify();
 	}
 
 	/** Scroll the caret into view. */

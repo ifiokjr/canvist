@@ -82,6 +82,76 @@ jobs:
   # Pixel parity between the canvas editor and the server-rendered HTML it
   # hydrates from, in every engine on both desktop platforms. Each run
   # uploads a side-by-side report (canvas | DOM | difference).
+  # The examples in `examples/web`: a plain page, React, Vue, and a page
+  # rendered by canvist's Rust renderer that the editor hydrates.
+  examples:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
+
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: build @canvist/headless
+        working-directory: packages/canvist-headless
+        run: |
+          npm ci
+          npm run build:wasm
+          npm run build
+
+      - name: build @canvist/web
+        working-directory: packages/canvist-web
+        run: |
+          npm ci
+          npm run build:wasm
+          npm run build
+
+      - name: build and type-check @canvist/react and @canvist/vue
+        run: |
+          for package in canvist-react canvist-vue; do
+            (cd "packages/$package" && npm ci && npx tsc --noEmit && npm run build)
+          done
+
+      - name: render the server-rendered example
+        working-directory: examples/web
+        run: npm run ssr
+
+      - name: install dependencies
+        working-directory: examples/web
+        run: npm ci
+
+      - name: type-check the examples
+        working-directory: examples/web
+        run: npx tsc --noEmit
+
+      - name: install browsers
+        working-directory: examples/web
+        timeout-minutes: 10
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: test the examples
+        working-directory: examples/web
+        run: npx playwright test
+
   parity:
     timeout-minutes: 45
     strategy:

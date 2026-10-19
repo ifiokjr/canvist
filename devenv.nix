@@ -285,6 +285,8 @@ in
         monostyle check packages/canvist-headless --fail-under 90
         monostyle check crates/canvist_web --fail-under 90
         monostyle check packages/canvist-web --fail-under 90
+        monostyle check packages/canvist-react --fail-under 90
+        monostyle check packages/canvist-vue --fail-under 90
         monostyle check platforms/dart --fail-under 90
         monostyle check services/cloud --fail-under 90
         monostyle check tools/footage --fail-under 90

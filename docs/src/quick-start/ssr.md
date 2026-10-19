@@ -61,6 +61,10 @@ fn renderer_with_font(path: &str) -> std::io::Result<Renderer> {
 
 To change colours, fonts, and spacing, see [Theming and styling](../guides/theming.md).
 
+## Hydrate in the browser
+
+Put the HTML inside the element you pass to `createEditor` from [`@canvist/web`](./web.md#4-hydrate-server-rendered-html). The editor reads the document from it, keeps it on screen until fonts load, and swaps in the canvas without moving anything. Give the browser the same font files you registered here. `examples/web/ssr.html` in the repository is rendered by `cargo run -p canvist_headless --features ssr,starter-kit --example ssr_page`, and its test checks that hydration shifts nothing.
+
 ## Next steps
 
 - [Import and export](../guides/import-export.md): get your content into a document first.
