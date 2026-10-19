@@ -3,6 +3,7 @@
 use axum::Json;
 use axum::Router;
 use axum::body::Bytes;
+use axum::extract::DefaultBodyLimit;
 use axum::extract::Path;
 use axum::extract::Query;
 use axum::extract::State;
@@ -19,12 +20,15 @@ use serde::Serialize;
 use serde_json::Value as JsonValue;
 use serde_json::json;
 
+use crate::app::App;
 use crate::app::SharedApp;
 use crate::auth;
 use crate::auth::Claims;
 use crate::auth::MAX_TOKEN_SECONDS;
 use crate::auth::Principal;
 use crate::auth::Scope;
+use crate::convert::ConvertRequest;
+use crate::convert::ConvertResponse;
 use crate::error::ApiError;
 use crate::metering::Month;
 use crate::metering::Plan;
@@ -60,13 +64,60 @@ pub fn router(app: SharedApp) -> Router {
 		.route("/v1/usage", get(usage));
 
 	if app.config.role.serves_sync() {
-		router = router.merge(sync_routes());
+		router = router.merge(sync_routes().layer(body_limit(max_body)));
+	}
+
+	if app.config.role.serves_convert() {
+		router =
+			router.merge(convert_routes().layer(body_limit(app.config.convert.max_input_bytes)));
 	}
 
 	router
-		.layer(tower_http::limit::RequestBodyLimitLayer::new(max_body))
+		.layer(body_limit(max_body))
 		.layer(tower_http::trace::TraceLayer::new_for_http())
 		.with_state(app)
+}
+
+/// Bodies larger than `bytes` are refused with `413`. A route takes its
+/// innermost limit, so Convert's larger one wins for its routes.
+fn body_limit(bytes: usize) -> DefaultBodyLimit {
+	DefaultBodyLimit::max(bytes)
+}
+
+/// Conversions.
+fn convert_routes() -> Router<SharedApp> {
+	Router::new().route("/v1/convert", post(convert))
+}
+
+/// `POST /v1/convert`: convert a document between formats. API keys only;
+/// each conversion counts toward the month's usage.
+async fn convert(
+	State(app): State<SharedApp>,
+	headers: HeaderMap,
+	Json(request): Json<ConvertRequest>,
+) -> Result<Json<ConvertResponse>, ApiError> {
+	let principal = app.server_principal(&headers).await?;
+	let response = app.converter.convert(request).await?;
+	count_conversion(&app, &principal).await;
+	Ok(Json(response))
+}
+
+/// Count a conversion. A failure to count is logged, not passed on: the
+/// customer already has their result.
+async fn count_conversion(app: &App, principal: &Principal) {
+	let counted = app
+		.store
+		.add_conversions(
+			&principal.project,
+			&principal.environment,
+			Month::current(),
+			1,
+		)
+		.await;
+
+	if let Err(error) = counted {
+		tracing::warn!(project = %principal.project, %error, "could not count a conversion");
+	}
 }
 
 /// The relay and the REST routes around it.
@@ -203,16 +254,39 @@ fn document_key(principal: &Principal, name: &str) -> Result<DocumentKey, ApiErr
 	})
 }
 
-/// `GET /v1/documents/{name}`: the document as one Yjs v1 update.
+#[derive(Debug, Deserialize)]
+struct ExportQuery {
+	format: Option<String>,
+}
+
+/// `GET /v1/documents/{name}?format=…`: the document as one Yjs v1 update
+/// (the default, `yjs`), or converted to `json`, `html`, `markdown`, or
+/// `text`, which counts as a conversion.
 async fn export_document(
 	State(app): State<SharedApp>,
 	Path(name): Path<String>,
+	Query(query): Query<ExportQuery>,
 	headers: HeaderMap,
 ) -> Result<Response, ApiError> {
 	let principal = app.server_principal(&headers).await?;
 	let key = document_key(&principal, &name)?;
 	let state = crate::documents::current_state(&app, &key).await?;
-	Ok(([(CONTENT_TYPE, "application/octet-stream")], state).into_response())
+	let format = match query.format.as_deref() {
+		None | Some("yjs") => {
+			return Ok(([(CONTENT_TYPE, "application/octet-stream")], state).into_response());
+		}
+		Some(name) => {
+			name.parse().map_err(|_| {
+				ApiError::bad_request(format!(
+					"unknown format `{name}`; use yjs, json, html, markdown, or text"
+				))
+			})?
+		}
+	};
+	let converted = app.converter.export(state, format).await?;
+	count_conversion(&app, &principal).await;
+
+	Ok(Json(converted).into_response())
 }
 
 /// `POST /v1/documents/{name}`: apply a Yjs v1 update from a server, as a

@@ -39,6 +39,9 @@ curl -X POST http://localhost:8080/v1/admin/projects \
 | `CANVIST_WEBHOOK_DEBOUNCE_MS`   | `2000`                    | Quiet time before a `document.updated` webhook.                                                |
 | `CANVIST_WEBHOOK_MAX_WAIT_MS`   | `30000`                   | The longest a webhook waits while changes keep coming.                                         |
 | `CANVIST_WEBHOOK_ALLOW_PRIVATE` | `false`                   | Allow HTTP and private hosts as webhook targets, inside your network.                          |
+| `CANVIST_CONVERT_MAX_BYTES`     | `8388608`                 | The largest conversion request.                                                                |
+| `CANVIST_CONVERT_TIMEOUT_MS`    | `10000`                   | The longest a conversion may run before the request gives up.                                  |
+| `CANVIST_CONVERT_CONCURRENCY`   | twice the CPUs            | Conversions running at once.                                                                   |
 | `CANVIST_PAUSE_RECHECK_SECONDS` | `30`                      | How often a session paused by a full free plan checks again.                                   |
 | `STRIPE_SECRET_KEY`             | off                       | A Stripe **test-mode** key (`sk_test_` or `rk_test_`); live keys are refused.                  |
 | `STRIPE_METER_EVENT`            | `canvist_active_document` | The Stripe Billing Meter event name.                                                           |
@@ -80,6 +83,9 @@ One instance holds each document it serves in memory, so every client of a docum
 | Memory per idle connection (both ends)   | 17 KiB   | 64 KiB   |
 | Memory per loaded 5-paragraph document   | 22 KiB   | 32 KiB   |
 | Memory per loaded 50-paragraph document  | 132 KiB  | 192 KiB  |
+| 10,000 paragraphs, Markdown to HTML      | 14 ms    | 60 ms    |
+| 10,000 paragraphs, HTML to Markdown      | 16 ms    | 60 ms    |
+| 10,000 paragraphs, JSON to Markdown      | 52 ms    | 200 ms   |
 | Memory per loaded 500-paragraph document | 1.2 MiB  | 1.75 MiB |
 
 A loaded document costs about 2.4 KiB per block plus 10 KiB. Documents only stay in memory while someone is connected and for the idle eviction period after, so memory follows concurrent documents, not total ones.
