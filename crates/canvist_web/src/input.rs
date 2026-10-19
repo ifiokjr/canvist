@@ -7,7 +7,6 @@
 
 use std::cmp::Ordering;
 
-use canvist_headless::canvist_editor::Editor;
 use canvist_headless::canvist_editor::KeyPress;
 use canvist_headless::canvist_editor::Modifiers;
 use canvist_headless::canvist_editor::Slice;
@@ -84,12 +83,6 @@ impl WebEditor {
 	#[wasm_bindgen(js_name = commitComposition)]
 	pub fn commit_composition(&mut self, text: &str) -> JsResult<bool> {
 		self.edit(|editor, env| editor.commit_composition(text, env))
-	}
-
-	/// Abandon the composition, removing its preedit text.
-	#[wasm_bindgen(js_name = cancelComposition)]
-	pub fn cancel_composition(&mut self) -> JsResult<bool> {
-		self.edit(Editor::cancel_composition)
 	}
 
 	/// The text an `EditContext` edits: the text block holding the

@@ -544,6 +544,19 @@ impl WebEditor {
 		&mut self,
 		change: impl FnOnce(&mut Editor, &mut Env<'_>) -> CommandResult,
 	) -> JsResult<Option<Update>> {
+		let mut change = Some(change);
+
+		self.apply_change(&mut |editor, env| {
+			change.take().map_or(Ok(None), |change| change(editor, env))
+		})
+	}
+
+	/// [`WebEditor::edit_update`] without the generic closure, so the many
+	/// input methods share one copy of it in the WebAssembly module.
+	fn apply_change(
+		&mut self,
+		change: &mut dyn FnMut(&mut Editor, &mut Env<'_>) -> CommandResult,
+	) -> JsResult<Option<Update>> {
 		let now = Duration::from_secs_f64(js_sys::Date::now() / 1000.0);
 		let mut lines = HostLines::new(&mut self.layout, &mut self.measurer);
 		let update = self.doc.edit(now, &mut lines, change).map_err(headless)?;
