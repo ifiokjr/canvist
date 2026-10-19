@@ -21,6 +21,7 @@ use canvist_model::Selection;
 use canvist_scene::NodeId;
 use kurbo::Affine;
 use kurbo::BezPath;
+use kurbo::Point;
 use kurbo::Rect;
 use kurbo::Shape as _;
 
@@ -49,7 +50,8 @@ impl std::fmt::Debug for TextSession {
 impl TextSession {
 	/// Open text frame `node` in an editor built by `builder`, with the
 	/// caret at the end of its text. `builder` must register the extensions
-	/// whose schema the scene's text frames use.
+	/// whose schema the scene's text frames use. If the editor cannot be
+	/// built, the frame keeps its text and the error is returned.
 	pub fn open(
 		state: &mut CanvasState,
 		node: NodeId,
@@ -57,22 +59,25 @@ impl TextSession {
 	) -> Result<Self, CanvasError> {
 		let doc = state.scene_mut().lend_text(node)?;
 		let end = doc.last_text_block().map(|block| caret_at_end(&doc, block));
+		// The editor takes a copy, so a failure can hand the original back.
+		let copy = doc.clone();
 
-		match builder.build_with(move |_, _| Ok(doc)) {
-			Ok(mut editor) => {
-				if let Some(end) = end {
-					// Moving the caret on a fresh editor cannot fail.
-					let _ = editor.select(end, &mut Env::headless(Duration::ZERO));
-				}
-
-				Ok(Self { node, editor })
-			}
+		let mut editor = match builder.build_with(move |_, _| Ok(copy)) {
+			Ok(editor) => editor,
 			Err(error) => {
-				Err(CanvasError::InvalidArgs(format!(
-					"the text editor could not open the frame: {error}"
-				)))
+				state.scene_mut().return_text(node, doc)?;
+				return Err(open_error(&error));
 			}
+		};
+
+		if let Some(end) = end
+			&& let Err(error) = editor.select(end, &mut Env::headless(Duration::ZERO))
+		{
+			state.scene_mut().return_text(node, doc)?;
+			return Err(open_error(&error));
 		}
+
+		Ok(Self { node, editor })
 	}
 
 	/// The text frame being edited.
@@ -127,6 +132,55 @@ impl TextSession {
 		Ok(update)
 	}
 
+	/// Whether screen point `at` falls inside the frame being edited.
+	#[must_use]
+	pub fn contains(&self, state: &CanvasState, at: Point) -> bool {
+		let (Some(point), Some(geometry)) =
+			(self.frame_point(state, at), state.index().get(self.node))
+		else {
+			return false;
+		};
+
+		Rect::from_origin_size(Point::ORIGIN, geometry.size.to_size()).contains(point)
+	}
+
+	/// Put the caret nearest screen point `at`, extending the selection
+	/// from its anchor when `extend` is set (a Shift-click).
+	pub fn click(
+		&mut self,
+		state: &CanvasState,
+		at: Point,
+		extend: bool,
+		now: Duration,
+	) -> Result<Option<Update>, CanvasError> {
+		let (Some(point), Some(frame)) =
+			(self.frame_point(state, at), state.texts().get(self.node))
+		else {
+			return Ok(None);
+		};
+		// Layout works in `f32`; frame coordinates fit comfortably.
+		#[allow(clippy::cast_possible_truncation)]
+		let Some(caret) = frame.layout.hit_test(point.x as f32, point.y as f32) else {
+			return Ok(None);
+		};
+
+		let selection = match self.editor.state().selection() {
+			Selection::Text { anchor, .. } if extend => Selection::text(anchor, caret.point),
+			_ => Selection::caret(caret.point),
+		};
+
+		self.editor
+			.select(selection, &mut Env::headless(now))
+			.map_err(|error| editor_error(&error))
+	}
+
+	/// Screen point `at` in the frame's own coordinates.
+	fn frame_point(&self, state: &CanvasState, at: Point) -> Option<Point> {
+		let geometry = state.index().get(self.node)?;
+		let to_screen = state.camera().world_to_screen() * geometry.world;
+		(to_screen.determinant().abs() > f64::EPSILON).then(|| to_screen.inverse() * at)
+	}
+
 	/// Lay the frame out again from the editor's document.
 	pub fn refresh(&self, state: &mut CanvasState) -> Result<(), CanvasError> {
 		state.refresh_text(self.node, self.editor.state().doc())
@@ -151,6 +205,7 @@ impl TextSession {
 					path: outline(to_screen, rect),
 				}
 			});
+
 		let caret = match selection {
 			Selection::Text { head, .. } => frame.layout.caret_rect(Caret::new(head)),
 			Selection::Blocks { .. } => None,
@@ -205,4 +260,8 @@ fn outline(to_screen: Affine, rect: canvist_layout::Rect) -> BezPath {
 
 fn editor_error(error: &canvist_editor::EditorError) -> CanvasError {
 	CanvasError::InvalidArgs(format!("the text editor rejected the edit: {error}"))
+}
+
+fn open_error(error: &canvist_editor::EditorError) -> CanvasError {
+	CanvasError::InvalidArgs(format!("the text editor could not open the frame: {error}"))
 }

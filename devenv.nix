@@ -287,6 +287,7 @@ in
         monostyle check crates/canvist_collab --fail-under 90
         monostyle check crates/canvist_scene --fail-under 90
         monostyle check crates/canvist_canvas --fail-under 90
+        monostyle check crates/canvist_canvas_wasm --fail-under 90
         monostyle check crates/canvist_paint --fail-under 90
         monostyle check crates/canvist_headless --fail-under 90
         monostyle check crates/canvist_headless_wasm --fail-under 90
@@ -295,6 +296,7 @@ in
         monostyle check packages/canvist-web --fail-under 90
         monostyle check packages/canvist-react --fail-under 90
         monostyle check packages/canvist-vue --fail-under 90
+        monostyle check packages/canvist-canvas --fail-under 90
         monostyle check platforms/dart --fail-under 90
         monostyle check services/cloud --fail-under 90
         monostyle check tools/footage --fail-under 90

@@ -207,6 +207,15 @@ impl Canvas {
 		self.tools.iter().map(|tool| tool.name()).collect()
 	}
 
+	/// The tool registered as `name`, such as `"rectangle"`.
+	#[must_use]
+	pub fn tool_named(&self, name: &str) -> Option<ToolId> {
+		self.tools
+			.iter()
+			.position(|tool| tool.name() == name)
+			.map(ToolId)
+	}
+
 	/// Switch tools, abandoning the current tool's gesture.
 	pub fn set_tool(&mut self, tool: ToolId) {
 		if tool == self.active || tool.0 >= self.tools.len() {

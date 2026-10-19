@@ -2,6 +2,7 @@
 members = [
 	"crates/canvist",
 	"crates/canvist_canvas",
+	"crates/canvist_canvas_wasm",
 	"crates/canvist_collab",
 	"crates/canvist_core",
 	"crates/canvist_editor",
@@ -26,6 +27,7 @@ default-members = [
 	"crates/canvist",
 	"crates/canvist_collab",
 	"crates/canvist_canvas",
+	"crates/canvist_canvas_wasm",
 	"crates/canvist_core",
 	"crates/canvist_editor",
 	"crates/canvist_extensions",

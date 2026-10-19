@@ -1,0 +1,34 @@
+{
+	"name": "@canvist/canvas",
+	"version": "0.1.0",
+	"license": "Unlicense",
+	"exports": "./src/mod.ts",
+	"publish": {
+		"include": [
+			"src/**/*.ts",
+			"wasm/*.js",
+			"wasm/*.d.ts",
+			"wasm/*.wasm",
+			"readme.md"
+		],
+		"exclude": ["!wasm/"]
+	},
+	"tasks": {
+		"build:wasm": "cd ../.. && wasm-pack build crates/canvist_canvas_wasm --target web --release --out-dir ../../packages/canvist-canvas/wasm --no-pack",
+		"build:demo": "deno bundle --platform browser --external '../wasm/*' -o demo/main.js demo/main.ts",
+		"build": "deno task build:wasm && deno task build:demo",
+		"demo": "deno task build:demo && deno run --allow-read --allow-net tests/server.ts",
+		"check": "deno check src/mod.ts demo/main.ts tests/",
+		"test": "deno test --allow-read --allow-net --allow-env --allow-run --allow-write --allow-sys tests/"
+	},
+	"imports": {
+		"@std/assert": "jsr:@std/assert@^1",
+		"@std/http": "jsr:@std/http@^1",
+		"@std/path": "jsr:@std/path@^1",
+		"playwright": "npm:playwright@1.58"
+	},
+	"compilerOptions": {
+		"strict": true,
+		"lib": ["deno.window", "dom", "dom.iterable"]
+	}
+}

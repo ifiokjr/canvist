@@ -1,4 +1,4 @@
-//! Performance budgets for painting, from `docs/src/canvas/architecture.md`.
+//! Performance budgets for painting, from `docs/internal/canvas.md`.
 //! Release mode only:
 //!
 //! ```sh
