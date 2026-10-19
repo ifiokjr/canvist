@@ -220,3 +220,71 @@ fn incremental_relayout_keeps_kerning_at_the_window_edges() {
 		caret_xs(&fresh, block, &text)
 	);
 }
+
+/// A fixed measurer that kerns a space before `T` by [`SPACE_KERN`], as
+/// Times-compatible fonts such as Liberation Serif do.
+struct SpaceKerned(FixedMeasurer);
+
+const SPACE_KERN: f32 = -1.5;
+
+impl TextMeasurer for SpaceKerned {
+	fn measure(&mut self, batch: &MeasureBatch<'_>, out: &mut MeasureOutput) {
+		self.0.measure(batch, out);
+		let mut advance = 0;
+
+		for segment in batch.segments {
+			let chars: Vec<char> = segment.text.chars().collect();
+
+			for (index, pair) in chars.windows(2).enumerate() {
+				if pair == [' ', 'T'] {
+					out.advances[advance + index] += SPACE_KERN;
+				}
+			}
+
+			advance += chars.len();
+		}
+	}
+}
+
+#[test]
+fn kerning_spans_the_space_between_words() {
+	// Items end after their trailing space, so the space and the `T` after
+	// it are measured apart, but the browser shapes them together.
+	let text = "To Ty To";
+	let doc = doc(json!([paragraph(text)]));
+	let block = doc.children(None)[0];
+	let mut kerned = layout(&doc, 600.0);
+	kerned.forget_measurements();
+	kerned
+		.layout_all(&doc, &mut SpaceKerned(FixedMeasurer::new()))
+		.expect("measured");
+	let mut plain = layout(&doc, 600.0);
+	plain.forget_measurements();
+	plain
+		.layout_all(&doc, &mut FixedMeasurer::new())
+		.expect("measured");
+
+	let kerned = caret_xs(&kerned, block, text);
+	let plain = caret_xs(&plain, block, text);
+	let shift: Vec<f32> = kerned.iter().zip(&plain).map(|(a, b)| a - b).collect();
+
+	// Each " T" pair pulls everything after it left by SPACE_KERN.
+	let expected = [
+		0.0,
+		0.0,
+		0.0,
+		SPACE_KERN,
+		SPACE_KERN,
+		SPACE_KERN,
+		2.0 * SPACE_KERN,
+		2.0 * SPACE_KERN,
+		2.0 * SPACE_KERN,
+	];
+	assert!(
+		shift
+			.iter()
+			.zip(expected)
+			.all(|(a, b)| (a - b).abs() < 1e-4),
+		"{shift:?}"
+	);
+}

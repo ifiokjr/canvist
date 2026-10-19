@@ -6,9 +6,15 @@
 //! straddles two items (two kana, or letters either side of a mark that
 //! keeps the font) moves every glyph after it. A shaper adds a pair's
 //! adjustment to the first glyph's advance; layout does the same, measuring
-//! each pair as the difference between the pair and its two halves. Items
-//! separated by white space, a font change, or a bidi level change are
-//! shaped apart in the browser too, so they are never kerned.
+//! each pair as the difference between the pair and its two halves.
+//!
+//! An item ends with its trailing spaces, so the pair of a space and the
+//! letter after it straddles two items as well. Fonts with Times's metrics
+//! kern that pair (a space before `A`, `T`, or `Y`), and browsers shape
+//! across the space when a font does; for every other font the pair
+//! measures as nothing. Items separated by any other white space, a font
+//! change, or a bidi level change are shaped apart in the browser too, so
+//! they are never kerned.
 
 use std::ops::Range;
 use std::sync::Arc;
@@ -22,8 +28,8 @@ use crate::LayoutError;
 use crate::measure::MeasureCache;
 use crate::measure::Measured;
 
-/// The last grapheme of `left` and the first of `right`, when the two touch
-/// with no white space between them.
+/// The last grapheme of `left` and the first of `right`, when the two touch:
+/// nothing but a space (which fonts can kern) between them.
 pub(crate) fn touching<'t>(
 	text: &'t str,
 	left: &Range<u32>,
@@ -31,10 +37,13 @@ pub(crate) fn touching<'t>(
 ) -> Option<(&'t str, &'t str)> {
 	let left = slice(text, left);
 	let right = slice(text, right);
-	let ends_in_space = left.chars().next_back().is_none_or(char::is_whitespace);
-	let starts_with_space = right.chars().next().is_none_or(char::is_whitespace);
+	let ends_apart = left
+		.chars()
+		.next_back()
+		.is_none_or(|last| last.is_whitespace() && !is_space(last));
+	let starts_apart = right.chars().next().is_none_or(char::is_whitespace);
 
-	if ends_in_space || starts_with_space {
+	if ends_apart || starts_apart {
 		return None;
 	}
 
@@ -42,6 +51,11 @@ pub(crate) fn touching<'t>(
 	let first = *grapheme_boundaries(right).get(1)? as usize;
 
 	Some((&left[last..], &right[..first]))
+}
+
+/// A space a font can kern against the next letter: not a tab or a break.
+fn is_space(character: char) -> bool {
+	matches!(character, ' ' | '\u{a0}')
 }
 
 /// Queue the measurements the pair `a`, `b` needs.
@@ -165,8 +179,18 @@ mod tests {
 		assert_eq!(touching(text, &(0..3), &(3..6)), Some(("キ", "ス")));
 		assert_eq!(
 			touching(text, &(3..7), &(7..12)),
+			Some((" ", "w")),
+			"a space kerns with the letter after it"
+		);
+		assert_eq!(
+			touching("a\tb", &(0..2), &(2..3)),
 			None,
-			"a space separates them"
+			"a tab separates them"
+		);
+		assert_eq!(
+			touching("a  b", &(0..1), &(1..4)),
+			None,
+			"white space starts the right"
 		);
 		assert_eq!(
 			touching("e\u{301}x", &(0..3), &(3..4)),
