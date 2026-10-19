@@ -300,6 +300,7 @@ impl Foreign {
 #[test]
 fn blocks_of_unknown_types_are_hidden_kept_and_shown_once_valid() {
 	let (mut alice, _) = pair();
+	assert_eq!(alice.binding.rejected_blocks(), 0);
 	let foreign = Foreign::join(&alice.binding.encode_state(Encoding::V1));
 	let update = foreign.edit(|txn, root| {
 		let callout: MapRef = root.insert(txn, 1, MapPrelim::default());
@@ -315,6 +316,7 @@ fn blocks_of_unknown_types_are_hidden_kept_and_shown_once_valid() {
 		["one", "two", "three"],
 		"the callout is hidden"
 	);
+	assert_eq!(alice.binding.rejected_blocks(), 1);
 
 	// Local edits still land in the right place around the hidden map.
 	let two = block(&alice, 1);
@@ -351,6 +353,11 @@ fn blocks_of_unknown_types_are_hidden_kept_and_shown_once_valid() {
 	alice.receive(&fix);
 
 	assert_eq!(texts(&alice), ["one", "note!", "three", "two!"]);
+	assert_eq!(
+		alice.binding.rejected_blocks(),
+		0,
+		"the callout is valid now"
+	);
 	assert_eq!(alice.rebuilt(), alice.json());
 }
 

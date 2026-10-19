@@ -391,6 +391,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "canvist_headless"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "canvist_collab",
+ "canvist_editor",
+ "canvist_extensions",
+ "canvist_layout",
+ "canvist_model",
+ "divan",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "canvist_layout"
 version = "0.1.0"
 dependencies = [

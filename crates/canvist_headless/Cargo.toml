@@ -1,0 +1,59 @@
+[package]
+name = "canvist_headless"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_headless"
+edition.workspace = true
+homepage.workspace = true
+include = ["src/**/*.rs", "fonts/*", "Cargo.toml", "readme.md", "license"]
+keywords = ["text-editor", "headless", "prosemirror", "markdown", "yjs"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "The canvist document model without a UI: load, transform, export, and collaborate on rich-text documents on a server"
+
+[features]
+default = ["starter-kit"]
+# Register TipTap's StarterKit with `Engine::starter_kit`.
+starter-kit = ["canvist_extensions/starter-kit"]
+# Act as a Yjs peer: load from Yjs state, merge updates, and serve y-sync.
+collab = ["dep:canvist_collab", "canvist_collab/sync"]
+# Render server-side HTML and SVG through canvist_layout, measuring text with
+# parley and the bundled Atkinson Hyperlegible font.
+ssr = ["dep:canvist_layout", "canvist_layout/parley"]
+
+[dependencies]
+canvist_collab = { workspace = true, optional = true }
+canvist_editor = { workspace = true }
+canvist_extensions = { path = "../canvist_extensions", version = "0.1.0", default-features = false, features = ["clipboard"] }
+canvist_layout = { workspace = true, optional = true }
+canvist_model = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+base64 = { version = "^0.22", default-features = false, features = ["alloc"] }
+divan = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+
+[[example]]
+name = "markdown_to_json"
+required-features = ["starter-kit"]
+
+[[example]]
+name = "transform"
+required-features = ["starter-kit"]
+
+[[example]]
+name = "merge_updates"
+required-features = ["collab", "starter-kit"]
+
+[[bench]]
+name = "headless"
+harness = false
+required-features = ["starter-kit"]
+
+[lints]
+workspace = true

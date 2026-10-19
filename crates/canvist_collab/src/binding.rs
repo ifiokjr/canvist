@@ -351,6 +351,18 @@ impl Binding {
 		self.reorder.is_waiting()
 	}
 
+	/// How many items in the shared document's block arrays the model hides
+	/// because they break the schema: an unknown type, an id that does not parse, the
+	/// wrong content for their type, or a parent that does not allow them
+	/// (see [the crate docs](crate#the-yjs-schema)). Blocks inside a hidden
+	/// block are not counted, nor is inline content shown as U+FFFD.
+	///
+	/// A server checks this after merging updates to find peers writing
+	/// content its schema does not know.
+	pub fn rejected_blocks(&self) -> u32 {
+		self.registry.unmirrored_total()
+	}
+
 	/// Translate the recorded yrs events into one model commit.
 	pub(crate) fn mirror(&mut self, doc: &mut Document) -> Result<Commit, CollabError> {
 		let records = std::mem::take(&mut *self.inbox());
