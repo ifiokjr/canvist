@@ -1,3 +1,12 @@
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
+      <img alt="canvist" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" width="220">
+    </picture>
+  </a>
+</p>
+
 # canvist_collab
 
 Real-time collaboration for [canvist](https://github.com/ifiokjr/canvist) documents over Yjs, using [`yrs`](https://crates.io/crates/yrs).

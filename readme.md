@@ -1,4 +1,9 @@
-# canvist
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/brand/vector/lockup-dark.svg">
+    <img alt="canvist" src="./assets/brand/vector/lockup.svg" width="320">
+  </picture>
+</h1>
 
 > A canvas-based text editor written in Rust — build your own Google Docs.
 

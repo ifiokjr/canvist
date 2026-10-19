@@ -10,6 +10,8 @@
  *
  * The masters are the source of truth. Everything outside `vector/`, except
  * `readme.md` and this script, is generated and safe to delete and regenerate.
+ * The script also writes the docs site's favicons (`docs/theme/`) and logo
+ * copies (`docs/src/images/brand/`).
  */
 
 import { initWasm, Resvg } from "npm:@resvg/resvg-wasm@2.6.2";
@@ -650,6 +652,8 @@ async function web() {
 		),
 	);
 	await writeFile("web/favicon.svg", readMaster("favicon.svg"));
+	// The app icon as a vector: rustdoc's sidebar logo and anywhere else a square tile is needed.
+	await writeFile("web/icon.svg", tileIcon(1024) + "\n");
 	await png(
 		"web/apple-touch-icon.png",
 		iconSvg({ art: ART.light, scale: 0.76, shape: "full" }),
@@ -908,6 +912,26 @@ async function linux() {
 	);
 }
 
+/** The mdBook docs site: favicons in its theme, and logo copies under `src/` so the book can serve them. */
+async function docs() {
+	await writeFile("../../docs/theme/favicon.svg", readMaster("favicon.svg"));
+	await png(
+		"../../docs/theme/favicon.png",
+		iconSvg({ art: ART.small, scale: 1, shape: "none" }),
+		32,
+	);
+	for (
+		const name of [
+			"lockup.svg",
+			"lockup-dark.svg",
+			"mark-small.svg",
+			"mark-small-dark.svg",
+		]
+	) {
+		await writeFile(`../../docs/src/images/brand/${name}`, readMaster(name));
+	}
+}
+
 await printVectors();
 await web();
 await ios();
@@ -916,6 +940,7 @@ await windows();
 await android();
 await flutter();
 await linux();
+await docs();
 
 console.log(written.sort().join("\n"));
-console.log(`\n${written.length} files written to assets/brand/`);
+console.log(`\n${written.length} files written`);

@@ -1,4 +1,7 @@
-# canvist
+<h1 class="brand-title">
+  <img class="brand-light" src="images/brand/lockup.svg" alt="canvist">
+  <img class="brand-dark" src="images/brand/lockup-dark.svg" alt="canvist">
+</h1>
 
 A canvas-based text editor written in Rust.
 
