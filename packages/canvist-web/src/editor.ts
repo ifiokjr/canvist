@@ -184,7 +184,6 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	#blink = 0;
 	#height = 0;
 	#width = 0;
-	#pixels: readonly [number, number] | undefined;
 	#lastFrame: FrameReport | undefined;
 	#focused = false;
 
@@ -234,7 +233,6 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 
 		this.#resize = new ResizeObserver((entries) => this.#observe(entries));
 		this.#resize.observe(element, { box: "content-box" });
-		this.#observeCanvas();
 		this.#listenForViewportChanges();
 		this.#watchScale();
 
@@ -568,15 +566,13 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		}
 
 		// Resizing to the same size is free: the editor compares first.
+		const box = this.#canvas.getBoundingClientRect();
 		this.#wasm.resize(
 			this.#width,
 			height,
 			scale,
-			devicePixels(this.#pixels?.[0], this.#width * scale),
-			// The observer reports a new height a frame late; derive it until then.
-			changed
-				? Math.round(height * scale)
-				: devicePixels(this.#pixels?.[1], height * scale),
+			devicePixels(box.left, box.width, scale),
+			devicePixels(box.top, box.height, scale),
 		);
 
 		return changed;
@@ -592,34 +588,15 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 			if (entry.target === this.#element) {
 				this.#elementResized(entry);
 			}
-
-			if (entry.target === this.#canvas) {
-				this.#canvasResized(entry);
-			}
 		}
 
 		this.#invalidate();
 	}
 
-	/** Wrap to the element's new content width, forgetting the canvas's device size until it is observed again. */
+	/** Wrap to the element's new content width. */
 	#elementResized(entry: ResizeObserverEntry): void {
-		const width = entry.contentBoxSize[0]?.inlineSize ??
+		this.#width = entry.contentBoxSize[0]?.inlineSize ??
 			entry.contentRect.width;
-
-		if (width === this.#width) {
-			return;
-		}
-
-		this.#width = width;
-		this.#pixels = undefined;
-	}
-
-	/** Record the canvas's size in device pixels, where the browser reports it. */
-	#canvasResized(entry: ResizeObserverEntry): void {
-		const size = entry.devicePixelContentBoxSize?.[0];
-		this.#pixels = size === undefined
-			? undefined
-			: [size.inlineSize, size.blockSize];
 	}
 
 	/** Snap to the pixel grid and border widths this browser uses at the current ratio. */
@@ -640,23 +617,9 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 			this.#measurer.forget();
 			this.#wasm.forgetMeasurements();
 			this.#snapToDevice();
-			this.#pixels = undefined;
 			this.#invalidate();
 			this.#watchScale();
 		}, { once: true, signal: this.#abort.signal });
-	}
-
-	/** Watch the canvas's size in device pixels, where the browser reports it. Returns whether it does. */
-	#observeCanvas(): boolean {
-		try {
-			this.#resize.observe(this.#canvas, { box: "device-pixel-content-box" });
-
-			return true;
-		} catch {
-			// Safari has no device-pixel-content-box: sizes are derived from
-			// devicePixelRatio, and zoom changes arrive as window resizes.
-			return false;
-		}
 	}
 
 	/** The element whose scrolling moves the document: the editor itself, or the page. */
@@ -767,15 +730,17 @@ export function borderScale(document: Document): number | null {
 }
 
 /**
- * The device pixel size the observer reported, when it agrees with the CSS
- * size times the device pixel ratio. It is exact where `round` is not (at
- * fractional ratios the browser snaps edges, not sizes), but some
- * emulators report CSS pixels there, so a disagreeing size is ignored.
+ * How many device pixels a box spanning `size` CSS px from `start` covers.
+ * Browsers snap a box's edges to device pixels, not its size, so at
+ * fractional ratios this can differ from `round(size * scale)` by one.
+ * Computed here rather than observed with `device-pixel-content-box`,
+ * which WebKitGTK reports in a way that trips ResizeObserver's loop limit.
  */
-function devicePixels(observed: number | undefined, expected: number): number {
-	return observed !== undefined && Math.abs(observed - expected) <= 1
-		? observed
-		: Math.round(expected);
+function devicePixels(start: number, size: number, scale: number): number {
+	return Math.max(
+		0,
+		Math.round((start + size) * scale) - Math.round(start * scale),
+	);
 }
 
 /** The names of everything `extensions` register as `kind`: their commands or their queries. */
