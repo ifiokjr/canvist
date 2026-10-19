@@ -172,6 +172,13 @@ jobs:
           mc --log-level=info "${args[@]}"
         shell: devenv shell -- bash -e {0}
 
+      # The current Deno, as `headless-js.yml` uses: devenv's is older and
+      # fails JSR's slow-type checks that current releases pass.
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: publish @canvist/headless to JSR
         working-directory: packages/canvist-headless
         run: |
@@ -182,7 +189,6 @@ jobs:
           else
             deno publish
           fi
-        shell: devenv shell -- bash -e {0}
 
       - name: keep publish reports
         if: always()
