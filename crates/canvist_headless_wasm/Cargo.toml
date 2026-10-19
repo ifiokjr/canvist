@@ -1,0 +1,27 @@
+[package]
+name = "canvist_headless_wasm"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = false
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "wasm-bindgen bindings for canvist_headless with no DOM, for Node, Deno, Bun, and Workers"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+canvist_extensions = { workspace = true }
+canvist_headless = { workspace = true, features = ["collab", "starter-kit"] }
+js-sys = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+wasm-bindgen = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,40 @@
+{
+	"name": "@canvist/headless",
+	"version": "0.1.0",
+	"description": "canvist's document model and editing engine with no DOM: ProseMirror JSON, HTML, and Markdown conversion, typed commands, and Yjs collaboration for Node, Deno, Bun, and Workers.",
+	"license": "Unlicense",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/mod.d.ts",
+			"default": "./dist/mod.js"
+		},
+		"./wasm/canvist_headless_wasm_bg.wasm": "./wasm/canvist_headless_wasm_bg.wasm"
+	},
+	"files": [
+		"dist",
+		"wasm/*.js",
+		"wasm/*.d.ts",
+		"wasm/*.wasm"
+	],
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"build:wasm": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm --no-pack && rm packages/canvist-headless/wasm/.gitignore",
+		"generate": "node scripts/generate.ts",
+		"check:generated": "node scripts/generate.ts --check",
+		"check:types": "tsc --noEmit",
+		"test": "node --test tests/*.test.ts",
+		"bench": "node bench/overhead.ts",
+		"build": "tsc -p tsconfig.build.json",
+		"prepack": "npm run build"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0",
+		"typescript": "^7.0.2",
+		"y-protocols": "^1.0.7",
+		"yjs": "^13.6.33",
+		"lib0": "^0.2.115"
+	}
+}

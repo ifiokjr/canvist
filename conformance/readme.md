@@ -6,9 +6,11 @@ The fixtures are plain JSON, so a runner in any language is about a hundred line
 
 ## Runners
 
-| Binding | Runner                                         | Command                                                            |
-| ------- | ---------------------------------------------- | ------------------------------------------------------------------ |
-| Rust    | `crates/canvist_headless/tests/conformance.rs` | `cargo test -p canvist_headless --all-features --test conformance` |
+| Binding           | Runner                                                | Command                                                            |
+| ----------------- | ----------------------------------------------------- | ------------------------------------------------------------------ |
+| Rust              | `crates/canvist_headless/tests/conformance.rs`        | `cargo test -p canvist_headless --all-features --test conformance` |
+| TypeScript (Node) | `packages/canvist-headless/tests/conformance.test.ts` | `npm test` in `packages/canvist-headless`                          |
+| TypeScript (Deno) | the same file                                         | `deno task test` in `packages/canvist-headless`                    |
 
 ## File shape
 
