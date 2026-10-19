@@ -694,7 +694,7 @@ dependencies = [
  "canvist_headless",
  "canvist_layout",
  "js-sys",
- "rustc-hash",
+ "rustc-hash 2.1.1",
  "serde_json",
  "unicode-segmentation",
  "wasm-bindgen",
