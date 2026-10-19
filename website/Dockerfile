@@ -4,6 +4,10 @@
 # assets and the v1 engine from the rest of the repo:
 #
 #   docker build -f website/Dockerfile .
+#
+# On Railway the `website` service sets `dockerfilePath` to website/Dockerfile
+# and builds from the repository root (Railway retired railway.json in favour
+# of a project-wide .railway/railway.ts, which is not set up yet).
 
 FROM denoland/deno:2.8.3 AS build
 WORKDIR /repo
