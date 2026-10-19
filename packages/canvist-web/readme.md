@@ -34,7 +34,7 @@ await editor.plugins.fonts.local(); // installed fonts, where the browser allows
 
 ## Fonts
 
-Installed fonts and every web font the page already declares work with no configuration. `@canvist/web/fonts` loads faces the way `@font-face` does (URLs or bytes, `unicode-range`, `font-display`), adds metric-compatible fallbacks so a font swap barely moves anything, lists local fonts through the Local Font Access API, and writes the same faces as `@font-face` CSS for server rendering. See [The web editor and fonts](../../docs/src/v2/web-host.md).
+Installed fonts and every web font the page already declares work with no configuration. `@canvist/web/fonts` loads faces the way `@font-face` does (URLs or bytes, `unicode-range`, `font-display`), adds metric-compatible fallbacks so a font swap barely moves anything, lists local fonts through the Local Font Access API, and writes the same faces as `@font-face` CSS for server rendering. See [Fonts and text rendering](../../docs/src/guides/fonts.md).
 
 ## Development
 
@@ -47,4 +47,4 @@ npx playwright test    # pixel parity with server-rendered HTML in Chromium, Fir
 node scripts/parity-report.ts
 ```
 
-The parity tests and their thresholds are described in [Rendering parity](../../docs/src/v2/rendering-parity.md).
+The parity tests and their thresholds are described in [Rendering parity](../../docs/src/guides/rendering-parity.md).
