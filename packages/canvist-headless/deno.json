@@ -1,0 +1,20 @@
+{
+	"name": "@canvist/headless",
+	"version": "0.1.0",
+	"license": "Unlicense",
+	"exports": "./src/mod.ts",
+	"publish": {
+		"include": [
+			"src/**/*.ts",
+			"wasm/*.js",
+			"wasm/*.d.ts",
+			"wasm/*.wasm",
+			"readme.md"
+		]
+	},
+	"tasks": {
+		"test": "deno test --allow-read --allow-net --allow-env tests/ examples/",
+		"bench": "deno run --allow-read bench/overhead.ts",
+		"server": "deno run --allow-read --allow-net examples/server/main.ts"
+	}
+}

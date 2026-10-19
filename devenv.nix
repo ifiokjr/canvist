@@ -234,6 +234,8 @@ in
         monostyle check crates/canvist_extensions --fail-under 90
         monostyle check crates/canvist_collab --fail-under 90
         monostyle check crates/canvist_headless --fail-under 90
+        monostyle check crates/canvist_headless_wasm --fail-under 90
+        monostyle check packages/canvist-headless --fail-under 90
       '';
       description = "Require readability and complexity scores of at least 90 for the v2 crates.";
       binary = "bash";

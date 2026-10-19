@@ -7,6 +7,7 @@ members = [
 	"crates/canvist_extensions",
 	"crates/canvist_ffi",
 	"crates/canvist_headless",
+	"crates/canvist_headless_wasm",
 	"crates/canvist_layout",
 	"crates/canvist_model",
 	"crates/canvist_render",
@@ -23,6 +24,7 @@ default-members = [
 	"crates/canvist_extensions",
 	"crates/canvist_ffi",
 	"crates/canvist_headless",
+	"crates/canvist_headless_wasm",
 	"crates/canvist_model",
 	"crates/canvist_layout",
 	"crates/canvist_render",
@@ -141,5 +143,14 @@ wildcard_imports = "allow"
 lto = true
 codegen-units = 1
 
+[profile.release.package.canvist_headless_wasm]
+opt-level = "s"
+
 [profile.release.package.canvist_wasm]
+opt-level = "s"
+
+# WebAssembly packages trade a little speed for size: `wasm-pack build
+# --profile wasm-release`.
+[profile.wasm-release]
+inherits = "release"
 opt-level = "s"

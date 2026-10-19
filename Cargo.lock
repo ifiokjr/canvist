@@ -406,6 +406,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "canvist_headless_wasm"
+version = "0.1.0"
+dependencies = [
+ "canvist_extensions",
+ "canvist_headless",
+ "js-sys",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "canvist_layout"
 version = "0.1.0"
 dependencies = [
