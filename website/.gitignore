@@ -5,3 +5,4 @@ test-results/
 playwright-report/
 shoot.tmp.ts
 .lighthouseci/
+lighthouse-reports/

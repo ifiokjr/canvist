@@ -11,11 +11,15 @@
 		"dev": "deno run -A npm:astro dev",
 		"build": "deno run -A npm:astro build && deno run -A npm:pagefind --site dist",
 		"preview": "deno run --allow-net --allow-read tests/serve.ts 4321",
-		"check": "node node_modules/astro/bin/astro.mjs check && deno check tests/serve.ts rive/generate.ts scripts/subset-fonts.ts scripts/check-links.ts && deno test --no-run tests/unit",
+		"check": "node node_modules/astro/bin/astro.mjs check && deno check tests/serve.ts rive/generate.ts scripts/subset-fonts.ts scripts/check-links.ts scripts/lighthouse-summary.ts && deno test --no-run tests/unit",
 		"test:unit": "deno test --allow-read tests/unit",
 		"test:e2e": "node node_modules/@playwright/test/cli.js test",
 		"rive": "deno run --allow-read --allow-write rive/generate.ts && rive rive --once",
 		"fonts": "deno run --allow-read --allow-write --allow-env scripts/subset-fonts.ts",
-		"check:links": "deno run --allow-read scripts/check-links.ts"
+		"check:links": "deno run --allow-read scripts/check-links.ts",
+		"lighthouse:desktop": "rm -rf .lighthouseci lighthouse-reports/desktop && npx --yes @lhci/cli@0.15.1 collect --config=lighthouserc.desktop.json && mkdir -p lighthouse-reports/desktop && cp .lighthouseci/lhr-*.json lighthouse-reports/desktop/ && npx --yes @lhci/cli@0.15.1 assert --config=lighthouserc.desktop.json",
+		"lighthouse:mobile": "rm -rf .lighthouseci lighthouse-reports/mobile && npx --yes @lhci/cli@0.15.1 collect --config=lighthouserc.mobile.json && mkdir -p lighthouse-reports/mobile && cp .lighthouseci/lhr-*.json lighthouse-reports/mobile/ && npx --yes @lhci/cli@0.15.1 assert --config=lighthouserc.mobile.json",
+		"lighthouse:summary": "deno run --allow-read --allow-env --allow-write scripts/lighthouse-summary.ts",
+		"lighthouse": "deno task lighthouse:desktop ; deno task lighthouse:mobile ; deno task lighthouse:summary"
 	}
 }
