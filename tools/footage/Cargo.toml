@@ -1,0 +1,21 @@
+[package]
+name = "canvist_footage"
+version = "0.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+rust-version.workspace = true
+description = "Renders the launch video's footage with the real canvist model, editor, layout and collaboration crates"
+
+[dependencies]
+canvist_collab = { workspace = true }
+canvist_editor = { workspace = true }
+canvist_extensions = { workspace = true, features = ["starter-kit"] }
+canvist_layout = { workspace = true, features = ["parley"] }
+canvist_model = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true
