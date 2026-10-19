@@ -57,7 +57,11 @@ function valueType(value: unknown): ValueType {
 		case "int": {
 			const min = typeof value.min === "number" ? value.min : undefined;
 			const max = typeof value.max === "number" ? value.max : undefined;
-			return { type: "int", ...(min === undefined ? {} : { min }), ...(max === undefined ? {} : { max }) };
+			return {
+				type: "int",
+				...(min === undefined ? {} : { min }),
+				...(max === undefined ? {} : { max }),
+			};
 		}
 		case "nullable":
 			return { type: "nullable", of: valueType(value.of) };
@@ -130,7 +134,10 @@ function typeScript(type: ValueType): string {
 				return "number";
 			}
 
-			return Array.from({ length: max - min + 1 }, (_, index) => String(min + index)).join(" | ");
+			return Array.from(
+				{ length: max - min + 1 },
+				(_, index) => String(min + index),
+			).join(" | ");
 		}
 		case "nullable":
 			return `${typeScript(type.of)} | null`;
@@ -140,13 +147,19 @@ function typeScript(type: ValueType): string {
 function signature(command: CommandMeta): string {
 	const args = command.args.length === 0
 		? ""
-		: `args: { ${command.args.map((arg) => `${arg.name}: ${typeScript(arg.type)}`).join("; ")} }`;
+		: `args: { ${
+			command.args.map((arg) => `${arg.name}: ${typeScript(arg.type)}`).join(
+				"; ",
+			)
+		} }`;
 
 	return `\t/** ${command.doc} */\n\t${command.name}(${args}): boolean;`;
 }
 
 /** Declarations for every command the registered extensions provide. */
-export function declarations(metadata: unknown): { source: string; commands: number; extensions: number } {
+export function declarations(
+	metadata: unknown,
+): { source: string; commands: number; extensions: number } {
 	const registered = extensions(metadata);
 	const commands = registered.flatMap((extension) => extension.commands);
 	const source = [

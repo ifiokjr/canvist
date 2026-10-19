@@ -62,7 +62,7 @@ impl Reel {
 		doc: &Document,
 		layout: &DocumentLayout,
 		selection: Option<Selection>,
-		overlay: Overlay,
+		overlay: &Overlay,
 	) {
 		let list = display_list(layout, overlay.selection);
 		self.capture_list(doc, layout, &list, selection, overlay);
@@ -76,7 +76,7 @@ impl Reel {
 		layout: &DocumentLayout,
 		list: &DisplayList,
 		selection: Option<Selection>,
-		overlay: Overlay,
+		overlay: &Overlay,
 	) {
 		let (blocks, chrome) = split_layers(doc, layout, list);
 		let blocks: Vec<Json> = blocks
@@ -84,12 +84,23 @@ impl Reel {
 			.map(|(id, layer)| {
 				let bounds = layer.bounds;
 				let svg = self.intern(to_svg(&layer));
-				json!([id.to_string(), svg, round(bounds.x), round(bounds.y), round(bounds.width), round(bounds.height)])
+				json!([
+					id.to_string(),
+					svg,
+					round(bounds.x),
+					round(bounds.y),
+					round(bounds.width),
+					round(bounds.height)
+				])
 			})
 			.collect();
 		let selection_layer = chrome.map(|layer| {
 			let bounds = layer.bounds;
-			json!([self.intern(to_svg(&layer)), round(bounds.x), round(bounds.y)])
+			json!([
+				self.intern(to_svg(&layer)),
+				round(bounds.x),
+				round(bounds.y)
+			])
 		});
 		let caret = selection.and_then(|selection| caret_rect(layout, head_of(selection)?));
 		let peers: Vec<Json> = overlay
@@ -113,8 +124,16 @@ impl Reel {
 		}));
 	}
 
+	/// How many frames record an edit of `kind`, such as `InputRule`.
+	pub fn count_kind(&self, kind: &str) -> usize {
+		self.frames
+			.iter()
+			.filter(|frame| frame["extra"]["kind"].as_str() == Some(kind))
+			.count()
+	}
+
 	/// The reel as JSON, with `meta` describing the scene.
-	pub fn into_json(self, meta: Json) -> Json {
+	pub fn into_json(self, meta: &Json) -> Json {
 		json!({
 			"meta": meta,
 			"width": self.width,
@@ -144,7 +163,12 @@ pub fn display_list(layout: &DocumentLayout, selection: Option<Selection>) -> Di
 
 fn caret_rect(layout: &DocumentLayout, point: canvist_model::Point) -> Option<Json> {
 	let rect = layout.caret_rect(Caret::new(point))?;
-	Some(json!([round(rect.x), round(rect.y), round(rect.width), round(rect.height)]))
+	Some(json!([
+		round(rect.x),
+		round(rect.y),
+		round(rect.width),
+		round(rect.height)
+	]))
 }
 
 /// Split `list` into one display list per top-level block, in document
@@ -158,17 +182,21 @@ fn split_layers(
 	let mut chrome = Vec::new();
 
 	for item in &list.items {
-		match item.block() {
-			Some(block) => groups.entry(root_of(doc, block)).or_default().push(item.clone()),
-			None => chrome.push(item.clone()),
-		}
+		let group = match item.block() {
+			Some(block) => groups.entry(root_of(doc, block)).or_default(),
+			None => &mut chrome,
+		};
+
+		group.push(item.clone());
 	}
 
 	let layer = |items: Vec<DisplayItem>, start: Option<Rect>| {
 		let bounds = items
 			.iter()
 			.map(DisplayItem::bounds)
-			.fold(start, |bounds, rect| Some(bounds.map_or(rect, |bounds| bounds.union(&rect))))
+			.fold(start, |bounds, rect| {
+				Some(bounds.map_or(rect, |bounds| bounds.union(&rect)))
+			})
 			.unwrap_or_default();
 		DisplayList {
 			fonts: list.fonts.clone(),

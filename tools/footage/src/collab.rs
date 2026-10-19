@@ -20,6 +20,8 @@ use canvist_layout::ParleyMeasurer;
 use canvist_layout::Theme;
 use canvist_model::Bias;
 use canvist_model::BlockId;
+use canvist_model::Commit;
+use canvist_model::Content;
 use canvist_model::Document;
 use canvist_model::MarkSet;
 use canvist_model::Point;
@@ -44,9 +46,24 @@ const PEERS: [(&str, &str, &str); 3] = [
 /// The words the three write together, in turn, on the shared last line.
 const TOGETHER: [&str; 6] = ["We", " met", " in", " one", " sentence", "."];
 
+/// The seed document: a heading, then a line for each peer and one more
+/// they share, which must be the last.
+const SEED: &str = "## One page, three carets⏎⏎⏎⏎";
+
 /// While writing apart, updates are delivered every this many keystrokes,
 /// so the peers' edits overlap.
 const BATCH: usize = 3;
+
+/// How far below the top the viewer's layout keeps the document measured.
+const VIEWPORT: f32 = 4_000.0;
+
+/// Record the scene into a reel `width` pixels wide.
+pub fn record(theme: Arc<Theme>, width: f32) -> Result<Json, Error> {
+	let mut room = Room::open(theme, width)?;
+	room.write_apart()?;
+	room.write_together()?;
+	Ok(room.into_json())
+}
 
 struct Peer {
 	user: User,
@@ -57,11 +74,27 @@ struct Peer {
 }
 
 impl Peer {
-	fn typed(&mut self, text: &str) -> Result<canvist_model::Commit, Error> {
+	fn new(user: (&str, &str), (doc, binding): (Document, Binding), line: BlockId) -> Self {
+		let presence = Presence::new(&binding);
+
+		Self {
+			user: User {
+				name: user.0.to_owned(),
+				color: user.1.to_owned(),
+			},
+			doc,
+			binding,
+			presence,
+			caret: Point::new(line, 0),
+		}
+	}
+
+	fn typed(&mut self, text: &str) -> Result<Commit, Error> {
 		let mut transaction = self.doc.transaction();
 		transaction.insert_text(self.caret, text, MarkSet::empty())?;
 		let commit = transaction.commit();
-		self.binding.apply_local(&mut self.doc, &commit, Track::Step)?;
+		self.binding
+			.apply_local(&mut self.doc, &commit, Track::Step)?;
 		self.caret = commit.map(self.caret, Bias::After).point;
 		Ok(commit)
 	}
@@ -73,6 +106,15 @@ impl Peer {
 			Some(Selection::caret(self.caret)),
 		);
 	}
+
+	/// Apply a remote update, keeping this peer's caret on its characters.
+	fn receive(&mut self, update: &[u8]) -> Result<Commit, Error> {
+		let commit = self
+			.binding
+			.apply_update(&mut self.doc, update, Encoding::V1)?;
+		self.caret = commit.map(self.caret, Bias::Before).point;
+		Ok(commit)
+	}
 }
 
 /// What the collaboration scene measured.
@@ -83,113 +125,177 @@ struct Stats {
 	remote_micros: Vec<f64>,
 }
 
-/// Record the scene into a reel `width` pixels wide.
-pub fn record(theme: Arc<Theme>, width: f32) -> Result<Json, Error> {
-	let mut setup = Session::new(theme.clone(), width)?;
-	setup.prepare("## One page, three carets⏎⏎⏎⏎")?;
-	let seed = setup.doc().clone();
-	let schema = seed.schema().clone();
-	let lines: Vec<BlockId> = seed.children(None)[1..5].to_vec();
+/// The three peers, the first peer's view of them, and what was measured.
+struct Room {
+	peers: Vec<Peer>,
+	lines: Vec<BlockId>,
+	view: View,
+	stats: Stats,
+}
 
-	let mut first = Binding::with_client_id(schema.clone(), 1)?;
-	first.seed(&seed)?;
-	let state = first.encode_state(Encoding::V1);
-	let mut first = Some((seed.clone(), first));
-	let mut peers = Vec::new();
+impl Room {
+	/// Seed the document on the first peer and join the others from its
+	/// encoded state, as a server would hand it to them.
+	fn open(theme: Arc<Theme>, width: f32) -> Result<Self, Error> {
+		let mut setup = Session::new(theme.clone(), width)?;
+		setup.prepare(SEED)?;
+		let seed = setup.doc().clone();
+		let schema = seed.schema().clone();
+		let lines = seed.children(None)[1..].to_vec();
 
-	for (index, (name, color, _)) in PEERS.iter().enumerate() {
-		let client = index as u32 + 1;
-		let (doc, binding) = if let Some(seeded) = first.take() {
-			seeded
-		} else {
+		let mut first = Binding::with_client_id(schema.clone(), 1)?;
+		first.seed(&seed)?;
+		let shared = first.encode_state(Encoding::V1);
+		let mut peers = vec![Peer::new((PEERS[0].0, PEERS[0].1), (seed, first), lines[0])];
+
+		for (client, (name, color, _)) in (2..).zip(PEERS.iter().skip(1)) {
 			let mut binding = Binding::with_client_id(schema.clone(), u64::from(client))?;
 			let mut doc = Document::empty(schema.clone(), client);
-			binding.apply_update(&mut doc, &state, Encoding::V1)?;
-			(doc, binding)
+			binding.apply_update(&mut doc, &shared, Encoding::V1)?;
+			peers.push(Peer::new((name, color), (doc, binding), lines[peers.len()]));
+		}
+
+		let view = View::new(&peers[0].doc, theme, width)?;
+		let mut room = Self {
+			peers,
+			lines,
+			view,
+			stats: Stats::default(),
 		};
-		let presence = Presence::new(&binding);
-		peers.push(Peer {
-			user: User {
-				name: (*name).to_owned(),
-				color: (*color).to_owned(),
-			},
-			doc,
-			binding,
-			presence,
-			caret: Point::new(lines[index], 0),
-		});
+		room.sync()?;
+		room.capture("apart")?;
+		Ok(room)
 	}
 
-	let mut view = View::new(&peers[0].doc, theme, width)?;
-	let mut stats = Stats::default();
-	let mut frames = 0;
-	let apart: Vec<Vec<char>> = PEERS.iter().map(|(.., line)| line.chars().collect()).collect();
-	let longest = apart.iter().map(Vec::len).max().unwrap_or(0);
+	/// Every peer types its own line at once, a character per frame, with
+	/// updates delivered in batches.
+	fn write_apart(&mut self) -> Result<(), Error> {
+		let lines: Vec<Vec<char>> = PEERS
+			.iter()
+			.map(|(.., line)| line.chars().collect())
+			.collect();
+		let longest = lines.iter().map(Vec::len).max().unwrap_or(0);
 
-	sync(&mut peers, &mut view, &mut stats)?;
-	view.capture(&mut peers, "apart")?;
-
-	for step in 0..longest {
-		for (index, (peer, line)) in peers.iter_mut().zip(&apart).enumerate() {
-			if let Some(&next) = line.get(step) {
-				let commit = peer.typed(&next.to_string())?;
-
-				if index == 0 {
-					view.layout.apply(&peer.doc, &commit);
+		for step in 0..longest {
+			for (index, line) in lines.iter().enumerate() {
+				if let Some(next) = line.get(step) {
+					self.type_on(index, *next)?;
 				}
 			}
-		}
 
-		frames += 1;
-
-		if frames % BATCH == 0 {
-			sync(&mut peers, &mut view, &mut stats)?;
-		}
-
-		view.capture(&mut peers, "apart")?;
-	}
-
-	sync(&mut peers, &mut view, &mut stats)?;
-	view.capture(&mut peers, "apart")?;
-
-	let meeting = lines[3];
-
-	for peer in &mut peers {
-		peer.caret = Point::new(meeting, 0);
-	}
-
-	view.capture(&mut peers, "converge")?;
-
-	for (turn, word) in TOGETHER.iter().enumerate() {
-		let index = turn % peers.len();
-		let end = text_len(&peers[index].doc, meeting);
-		peers[index].caret = Point::new(meeting, end);
-
-		for next in word.chars() {
-			let commit = peers[index].typed(&next.to_string())?;
-
-			if index == 0 {
-				view.layout.apply(&peers[0].doc, &commit);
+			if (step + 1) % BATCH == 0 {
+				self.sync()?;
 			}
 
-			sync(&mut peers, &mut view, &mut stats)?;
-			view.capture(&mut peers, "together")?;
+			self.capture("apart")?;
 		}
+
+		self.sync()?;
+		self.capture("apart")
 	}
 
-	let converged = peers
-		.windows(2)
-		.all(|pair| pair[0].doc.to_json() == pair[1].doc.to_json());
-	let median = median(&mut stats.remote_micros);
+	/// All three carets move to the shared line, then take turns writing
+	/// one sentence, each word delivered as it is typed.
+	fn write_together(&mut self) -> Result<(), Error> {
+		let meeting = self.lines[PEERS.len()];
 
-	Ok(view.reel.into_json(json!({
-		"scene": "collab",
-		"peers": PEERS.iter().map(|(name, color, _)| json!({ "name": name, "color": color })).collect::<Vec<_>>(),
-		"converged": converged,
-		"updates": stats.updates,
-		"bytesPerUpdate": stats.bytes.checked_div(stats.updates).unwrap_or(0),
-		"remoteMedianMicros": median,
-	})))
+		for peer in &mut self.peers {
+			peer.caret = Point::new(meeting, 0);
+		}
+
+		self.capture("converge")?;
+
+		for (turn, word) in TOGETHER.iter().enumerate() {
+			let index = turn % self.peers.len();
+			let end = text_len(&self.peers[index].doc, meeting);
+			self.peers[index].caret = Point::new(meeting, end);
+
+			for next in word.chars() {
+				self.type_on(index, next)?;
+				self.sync()?;
+				self.capture("together")?;
+			}
+		}
+
+		Ok(())
+	}
+
+	fn type_on(&mut self, index: usize, next: char) -> Result<(), Error> {
+		let peer = &mut self.peers[index];
+		let commit = peer.typed(&next.to_string())?;
+
+		if index == 0 {
+			self.view.layout.apply(&peer.doc, &commit);
+		}
+
+		Ok(())
+	}
+
+	/// Deliver every pending update to every other peer, timing how long
+	/// the first peer takes to apply each one and relay out.
+	fn sync(&mut self) -> Result<(), Error> {
+		let outgoing: Vec<Vec<Vec<u8>>> = self
+			.peers
+			.iter_mut()
+			.map(|peer| peer.binding.take_updates())
+			.collect();
+
+		for (from, updates) in outgoing.iter().enumerate() {
+			for update in updates {
+				self.deliver(from, update)?;
+			}
+		}
+
+		Ok(())
+	}
+
+	fn deliver(&mut self, from: usize, update: &[u8]) -> Result<(), Error> {
+		self.stats.updates += 1;
+		self.stats.bytes += update.len();
+
+		for (index, peer) in self.peers.iter_mut().enumerate() {
+			if index == from {
+				continue;
+			}
+
+			let start = Instant::now();
+			let commit = peer.receive(update)?;
+
+			if index == 0 {
+				self.view.layout.apply(&peer.doc, &commit);
+				self.stats
+					.remote_micros
+					.push(start.elapsed().as_secs_f64() * 1e6);
+			}
+		}
+
+		Ok(())
+	}
+
+	fn capture(&mut self, phase: &str) -> Result<(), Error> {
+		self.view.capture(&mut self.peers, phase)
+	}
+
+	fn into_json(mut self) -> Json {
+		let converged = self
+			.peers
+			.windows(2)
+			.all(|pair| pair[0].doc.to_json() == pair[1].doc.to_json());
+		let peers: Vec<Json> = PEERS
+			.iter()
+			.map(|(name, color, _)| json!({ "name": name, "color": color }))
+			.collect();
+		let meta = json!({
+			"scene": "collab",
+			"peers": peers,
+			"converged": converged,
+			"updates": self.stats.updates,
+			"bytesPerUpdate": self.stats.bytes.checked_div(self.stats.updates).unwrap_or(0),
+			"remoteMedianMicros": median(&mut self.stats.remote_micros),
+		});
+
+		self.view.reel.into_json(&meta)
+	}
 }
 
 /// The first peer's layout and the reel it paints.
@@ -215,22 +321,7 @@ impl View {
 	/// Exchange presence and capture the first peer's view, with every
 	/// caret resolved from Yjs relative positions.
 	fn capture(&mut self, peers: &mut [Peer], phase: &str) -> Result<(), Error> {
-		for peer in peers.iter_mut() {
-			peer.publish();
-		}
-
-		let states: Vec<Vec<u8>> = peers
-			.iter()
-			.map(|peer| peer.presence.encode())
-			.collect::<Result<_, _>>()?;
-
-		for (index, peer) in peers.iter_mut().enumerate() {
-			for (from, state) in states.iter().enumerate() {
-				if from != index {
-					peer.presence.apply(state)?;
-				}
-			}
-		}
+		exchange_presence(peers)?;
 
 		let viewer = &peers[0];
 		let mut carets = vec![(
@@ -238,56 +329,43 @@ impl View {
 			viewer.user.color.clone(),
 			Selection::caret(viewer.caret),
 		)];
+		let collaborators = viewer.presence.collaborators(&viewer.binding, &viewer.doc);
 
-		for collaborator in viewer.presence.collaborators(&viewer.binding, &viewer.doc) {
+		for collaborator in collaborators {
 			if let (Some(user), Some(selection)) = (collaborator.user, collaborator.selection) {
 				carets.push((user.name, user.color, selection));
 			}
 		}
 
 		self.layout
-			.ensure(&viewer.doc, &mut self.measurer, 0.0, 4_000.0)?;
-		self.reel.capture(
-			&viewer.doc,
-			&self.layout,
-			None,
-			Overlay {
-				peers: carets,
-				extra: Some(json!({ "phase": phase })),
-				..Overlay::default()
-			},
-		);
+			.ensure(&viewer.doc, &mut self.measurer, 0.0, VIEWPORT)?;
+		let overlay = Overlay {
+			peers: carets,
+			extra: Some(json!({ "phase": phase })),
+			..Overlay::default()
+		};
+		self.reel.capture(&viewer.doc, &self.layout, None, &overlay);
 		Ok(())
 	}
 }
 
-/// Deliver every pending update to every other peer, timing how long the
-/// first peer takes to apply each remote update.
-fn sync(peers: &mut [Peer], view: &mut View, stats: &mut Stats) -> Result<(), Error> {
-	let outgoing: Vec<Vec<Vec<u8>>> = peers
-		.iter_mut()
-		.map(|peer| peer.binding.take_updates())
-		.collect();
+/// Publish every peer's caret and deliver each awareness state to the
+/// others.
+fn exchange_presence(peers: &mut [Peer]) -> Result<(), Error> {
+	for peer in peers.iter_mut() {
+		peer.publish();
+	}
 
-	for (from, updates) in outgoing.iter().enumerate() {
-		for update in updates {
-			stats.updates += 1;
-			stats.bytes += update.len();
+	let states: Vec<Vec<u8>> = peers
+		.iter()
+		.map(|peer| peer.presence.encode())
+		.collect::<Result<_, _>>()?;
 
-			for (index, peer) in peers.iter_mut().enumerate() {
-				if index == from {
-					continue;
-				}
+	for (index, peer) in peers.iter_mut().enumerate() {
+		let others = states.iter().enumerate().filter(|(from, _)| *from != index);
 
-				let start = Instant::now();
-				let commit = peer.binding.apply_update(&mut peer.doc, update, Encoding::V1)?;
-				peer.caret = commit.map(peer.caret, Bias::Before).point;
-
-				if index == 0 {
-					view.layout.apply(&peer.doc, &commit);
-					stats.remote_micros.push(start.elapsed().as_secs_f64() * 1e6);
-				}
-			}
+		for (_, state) in others {
+			peer.presence.apply(state)?;
 		}
 	}
 
@@ -295,14 +373,15 @@ fn sync(peers: &mut [Peer], view: &mut View, stats: &mut Stats) -> Result<(), Er
 }
 
 fn text_len(doc: &Document, block: BlockId) -> u32 {
-	doc.block(block)
-		.and_then(|block| match block.content() {
-			canvist_model::Content::Inline(text) => Some(text.len()),
-			_ => None,
-		})
-		.unwrap_or(0)
+	let content = doc.block(block).map(canvist_model::Block::content);
+
+	match content {
+		Some(Content::Inline(text)) => text.len(),
+		_ => 0,
+	}
 }
 
+/// The median, to hundredths.
 fn median(values: &mut [f64]) -> Option<f64> {
 	if values.is_empty() {
 		return None;

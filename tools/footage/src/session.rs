@@ -6,6 +6,8 @@
 //! pause that closes the current undo group, `[Mod-b]` any binding, and `[[`
 //! a literal `[`.
 
+use std::iter::Peekable;
+use std::str::Chars;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
@@ -33,17 +35,33 @@ use crate::reel::Overlay;
 use crate::reel::Reel;
 use crate::reel::display_list;
 
-/// The bundled font every measurement uses (SIL Open Font License).
-const FONT: &[u8] = include_bytes!("../../../crates/canvist_layout/tests/fonts/AtkinsonHyperlegible-Regular.ttf");
+/// The bundled Atkinson Hyperlegible faces every measurement uses (SIL Open
+/// Font License, see `fonts/`). Regular comes first, so it is the fallback
+/// for generic families.
+const FONTS: [&[u8]; 4] = [
+	include_bytes!("../../../crates/canvist_layout/tests/fonts/AtkinsonHyperlegible-Regular.ttf"),
+	include_bytes!("../fonts/AtkinsonHyperlegible-Bold.ttf"),
+	include_bytes!("../fonts/AtkinsonHyperlegible-Italic.ttf"),
+	include_bytes!("../fonts/AtkinsonHyperlegible-BoldItalic.ttf"),
+];
+
+/// The time between typed keys.
+const KEY_INTERVAL: Duration = Duration::from_millis(10);
+/// A pause long enough to close an undo group.
+const PAUSE: Duration = Duration::from_secs(1);
 
 /// How far below the top layout keeps the document measured.
 const VIEWPORT: f32 = 4_000.0;
 
-/// A measurer that only knows the bundled font, so every machine measures
+/// A measurer that only knows the bundled faces, so every machine measures
 /// the same widths.
 pub fn measurer() -> ParleyMeasurer {
 	let mut measurer = ParleyMeasurer::new();
-	measurer.register_font(FONT.to_vec());
+
+	for font in FONTS {
+		measurer.register_font(font.to_vec());
+	}
+
 	measurer
 }
 
@@ -75,7 +93,8 @@ impl Session {
 	pub fn new(theme: Arc<Theme>, width: f32) -> Result<Self, Error> {
 		let editor = editor()?;
 		let mut measurer = measurer();
-		let mut layout = DocumentLayout::new(editor.state().doc(), theme, LayoutOptions::new(width));
+		let mut layout =
+			DocumentLayout::new(editor.state().doc(), theme, LayoutOptions::new(width));
 		layout.layout_all(editor.state().doc(), &mut measurer)?;
 
 		Ok(Self {
@@ -106,7 +125,7 @@ impl Session {
 	}
 
 	/// Capture the current state as an untimed frame.
-	pub fn still(&mut self, overlay: Overlay) {
+	pub fn still(&mut self, overlay: &Overlay) {
 		let state = self.editor.state();
 		self.reel
 			.capture(state.doc(), &self.layout, Some(state.selection()), overlay);
@@ -114,7 +133,12 @@ impl Session {
 
 	/// Move the root-level block at `from` to `to` (counted after removal),
 	/// as a drop does, and capture the result.
-	pub fn move_root(&mut self, from: usize, to: usize, extra: serde_json::Value) -> Result<(), Error> {
+	pub fn move_root(
+		&mut self,
+		from: usize,
+		to: usize,
+		extra: serde_json::Value,
+	) -> Result<(), Error> {
 		let move_block = command(move |state| {
 			state.change(EditKind::Structure, |transaction| {
 				transaction.move_blocks((None, from, 1), (None, to))?;
@@ -134,20 +158,28 @@ impl Session {
 		let mut chars = script.chars().peekable();
 
 		while let Some(next) = chars.next() {
-			self.now += Duration::from_millis(10);
-
-			match next {
-				'⏸' => self.now += Duration::from_secs(1),
-				'[' if chars.next_if_eq(&'[').is_some() => self.text("[")?,
-				'[' => {
-					let chord: String = chars.by_ref().take_while(|&close| close != ']').collect();
-					self.chord(&chord)?;
-				}
-				_ => self.glyph(next)?,
-			}
+			self.now += KEY_INTERVAL;
+			self.key(next, &mut chars)?;
 		}
 
 		Ok(())
+	}
+
+	/// Press the key `next` stands for, reading the rest of a `[chord]`
+	/// from `rest`.
+	fn key(&mut self, next: char, rest: &mut Peekable<Chars<'_>>) -> Result<(), Error> {
+		match next {
+			'⏸' => {
+				self.now += PAUSE;
+				Ok(())
+			}
+			'[' if rest.next_if_eq(&'[').is_some() => self.text("["),
+			'[' => {
+				let chord: String = rest.by_ref().take_while(|&close| close != ']').collect();
+				self.chord(&chord)
+			}
+			_ => self.glyph(next),
+		}
 	}
 
 	fn glyph(&mut self, glyph: char) -> Result<(), Error> {
@@ -168,7 +200,9 @@ impl Session {
 
 	fn text(&mut self, text: &str) -> Result<(), Error> {
 		let owned = text.to_owned();
-		self.timed(text, json!(null), move |editor, env| editor.insert_text(&owned, env))
+		self.timed(text, json!(null), move |editor, env| {
+			editor.insert_text(&owned, env)
+		})
 	}
 
 	fn chord(&mut self, chord: &str) -> Result<(), Error> {
@@ -204,19 +238,24 @@ impl Session {
 			return Ok(());
 		}
 
+		let mut fields = json!({
+			"kind": update.as_ref().map(|update| format!("{:?}", update.kind)),
+			"block": caret_root_type(doc, selection),
+		});
+
+		if let (Some(fields), serde_json::Value::Object(extra)) = (fields.as_object_mut(), extra) {
+			fields.extend(extra);
+		}
+
 		let overlay = Overlay {
 			selection: Some(selection),
 			micros: Some(micros),
 			note: Some(input.to_owned()),
 			peers: Vec::new(),
-			extra: Some(json!({
-				"kind": update.as_ref().map(|update| format!("{:?}", update.kind)),
-				"block": caret_root_type(doc, selection),
-				"more": extra,
-			})),
+			extra: Some(fields),
 		};
 		self.reel
-			.capture_list(doc, &self.layout, &list, Some(selection), overlay);
+			.capture_list(doc, &self.layout, &list, Some(selection), &overlay);
 		Ok(())
 	}
 }

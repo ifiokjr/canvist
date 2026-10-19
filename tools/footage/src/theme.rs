@@ -1,5 +1,8 @@
 //! The Wet Caret document theme: the brand's Ink, Paint, and Paper on
-//! the bundled Atkinson Hyperlegible face, scaled from one base size.
+//! the bundled Atkinson Hyperlegible faces, scaled from one base size.
+//!
+//! Every length is a multiple of the base size (`em`), so the same theme
+//! reads the same on a 1080p page and a phone.
 
 use std::sync::Arc;
 
@@ -20,9 +23,10 @@ use canvist_layout::MarkerStyle;
 use canvist_layout::TextPatch;
 use canvist_layout::TextStyle;
 use canvist_layout::Theme;
+use canvist_layout::ThemeBuilder;
 
-/// The family name the bundled font registers, and the name the video
-/// declares with `@font-face`, so the SVG paints with the measured face.
+/// The family name the bundled faces register, and the name the video
+/// declares with `@font-face`, so the SVG paints with the measured faces.
 pub const FAMILY: &str = "Atkinson Hyperlegible";
 
 /// Body text and headings on light backgrounds.
@@ -38,18 +42,56 @@ const SELECTION: Color = Color::rgba(0x3b, 0x2c, 0xf5, 0x38);
 /// Muted rules and borders.
 const RULE: Color = Color::rgb(0xd9, 0xd5, 0xea);
 
+const REGULAR: u16 = 400;
 const BOLD: u16 = 700;
 
-/// The theme at a base font size of `rem` pixels.
-pub fn wet_caret(rem: f32) -> Arc<Theme> {
+/// Body line height, as a multiple of the font size.
+const LINE_HEIGHT: f32 = 1.45;
+/// Headings set tighter than body text.
+const HEADING_LINE_HEIGHT: f32 = 1.1;
+/// The caret's width in em, and its narrowest in pixels.
+const CARET_WIDTH: (f32, f32) = (0.11, 2.0);
+
+/// Heading levels: (level, font size in em, space above in em).
+const HEADINGS: [(i64, f32, f32); 3] = [(1, 1.9, 0.0), (2, 1.35, 0.5), (3, 1.15, 0.4)];
+/// Space below every heading.
+const HEADING_AFTER: f32 = 0.35;
+
+/// Space above and below paragraphs.
+const PARAGRAPH_SPACE: f32 = 0.35;
+/// Space above and below quotes, lists, and code blocks.
+const FIGURE_SPACE: f32 = 0.45;
+/// Space above and below list items, so items read as one block.
+const ITEM_SPACE: f32 = 0.1;
+
+/// The width of a quote's bar, and the gap after it.
+const QUOTE_BAR: (f32, f32) = (0.18, 0.8);
+/// The left padding a list keeps for its markers.
+const LIST_INDENT: f32 = 1.4;
+/// The gap between a list marker and its text.
+const MARKER_GAP: f32 = 0.45;
+/// The side of a task checkbox.
+const CHECKBOX: f32 = 0.8;
+
+/// Code blocks: font size, vertical and horizontal padding, corner radius.
+const CODE_SIZE: f32 = 0.85;
+const CODE_PADDING: (f32, f32) = (0.55, 0.8);
+const CODE_RADIUS: f32 = 0.35;
+
+/// A horizontal rule's thickness in pixels, and its space above and below.
+const RULE_THICKNESS: f32 = 2.0;
+const RULE_SPACE: f32 = 0.8;
+
+/// The theme at a base font size of `em` pixels.
+pub fn wet_caret(em: f32) -> Arc<Theme> {
 	let base = TextStyle {
 		font: FontSpec {
 			family: Arc::from(FAMILY),
-			size: rem,
-			weight: 400,
+			size: em,
+			weight: REGULAR,
 			italic: false,
 		},
-		line_height: 1.45,
+		line_height: LINE_HEIGHT,
 		color: INK,
 		background: None,
 		decorations: Decorations::default(),
@@ -59,16 +101,20 @@ pub fn wet_caret(rem: f32) -> Arc<Theme> {
 		.chrome(Chrome {
 			selection: SELECTION,
 			caret: PAINT,
-			caret_width: (rem / 9.0).max(2.0),
+			caret_width: (CARET_WIDTH.0 * em).max(CARET_WIDTH.1),
 		})
 		.markers(MarkerStyle {
-			gap: 0.45 * rem,
+			gap: MARKER_GAP * em,
 			bullets: vec![Arc::from("•"), Arc::from("◦"), Arc::from("▪")],
-			checkbox: 0.8 * rem,
+			checkbox: CHECKBOX * em,
 			color: Some(PAINT),
 		});
-	let builder = block_rules(rem).into_iter().fold(builder, |builder, rule| builder.block(rule));
-	let builder = mark_rules().into_iter().fold(builder, |builder, rule| builder.mark(rule));
+	let rules = text_rules(em)
+		.into_iter()
+		.chain(container_rules(em))
+		.chain(leaf_rules(em));
+	let builder = rules.fold(builder, ThemeBuilder::block);
+	let builder = mark_rules().into_iter().fold(builder, ThemeBuilder::mark);
 
 	Arc::new(
 		builder
@@ -77,43 +123,46 @@ pub fn wet_caret(rem: f32) -> Arc<Theme> {
 	)
 }
 
-fn block_rules(rem: f32) -> Vec<BlockRule> {
-	let heading = |level: i64, size: f32, before: f32| {
-		BlockRule::new(
-			"heading",
-			BlockPatch::new()
-				.text(
-					TextPatch::new()
-						.size(FontSize::Em(size))
-						.weight(BOLD)
-						.line_height(1.1),
-				)
-				.space(before * rem, 0.35 * rem)
-				.tag(&format!("h{level}")),
-		)
-		.when("level", level)
-	};
+/// Paragraphs and headings.
+fn text_rules(em: f32) -> Vec<BlockRule> {
+	let paragraph = BlockPatch::new()
+		.space(PARAGRAPH_SPACE * em, PARAGRAPH_SPACE * em)
+		.tag("p");
+	let headings = HEADINGS.iter().map(|&(level, size, before)| {
+		let text = TextPatch::new()
+			.size(FontSize::Em(size))
+			.weight(BOLD)
+			.line_height(HEADING_LINE_HEIGHT);
+		let patch = BlockPatch::new()
+			.text(text)
+			.space(before * em, HEADING_AFTER * em)
+			.tag(&format!("h{level}"));
+
+		BlockRule::new("heading", patch).when("level", level)
+	});
+
+	std::iter::once(BlockRule::new("paragraph", paragraph))
+		.chain(headings)
+		.collect()
+}
+
+/// Quotes, lists, and list items with their paragraphs.
+fn container_rules(em: f32) -> Vec<BlockRule> {
 	let list = |marker| {
 		BlockPatch::new()
-			.padding(Insets::new(0.0, 0.0, 0.0, 1.4 * rem))
-			.space(0.4 * rem, 0.4 * rem)
+			.padding(Insets::new(0.0, 0.0, 0.0, LIST_INDENT * em))
+			.space(FIGURE_SPACE * em, FIGURE_SPACE * em)
 			.marker(marker)
 	};
-	let item = || BlockPatch::new().space(0.1 * rem, 0.1 * rem);
+	let item = || BlockPatch::new().space(ITEM_SPACE * em, ITEM_SPACE * em);
+	let quote = BlockPatch::new()
+		.border_left(QUOTE_BAR.0 * em, PAINT)
+		.padding(Insets::new(0.0, 0.0, 0.0, QUOTE_BAR.1 * em))
+		.space(FIGURE_SPACE * em, FIGURE_SPACE * em)
+		.tag("blockquote");
 
 	vec![
-		BlockRule::new("paragraph", BlockPatch::new().space(0.35 * rem, 0.35 * rem).tag("p")),
-		heading(1, 1.9, 0.0),
-		heading(2, 1.35, 0.5),
-		heading(3, 1.15, 0.4),
-		BlockRule::new(
-			"blockquote",
-			BlockPatch::new()
-				.border_left(0.18 * rem, PAINT)
-				.padding(Insets::new(0.0, 0.0, 0.0, 0.8 * rem))
-				.space(0.5 * rem, 0.5 * rem)
-				.tag("blockquote"),
-		),
+		BlockRule::new("blockquote", quote),
 		BlockRule::new("bulletList", list(MarkerKind::Bullet).tag("ul")),
 		BlockRule::new("orderedList", list(MarkerKind::Ordered).tag("ol")),
 		BlockRule::new("taskList", list(MarkerKind::Task).tag("ul")),
@@ -121,25 +170,28 @@ fn block_rules(rem: f32) -> Vec<BlockRule> {
 		BlockRule::new("taskItem", item().tag("li")),
 		BlockRule::new("paragraph", item()).within("listItem"),
 		BlockRule::new("paragraph", item()).within("taskItem"),
-		BlockRule::new(
-			"codeBlock",
-			BlockPatch::new()
-				.text(TextPatch::new().size(FontSize::Em(0.85)).color(PAPER))
-				.padding(Insets::symmetric(0.55 * rem, 0.8 * rem))
-				.background(INK, 0.35 * rem)
-				.space(0.5 * rem, 0.5 * rem)
-				.tag("pre"),
-		),
-		BlockRule::new(
-			"horizontalRule",
-			BlockPatch::new()
-				.leaf(LeafStyle::Rule {
-					thickness: 2.0,
-					color: RULE,
-				})
-				.space(0.8 * rem, 0.8 * rem)
-				.tag("hr"),
-		),
+	]
+}
+
+/// Code blocks and horizontal rules.
+fn leaf_rules(em: f32) -> Vec<BlockRule> {
+	let code = BlockPatch::new()
+		.text(TextPatch::new().size(FontSize::Em(CODE_SIZE)).color(PAPER))
+		.padding(Insets::symmetric(CODE_PADDING.0 * em, CODE_PADDING.1 * em))
+		.background(INK, CODE_RADIUS * em)
+		.space(FIGURE_SPACE * em, FIGURE_SPACE * em)
+		.tag("pre");
+	let rule = BlockPatch::new()
+		.leaf(LeafStyle::Rule {
+			thickness: RULE_THICKNESS,
+			color: RULE,
+		})
+		.space(RULE_SPACE * em, RULE_SPACE * em)
+		.tag("hr");
+
+	vec![
+		BlockRule::new("codeBlock", code),
+		BlockRule::new("horizontalRule", rule),
 	]
 }
 
