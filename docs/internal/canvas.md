@@ -156,25 +156,28 @@ Registration returns a typed handle, as in Decision 8: `let shapes = builder.add
 
 **Input is open-ended:** tools receive `Custom { kind, value }` events beside pointer and key events. A host can feed device motion, MIDI, or a gamepad to a tool. Rotating your phone to sweep a brush is a tool, not a fork.
 
-## Decision C6: rendering with one paint list and three rasterisers
+## Decision C6: rendering through one painter contract and three rasterisers
 
-**What:** the canvas produces a `PaintList` for the viewport: fills, strokes, images, glyph runs, layers (opacity, blend, clip), and effects, in world coordinates, culled to the viewport. Backends turn it into pixels or files:
+**What:** `canvist_paint` walks one page of the scene in paint order, culled to the viewport, and calls a `Painter`: fills, strokes, layers (opacity, blend, clip), images, text runs, and box shadows, in screen space. Every backend implements `Painter`:
 
-| Backend         | Where                                                         | Feature |
-| --------------- | ------------------------------------------------------------- | ------- |
-| `vello` on wgpu | WebGPU in browsers, Metal, Vulkan, DX12 on desktop and mobile | `gpu`   |
-| `vello_hybrid`  | WebGL2 in browsers without WebGPU                             | `webgl` |
-| `vello_cpu`     | Servers, PNG export, Canvas2D fallback (`putImageData`)       | `cpu`   |
-| SVG string      | Export, SSR, snapshot tests                                   | always  |
-| PDF             | Export                                                        | `pdf`   |
+| Backend         | Where                                                          | Feature |
+| --------------- | -------------------------------------------------------------- | ------- |
+| `vello` on wgpu | WebGPU in browsers, Metal, Vulkan, DX12 on desktop and mobile  | `gpu`   |
+| `vello_cpu`     | Servers, PNG export, and the browser fallback (`putImageData`) | `cpu`   |
+| SVG string      | Export, SSR, snapshot tests                                    | always  |
+| `Recorder`      | Tests: the calls themselves                                    | always  |
 
-**Caching:** each node's paint operations are cached by `rev` and world transform. A frame concatenates cached fragments of visible nodes and re-encodes only changed ones; the vello backend uses `Scene::append` for the same effect. During a drag only the dragged nodes re-encode.
+**Why a painter contract instead of a stored paint list:** the walker is cheap enough to run every frame (encoding 10,000 visible nodes for the GPU takes about 1 ms), so a retained list would add memory and invalidation without saving time. If profiles of larger scenes say otherwise, per-node vello fragments cached by `rev` and joined with `Scene::append` are the next step, and the painter contract does not change.
 
-**Culling and level of detail:** an R-tree over world bounds returns the visible nodes in `O(log n + visible)`. Below a size threshold on screen, a node draws as its bounding box in its main colour; tiny text draws as greeked line bars; blurs and shadows are skipped while the camera moves and restored when it settles. For scenes far larger than the GPU can encode per frame, the next step is a tile cache (render tiles at power-of-two zoom levels, reuse them while panning), which the benchmarks decide.
+**The browser fallback is the CPU rasteriser, not WebGL2.** `vello_hybrid` (WebGL2) currently tracks an older `vello_common` and wgpu than `vello` and `vello_cpu`, so shipping it beside them would double the GPU stack in the wasm module. `vello_cpu` rasterises the same 10,000-node frame at 1080p in about 4 ms, fast enough to be the fallback where WebGPU is missing. WebGL2 can return as a separate build once the sparse-strips crates line up.
 
-**The text `DisplayList` fits inside:** a text frame's display list becomes glyph runs, rectangles, and decorations in the paint list, transformed by the frame. The SVG renderer reuses the same structure. Text is measured and shaped with `parley` on every platform for the canvas, so a frame wraps identically in the browser, in a PNG made on the server, and in a PDF.
+**Culling and level of detail:** subtrees whose extent misses the viewport are skipped. Nodes under half a pixel are skipped; nodes under three pixels draw as a box in their main colour; text under four pixels draws as greeked bars; shadows are skipped while the camera moves (`Quality::Interactive`). For scenes far larger than a frame can encode, the next step is a tile cache (render tiles at power-of-two zoom levels and reuse them while panning), which the benchmarks decide.
 
-**Why vello:** it is pure Rust on wgpu, so one renderer covers WebGPU in wasm and native GPU APIs on every platform. Its sparse-strips siblings give a WebGL2 path and a CPU path that draw the same scenes with the same semantics, so a server thumbnail matches the canvas. Writing our own GPU vector renderer is Figma-scale work that vello already did.
+**The text `DisplayList` fits inside:** a text frame's display list becomes glyph runs, rectangles, and decorations, transformed by the frame. The GPU and CPU backends shape runs with `parley` and the bundled font the canvas measures with (Atkinson Hyperlegible), so a frame wraps and draws identically in the browser, in a PNG made on the server, and in SVG.
+
+**What vello does not do yet:** layer and background blurs (skipped), and shadows on non-rectangular shapes (drawn as a blurred rounded rectangle of the node's box). Outside strokes are drawn double width behind the fill, which is exact for opaque fills.
+
+**Why vello:** it is pure Rust on wgpu, so one renderer covers WebGPU in wasm and native GPU APIs on every platform, and `vello_cpu` draws the same scenes with the same semantics, so a server thumbnail matches the canvas. Writing our own GPU vector renderer is Figma-scale work that vello already did.
 
 ## Decision C7: a headless interaction toolkit
 
@@ -198,7 +201,8 @@ Everything a design tool's interaction needs is geometry and state in Rust:
 
 | Metric                                             | Budget                   | Today         |
 | -------------------------------------------------- | ------------------------ | ------------- |
-| Pan/zoom frame (paint list + encode), 10k nodes    | < 8 ms (120 fps capable) | (renderer)    |
+| Pan/zoom frame (walk + encode), 10k nodes          | < 8 ms (120 fps capable) | 0.96 ms       |
+| CPU fallback frame at 1080p, 10k nodes             | < 33 ms                  | 4.1 ms        |
 | Selection hit test, 100k nodes                     | < 1 ms                   | 0.27 µs       |
 | Drag-transform step (steps + index update), 1 node | < 0.5 ms                 | 1.3 µs        |
 | Apply a remote property change                     | < 50 µs                  | 3.4 µs        |
