@@ -350,6 +350,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "canvist_dart"
+version = "0.1.0"
+dependencies = [
+ "canvist_headless",
+ "flutter_rust_bridge",
+ "serde_json",
+]
+
+[[package]]
 name = "canvist_editor"
 version = "0.1.0"
 dependencies = [
@@ -383,11 +392,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "canvist_flutter"
+name = "canvist_headless"
 version = "0.1.0"
 dependencies = [
- "canvist_ffi",
- "flutter_rust_bridge",
+ "base64",
+ "canvist_collab",
+ "canvist_editor",
+ "canvist_extensions",
+ "canvist_layout",
+ "canvist_model",
+ "divan",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "canvist_headless_wasm"
+version = "0.1.0"
+dependencies = [
+ "canvist_headless",
+ "js-sys",
+ "serde_json",
+ "wasm-bindgen",
 ]
 
 [[package]]

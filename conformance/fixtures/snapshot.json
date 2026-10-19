@@ -1,0 +1,25 @@
+{
+	"description": "Snapshots carry content, block ids, and the selection through JSON text.",
+	"cases": [
+		{
+			"name": "a restored document keeps its content and selection",
+			"input": { "format": "markdown", "content": "# Draft\n\nBody text" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [1], "offset": 0 }, "head": { "path": [1], "offset": 4 } },
+				{ "op": "snapshotRoundTrip" },
+				{ "op": "expect", "selection": { "anchor": { "path": [1], "offset": 0 }, "head": { "path": [1], "offset": 4 } } },
+				{ "op": "run", "command": "toggleBold" }
+			],
+			"expect": { "markdown": "# Draft\n\n**Body** text" }
+		},
+		{
+			"name": "a restored document starts a fresh history",
+			"steps": [
+				{ "op": "insertText", "text": "kept" },
+				{ "op": "snapshotRoundTrip" },
+				{ "op": "undo", "applied": false }
+			],
+			"expect": { "text": "kept" }
+		}
+	]
+}

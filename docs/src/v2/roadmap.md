@@ -110,17 +110,29 @@ See [the business model](./business.md).
 - **Release:** crates.io, npm/JSR, pub.dev, Swift Package, and Maven.
 - **Cleanup:** delete the v1 crates (`canvist_core`, `canvist_render`, `canvist_wasm`) once M3 reaches parity with the v1 demo.
 
+## Headless libraries (servers, scripts, tests)
+
+[Decision 9](./architecture.md#decision-9-headless-core-libraries): the model and the editing engine run without any UI, from three languages, against one conformance suite.
+
+- [x] **Rust:** `canvist_headless`. Load and export JSON, HTML, Markdown, and text, run typed commands on explicit selections, take snapshots, act as a Yjs peer and y-sync server (`collab`), and render HTML and SVG (`ssr`). Budget tests cover load and export at 10k paragraphs, per-command overhead, and applying one Yjs update.
+- [x] **Conformance:** `conformance/fixtures`, language-neutral JSON cases (input, operation script, expected output) that every binding runs in CI.
+- [x] **TypeScript:** `@canvist/headless`, wasm-bindgen with no DOM, for Node, Deno, Bun, and Workers, with types generated from extension metadata and a type-level test suite. An example Deno server converts Markdown and serves y-websocket clients. A call costs 0.5–1 µs more than in Rust; the module is 433 KB gzipped, 196 KB of it without collaboration.
+- [x] **Dart:** a pure Dart `canvist` package (`platforms/dart`, no Flutter) over `flutter_rust_bridge` and a build hook, with typed handles generated from the metadata, a `dart:io` server example, and `dart test` on Linux and macOS in CI. `canvist_flutter` builds on it.
+
 ## Platform example matrix
 
-| Platform            | Host crate / package       | Example                 | Automated tests                        |
-| ------------------- | -------------------------- | ----------------------- | -------------------------------------- |
-| Web (vanilla)       | `@canvist/core`            | `examples/web-vanilla`  | Playwright (Chromium, WebKit, Firefox) |
-| React               | `@canvist/react`           | `examples/web-react`    | Playwright                             |
-| Vue                 | `@canvist/vue`             | `examples/web-vue`      | Playwright                             |
-| SSR                 | `@canvist/ssr`             | `examples/web-next-ssr` | Playwright pixel diff for hydration    |
-| macOS/Windows/Linux | `canvist_desktop`          | `examples/desktop`      | CI builds, headless snapshot tests     |
-| iOS (native)        | `CanvistKit` Swift package | `examples/ios`          | XCTest on the iOS Simulator            |
-| Android (native)    | `canvist-android` AAR      | `examples/android`      | androidx.test on the emulator          |
-| Flutter             | `canvist` (pub.dev)        | `examples/flutter`      | `integration_test` on both simulators  |
-| React Native        | `@canvist/react-native`    | `examples/react-native` | Detox or Maestro on the simulators     |
-| Lynx                | `@canvist/lynx`            | `examples/lynx`         | Lynx test runner on the simulators     |
+| Platform                 | Host crate / package        | Example                                     | Automated tests                                         |
+| ------------------------ | --------------------------- | ------------------------------------------- | ------------------------------------------------------- |
+| Server (Rust)            | `canvist_headless`          | `crates/canvist_headless/examples`          | Conformance fixtures, perf budgets, y-sync clients      |
+| Server (Node, Deno, Bun) | `@canvist/headless`         | `packages/canvist-headless/examples/server` | Conformance fixtures in Node and Deno, `tsc` type tests |
+| Server (Dart)            | `canvist` (pure Dart)       | `platforms/dart/example/server.dart`        | Conformance fixtures with `dart test` on Linux          |
+| Web (vanilla)            | `@canvist/core`             | `examples/web-vanilla`                      | Playwright (Chromium, WebKit, Firefox)                  |
+| React                    | `@canvist/react`            | `examples/web-react`                        | Playwright                                              |
+| Vue                      | `@canvist/vue`              | `examples/web-vue`                          | Playwright                                              |
+| SSR                      | `@canvist/ssr`              | `examples/web-next-ssr`                     | Playwright pixel diff for hydration                     |
+| macOS/Windows/Linux      | `canvist_desktop`           | `examples/desktop`                          | CI builds, headless snapshot tests                      |
+| iOS (native)             | `CanvistKit` Swift package  | `examples/ios`                              | XCTest on the iOS Simulator                             |
+| Android (native)         | `canvist-android` AAR       | `examples/android`                          | androidx.test on the emulator                           |
+| Flutter                  | `canvist_flutter` (pub.dev) | `examples/flutter`                          | `integration_test` on both simulators                   |
+| React Native             | `@canvist/react-native`     | `examples/react-native`                     | Detox or Maestro on the simulators                      |
+| Lynx                     | `@canvist/lynx`             | `examples/lynx`                             | Lynx test runner on the simulators                      |

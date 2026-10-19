@@ -2,24 +2,28 @@
 
 canvist ships one Rust core to every platform. This page covers the native pipeline: how the core is compiled and bound for iOS (Swift), Android (Kotlin) and Flutter (Dart), and the exact commands to build and test each one on a simulator or emulator.
 
-> **Placeholder API.** The native surface is deliberately tiny while the v2 engine is designed: an `EditorHandle` with `new()`, `insert_text(offset, text)`, `text()` and `version()`, backed by a plain `String`. Offsets count Unicode scalar values. It exists to prove the build pipeline end to end; the real engine will replace it behind the same handle.
+> **Placeholder API for Swift and Kotlin.** The UniFFI surface is deliberately tiny while the v2 engine is designed: an `EditorHandle` with `new()`, `insert_text(offset, text)`, `text()` and `version()`, backed by a plain `String`. Offsets count Unicode scalar values. It exists to prove the build pipeline end to end; the real engine will replace it behind the same handle. Dart already binds the real engine, through `canvist_headless` (architecture Decision 9).
 
 ## How it fits together
 
 ```text
 crates/canvist_ffi            Rust handle, exported with UniFFI (proc macros)
  ├─ staticlib ─► platforms/apple     CanvistFFI.xcframework + Swift package `Canvist`
- ├─ cdylib ────► platforms/android   jniLibs/*.so + Android library `:canvist`
- └─ rlib ──────► platforms/flutter   flutter_rust_bridge adapter crate + Dart package `canvist_flutter`
+ └─ cdylib ────► platforms/android   jniLibs/*.so + Android library `:canvist`
+
+crates/canvist_headless       the engine with no UI
+ └─ rlib ──────► platforms/dart      flutter_rust_bridge adapter crate + pure Dart package `canvist`
+                  └─► platforms/flutter   Flutter package `canvist_flutter`, which re-exports `canvist`
 ```
 
 | Platform | Binding generator      | Build driver                                                | Package                                    | Tests                                                                      |
 | -------- | ---------------------- | ----------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------- |
 | iOS      | UniFFI → Swift         | `cargo build` per target + `xcodebuild -create-xcframework` | Swift package `platforms/apple`            | XCTest (package) + XCUITest (SwiftUI sample) on an iOS Simulator           |
 | Android  | UniFFI → Kotlin (JNA)  | `cargo ndk` (`arm64-v8a`, `x86_64`)                         | Gradle library `platforms/android/canvist` | androidx.test instrumented tests (library) + Compose UI test (sample)      |
-| Flutter  | flutter_rust_bridge v2 | Dart build hook (native assets)                             | Dart package `platforms/flutter`           | `integration_test` (API + widget flow) on an iOS Simulator and an emulator |
+| Dart     | flutter_rust_bridge v2 | Dart build hook (native assets)                             | Dart package `platforms/dart`              | `dart test` (conformance, API, server) on Linux and macOS, no Flutter      |
+| Flutter  | (from `canvist`)       | (from `canvist`)                                            | Flutter package `platforms/flutter`        | `integration_test` (API + widget flow) on an iOS Simulator and an emulator |
 
-Generated sources and native libraries are build outputs and are not committed (`Sources/Canvist/Canvist.swift`, `Frameworks/`, `jniLibs/`, the Kotlin bindings). The one exception is the flutter_rust_bridge output (`platforms/flutter/lib/src/rust`, `platforms/flutter/rust/src/frb_generated.rs`): the adapter crate is a workspace member, so `cargo build --workspace` needs it, and CI checks it is up to date.
+Generated sources and native libraries are build outputs and are not committed (`Sources/Canvist/Canvist.swift`, `Frameworks/`, `jniLibs/`, the Kotlin bindings). The one exception is the flutter_rust_bridge output (`platforms/dart/lib/src/rust`, `platforms/dart/rust/src/frb_generated.rs`): the adapter crate is a workspace member, so `cargo build --workspace` needs it, and CI checks it is up to date.
 
 ## Why flutter_rust_bridge for Flutter
 
@@ -29,7 +33,9 @@ The two candidates were flutter_rust_bridge v2 (FRB) and calling the UniFFI C AB
 - **FRB generates idiomatic Dart.** Opaque Rust objects become Dart classes with finalizers, errors become typed exceptions, and `#[frb(sync)]` calls are direct synchronous FFI calls, which matters for an editor that will call into layout and hit testing every frame.
 - **Native assets replace per-platform glue.** FRB's `native-assets` backend compiles the crate from a Dart build hook (`hook/build.dart`, via `native_toolchain_rust`), so there is no vendored cargokit, podspec or Gradle plugin. `flutter test`, `flutter run` and `flutter build` build the Rust code for whatever device they target.
 
-The cost is a second binding generator. It stays cheap because `platforms/flutter/rust` is a thin adapter: it wraps `canvist_ffi::EditorHandle` and adds no behaviour, so when the engine lands both bindings change in one place. Revisit if UniFFI ever ships an official, stable Dart backend.
+The cost is a second binding generator. It stays cheap because `platforms/dart/rust` is a thin adapter over `canvist_headless` that adds no behaviour. Revisit if UniFFI ever ships an official, stable Dart backend.
+
+The Rust library lives in the pure Dart package, so `dart run`, `dart test`, and `dart build cli` work without Flutter. flutter_rust_bridge's loader opens the library by file name, which finds it inside a Flutter app bundle but not where the Dart VM keeps native assets, so `platforms/dart/lib/src/load.dart` resolves the library through the VM's native-assets mapping on desktop and keeps flutter_rust_bridge's loader on iOS and Android.
 
 ## Prerequisites
 
@@ -102,13 +108,13 @@ test:flutter                                    # iOS Simulator and Android emul
 CANVIST_FLUTTER_PLATFORMS=android test:flutter  # one platform
 ```
 
-To run the example app: `cd platforms/flutter/example && fvm flutter run`. After changing `platforms/flutter/rust/src/api`, regenerate the bindings and commit the result:
+To run the example app: `cd platforms/flutter/example && fvm flutter run`. After changing `platforms/dart/rust/src/api`, regenerate the bindings and commit the result:
 
 ```sh
-cd platforms/flutter && cargo bin flutter_rust_bridge_codegen generate
+cd platforms/dart && cargo bin flutter_rust_bridge_codegen generate
 ```
 
-`native_toolchain_rust` requires `platforms/flutter/rust/rust-toolchain.toml` with an exact channel and the full target list. Keep its `channel` equal to the workspace `rust-toolchain.toml`.
+`native_toolchain_rust` requires `platforms/dart/rust/rust-toolchain.toml` with an exact channel and the full target list. Keep its `channel` equal to the workspace `rust-toolchain.toml`.
 
 ## Continuous integration
 
@@ -169,4 +175,4 @@ Library sizes (release, `lto = true`):
 - **`No available simulator`**: install a runtime with `xcodebuild -downloadPlatform iOS`, or set `CANVIST_IOS_SIMULATOR`.
 - **`Unknown AVD name`**: the AVD was created in a different AVD home. Check `emulator -list-avds` and `ANDROID_AVD_HOME`.
 - **`requires libraries and applications that depend on it to compile against version 37`**: install `platforms;android-37` with `sdkmanager`.
-- **`The rust-toolchain.toml does not include the target`** (Flutter): add the target to `platforms/flutter/rust/rust-toolchain.toml`.
+- **`The rust-toolchain.toml does not include the target`** (Flutter): add the target to `platforms/dart/rust/rust-toolchain.toml`.

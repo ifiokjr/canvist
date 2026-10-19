@@ -138,6 +138,35 @@ in
       description = "Run the Flutter integration tests on an iOS Simulator and an Android emulator.";
       binary = "bash";
     };
+    "test:dart" = {
+      exec = ''
+        set -e
+        cd "$DEVENV_ROOT/platforms/dart"
+        # The Dart SDK alone is enough; fvm's comes with Flutter when present.
+        dart=(dart)
+        command -v dart >/dev/null || dart=(fvm dart)
+        "''${dart[@]}" pub get
+        "''${dart[@]}" analyze --fatal-infos
+        "''${dart[@]}" run tool/generate.dart --check
+        "''${dart[@]}" test
+      '';
+      description = "Run the pure Dart package's conformance, API, and server tests (no Flutter).";
+      binary = "bash";
+    };
+    "test:headless-js" = {
+      exec = ''
+        set -e
+        cd "$DEVENV_ROOT/packages/canvist-headless"
+        npm ci
+        npm run build:wasm
+        npm run check:generated
+        npm run check:types
+        npm test
+        deno task test
+      '';
+      description = "Build @canvist/headless and run its tests in Node and Deno.";
+      binary = "bash";
+    };
     "test:all" = {
       exec = ''
         set -e
@@ -151,6 +180,9 @@ in
       exec = ''
         set -e
         cargo nextest run --workspace --exclude canvist_wasm --exclude canvist_test
+        # The conformance fixtures for collaboration and the SSR renderer only
+        # run with canvist_headless's optional features.
+        cargo nextest run -p canvist_headless --all-features
       '';
       description = "Run cargo tests with nextest.";
       binary = "bash";
@@ -159,6 +191,7 @@ in
       exec = ''
         set -e
         cargo test --doc --workspace --exclude canvist_wasm --exclude canvist_test
+        cargo test --doc -p canvist_headless --all-features
       '';
       description = "Run documentation tests.";
       binary = "bash";
@@ -166,7 +199,7 @@ in
     "test:perf" = {
       exec = ''
         set -e
-        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --test perf_budgets -- --ignored --test-threads=1 --nocapture
+        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --features canvist_headless/collab --test perf_budgets -- --ignored --test-threads=1 --nocapture
       '';
       description = "Fail when a hot path exceeds its performance budget (release mode; CANVIST_PERF_SLACK scales budgets).";
       binary = "bash";
@@ -229,6 +262,10 @@ in
         monostyle check crates/canvist_editor --fail-under 90
         monostyle check crates/canvist_extensions --fail-under 90
         monostyle check crates/canvist_collab --fail-under 90
+        monostyle check crates/canvist_headless --fail-under 90
+        monostyle check crates/canvist_headless_wasm --fail-under 90
+        monostyle check packages/canvist-headless --fail-under 90
+        monostyle check platforms/dart --fail-under 90
       '';
       description = "Require readability and complexity scores of at least 90 for the v2 crates.";
       binary = "bash";

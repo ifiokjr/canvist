@@ -6,13 +6,15 @@ members = [
 	"crates/canvist_editor",
 	"crates/canvist_extensions",
 	"crates/canvist_ffi",
+	"crates/canvist_headless",
+	"crates/canvist_headless_wasm",
 	"crates/canvist_layout",
 	"crates/canvist_model",
 	"crates/canvist_render",
 	"crates/canvist_test",
 	"crates/canvist_wasm",
 	"docs",
-	"platforms/flutter/rust",
+	"platforms/dart/rust",
 ]
 default-members = [
 	"crates/canvist",
@@ -21,6 +23,8 @@ default-members = [
 	"crates/canvist_editor",
 	"crates/canvist_extensions",
 	"crates/canvist_ffi",
+	"crates/canvist_headless",
+	"crates/canvist_headless_wasm",
 	"crates/canvist_model",
 	"crates/canvist_layout",
 	"crates/canvist_render",
@@ -74,6 +78,7 @@ canvist_core = { path = "./crates/canvist_core", version = "0.1.0" }
 canvist_editor = { path = "./crates/canvist_editor", version = "0.1.0" }
 canvist_extensions = { path = "./crates/canvist_extensions", version = "0.1.0" }
 canvist_ffi = { path = "./crates/canvist_ffi", version = "0.1.0" }
+canvist_headless = { path = "./crates/canvist_headless", version = "0.1.0" }
 canvist_layout = { path = "./crates/canvist_layout", version = "0.1.0" }
 canvist_model = { path = "./crates/canvist_model", version = "0.1.0" }
 canvist_render = { path = "./crates/canvist_render", version = "0.1.0" }
@@ -138,5 +143,14 @@ wildcard_imports = "allow"
 lto = true
 codegen-units = 1
 
+[profile.release.package.canvist_headless_wasm]
+opt-level = "s"
+
 [profile.release.package.canvist_wasm]
+opt-level = "s"
+
+# WebAssembly packages trade a little speed for size: `wasm-pack build
+# --profile wasm-release`.
+[profile.wasm-release]
+inherits = "release"
 opt-level = "s"

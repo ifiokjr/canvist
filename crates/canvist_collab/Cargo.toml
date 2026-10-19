@@ -14,6 +14,11 @@ repository.workspace = true
 rust-version.workspace = true
 description = "Yjs collaboration for canvist documents: a step-to-yrs binding, the y-sync protocol, awareness, and shared undo"
 
+[features]
+# Make `Binding` and `SyncSession` `Send + Sync` (yrs's `sync` feature),
+# for servers that move documents between threads.
+sync = ["yrs/sync"]
+
 [dependencies]
 canvist_model = { workspace = true }
 rustc-hash = { workspace = true, features = ["std"] }

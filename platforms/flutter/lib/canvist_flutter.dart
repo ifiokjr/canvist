@@ -1,7 +1,13 @@
-/// Flutter binding for the canvist Rust core.
+/// Flutter binding for canvist.
 ///
-/// Call `await RustLib.init()` once before creating an [EditorHandle].
+/// The document model and editing engine come from the pure Dart
+/// [`canvist`](../dart) package, re-exported here, so the same code runs on
+/// a Dart server and in a Flutter app. Load the engine once, before
+/// `runApp`:
+///
+/// ```dart
+/// final (:engine, :kit) = await Engine.starterKit();
+/// ```
 library;
 
-export 'src/rust/api/editor.dart';
-export 'src/rust/frb_generated.dart' show RustLib;
+export 'package:canvist/canvist.dart';
