@@ -46,7 +46,7 @@ An annual plan bills its base fee once a year and its overage every month, on th
 
 - **First invoice:** the annual fee prorated to the first of next month.
 - **Then, on the first of each month:** an invoice for the previous month's overage. On the first of the month the subscription renews, the same invoice also carries the full annual fee for the next twelve months.
-- **Cancelling:** for now, ask us to cancel an annual plan. The Customer Portal would end it at the end of the current month rather than the paid year.
+- **Cancelling:** cancel in the Customer Portal. The plan runs to the end of the year you paid for, with overage billed each month until then, and you can renew from the Portal at any time before it ends.
 
 ## If a payment fails
 
