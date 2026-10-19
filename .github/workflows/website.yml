@@ -1,0 +1,171 @@
+name: "website"
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - main
+    paths: &paths
+      - "website/**"
+      - "docs/src/**"
+      - "docs/book.toml"
+      - "crates/*/readme.md"
+      - "packages/*/README.md"
+      - "assets/brand/**"
+      - "packages/canvist/src/**"
+      - "packages/canvist/wasm/**"
+      - ".github/workflows/website.yml"
+  pull_request:
+    paths: *paths
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+defaults:
+  run:
+    working-directory: website
+
+jobs:
+  test:
+    name: check, build and test
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.8.x
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install dependencies
+        run: deno install --frozen
+
+      - name: type check
+        run: deno task check
+
+      - name: unit tests
+        run: deno task test:unit
+
+      - name: build
+        run: deno task build
+
+      - name: check links
+        run: deno task check:links
+
+      - name: install playwright chromium
+        timeout-minutes: 10
+        run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+
+      - name: end-to-end tests
+        run: deno task test:e2e
+        env:
+          CI: "true"
+
+      - name: lighthouse
+        run: npx --yes @lhci/cli@0.15.1 autorun
+        env:
+          LHCI_BUILD_CONTEXT__CURRENT_BRANCH: ${{ github.head_ref || github.ref_name }}
+
+      - name: upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-reports
+          path: |
+            website/playwright-report
+            website/test-results
+            website/.lighthouseci
+
+  image:
+    name: docker image
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: build the image railway deploys
+        run: docker build -f website/Dockerfile -t canvist-website --build-arg SITE_URL=https://canvist.example .
+
+      - name: smoke test the container
+        run: |
+          docker run -d --name website -e PORT=8080 -p 8080:8080 canvist-website
+          for attempt in $(seq 1 20); do curl -fsS -o /dev/null http://127.0.0.1:8080/ && break; sleep 1; done
+          for path in / /pricing /services/sync /docs /docs/v2/architecture /docs/crates/canvist_core /docs/packages/canvist /rive/wet-caret.riv /pagefind/pagefind.js; do
+            status=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080$path")
+            echo "$status $path"
+            test "$status" = 200
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/no-such-page)" = 404
+          curl -s http://127.0.0.1:8080/pricing | grep -q '<link rel="canonical" href="https://canvist.example/pricing">'
+
+  book:
+    name: mdbook build
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install mdbook
+        uses: taiki-e/install-action@v2
+        with:
+          tool: mdbook@0.5.2
+
+      - name: build the book
+        # The site and the book render the same docs/src; both must build.
+        run: mdbook build docs
+
+  visual:
+    name: visual snapshots (macOS)
+    timeout-minutes: 30
+    runs-on: macos-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.8.x
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install dependencies
+        run: deno install --frozen
+
+      - name: build
+        run: deno task build
+
+      - name: install playwright chromium
+        timeout-minutes: 10
+        run: node node_modules/@playwright/test/cli.js install chromium
+
+      - name: visual snapshots
+        run: deno task test:e2e tests/e2e/visual.spec.ts
+        env:
+          CI: "true"
+
+      - name: upload diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-visual-diffs
+          path: website/test-results

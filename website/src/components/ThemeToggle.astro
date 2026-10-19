@@ -1,0 +1,69 @@
+---
+---
+
+<button class="theme-toggle" type="button" aria-label="Use dark theme" data-theme-toggle>
+	<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+		<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"></circle>
+		<path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"></path>
+	</svg>
+</button>
+
+<script>
+	const STORAGE_KEY = "canvist-theme";
+	type Theme = "light" | "dark";
+
+	function systemTheme(): Theme {
+		return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+	}
+
+	function currentTheme(): Theme {
+		const pinned = document.documentElement.dataset["theme"];
+		return pinned === "light" || pinned === "dark" ? pinned : systemTheme();
+	}
+
+	function label(button: HTMLButtonElement): void {
+		const next = currentTheme() === "dark" ? "light" : "dark";
+		button.setAttribute("aria-label", `Use ${next} theme`);
+	}
+
+	for (const button of document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]")) {
+		label(button);
+		button.addEventListener("click", () => {
+			const next: Theme = currentTheme() === "dark" ? "light" : "dark";
+			document.documentElement.dataset["theme"] = next;
+			try {
+				localStorage.setItem(STORAGE_KEY, next);
+			} catch {
+				// Blocked storage only means the choice lasts for this page.
+			}
+			label(button);
+			document.dispatchEvent(new CustomEvent("canvist:theme", { detail: next }));
+		});
+	}
+</script>
+
+<style>
+	.theme-toggle {
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: 2.75rem;
+		height: 2.75rem;
+		border: 0;
+		border-radius: 50%;
+		background: color-mix(in oklab, var(--text) 7%, transparent);
+		color: var(--text);
+		cursor: pointer;
+		transition: transform var(--dur-2) var(--ease-out);
+	}
+
+	.theme-toggle:hover {
+		transform: rotate(180deg);
+	}
+
+	@media (max-width: 40rem) {
+		.theme-toggle {
+			margin-left: auto;
+		}
+	}
+</style>

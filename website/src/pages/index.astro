@@ -1,0 +1,33 @@
+---
+import EveryPixel from "../components/sections/EveryPixel.astro";
+import Everywhere from "../components/sections/Everywhere.astro";
+import Free from "../components/sections/Free.astro";
+import Hero from "../components/sections/Hero.astro";
+import Services from "../components/sections/Services.astro";
+import Speed from "../components/sections/Speed.astro";
+import Start from "../components/sections/Start.astro";
+import Together from "../components/sections/Together.astro";
+import Typed from "../components/sections/Typed.astro";
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+	title="canvist"
+	description="canvist is an open-source rich-text editor that paints every pixel itself. One Rust core renders to a canvas on the web, desktop, iOS, Android, Flutter, React Native and Lynx, with Yjs collaboration and typed APIs."
+>
+	<div class="deck">
+		<Hero />
+		<EveryPixel />
+		<Everywhere />
+		<Together />
+		<Typed />
+		<Speed />
+		<Free />
+		<Services />
+		<Start />
+	</div>
+</Base>
+
+<script>
+	import "../scripts/landing.ts";
+</script>
