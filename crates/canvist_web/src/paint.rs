@@ -320,14 +320,18 @@ impl Painter {
 		context.clip();
 	}
 
-	/// Fill the whole canvas, within any clip, with `background`.
+	/// Fill the whole backing store, within any clip, with `background`.
+	/// It is the CSS size rounded to whole device pixels, so its last row
+	/// or column can reach past the CSS size, and an opaque canvas shows
+	/// black wherever nothing was drawn.
 	fn fill_surface(&mut self, background: Color) {
+		let scale = f64::from(self.surface.scale);
 		self.fill_color(background);
 		self.context.fill_rect(
 			0.0,
 			0.0,
-			f64::from(self.surface.width),
-			f64::from(self.surface.height),
+			f64::from(self.surface.width).max(f64::from(self.surface.pixel_width) / scale),
+			f64::from(self.surface.height).max(f64::from(self.surface.pixel_height) / scale),
 		);
 	}
 
