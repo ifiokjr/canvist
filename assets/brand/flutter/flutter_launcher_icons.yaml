@@ -1,0 +1,24 @@
+# flutter_launcher_icons (0.14+) configuration for a canvist Flutter app.
+# Copy the flutter/ folder into the app and adjust the paths if it lives elsewhere.
+flutter_launcher_icons:
+  image_path: "assets/brand/flutter/icon.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path_ios_dark_transparent: "assets/brand/flutter/icon-ios-dark.png"
+  image_path_ios_tinted_grayscale: "assets/brand/flutter/icon-ios-tinted.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/brand/flutter/icon-foreground.png"
+  adaptive_icon_monochrome: "assets/brand/flutter/icon-monochrome.png"
+  web:
+    generate: true
+    image_path: "assets/brand/flutter/icon-desktop.png"
+    background_color: "#FFFFFF"
+    theme_color: "#17141F"
+  windows:
+    generate: true
+    image_path: "assets/brand/flutter/icon-desktop.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/brand/flutter/icon-desktop.png"

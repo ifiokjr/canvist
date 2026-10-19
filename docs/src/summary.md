@@ -5,6 +5,8 @@
 - [v2 Roadmap](./v2/roadmap.md)
 - [v2 SSR CSS Contract](./v2/ssr-css-contract.md)
 - [Research: Editor Landscape](./research/editor-landscape.md)
+- [Research: Monetisation](./research/monetisation.md)
+- [Business Model](./v2/business.md)
 - [v1 Architecture](./architecture.md)
 - [Getting Started](./getting-started.md)
 - [API Overview](./api-overview.md)
