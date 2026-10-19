@@ -23,13 +23,31 @@ collab = ["dep:canvist_collab", "canvist_collab/sync"]
 # Render server-side HTML and SVG through canvist_layout, measuring text with
 # parley and the bundled Atkinson Hyperlegible font.
 ssr = ["dep:canvist_layout", "canvist_layout/parley"]
+# Load, edit, and export canvas scenes (shapes, frames, images, vector
+# paths, and text frames) as SVG and PNG. With `collab`, scenes are Yjs peers.
+scene = [
+	"starter-kit",
+	"dep:canvist_canvas",
+	"canvist_canvas/editor",
+	"dep:canvist_layout",
+	"canvist_layout/parley",
+	"dep:canvist_paint",
+	"canvist_paint/cpu",
+	"dep:canvist_scene",
+	"dep:kurbo",
+	"canvist_collab?/scene",
+]
 
 [dependencies]
+canvist_canvas = { workspace = true, optional = true }
 canvist_collab = { workspace = true, optional = true }
 canvist_editor = { workspace = true }
 canvist_extensions = { path = "../canvist_extensions", version = "0.1.0", default-features = false, features = ["clipboard"] }
 canvist_layout = { workspace = true, optional = true }
 canvist_model = { workspace = true }
+canvist_paint = { workspace = true, optional = true }
+canvist_scene = { workspace = true, optional = true }
+kurbo = { workspace = true, features = ["std"], optional = true }
 serde_json = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 

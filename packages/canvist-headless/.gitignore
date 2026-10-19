@@ -2,3 +2,5 @@ node_modules/
 dist/
 # Built by `npm run build:wasm`.
 wasm/
+# Built by `npm run build:wasm:scene`.
+wasm-scene/

@@ -13,19 +13,29 @@
 			"types": "./dist/extensions.generated.d.ts",
 			"default": "./dist/extensions.generated.js"
 		},
-		"./wasm/canvist_headless_wasm_bg.wasm": "./wasm/canvist_headless_wasm_bg.wasm"
+		"./scene": {
+			"types": "./dist/scene.d.ts",
+			"default": "./dist/scene.js"
+		},
+		"./wasm/canvist_headless_wasm_bg.wasm": "./wasm/canvist_headless_wasm_bg.wasm",
+		"./wasm-scene/canvist_headless_scene_bg.wasm": "./wasm-scene/canvist_headless_scene_bg.wasm"
 	},
 	"files": [
 		"dist",
 		"wasm/*.js",
 		"wasm/*.d.ts",
-		"wasm/*.wasm"
+		"wasm/*.wasm",
+		"wasm-scene/*.js",
+		"wasm-scene/*.d.ts",
+		"wasm-scene/*.wasm"
 	],
 	"engines": {
 		"node": ">=22"
 	},
 	"scripts": {
-		"build:wasm": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm --no-pack && rm packages/canvist-headless/wasm/.gitignore",
+		"build:wasm": "npm run build:wasm:document && npm run build:wasm:scene",
+		"build:wasm:document": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm --no-pack && rm packages/canvist-headless/wasm/.gitignore",
+		"build:wasm:scene": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm-scene --out-name canvist_headless_scene --no-pack -- --features scene && rm packages/canvist-headless/wasm-scene/.gitignore",
 		"generate": "node scripts/generate.ts",
 		"check:generated": "node scripts/generate.ts --check",
 		"check:types": "tsc --noEmit",

@@ -54,7 +54,7 @@ jobs:
       - name: install dependencies
         run: npm ci
 
-      - name: build wasm
+      - name: build both wasm modules
         run: npm run build:wasm
 
       - name: generated types are up to date

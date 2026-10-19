@@ -244,3 +244,82 @@ fn yjs_updates_at_10k_paragraphs() {
 		Duration::from_micros(20),
 	);
 }
+
+/// Rectangles in the scene budgets' poster.
+#[cfg(feature = "scene")]
+const SCENE_NODES: usize = 10_000;
+/// Rectangles per row of that poster.
+#[cfg(feature = "scene")]
+const SCENE_COLUMNS: usize = 100;
+/// The distance between neighbouring rectangles' origins, in world units.
+#[cfg(feature = "scene")]
+const SCENE_PITCH: usize = 24;
+/// The scale of a PNG thumbnail of the poster: about 600 pixels square.
+#[cfg(feature = "scene")]
+const THUMBNAIL_SCALE: f64 = 0.25;
+
+/// A poster of [`SCENE_NODES`] rounded rectangles, as nested scene JSON.
+#[cfg(feature = "scene")]
+fn scene_json() -> serde_json::Value {
+	let children: Vec<serde_json::Value> = (0..SCENE_NODES)
+		.map(|index| {
+			let (x, y) = (
+				index % SCENE_COLUMNS * SCENE_PITCH,
+				index / SCENE_COLUMNS * SCENE_PITCH,
+			);
+			serde_json::json!({
+				"type": "rectangle",
+				"props": {
+					"size": [20, 20],
+					"radius": [4, 4, 4, 4],
+					"transform": [1, 0, 0, 1, x, y],
+					"fills": [{ "type": "solid", "color": "#3b2cf5" }]
+				}
+			})
+		})
+		.collect();
+
+	serde_json::json!({
+		"type": "canvist-scene",
+		"version": 1,
+		"nodes": [{ "type": "page", "children": children }]
+	})
+}
+
+#[cfg(feature = "scene")]
+#[test]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+fn load_and_export_a_10k_node_scene() {
+	use canvist_headless::ExportOptions;
+	use canvist_headless::SceneEngine;
+
+	let engine = SceneEngine::design_kit();
+	let json = scene_json();
+	let load = median_per_call(LARGE_SAMPLES, 1, || {
+		std::hint::black_box(engine.from_json(&json).expect("load"));
+	});
+	assert_within("load a 10k-node scene", load, Duration::from_millis(50));
+
+	let doc = engine.from_json(&json).expect("load");
+	let svg = median_per_call(LARGE_SAMPLES, 1, || {
+		std::hint::black_box(doc.export_svg(&ExportOptions::default()).expect("svg"));
+	});
+	assert_within(
+		"export a 10k-node scene as SVG",
+		svg,
+		Duration::from_millis(50),
+	);
+
+	let thumbnail = ExportOptions {
+		scale: THUMBNAIL_SCALE,
+		..ExportOptions::default()
+	};
+	let png = median_per_call(LARGE_SAMPLES, 1, || {
+		std::hint::black_box(doc.export_png(&thumbnail).expect("png"));
+	});
+	assert_within(
+		"export a 10k-node PNG thumbnail",
+		png,
+		Duration::from_millis(50),
+	);
+}

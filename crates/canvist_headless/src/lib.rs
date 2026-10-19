@@ -22,6 +22,11 @@
 //! - With the `ssr` feature, a [`Renderer`] produces the HTML and SVG the
 //!   canvas editor would paint, using `canvist_layout` and `parley`. The
 //!   default build pulls in neither.
+//! - With the `scene` feature, a [`SceneEngine`] loads canvas scenes of
+//!   shapes, frames, images, vector paths, and text frames into
+//!   [`SceneDoc`]s, which run canvas commands and export SVG and PNG with
+//!   the renderer the canvas draws with. With `collab` too, a scene is a Yjs
+//!   peer.
 //!
 //! Every binding runs the same language-neutral fixtures in `conformance/`
 //! at the repository root, so a document transformed in Rust, TypeScript, or
@@ -96,6 +101,8 @@ mod snapshot;
 
 #[cfg(feature = "collab")]
 mod collab;
+#[cfg(feature = "scene")]
+mod scene;
 #[cfg(feature = "ssr")]
 mod ssr;
 
@@ -105,6 +112,8 @@ pub use canvist_editor;
 #[cfg(feature = "starter-kit")]
 pub use canvist_extensions;
 pub use canvist_model;
+#[cfg(feature = "scene")]
+pub use canvist_scene;
 #[cfg(feature = "collab")]
 pub use collab::SyncReply;
 #[cfg(feature = "collab")]
@@ -115,6 +124,12 @@ pub use error::ErrorCode;
 pub use error::HeadlessError;
 pub use format::Format;
 pub use position::Position;
+#[cfg(feature = "scene")]
+pub use scene::ExportOptions;
+#[cfg(feature = "scene")]
+pub use scene::SceneDoc;
+#[cfg(feature = "scene")]
+pub use scene::SceneEngine;
 pub use snapshot::Snapshot;
 #[cfg(feature = "ssr")]
 pub use ssr::Renderer;

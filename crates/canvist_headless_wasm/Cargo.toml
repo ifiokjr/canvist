@@ -16,6 +16,12 @@ description = "wasm-bindgen bindings for canvist_headless with no DOM, for Node,
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = []
+# Canvas scenes: a second, larger module (`@canvist/headless/scene`), so the
+# document module stays small.
+scene = ["canvist_headless/scene"]
+
 [dependencies]
 canvist_headless = { workspace = true, features = ["collab", "starter-kit"] }
 js-sys = { workspace = true, features = ["std"] }
