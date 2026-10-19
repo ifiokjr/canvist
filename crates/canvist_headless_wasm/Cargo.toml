@@ -17,7 +17,6 @@ description = "wasm-bindgen bindings for canvist_headless with no DOM, for Node,
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-canvist_extensions = { workspace = true }
 canvist_headless = { workspace = true, features = ["collab", "starter-kit"] }
 js-sys = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }

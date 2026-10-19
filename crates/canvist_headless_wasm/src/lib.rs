@@ -9,8 +9,6 @@
 //! `Uint8Array`s, and every failure is an `Error` named `CanvistError` whose
 //! `code` property is the [`ErrorCode`](canvist_headless::ErrorCode) name.
 
-mod registry;
-
 use canvist_headless::Doc;
 use canvist_headless::Engine;
 use canvist_headless::Format;
@@ -22,8 +20,6 @@ use js_sys::Uint8Array;
 use serde_json::Value as Json;
 use serde_json::json;
 use wasm_bindgen::prelude::*;
-
-use crate::registry::Extensions;
 
 type Result<T> = std::result::Result<T, JsValue>;
 
@@ -82,9 +78,7 @@ impl WasmEngine {
 		reason = "wasm-bindgen hands JavaScript arrays over by value"
 	)]
 	pub fn new(extensions: Vec<String>, client: u32) -> Result<WasmEngine> {
-		let extensions = Extensions::parse(&extensions)
-			.map_err(|reason| error(HeadlessError::Config(reason)))?;
-		let engine = Engine::new(move |builder| extensions.register(builder)).map_err(error)?;
+		let engine = Engine::named(&extensions).map_err(error)?;
 
 		Ok(Self {
 			engine: engine.with_client(client),

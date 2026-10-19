@@ -11,6 +11,7 @@ The fixtures are plain JSON, so a runner in any language is about a hundred line
 | Rust              | `crates/canvist_headless/tests/conformance.rs`        | `cargo test -p canvist_headless --all-features --test conformance` |
 | TypeScript (Node) | `packages/canvist-headless/tests/conformance.test.ts` | `npm test` in `packages/canvist-headless`                          |
 | TypeScript (Deno) | the same file                                         | `deno task test` in `packages/canvist-headless`                    |
+| Dart              | `platforms/dart/test/conformance_test.dart`           | `dart test` in `platforms/dart`                                    |
 
 ## File shape
 

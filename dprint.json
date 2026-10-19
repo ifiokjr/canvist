@@ -49,7 +49,7 @@
 		".local-cache/",
 		"**/pkg/",
 		"**/*.t.md",
-		"platforms/flutter/rust/src/frb_generated.rs",
+		"platforms/dart/rust/src/frb_generated.rs",
 		"packages/canvist-headless/src/extensions.generated.ts",
 		"packages/canvist-headless/wasm",
 		"platforms/flutter/example/android/**",

@@ -8,45 +8,52 @@ import 'ffi_performance.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-  setUpAll(RustLib.init);
+  late Engine engine;
+  late StarterKitHandles kit;
 
-  group('performance', ffiPerformanceTests);
+  setUpAll(() async {
+    (:engine, :kit) = await Engine.starterKit();
+  });
 
-  group('EditorHandle', () {
-    test('starts empty', () {
-      expect(EditorHandle().text(), '');
+  group('performance', () => ffiPerformanceTests(() => engine));
+
+  group('Doc', () {
+    test('starts with one empty paragraph', () {
+      expect(engine.create().export(Format.html), '<p></p>');
     });
 
-    test('inserts text through Rust', () {
-      final editor = EditorHandle()
-        ..insertText(offset: 0, text: 'world')
-        ..insertText(offset: 0, text: 'hello ');
-      expect(editor.text(), 'hello world');
+    test('runs typed commands through Rust', () {
+      final doc = engine.parse(Format.markdown, 'hello world')
+        ..select(const Position([0], 6), const Position([0], 11))
+        ..run(kit.bold.toggleBold());
+      expect(doc.export(Format.markdown), 'hello **world**');
+      expect(doc.query(kit.bold.isBold()), isTrue);
     });
 
-    test('offsets count Unicode scalar values', () {
-      final editor = EditorHandle()
-        ..insertText(offset: 0, text: 'h😀llo')
-        ..insertText(offset: 2, text: '—');
-      expect(editor.text(), 'h😀—llo');
+    test('offsets count UTF-16 code units', () {
+      final doc = engine.parse(Format.text, 'h😀llo')
+        ..select(const Position([0], 3))
+        ..insertText('—');
+      expect(doc.export(Format.text), 'h😀—llo');
     });
 
-    test('rejects offsets past the end', () {
-      final editor = EditorHandle();
+    test('rejects positions that split a character', () {
+      final doc = engine.parse(Format.text, 'h😀llo');
       expect(
-        () => editor.insertText(offset: 1, text: 'x'),
-        throwsA(const OffsetOutOfBounds(offset: 1, length: 0)),
+        () => doc.select(const Position([0], 2)),
+        throwsA(
+          isA<CanvistException>().having(
+            (error) => error.code,
+            'code',
+            ErrorCode.invalidPosition,
+          ),
+        ),
       );
-      expect(editor.text(), '');
-    });
-
-    test('reports the Rust core version', () {
-      expect(EditorHandle().version(), matches(RegExp(r'^\d+\.\d+\.\d+')));
     });
   });
 
   testWidgets('appending text round-trips through Rust', (tester) async {
-    await tester.pumpWidget(const CanvistExampleApp());
+    await tester.pumpWidget(CanvistExampleApp(engine: engine, kit: kit));
     final document = find.byKey(const Key('document'));
     expect(tester.widget<Text>(document).data, 'Empty');
 
@@ -61,5 +68,9 @@ void main() {
     await tester.tap(find.byKey(const Key('append')));
     await tester.pump();
     expect(tester.widget<Text>(document).data, 'hello world');
+
+    await tester.tap(find.byKey(const Key('bold')));
+    await tester.pump();
+    expect(tester.widget<Text>(document).data, '**hello world**');
   });
 }

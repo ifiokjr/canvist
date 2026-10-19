@@ -16,6 +16,7 @@ on:
       - "Cargo.lock"
       - "Cargo.toml"
       - "crates/canvist_ffi/**"
+      - "crates/canvist_headless/**"
       - "platforms/**"
       - "rust-toolchain.toml"
   push:
@@ -115,9 +116,9 @@ jobs:
 
       - name: check flutter_rust_bridge bindings are up to date
         timeout-minutes: 15
-        working-directory: platforms/flutter
+        working-directory: platforms/dart
         run: |
-          flutter pub get
+          dart pub get
           cargo bin flutter_rust_bridge_codegen generate
           git diff --exit-code -- lib/src/rust rust/src
 
