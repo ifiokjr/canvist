@@ -269,6 +269,10 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 			}
 		}
 
+		// Paint in an animation frame, before the browser measures layout for
+		// ResizeObserver. Fonts can finish loading while observers are being
+		// notified, and resizing the canvas then is a ResizeObserver loop.
+		await nextFrame();
 		this.#render();
 	}
 
@@ -734,13 +738,19 @@ export function borderScale(document: Document): number | null {
  * Browsers snap a box's edges to device pixels, not its size, so at
  * fractional ratios this can differ from `round(size * scale)` by one.
  * Computed here rather than observed with `device-pixel-content-box`,
- * which WebKitGTK reports in a way that trips ResizeObserver's loop limit.
+ * which Firefox and Safari don't support, so the size is exact in every
+ * engine and only the element needs observing.
  */
 function devicePixels(start: number, size: number, scale: number): number {
 	return Math.max(
 		0,
 		Math.round((start + size) * scale) - Math.round(start * scale),
 	);
+}
+
+/** Resolve in the next animation frame. */
+function nextFrame(): Promise<void> {
+	return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 /** The names of everything `extensions` register as `kind`: their commands or their queries. */
