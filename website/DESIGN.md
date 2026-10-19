@@ -50,4 +50,4 @@ As you scroll, each chip swings down from its rivet and settles flat. The hero s
 
 - Static HTML with inlined CSS. Scripts are small modules per section, and anything heavy (GSAP, Rive, the v1 wasm engine) loads only when it's needed.
 - The v1 engine (about 420 KB gzipped) loads only as its section nears the viewport, and never on Save-Data or reduced motion.
-- CI enforces Lighthouse 95+ in every category, LCP under 1.5 s and CLS 0 (desktop preset).
+- CI runs Lighthouse on every PR (`deno task lighthouse`) and prints the scores in the run summary. Desktop must reach 95+ in every category, LCP under 1.5 s and CLS 0. Mobile (slow 4G, 4× CPU) must reach the scores and CLS 0, and LCP over 1.5 s shows as a warning.
