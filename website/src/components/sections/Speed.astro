@@ -1,0 +1,298 @@
+---
+import { FRAME_SECONDS, findBudget, loadBudgets } from "../../lib/budgets.ts";
+import { repoPath } from "../../lib/paths.ts";
+import ChipLabel from "../ChipLabel.astro";
+
+const SCALE_MIN = 1e-8; // 10 ns
+const SCALE_MAX = 1e-1; // 100 ms
+const position = (seconds: number) =>
+	(Math.log10(Math.max(seconds, SCALE_MIN) / SCALE_MIN) / Math.log10(SCALE_MAX / SCALE_MIN)) * 100;
+
+const table = loadBudgets(repoPath("docs/src/v2/architecture.md"));
+const { measured, pending, other } = table;
+const lists = [
+	{ title: "Waiting on a host", rows: pending },
+	{ title: "Budgets that aren't timings", rows: other },
+].filter((list) => list.rows.length > 0);
+const headline = findBudget(table, "Apply one keystroke");
+const perFrame = Math.floor(FRAME_SECONDS / headline.today.seconds);
+const formatter = new Intl.NumberFormat("en");
+const ticks = [
+	{ label: "10 ns", seconds: 1e-8 },
+	{ label: "1 µs", seconds: 1e-6 },
+	{ label: "100 µs", seconds: 1e-4 },
+];
+const framePosition = position(FRAME_SECONDS);
+const source = "https://github.com/ifiokjr/canvist/blob/main/docs/src/v2/architecture.md#performance-budgets";
+---
+
+<section class="chip speed" data-chip="5" id="speed" aria-labelledby="speed-title" data-fan-chip>
+	<div class="chip-inner speed__inner" data-speed>
+		<div class="speed__head">
+			<div class="speed__copy">
+				<p class="eyebrow">06 / Measured speed</p>
+				<h2 id="speed-title" class="section-title">Every hot path has a budget. CI holds it.</h2>
+				<p class="lede chip-muted">
+					Each number below is a release-mode test in the repository that fails the build when it goes over. These are today's measurements, read from the architecture doc when this site was built.
+				</p>
+			</div>
+			<p class="speed__hero" aria-label={`${headline.today.text} to apply one keystroke in a 100,000 block document`}>
+				<span class="speed__big">{headline.today.text.replace(" ", " ")}</span>
+				<span class="speed__caption">to apply a keystroke to a 100,000-block document. <b>{formatter.format(perFrame)}</b> of them fit in one 60 Hz frame.</span>
+			</p>
+		</div>
+
+		<div class="bench" role="table" aria-label="Performance budgets and today's measurements">
+			<div class="bench__row bench__row--head" role="row">
+				<span role="columnheader">Hot path</span>
+				<span role="columnheader">Today</span>
+				<span role="columnheader">Budget</span>
+				<span role="columnheader" class="bench__scale-head" aria-hidden="true">
+					{ticks.map((tick) => <i style={`left: ${position(tick.seconds)}%`}>{tick.label}</i>)}
+					<i class="bench__frame-label" style={`left: ${framePosition}%`}>1 frame</i>
+				</span>
+			</div>
+			{
+				measured.map((row) => (
+					<div class="bench__row" role="row">
+						<span role="cell" class="bench__metric">{row.metric}</span>
+						<span role="cell" class="bench__today">{row.todayText}</span>
+						<span role="cell" class="bench__budget">{row.budgetText.replaceAll("<", "under")}</span>
+						<span class="bench__track" aria-hidden="true" style={`--frame: ${framePosition}%`}>
+							<span class="bench__bar" style={`--to: ${position(row.today.seconds)}%`} data-bench-bar />
+							<span class="bench__limit" style={`left: ${position(row.budget.seconds)}%`} />
+						</span>
+					</div>
+				))
+			}
+		</div>
+
+		<div class="speed__pending">
+			{
+				lists.map((list) => (
+					<div class="speed__list">
+						<h3 class="code-label">{list.title}</h3>
+						<ul>
+							{list.rows.map((row) => (
+								<li>
+									<span>{row.metric.replace(/,.*$/, "")}</span>
+									<span class="code-label">
+										budget {row.budgetText.replaceAll("<", "under")} · today {row.todayText}
+									</span>
+								</li>
+							))}
+						</ul>
+					</div>
+				))
+			}
+			<p class="speed__source">
+				<a href={source}>The budget table</a> and the <code>tests/perf_budgets.rs</code> file in each crate are the source of these numbers. Bars use a log scale; the tick on each track is its budget.
+			</p>
+		</div>
+	</div>
+	<ChipLabel id="speed" code={`${measured.length} budgets measured · ${pending.length} waiting on a host`} />
+</section>
+
+<script>
+	import { mountSpeed } from "../../scripts/speed.ts";
+
+	const root = document.querySelector<HTMLElement>("[data-speed]");
+	if (root) mountSpeed(root);
+</script>
+
+<style>
+	.speed__inner {
+		display: grid;
+		gap: var(--s-8);
+	}
+
+	.speed__head {
+		display: grid;
+		grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+		gap: var(--s-7) var(--s-8);
+		align-items: end;
+	}
+
+	.speed__copy {
+		display: grid;
+		gap: var(--s-5);
+	}
+
+	.speed__hero {
+		display: grid;
+		gap: var(--s-3);
+	}
+
+	.speed__big {
+		font-size: var(--t-mega);
+		line-height: 0.85;
+		font-weight: 800;
+		letter-spacing: -0.05em;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	.speed__caption {
+		font-size: var(--t-3);
+		line-height: 1.35;
+		max-width: 30ch;
+	}
+
+	.bench {
+		display: grid;
+		gap: 0;
+		font-size: var(--t-small);
+	}
+
+	.bench__row {
+		display: grid;
+		grid-template-columns: minmax(0, 3.2fr) 6.5rem 7rem minmax(0, 4fr);
+		gap: var(--s-4);
+		align-items: center;
+		padding: var(--s-2) 0;
+		border-bottom: 1px solid color-mix(in oklab, var(--chip-fg) 16%, transparent);
+	}
+
+	.bench__row--head {
+		font-family: var(--font-mono);
+		font-size: 0.6875rem;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: var(--chip-muted);
+		border-bottom-color: color-mix(in oklab, var(--chip-fg) 40%, transparent);
+	}
+
+	.bench__today,
+	.bench__budget {
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	.bench__today {
+		font-weight: 600;
+	}
+
+	.bench__budget {
+		color: var(--chip-muted);
+	}
+
+	.bench__scale-head {
+		position: relative;
+		height: 1.25em;
+	}
+
+	.bench__scale-head i {
+		position: absolute;
+		top: 0;
+		font-style: normal;
+		white-space: nowrap;
+		transform: translateX(-50%);
+	}
+
+	.bench__scale-head i:first-child {
+		transform: none;
+	}
+
+	.bench__frame-label {
+		color: var(--chip-fg);
+	}
+
+	.bench__track {
+		position: relative;
+		height: 0.875rem;
+		border-radius: 999px;
+		background:
+			linear-gradient(90deg, transparent calc(var(--frame) - 1px), color-mix(in oklab, var(--chip-fg) 60%, transparent) 0 calc(var(--frame) + 1px), transparent 0),
+			color-mix(in oklab, var(--chip-fg) 10%, transparent);
+	}
+
+	.bench__bar {
+		position: absolute;
+		inset: 0 auto 0 0;
+		width: var(--to);
+		border-radius: 999px;
+		background: var(--chip-caret);
+		transform-origin: left center;
+	}
+
+	.bench__limit {
+		position: absolute;
+		top: -0.25rem;
+		bottom: -0.25rem;
+		width: 2px;
+		margin-left: -1px;
+		border-radius: 1px;
+		background: var(--chip-fg);
+	}
+
+	.speed__pending {
+		display: grid;
+		gap: var(--s-3);
+		max-width: 52rem;
+	}
+
+	.speed__list {
+		display: grid;
+		gap: var(--s-3);
+	}
+
+	.speed__pending h3 {
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.speed__pending ul {
+		display: grid;
+		gap: var(--s-2);
+		padding: 0;
+		list-style: none;
+	}
+
+	.speed__pending li {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: var(--s-1) var(--s-4);
+		padding-bottom: var(--s-2);
+		border-bottom: 1px dashed color-mix(in oklab, var(--chip-fg) 24%, transparent);
+	}
+
+	.speed__pending li .code-label {
+		color: var(--chip-muted);
+	}
+
+	.speed__source {
+		font-size: var(--t-small);
+		color: var(--chip-muted);
+	}
+
+	@media (max-width: 64rem) {
+		.speed__head {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	@media (max-width: 48rem) {
+		.bench__row {
+			grid-template-columns: minmax(0, 1fr) auto;
+			gap: var(--s-1) var(--s-4);
+		}
+
+		.bench__row--head {
+			display: none;
+		}
+
+		.bench__metric {
+			grid-column: 1 / -1;
+		}
+
+		.bench__budget {
+			text-align: right;
+		}
+
+		.bench__track {
+			grid-column: 1 / -1;
+		}
+	}
+</style>
