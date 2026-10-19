@@ -13,6 +13,7 @@ members = [
 	"crates/canvist_wasm",
 	"docs",
 	"platforms/flutter/rust",
+	"tools/footage",
 ]
 default-members = [
 	"crates/canvist",
