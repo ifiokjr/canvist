@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
-
 /**
  * Reads the "Performance budgets" table from `docs/src/v2/architecture.md` at
  * build time, so the site's numbers are the repository's numbers. The table
  * is enforced by `tests/perf_budgets.rs` in each crate.
  */
+import { readFileSync } from "node:fs";
+
 /** A duration in seconds, with the text it was parsed from. */
 export interface Measure {
 	seconds: number;
@@ -41,6 +41,24 @@ export function parseDuration(cell: string): Measure | undefined {
 	};
 }
 
+const TRAILING_UNIT = /(µs|us|ms|ns|s)\s*$/;
+
+/**
+ * The first duration in a cell that may hold several: `83 µs / 1.4 ms` gives
+ * 83 µs, and `19 / 7 / 2.4 ms` gives 19 ms, borrowing the unit written once
+ * at the end.
+ */
+export function firstDuration(cell: string): Measure | undefined {
+	const parts = cell.split("/").map((part) => part.trim());
+	const first = parts[0] ?? "";
+	const unit = TRAILING_UNIT.exec(parts.at(-1) ?? "")?.[1];
+	return parseDuration(
+		unit !== undefined && !TRAILING_UNIT.test(first)
+			? `${first} ${unit}`
+			: first,
+	);
+}
+
 function stripFootnotes(cell: string): string {
 	return cell.replace(/[¹²³⁴]/g, "").trim();
 }
@@ -66,9 +84,9 @@ export function parseBudgetTable(markdown: string): Budget[] {
 			budgetText,
 			todayText,
 		};
-		// Paired cells ("83 µs / 1.4 ms") chart their first value; the text keeps both.
-		const budget = parseDuration(budgetText.split(" / ")[0] ?? "");
-		const today = parseDuration(todayText.split(" / ")[0] ?? "");
+		// Paired cells ("83 µs / 1.4 ms") chart their first value; the text keeps all.
+		const budget = firstDuration(budgetText);
+		const today = firstDuration(todayText);
 		if (budget && today) {
 			entry.budget = budget;
 			entry.today = today;
@@ -82,20 +100,25 @@ export type MeasuredBudget =
 	& Required<Pick<Budget, "budget" | "today">>;
 
 export interface BudgetTable {
-	/** Rows with a measured number today, ready to chart. */
+	/** Rows with a measured duration today, ready to chart. */
 	measured: MeasuredBudget[];
-	/** Rows still waiting on a host (the web painter, M3). */
+	/** Rows waiting on a milestone, such as the web host (M3). */
 	pending: Budget[];
+	/** Budgets that aren't durations, such as sizes and stress tests. */
+	other: Budget[];
 }
 
+const WAITING = /\(M\d+\)/;
+
 export function splitBudgets(rows: Budget[]): BudgetTable {
+	const measured = rows.filter((row): row is MeasuredBudget =>
+		row.budget !== undefined && row.today !== undefined
+	);
+	const rest = rows.filter((row) => !measured.includes(row as MeasuredBudget));
 	return {
-		measured: rows.filter((row): row is MeasuredBudget =>
-			row.budget !== undefined && row.today !== undefined
-		),
-		pending: rows.filter((row) =>
-			row.today === undefined || row.budget === undefined
-		),
+		measured,
+		pending: rest.filter((row) => WAITING.test(row.todayText)),
+		other: rest.filter((row) => !WAITING.test(row.todayText)),
 	};
 }
 

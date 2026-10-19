@@ -9,7 +9,11 @@ const position = (seconds: number) =>
 	(Math.log10(Math.max(seconds, SCALE_MIN) / SCALE_MIN) / Math.log10(SCALE_MAX / SCALE_MIN)) * 100;
 
 const table = loadBudgets(repoPath("docs/src/v2/architecture.md"));
-const { measured, pending } = table;
+const { measured, pending, other } = table;
+const lists = [
+	{ title: "Waiting on a host", rows: pending },
+	{ title: "Budgets that aren't timings", rows: other },
+].filter((list) => list.rows.length > 0);
 const headline = findBudget(table, "Apply one keystroke");
 const perFrame = Math.floor(FRAME_SECONDS / headline.today.seconds);
 const formatter = new Intl.NumberFormat("en");
@@ -64,17 +68,23 @@ const source = "https://github.com/ifiokjr/canvist/blob/main/docs/src/v2/archite
 		</div>
 
 		<div class="speed__pending">
-			<h3 class="code-label">Waiting on a host</h3>
-			<ul>
-				{
-					pending.map((row) => (
-						<li>
-							<span>{row.metric.replace(/,.*$/, "")}</span>
-							<span class="code-label">budget {row.budgetText.replace("<", "under")} · today {row.todayText}</span>
-						</li>
-					))
-				}
-			</ul>
+			{
+				lists.map((list) => (
+					<div class="speed__list">
+						<h3 class="code-label">{list.title}</h3>
+						<ul>
+							{list.rows.map((row) => (
+								<li>
+									<span>{row.metric.replace(/,.*$/, "")}</span>
+									<span class="code-label">
+										budget {row.budgetText.replaceAll("<", "under")} · today {row.todayText}
+									</span>
+								</li>
+							))}
+						</ul>
+					</div>
+				))
+			}
 			<p class="speed__source">
 				<a href={source}>The budget table</a> and the <code>tests/perf_budgets.rs</code> file in each crate are the source of these numbers. Bars use a log scale; the tick on each track is its budget.
 			</p>
@@ -220,6 +230,11 @@ const source = "https://github.com/ifiokjr/canvist/blob/main/docs/src/v2/archite
 		display: grid;
 		gap: var(--s-3);
 		max-width: 52rem;
+	}
+
+	.speed__list {
+		display: grid;
+		gap: var(--s-3);
 	}
 
 	.speed__pending h3 {

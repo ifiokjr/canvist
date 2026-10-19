@@ -1,6 +1,7 @@
-import { assert, assertEquals } from "@std/assert";
+import { assert, assertAlmostEquals, assertEquals } from "@std/assert";
 import {
 	findBudget,
+	firstDuration,
 	loadBudgets,
 	parseBudgetTable,
 	parseDuration,
@@ -15,6 +16,14 @@ Deno.test("parseDuration reads the units the budget table uses", () => {
 	assertEquals(parseDuration("24 ms")?.text, "24 ms");
 	assertEquals(parseDuration("83 µs / 1.4 ms"), undefined);
 	assertEquals(parseDuration("(M3)"), undefined);
+});
+
+Deno.test("firstDuration reads paired cells, borrowing a unit written once at the end", () => {
+	assertEquals(firstDuration("83 µs / 1.4 ms")?.text, "83 µs");
+	assertAlmostEquals(firstDuration("< 200 µs / < 2 ms")?.seconds ?? 0, 200e-6);
+	assertEquals(firstDuration("19 / 7 / 2.4 ms")?.text, "19 ms");
+	assertEquals(firstDuration("1,058 KB (433 KB gz)"), undefined);
+	assertEquals(firstDuration("layout 0.6 ms (M2)"), undefined);
 });
 
 Deno.test("parseBudgetTable fails loudly when the section is missing", () => {

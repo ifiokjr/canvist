@@ -51,7 +51,11 @@ for (const scheme of ["light", "dark"] as const) {
 				await page.setViewportSize({ width, height: 900 });
 				await open(page, "/");
 				for (const id of SECTIONS) {
-					const section = page.locator(`#${id}`);
+					// The speed chip's table and headline come from the repo's budget
+					// table, which grows with every benchmark; snapshot its fixed header.
+					const section = id === "speed"
+						? page.locator("#speed .speed__copy")
+						: page.locator(`#${id}`);
 					await section.scrollIntoViewIfNeeded();
 					await expect(section).toHaveScreenshot(
 						`${id}-${width}-${scheme}.png`,
