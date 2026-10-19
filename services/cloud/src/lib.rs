@@ -31,6 +31,7 @@ mod server;
 
 pub mod auth;
 pub mod config;
+pub mod metering;
 pub mod names;
 pub mod store;
 pub mod sync;

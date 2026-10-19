@@ -93,7 +93,7 @@ impl Client {
 		})
 	}
 
-	/// Connect to `url` and wait for the first sync.
+	/// Connect to `url` and wait up to five seconds for the first sync.
 	pub fn connect(
 		&mut self,
 		transport: Transport,
@@ -101,12 +101,29 @@ impl Client {
 		document: &str,
 		token: &str,
 	) -> Connected {
+		self.connect_within(transport, (url, document, token), 5000)
+	}
+
+	/// Connect, waiting at most `timeout_ms` for the first sync, as when
+	/// the sync is expected to pause.
+	pub fn connect_within(
+		&mut self,
+		transport: Transport,
+		(url, document, token): (&str, &str, &str),
+		timeout_ms: u64,
+	) -> Connected {
 		let transport = match transport {
 			Transport::YWebsocket => "y-websocket",
 			Transport::Hocuspocus => "hocuspocus",
 		};
 		let replies = self.send(&json!({
-			"connect": { "transport": transport, "url": url, "document": document, "token": token },
+			"connect": {
+				"transport": transport,
+				"url": url,
+				"document": document,
+				"token": token,
+				"timeout_ms": timeout_ms.to_string(),
+			},
 		}));
 		let reply = &replies[0];
 		Connected {
@@ -147,6 +164,12 @@ impl Client {
 				.collect(),
 			peers: reply["peers"].as_u64().unwrap_or(0),
 		}
+	}
+
+	/// Wait up to ten seconds for the first sync.
+	pub fn wait_synced(&mut self) -> bool {
+		let replies = self.send(&json!({ "wait_synced": true }));
+		replies[0]["synced"].as_bool().unwrap_or(false)
 	}
 
 	/// Close the connection.

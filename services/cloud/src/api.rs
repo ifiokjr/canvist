@@ -4,6 +4,7 @@ use axum::Json;
 use axum::Router;
 use axum::body::Bytes;
 use axum::extract::Path;
+use axum::extract::Query;
 use axum::extract::State;
 use axum::http::HeaderMap;
 use axum::http::StatusCode;
@@ -25,6 +26,10 @@ use crate::auth::MAX_TOKEN_SECONDS;
 use crate::auth::Principal;
 use crate::auth::Scope;
 use crate::error::ApiError;
+use crate::metering::Month;
+use crate::metering::Plan;
+use crate::metering::Standing;
+use crate::metering::Terms;
 use crate::names::DocumentKey;
 use crate::names::DocumentName;
 use crate::names::Environment;
@@ -50,7 +55,9 @@ pub fn router(app: SharedApp) -> Router {
 		.route("/readyz", get(ready))
 		.route("/v1/admin/projects", post(create_project))
 		.route("/v1/admin/projects/{project}/keys", post(create_key))
-		.route("/v1/admin/stats", get(stats));
+		.route("/v1/admin/stats", get(stats))
+		.route("/v1/admin/projects/{project}/terms", put(set_terms))
+		.route("/v1/usage", get(usage));
 
 	if app.config.role.serves_sync() {
 		router = router.merge(sync_routes());
@@ -339,6 +346,70 @@ async fn create_key(
 		StatusCode::CREATED,
 		Json(json!({ "project": project, "environment": request.environment, "key": key.secret })),
 	))
+}
+
+#[derive(Debug, Deserialize)]
+struct UsageQuery {
+	month: Option<String>,
+}
+
+/// `GET /v1/usage?month=YYYY-MM`: the project's active documents and
+/// conversions this month (or `month`), against its plan.
+async fn usage(
+	State(app): State<SharedApp>,
+	Query(query): Query<UsageQuery>,
+	headers: HeaderMap,
+) -> Result<Json<JsonValue>, ApiError> {
+	let principal = app.server_principal(&headers).await?;
+	let month = match query.month {
+		Some(month) => {
+			month
+				.parse::<Month>()
+				.map_err(|error| ApiError::bad_request(error.to_string()))?
+		}
+		None => Month::current(),
+	};
+	let terms = app.store.terms(&principal.project).await?;
+	let environments = app.store.usage(&principal.project, month).await?;
+	let active: u64 = environments.iter().map(|row| row.active_documents).sum();
+
+	Ok(Json(json!({
+		"project": principal.project,
+		"month": month.to_string(),
+		"plan": terms.plan,
+		"included_documents": terms.included_documents,
+		"active_documents": active,
+		"standing": Standing::of(&terms, active),
+		"environments": environments,
+	})))
+}
+
+#[derive(Debug, Deserialize)]
+struct TermsRequest {
+	plan: Plan,
+	included_documents: Option<u64>,
+	stripe_customer: Option<String>,
+}
+
+/// `PUT /v1/admin/projects/{project}/terms`: change a project's plan.
+async fn set_terms(
+	State(app): State<SharedApp>,
+	Path(project): Path<String>,
+	headers: HeaderMap,
+	Json(request): Json<TermsRequest>,
+) -> Result<Json<JsonValue>, ApiError> {
+	app.authorize_admin(&headers)?;
+	let project = crate::names::ProjectId::new(project);
+	let terms = Terms {
+		plan: request.plan,
+		included_documents: request
+			.included_documents
+			.or_else(|| request.plan.included_documents()),
+		stripe_customer: request.stripe_customer,
+	};
+	app.store.set_terms(&project, &terms).await?;
+
+	Ok(Json(json!({ "project": project, "terms": terms })))
 }
 
 async fn stats(

@@ -28,3 +28,18 @@ pub fn update(update: Vec<u8>) -> Vec<u8> {
 pub fn awareness(update: AwarenessUpdate) -> Vec<u8> {
 	Message::Awareness(update).encode_v1()
 }
+
+/// An awareness update with no states, which every client accepts and
+/// ignores. Paused sessions send it so clients that reconnect after a
+/// silent period stay connected.
+pub fn keepalive() -> Vec<u8> {
+	awareness(AwarenessUpdate {
+		clients: std::collections::HashMap::new(),
+	})
+}
+
+/// A y-websocket auth message denying access with `reason`. y-websocket
+/// clients log it and stay connected.
+pub fn permission_denied(reason: &str) -> Vec<u8> {
+	Message::Auth(Some(reason.to_owned())).encode_v1()
+}

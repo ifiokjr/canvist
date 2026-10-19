@@ -19,6 +19,9 @@ use crate::api;
 use crate::app::App;
 use crate::app::SharedApp;
 use crate::config::Config;
+use crate::metering::Meter;
+use crate::metering::stripe::StripeMeter;
+use crate::metering::stripe::StripeWorker;
 use crate::store::Store;
 use crate::store::StoreError;
 use crate::sync::Rooms;
@@ -29,6 +32,12 @@ use crate::sync::Webhooks;
 const SOCKET_DRAIN: Duration = Duration::from_secs(10);
 /// How long shutdown waits for queued webhooks.
 const WEBHOOK_DRAIN: Duration = Duration::from_secs(5);
+
+/// Background workers that finish their queues at shutdown.
+struct Workers {
+	webhooks: WebhookWorker,
+	stripe: Option<StripeWorker>,
+}
 
 /// A failure to start.
 #[derive(Debug, thiserror::Error)]
@@ -80,16 +89,22 @@ impl Server {
 		let (stop, stopped) = watch::channel(false);
 
 		let (webhooks, worker) = Webhooks::start(store.clone());
+		let (stripe, stripe_worker) = config.stripe.clone().map(StripeMeter::start).unzip();
+		let meter = Meter::new(store.clone(), stripe);
 		let rooms = Rooms::new(store.clone(), config.sync.clone(), webhooks);
 		let sockets = TaskTracker::new();
 		let app = Arc::new(App::new(
 			config,
 			store,
-			rooms,
+			(rooms, meter),
 			stopped.clone(),
 			sockets.clone(),
 		));
-		let task = tokio::spawn(run(app.clone(), listener, stopped, sockets, worker));
+		let workers = Workers {
+			webhooks: worker,
+			stripe: stripe_worker,
+		};
+		let task = tokio::spawn(run(app.clone(), listener, stopped, sockets, workers));
 		tracing::info!(%addr, role = ?app.config.role, "canvist cloud listening");
 		Ok(Self {
 			addr,
@@ -129,7 +144,7 @@ async fn run(
 	listener: TcpListener,
 	stopped: watch::Receiver<bool>,
 	sockets: TaskTracker,
-	worker: WebhookWorker,
+	workers: Workers,
 ) -> ShutdownReport {
 	let flush = tokio::spawn(flush_loop(app.clone(), stopped.clone()));
 	let router = api::router(app.clone());
@@ -156,7 +171,12 @@ async fn run(
 
 	let persist_failures = app.rooms.flush_all().await;
 	drop(app);
-	worker.drain(WEBHOOK_DRAIN).await;
+	workers.webhooks.drain(WEBHOOK_DRAIN).await;
+
+	if let Some(stripe) = workers.stripe {
+		stripe.drain(WEBHOOK_DRAIN).await;
+	}
+
 	tracing::info!(persist_failures, "shutdown complete");
 	ShutdownReport { persist_failures }
 }

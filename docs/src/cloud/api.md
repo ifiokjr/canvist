@@ -4,11 +4,11 @@ canvist Cloud runs the `canvist_cloud` server. Every route below works the same 
 
 ## Credentials
 
-| Credential   | Looks like       | Who holds it                    | What it can do                                                       |
-| ------------ | ---------------- | ------------------------------- | -------------------------------------------------------------------- |
-| API key      | `ck_…`           | Your servers only               | Every REST route for one project environment; open any document      |
-| Client token | a JWT (`eyJ…`)   | Browsers and apps, for an hour  | Open the documents its `document` claim covers, `read` or `write`    |
-| Admin token  | anything you set | The operator (`CANVIST_ADMIN_TOKEN`) | Create projects and keys; admin routes are off without it       |
+| Credential   | Looks like       | Who holds it                         | What it can do                                                    |
+| ------------ | ---------------- | ------------------------------------ | ----------------------------------------------------------------- |
+| API key      | `ck_…`           | Your servers only                    | Every REST route for one project environment; open any document   |
+| Client token | a JWT (`eyJ…`)   | Browsers and apps, for an hour       | Open the documents its `document` claim covers, `read` or `write` |
+| Admin token  | anything you set | The operator (`CANVIST_ADMIN_TOKEN`) | Create projects and keys; admin routes are off without it         |
 
 Each project has environments (`production`, `staging`, `development` by default). Keys, documents, webhooks, and usage are per environment.
 
@@ -25,9 +25,14 @@ REST calls send the API key as `Authorization: Bearer ck_…`. Errors are JSON:
 ```ts
 import { WebsocketProvider } from "y-websocket";
 
-const provider = new WebsocketProvider("wss://SYNC_HOST/v1/sync", "team/notes", doc, {
-	params: { token },
-});
+const provider = new WebsocketProvider(
+	"wss://SYNC_HOST/v1/sync",
+	"team/notes",
+	doc,
+	{
+		params: { token },
+	},
+);
 ```
 
 `GET /v1/sync/{document}?token=…` upgrades to a y-websocket session. The token may also be sent as `Authorization: Bearer`. Bad credentials are refused before the upgrade with `401` (missing, malformed, forged, or expired) or `403` (valid, but not for this document); a bad document name is `400`.
@@ -37,7 +42,12 @@ const provider = new WebsocketProvider("wss://SYNC_HOST/v1/sync", "team/notes", 
 ```ts
 import { HocuspocusProvider } from "@hocuspocus/provider";
 
-const provider = new HocuspocusProvider({ url: "wss://SYNC_HOST/v1/hocuspocus", name: "team/notes", document: doc, token });
+const provider = new HocuspocusProvider({
+	url: "wss://SYNC_HOST/v1/hocuspocus",
+	name: "team/notes",
+	document: doc,
+	token,
+});
 ```
 
 `GET /v1/hocuspocus` speaks the Hocuspocus protocol, including several documents on one socket. Each document authenticates with its own token; a refused one gets `permissionDenied` with the reason, and the socket stays open for the others. Read-only tokens authenticate with the `readonly` scope.
@@ -58,7 +68,12 @@ Close codes: `1012` the server is restarting (reconnect), `1013` the peer fell b
 `POST /v1/tokens` (API key) mints a client token.
 
 ```json
-{ "subject": "user-42", "document": "team/*", "scope": "write", "ttl_seconds": 3600 }
+{
+	"subject": "user-42",
+	"document": "team/*",
+	"scope": "write",
+	"ttl_seconds": 3600
+}
 ```
 
 - `subject`: your id for the user, 1 to 256 bytes. It names the editor in webhooks.
@@ -70,14 +85,40 @@ Returns `{ "token": "eyJ…", "expires_at": 1792400000 }`. Tokens are HS256 JWTs
 
 ## Documents
 
-| Route                           | Body / response                                                                                       |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `GET /v1/documents`             | `{ "documents": [{ "name", "pending_updates" }] }`                                                    |
-| `GET /v1/documents/{name}`      | The document as one Yjs v1 update (`application/octet-stream`); `404` if it was never written       |
-| `POST /v1/documents/{name}`     | A Yjs v1 update to apply, as a peer would; connected peers receive it at once. `{ "changed": bool }` |
-| `DELETE /v1/documents/{name}`   | Deletes the document and its history and disconnects its peers. `204`                                |
+| Route                         | Body / response                                                                                      |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `GET /v1/documents`           | `{ "documents": [{ "name", "pending_updates" }] }`                                                   |
+| `GET /v1/documents/{name}`    | The document as one Yjs v1 update (`application/octet-stream`); `404` if it was never written        |
+| `POST /v1/documents/{name}`   | A Yjs v1 update to apply, as a peer would; connected peers receive it at once. `{ "changed": bool }` |
+| `DELETE /v1/documents/{name}` | Deletes the document and its history and disconnects its peers. `204`                                |
 
 `POST` refuses updates that break the rules above with `422`, and oversized ones with `413`.
+
+## Usage and plans
+
+A document is **active** in a month (UTC) once a sync session opens it or `POST /v1/documents/{name}` writes it. canvist Cloud bills per monthly active document (MAD), counted once per document per month however often it is used.
+
+`GET /v1/usage?month=YYYY-MM` (API key; the month defaults to the current one) returns the whole project's usage:
+
+```json
+{
+	"project": "prj_…",
+	"month": "2026-10",
+	"plan": "hobby",
+	"included_documents": 1000,
+	"active_documents": 812,
+	"standing": "approaching",
+	"environments": [
+		{ "environment": "production", "active_documents": 812, "conversions": 0 }
+	]
+}
+```
+
+`standing` is `ok`, `approaching` (80% of the included documents), `over` (a paid plan past them, billed as overage), or `capped`.
+
+**The free plan has a hard cap that never breaks a client.** When it is full, a session on a document that is not yet active this month is **paused**: the socket stays open and alive, the client keeps editing locally, and nothing syncs. Every document already active this month keeps working. A paused session checks again every 30 seconds and syncs on its own once the project is upgraded or the month turns, sending what was written while it waited. y-websocket clients log a permission warning when they are paused; Hocuspocus clients authenticate normally and receive a `stateless` message `{ "type": "canvist.paused", "reason": "document_limit" }`. A REST write to a new document on a full free plan gets `429` with code `document_limit_reached`.
+
+**Paid plans never pause.** Past the included documents, usage reports `over` and the overage is billed.
 
 ## Webhooks
 
@@ -106,6 +147,7 @@ With `Authorization: Bearer $CANVIST_ADMIN_TOKEN`:
 
 - `POST /v1/admin/projects` with `{ "name": "acme", "environments": ["production", "staging"] }` creates a project and returns one API key per environment. Keys are shown once.
 - `POST /v1/admin/projects/{project}/keys` with `{ "environment": "staging" }` adds a key.
+- `PUT /v1/admin/projects/{project}/terms` with `{ "plan": "builder", "included_documents": 20000, "stripe_customer": "cus_…" }` changes a project's plan (`hobby`, `builder`, `scale`, or `enterprise`). `included_documents` overrides the plan's default; `stripe_customer` turns on metered billing.
 - `GET /v1/admin/stats` returns loaded documents and connected peers.
 
 ## Health

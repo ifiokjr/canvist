@@ -15,7 +15,12 @@ use crate::auth::Principal;
 use crate::auth::TokenSigner;
 use crate::config::Config;
 use crate::error::ApiError;
+use crate::metering::Admission;
+use crate::metering::Meter;
+use crate::metering::Month;
+use crate::names::DocumentKey;
 use crate::store::Store;
+use crate::store::StoreError;
 use crate::sync::Rooms;
 
 /// Shared server state.
@@ -29,6 +34,8 @@ pub struct App {
 	pub signer: TokenSigner,
 	/// Loaded documents.
 	pub rooms: Rooms,
+	/// Counts active documents and enforces caps.
+	pub meter: Meter,
 	shutdown: watch::Receiver<bool>,
 	sockets: TaskTracker,
 }
@@ -41,7 +48,7 @@ impl App {
 	pub fn new(
 		config: Config,
 		store: Store,
-		rooms: Rooms,
+		(rooms, meter): (Rooms, Meter),
 		shutdown: watch::Receiver<bool>,
 		sockets: TaskTracker,
 	) -> Self {
@@ -50,6 +57,7 @@ impl App {
 			config,
 			store,
 			rooms,
+			meter,
 			shutdown,
 			sockets,
 		}
@@ -68,6 +76,26 @@ impl App {
 	/// A token that keeps shutdown waiting while a socket task runs.
 	pub fn alive(&self) -> TaskTrackerToken {
 		self.sockets.token()
+	}
+
+	/// Whether `key` may sync this month, counting it as active if it is
+	/// new. A loaded room remembers its month, so later sessions skip the
+	/// store.
+	pub async fn admit(&self, key: &DocumentKey) -> Result<Admission, StoreError> {
+		let month = Month::current();
+		let room = self.rooms.get(key);
+
+		if room.as_ref().is_some_and(|room| room.is_admitted(month)) {
+			return Ok(Admission::Admitted);
+		}
+
+		let admission = self.meter.admit(key, month).await?;
+
+		if let (Admission::Admitted, Some(room)) = (admission, room) {
+			room.mark_admitted(month);
+		}
+
+		Ok(admission)
 	}
 
 	/// Resolve an API key or client token.
