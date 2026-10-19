@@ -11,6 +11,7 @@ members = [
 	"crates/canvist_layout",
 	"crates/canvist_model",
 	"crates/canvist_render",
+	"crates/canvist_scene",
 	"crates/canvist_test",
 	"crates/canvist_wasm",
 	"crates/canvist_web",
@@ -31,6 +32,7 @@ default-members = [
 	"crates/canvist_model",
 	"crates/canvist_layout",
 	"crates/canvist_render",
+	"crates/canvist_scene",
 	"crates/canvist_wasm",
 	"crates/canvist_web",
 	"docs",
@@ -62,6 +64,7 @@ getrandom = { default-features = false, version = "^0.3" }
 hmac = { default-features = false, version = "^0.12" }
 insta = { default-features = false, version = "^1" }
 js-sys = { default-features = false, version = "^0.3" }
+kurbo = { default-features = false, version = "^0.13" }
 lib0 = { default-features = false, version = "^0.16" }
 log = { default-features = false, version = "^0.4" }
 playwright-rs = { default-features = false, version = "^0.8" }
@@ -101,6 +104,7 @@ canvist_headless = { path = "./crates/canvist_headless", version = "0.1.0" }
 canvist_layout = { path = "./crates/canvist_layout", version = "0.1.0" }
 canvist_model = { path = "./crates/canvist_model", version = "0.1.0" }
 canvist_render = { path = "./crates/canvist_render", version = "0.1.0" }
+canvist_scene = { path = "./crates/canvist_scene", version = "0.1.0" }
 canvist_wasm = { path = "./crates/canvist_wasm", version = "0.1.0" }
 canvist_web = { path = "./crates/canvist_web", version = "0.1.0" }
 

@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a801e642053e897c1b6a5f13fdd756f9d0a1d9947c91f3f8606812d7bad7f9c7 # shrinks to edits = [Insert { parent: 0, index: 0, kind: 0 }, Insert { parent: 0, index: 0, kind: 0 }, Insert { parent: 0, index: 0, kind: 0 }, Insert { parent: 0, index: 0, kind: 0 }, Insert { parent: 0, index: 0, kind: 0 }]
+cc e46fbc235e50b428ba46cd13bc4d8c90e21ac6b3a259ce2a4e37371e93052f81 # shrinks to edits = [Insert { parent: 19, index: 0, kind: 1 }, Insert { parent: 0, index: 0, kind: 0 }, Move { node: 0, parent: 0, index: 0 }]
