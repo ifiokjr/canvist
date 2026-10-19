@@ -144,6 +144,16 @@ path = "crates/canvist_scene"
 [package.canvist_canvas]
 path = "crates/canvist_canvas"
 
+[package.canvist_paint]
+path = "crates/canvist_paint"
+
+# The canvas in the browser. It ships inside the `@canvist/canvas` demo and is
+# never published on its own.
+[package.canvist_canvas_wasm]
+path = "crates/canvist_canvas_wasm"
+publish = { enabled = false }
+changelog = false
+
 # Binding crates. They are versioned with the SDK so the bindings they back
 # report the right version, but they are never published on their own:
 # `canvist_ffi` ships inside the Swift and Android artifacts and
@@ -232,6 +242,7 @@ packages = [
 	"canvist_v1",
 	"canvist-dart",
 	"canvist_canvas",
+	"canvist_canvas_wasm",
 	"canvist_collab",
 	"canvist_core",
 	"canvist_editor",
@@ -242,6 +253,7 @@ packages = [
 	"canvist_headless_wasm",
 	"canvist_layout",
 	"canvist_model",
+	"canvist_paint",
 	"canvist_render",
 	"canvist_scene",
 	"canvist_wasm",

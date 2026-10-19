@@ -16,4 +16,4 @@
 
 The demo scene is [`src/demo.json`](src/demo.json), written in the nested scene JSON format. Every peer builds it under one reserved client id, so every tab starts from the same shared state.
 
-Build it with `deno task build` in [`packages/canvist-canvas`](../../packages/canvist-canvas), which wraps it in a typed `mountCanvas` and runs the demo.
+Build it with `deno task build` in [`packages/canvist-canvas`](https://github.com/ifiokjr/canvist/blob/main/packages/canvist-canvas/readme.md), which wraps it in a typed `mountCanvas` and runs the demo.
