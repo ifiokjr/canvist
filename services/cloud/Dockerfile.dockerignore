@@ -1,0 +1,16 @@
+# Only what the cloud binary builds from; the rest of the repository
+# (apps, packages, docs, caches) stays out of the build context.
+*
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!crates/
+!docs/Cargo.toml
+!docs/src/lib.rs
+!platforms/dart/rust/
+!services/cloud/
+# A workspace member: Cargo reads its manifest even when it builds only
+# canvist_cloud.
+!tools/footage/
+**/target/
+**/node_modules/

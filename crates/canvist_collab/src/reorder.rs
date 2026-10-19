@@ -7,6 +7,9 @@
 //! [y-crdt#677](https://github.com/y-crdt/y-crdt/issues/677)). The binding
 //! therefore hands yrs an update only once every client's earlier changes it
 //! builds on, including the items it deletes, are already in the document.
+//!
+//! [`Reorder`] is public so hosts that keep a bare yrs document, such as a
+//! relay server, apply updates in the same safe order.
 
 use rustc_hash::FxHashMap;
 use yrs::StateVector;
@@ -14,8 +17,49 @@ use yrs::Update;
 use yrs::block::ClientID;
 
 /// Updates waiting for the updates they build on.
+///
+/// Hold every incoming update, then apply what
+/// [`take_ready`](Reorder::take_ready) returns for the document's current
+/// state vector:
+///
+/// ```
+/// use canvist_collab::Reorder;
+/// use canvist_collab::yrs::Doc;
+/// use canvist_collab::yrs::GetString;
+/// use canvist_collab::yrs::ReadTxn;
+/// use canvist_collab::yrs::Text;
+/// use canvist_collab::yrs::Transact;
+/// use canvist_collab::yrs::Update;
+/// use canvist_collab::yrs::updates::decoder::Decode;
+///
+/// let source = Doc::with_client_id(1);
+/// let text = source.get_or_insert_text("text");
+/// let edit = |index: u32, chunk: &str| {
+/// 	let mut txn = source.transact_mut();
+/// 	text.insert(&mut txn, index, chunk);
+/// 	txn.encode_update_v1()
+/// };
+/// let first = edit(0, "a");
+/// let second = edit(1, "b");
+///
+/// let target = Doc::with_client_id(2);
+/// let mut reorder = Reorder::default();
+/// // The second update overtakes the first and waits for it.
+/// for update in [second, first] {
+/// 	reorder.hold(Update::decode_v1(&update)?);
+/// 	let mut txn = target.transact_mut();
+/// 	for ready in reorder.take_ready(&txn.state_vector()) {
+/// 		txn.apply_update(ready)?;
+/// 	}
+/// }
+///
+/// assert!(!reorder.is_waiting());
+/// let merged = target.get_or_insert_text("text");
+/// assert_eq!(merged.get_string(&target.transact()), "ab");
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
 #[derive(Default)]
-pub(crate) struct Reorder {
+pub struct Reorder {
 	held: Vec<Update>,
 }
 
@@ -29,13 +73,14 @@ impl std::fmt::Debug for Reorder {
 
 impl Reorder {
 	/// Queue `update` until it can apply.
-	pub(crate) fn hold(&mut self, update: Update) {
+	pub fn hold(&mut self, update: Update) {
 		self.held.push(update);
 	}
 
 	/// Take every queued update that can apply to a document with `state`,
 	/// in an order where each one's dependencies come first.
-	pub(crate) fn take_ready(&mut self, state: &StateVector) -> Vec<Update> {
+	#[must_use]
+	pub fn take_ready(&mut self, state: &StateVector) -> Vec<Update> {
 		let mut reach = clocks(state);
 		let mut ready = Vec::new();
 
@@ -49,7 +94,8 @@ impl Reorder {
 	}
 
 	/// Whether updates are waiting for earlier ones.
-	pub(crate) fn is_waiting(&self) -> bool {
+	#[must_use]
+	pub fn is_waiting(&self) -> bool {
 		!self.held.is_empty()
 	}
 }
