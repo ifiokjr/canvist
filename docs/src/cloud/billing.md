@@ -49,6 +49,30 @@ The annual prices exist, but Checkout does not sell them yet: an annual base fee
 
 Prices are tax-exclusive and products carry a tax code, but Checkout only asks Stripe Tax to calculate when `STRIPE_AUTOMATIC_TAX=true`. Leave it off until the account has a head office address and an active registration: without them Stripe silently collects nothing. The setup script reports both, without changing them. Checkout always collects tax IDs, so B2B customers abroad get reverse charge where it applies.
 
+## Test-mode objects
+
+Created on 2026-10-19 by `deno task stripe:setup` in the **canvist** account (`acct_1USC6QCmi4vRJir3`), test mode. These are identifiers, not secrets. Live mode has nothing yet.
+
+| Object                                     | ID                                          |
+| ------------------------------------------ | ------------------------------------------- |
+| Meter `canvist_active_document`            | `mtr_test_61VbaZGHTpFRTycVS41Cmi4vRJir38Rs` |
+| Meter `canvist_conversion`                 | `mtr_test_61VbaZGGOosOuZkVf41Cmi4vRJir3H7o` |
+| Product canvist Sync                       | `prod_VT8teYZunXzkGC`                       |
+| Product canvist Convert                    | `prod_VT8thUxavcrhpi`                       |
+| Product canvist History                    | `prod_VT8tRZwHTz7OlV`                       |
+| Price `canvist_builder_monthly`            | `price_1USCbwCmi4vRJir3UKuw1bEG`            |
+| Price `canvist_builder_annual`             | `price_1USCbwCmi4vRJir3hOJ8CSL3`            |
+| Price `canvist_scale_monthly`              | `price_1USCbxCmi4vRJir311LhCDZ0`            |
+| Price `canvist_scale_annual`               | `price_1USCbxCmi4vRJir3mATfRBML`            |
+| Price `canvist_builder_mad_overage`        | `price_1USCbxCmi4vRJir393ebzBOi`            |
+| Price `canvist_scale_mad_overage`          | `price_1USCbyCmi4vRJir3qN7WVG4F`            |
+| Price `canvist_builder_conversion_overage` | `price_1USCbyCmi4vRJir3Usp1XzEu`            |
+| Price `canvist_scale_conversion_overage`   | `price_1USCbzCmi4vRJir3NschjFVD`            |
+| Customer Portal configuration              | `bpc_1USCbzCmi4vRJir34NPfHCBa`              |
+| Webhook endpoint (staging `sync`)          | `we_1USCc0Cmi4vRJir3xbMc4WtY`               |
+
+Staging `sync` has `STRIPE_SECRET_KEY` (the Stripe CLI's test key, which expires on 2027-01-17; replace it with a restricted key) and `STRIPE_WEBHOOK_SECRET`. Tax settings are `pending` with no registrations, so `STRIPE_AUTOMATIC_TAX` is off.
+
 ## Setting it up
 
 The setup script reads only, unless it has to create or change something, and running it again changes nothing. It finds meters by event name, products and the portal configuration by `metadata.canvist_key`, prices by lookup key, and the webhook endpoint by URL. A price whose definition changed is replaced (the new price takes over the lookup key; the old one is archived), because Stripe prices cannot change their amounts.
