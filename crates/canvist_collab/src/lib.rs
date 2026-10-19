@@ -168,6 +168,7 @@ pub use history::History;
 pub use presence::Collaborator;
 pub use presence::Presence;
 pub use presence::User;
+pub use reorder::Reorder;
 pub use sync::Framing;
 pub use sync::Received;
 pub use sync::SyncSession;
