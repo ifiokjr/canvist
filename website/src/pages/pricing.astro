@@ -1,0 +1,571 @@
+---
+import { plans, SMALL_TEAM_MAX_PEOPLE } from "../data/plans.ts";
+import Base from "../layouts/Base.astro";
+
+const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2, minimumFractionDigits: 0 });
+const count = new Intl.NumberFormat("en-US");
+
+const faqs = [
+	{
+		q: "What is a monthly active document?",
+		a: "A document with at least one sync session or API mutation in the billing month. It tracks what canvist Cloud actually spends (memory for each loaded document), and it counts the same on the web, desktop, mobile, Flutter, React Native and Lynx.",
+	},
+	{
+		q: "What happens when I go over?",
+		a: "Hobby has a hard cap: hosted features pause until the next month, and the editor never goes read-only. Paid plans warn you and bill the overage. Nobody is moved to a bigger plan automatically.",
+	},
+	{
+		q: "Do I need a plan to use the editor?",
+		a: "No. The editor, its server and every binding are free and in the public domain. Plans only pay for canvist running Sync, Convert and History for you.",
+	},
+	{
+		q: "Can I run it all myself?",
+		a: "Yes. canvist publishes the exact binary it runs, with a guide. Self-hosting is a first-class path, not a trial.",
+	},
+	{
+		q: "Why are these prices marked preview?",
+		a: "They are provisional. They will be published as final only after canvist Cloud measures real memory per document and hosting cost per MAD.",
+	},
+];
+---
+
+<Base title="Pricing" description="canvist is free forever. canvist Cloud charges for hosted Sync, Convert and History per monthly active document. Preview pricing: Hobby $0, Builder $29, Scale $349, Enterprise." preloadMono>
+	<div class="pricing">
+		<section class="promise" aria-labelledby="promise-title">
+			<p class="promise__kicker code-label">Before any prices</p>
+			<h1 id="promise-title" class="promise__title">The editor is free. Forever.</h1>
+			<p class="promise__body">
+				Every line of canvist (the editor, its server, every binding) is released into the public domain under the Unlicense. No licence keys, no watermarks, no per-seat editor fees. You only pay if you want canvist to run the servers for you.
+			</p>
+		</section>
+
+		<section class="plans-section" aria-labelledby="plans-title">
+			<header class="plans-head">
+				<div>
+					<h2 id="plans-title" class="plans-title">canvist Cloud plans</h2>
+					<p class="plans-sub">Billed per monthly active document (MAD). Add-ons work on any paid plan.</p>
+				</div>
+				<p class="preview-flag" role="note">
+					<strong>Preview pricing.</strong> Not final; published after real cost benchmarks.
+				</p>
+			</header>
+
+			<div class="billing" role="radiogroup" aria-label="Billing period" data-billing>
+				<button type="button" role="radio" aria-checked="true" data-billing-option="monthly">Monthly</button>
+				<button type="button" role="radio" aria-checked="false" tabindex="-1" data-billing-option="annual">Annual</button>
+			</div>
+
+			<ol class="plans">
+				{
+					plans.map((plan) => (
+						<li class="plan" data-plan={plan.id}>
+							<h3 class="plan__name">{plan.name}</h3>
+							<p class="plan__pitch">{plan.pitch}</p>
+							<p class="plan__price">
+								{plan.id === "enterprise" ? (
+									<span class="plan__amount">
+										<span class="plan__from">from</span> {usd.format(plan.monthly ?? 0)}
+									</span>
+								) : (
+									<span class="plan__amount" data-price-monthly={plan.monthly} data-price-annual={plan.annual}>
+										{usd.format(plan.monthly ?? 0)}
+									</span>
+								)}
+								<span class="plan__per">/ month</span>
+							</p>
+							<p class="plan__mads code-label">
+								{plan.includedMads === undefined ? "Custom MADs" : `${count.format(plan.includedMads)} MADs included`}
+							</p>
+							<ul class="plan__features">
+								{plan.features.map((feature) => <li>{feature}</li>)}
+							</ul>
+						</li>
+					))
+				}
+			</ol>
+			<p class="plans-footnote">
+				OSI-licensed open-source projects get Builder free. Companies with fewer than {SMALL_TEAM_MAX_PEOPLE} people get 50% off for the first year. Annual prices are per month, billed yearly.
+			</p>
+		</section>
+
+		<section class="calc" aria-labelledby="calc-title" data-calculator>
+			<div class="calc__intro">
+				<h2 id="calc-title" class="calc__title">What would you pay?</h2>
+				<p>Drag to the number of documents people open or change in a month. A document edited by a hundred people still counts once.</p>
+			</div>
+			<div class="calc__panel">
+				<label class="calc__label" for="mads">Monthly active documents</label>
+				<div class="calc__inputs">
+					<input id="mads-range" class="calc__range" type="range" min="0" max="1000" step="1" value="500" aria-label="Monthly active documents" data-mads-range />
+					<input id="mads" class="calc__number" type="number" min="0" max="10000000" step="100" value="25000" inputmode="numeric" data-mads-number />
+				</div>
+				<div class="calc__options">
+					<label><input type="checkbox" data-opt-osi /> OSI-licensed open-source project</label>
+					<label><input type="checkbox" data-opt-small /> Fewer than {SMALL_TEAM_MAX_PEOPLE} people</label>
+				</div>
+				<output class="calc__result" for="mads mads-range" aria-live="polite" data-calc-result>
+					<span class="calc__plan" data-calc-plan>Scale</span>
+					<span class="calc__total" data-calc-total>$349</span>
+					<span class="calc__detail" data-calc-detail>per month</span>
+				</output>
+				<ol class="calc__bars" aria-label="Every plan at this usage" data-calc-bars>
+					{
+						plans.map((plan) => (
+							<li data-calc-bar={plan.id}>
+								<span class="calc__bar-name">{plan.name}</span>
+								<span class="calc__bar-track"><span class="calc__bar-fill" /></span>
+								<span class="calc__bar-value code-label">–</span>
+							</li>
+						))
+					}
+				</ol>
+				<p class="calc__note code-label">Preview prices. Overage is billed per started 1,000 MADs.</p>
+			</div>
+		</section>
+
+		<section class="faq" aria-labelledby="faq-title">
+			<h2 id="faq-title" class="faq__title">Questions</h2>
+			<dl>
+				{
+					faqs.map((faq) => (
+						<div class="faq__item">
+							<dt>{faq.q}</dt>
+							<dd>{faq.a}</dd>
+						</div>
+					))
+				}
+			</dl>
+		</section>
+	</div>
+</Base>
+
+<script>
+	import { mountPricing } from "../scripts/pricing.ts";
+
+	mountPricing(document);
+</script>
+
+<style>
+	.pricing {
+		display: grid;
+		gap: var(--section-gap);
+		padding: 0 var(--gutter) var(--section-gap);
+	}
+
+	.pricing > section {
+		border-radius: var(--r-chip);
+		padding: var(--chip-pad);
+	}
+
+	/* ---------- The promise, before anything costs money ---------- */
+
+	.promise {
+		background: var(--chip-4);
+		color: var(--paper);
+		display: grid;
+		gap: var(--s-5);
+	}
+
+	.promise__kicker {
+		color: color-mix(in oklab, var(--paper) 80%, var(--paint));
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.promise__title {
+		font-size: var(--t-mega);
+		line-height: 0.88;
+		font-weight: 800;
+		letter-spacing: -0.05em;
+		max-width: 12ch;
+	}
+
+	.promise__body {
+		font-size: var(--t-3);
+		line-height: 1.4;
+		max-width: 46ch;
+	}
+
+	/* ---------- Plans ---------- */
+
+	.plans-section {
+		background: var(--chip-1);
+		display: grid;
+		gap: var(--s-6);
+	}
+
+	.plans-head {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		align-items: end;
+		gap: var(--s-4);
+	}
+
+	.plans-title {
+		font-size: var(--t-2);
+		letter-spacing: -0.03em;
+	}
+
+	.plans-sub {
+		color: var(--text-muted);
+	}
+
+	.preview-flag {
+		max-width: 26rem;
+		padding: var(--s-3) var(--s-4);
+		border: 2px dashed var(--accent);
+		border-radius: var(--r-2);
+		font-size: var(--t-small);
+	}
+
+	.preview-flag strong {
+		color: var(--accent);
+	}
+
+	.billing {
+		display: inline-flex;
+		width: fit-content;
+		padding: var(--s-1);
+		border-radius: 999px;
+		background: color-mix(in oklab, var(--text) 8%, transparent);
+	}
+
+	.billing button {
+		min-height: 2.5rem;
+		padding: 0 var(--s-5);
+		border: 0;
+		border-radius: 999px;
+		background: transparent;
+		font-weight: 620;
+		cursor: pointer;
+	}
+
+	.billing button[aria-checked="true"] {
+		background: var(--text);
+		color: var(--page);
+	}
+
+	.plans {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: var(--s-3);
+		padding: 0;
+		list-style: none;
+	}
+
+	.plan {
+		position: relative;
+		display: grid;
+		grid-template-rows: auto auto auto auto 1fr;
+		gap: var(--s-3);
+		padding: var(--s-6) var(--s-5) var(--s-5);
+		border-radius: var(--r-2);
+		background: var(--raised);
+	}
+
+	.plan::before {
+		content: "";
+		position: absolute;
+		top: var(--s-3);
+		left: var(--s-3);
+		width: 0.75rem;
+		height: 0.75rem;
+		border-radius: 50%;
+		background: var(--chip-1);
+	}
+
+	.plan[data-highlighted] {
+		outline: 3px solid var(--accent);
+		outline-offset: -3px;
+	}
+
+	.plan__name {
+		font-size: var(--t-3);
+	}
+
+	.plan__pitch {
+		color: var(--text-muted);
+		font-size: var(--t-small);
+		min-height: 2.6em;
+	}
+
+	.plan__price {
+		display: flex;
+		align-items: baseline;
+		flex-wrap: wrap;
+		gap: var(--s-1) var(--s-2);
+	}
+
+	.plan__amount {
+		font-size: var(--t-2);
+		font-weight: 800;
+		letter-spacing: -0.04em;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.plan__from {
+		font-size: var(--t-small);
+		font-weight: 500;
+		letter-spacing: 0;
+	}
+
+	.plan__per {
+		color: var(--text-muted);
+		font-size: var(--t-small);
+	}
+
+	.plan__mads {
+		color: var(--accent);
+		font-weight: 600;
+	}
+
+	.plan__features {
+		display: grid;
+		align-content: start;
+		gap: var(--s-2);
+		padding: var(--s-3) 0 0;
+		border-top: 1px solid var(--line);
+		list-style: none;
+		font-size: var(--t-small);
+	}
+
+	.plan__features li {
+		padding-left: 1.1em;
+		text-indent: -1.1em;
+	}
+
+	.plan__features li::before {
+		content: "";
+		display: inline-block;
+		width: 0.55em;
+		height: 0.55em;
+		margin-right: 0.55em;
+		border-radius: 50%;
+		background: var(--accent);
+	}
+
+	.plans-footnote {
+		color: var(--text-muted);
+		font-size: var(--t-small);
+		max-width: 70ch;
+	}
+
+	/* ---------- Calculator ---------- */
+
+	.calc {
+		background: var(--chip-7);
+		color: light-dark(var(--paper), var(--ink));
+		display: grid;
+		grid-template-columns: minmax(0, 4fr) minmax(0, 6fr);
+		gap: var(--s-7) var(--s-8);
+	}
+
+	.calc__intro {
+		display: grid;
+		align-content: start;
+		gap: var(--s-4);
+	}
+
+	.calc__intro p {
+		max-width: 38ch;
+		color: color-mix(in oklab, currentColor 80%, var(--chip-7));
+	}
+
+	.calc__title {
+		font-size: var(--t-1);
+		line-height: 0.95;
+		letter-spacing: -0.04em;
+	}
+
+	.calc__panel {
+		display: grid;
+		gap: var(--s-4);
+	}
+
+	.calc__label {
+		font-family: var(--font-mono);
+		font-size: var(--t-micro);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.calc__inputs {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 9rem;
+		gap: var(--s-4);
+		align-items: center;
+	}
+
+	.calc__range {
+		width: 100%;
+		accent-color: light-dark(var(--paint-on-dark), var(--paint));
+		height: 2.75rem;
+	}
+
+	.calc__number {
+		min-height: 2.75rem;
+		padding: 0 var(--s-3);
+		border: 2px solid currentColor;
+		border-radius: var(--r-1);
+		background: transparent;
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.calc__options {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s-2) var(--s-5);
+		font-size: var(--t-small);
+	}
+
+	.calc__options label {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--s-2);
+		min-height: 2.75rem;
+		cursor: pointer;
+	}
+
+	.calc__options input {
+		width: 1.125rem;
+		height: 1.125rem;
+		accent-color: light-dark(var(--paint-on-dark), var(--paint));
+	}
+
+	.calc__result {
+		display: grid;
+		gap: var(--s-1);
+		padding: var(--s-5);
+		border-radius: var(--r-2);
+		background: light-dark(var(--paint), var(--paint));
+		color: var(--paper);
+	}
+
+	.calc__plan {
+		font-family: var(--font-mono);
+		font-size: var(--t-micro);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.calc__total {
+		font-size: var(--t-1);
+		font-weight: 800;
+		line-height: 1;
+		letter-spacing: -0.04em;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.calc__detail {
+		font-size: var(--t-small);
+	}
+
+	.calc__bars {
+		display: grid;
+		gap: var(--s-2);
+		padding: 0;
+		list-style: none;
+	}
+
+	.calc__bars li {
+		display: grid;
+		grid-template-columns: 6.5rem minmax(0, 1fr) 7.5rem;
+		gap: var(--s-3);
+		align-items: center;
+		font-size: var(--t-small);
+	}
+
+	.calc__bar-track {
+		height: 0.625rem;
+		border-radius: 999px;
+		background: color-mix(in oklab, currentColor 14%, transparent);
+		overflow: hidden;
+	}
+
+	.calc__bar-fill {
+		display: block;
+		height: 100%;
+		border-radius: inherit;
+		background: currentColor;
+		transform: scaleX(var(--fill, 0));
+		transform-origin: left center;
+		transition: transform var(--dur-2) var(--ease-out);
+	}
+
+	.calc__bars li[data-best] .calc__bar-fill {
+		background: light-dark(var(--paint-on-dark), var(--paint));
+	}
+
+	.calc__bars li[data-best] .calc__bar-name {
+		font-weight: 700;
+	}
+
+	.calc__bar-value {
+		text-align: right;
+	}
+
+	.calc__note {
+		color: color-mix(in oklab, currentColor 76%, var(--chip-7));
+	}
+
+	/* ---------- FAQ ---------- */
+
+	.faq {
+		background: var(--chip-0);
+		display: grid;
+		grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+		gap: var(--s-6) var(--s-8);
+	}
+
+	.faq__title {
+		font-size: var(--t-1);
+		letter-spacing: -0.04em;
+	}
+
+	.faq dl {
+		display: grid;
+		gap: var(--s-5);
+	}
+
+	.faq dt {
+		font-size: var(--t-3);
+		font-weight: 700;
+		margin-bottom: var(--s-2);
+	}
+
+	.faq dd {
+		margin: 0;
+		color: var(--text-muted);
+		max-width: 62ch;
+	}
+
+	@media (max-width: 72rem) {
+		.plans {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 56rem) {
+		.calc,
+		.faq {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+
+	@media (max-width: 36rem) {
+		.plans {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.calc__inputs {
+			grid-template-columns: minmax(0, 1fr);
+		}
+
+		.calc__bars li {
+			grid-template-columns: 5rem minmax(0, 1fr) 6rem;
+			gap: var(--s-2);
+		}
+	}
+</style>
