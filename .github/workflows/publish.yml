@@ -68,6 +68,7 @@ jobs:
         id: plan
         run: |
           set -euo pipefail
+          deno --version
           case "$RELEASE_TAG" in
             pull-request) echo "sdk=true" >> "$GITHUB_OUTPUT"; echo "app=true" >> "$GITHUB_OUTPUT" ;;
             app/v*) echo "sdk=false" >> "$GITHUB_OUTPUT"; echo "app=true" >> "$GITHUB_OUTPUT" ;;

@@ -51,6 +51,7 @@ async function bundled(): Promise<WasmSource> {
 		import("node:fs/promises"),
 		import("node:url"),
 	]);
-	// A path, not the URL: Node's `URL` type and the global one differ.
-	return readFile(fileURLToPath(BUNDLED));
+	// Pass strings: some type environments (`deno publish` with @types/node)
+	// see the global `URL` and Node's `URL` as different types.
+	return readFile(fileURLToPath(BUNDLED.href));
 }
