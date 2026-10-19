@@ -1,6 +1,7 @@
 ---
 import { lockup } from "../../lib/brand.ts";
 import { deck } from "../../lib/deck.ts";
+import poster from "../../../../assets/brand/video-poster.png";
 import VideoSlot from "../VideoSlot.astro";
 
 const fanned = deck.filter((chip) => chip.id !== "top");
@@ -40,7 +41,7 @@ const fanned = deck.filter((chip) => chip.id !== "top");
 			</div>
 		</div>
 
-		<VideoSlot class="hero__film" />
+		<VideoSlot class="hero__film" poster={poster} />
 	</div>
 
 	<p class="chip-label">
