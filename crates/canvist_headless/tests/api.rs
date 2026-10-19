@@ -167,3 +167,35 @@ fn the_readme_example_holds() -> Result<(), HeadlessError> {
 	);
 	Ok(())
 }
+
+#[test]
+fn engines_register_starter_kit_extensions_by_name() -> Result<(), HeadlessError> {
+	let engine = Engine::named(&["bold", "bulletList", "code", "doc"])?;
+	let mut names: Vec<&str> = engine
+		.metadata()
+		.as_array()
+		.into_iter()
+		.flatten()
+		.filter_map(|extension| extension["name"].as_str())
+		.collect();
+	names.sort_unstable();
+
+	// Lists bring their shared list item; core extensions are always there.
+	assert_eq!(
+		names,
+		[
+			"baseKeymap",
+			"bold",
+			"bulletList",
+			"code",
+			"doc",
+			"listItem",
+			"paragraph",
+			"undoInputRule"
+		]
+	);
+
+	let error = Engine::named(&["sparkle"]).expect_err("not an extension");
+	assert_eq!(error.code(), ErrorCode::Config);
+	Ok(())
+}

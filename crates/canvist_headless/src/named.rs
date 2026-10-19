@@ -1,9 +1,14 @@
-//! The StarterKit extensions, registered by name.
+//! StarterKit extensions registered by name, for bindings.
 //!
-//! Schema items are compiled in (architecture Decision 7), so this build
-//! carries every StarterKit extension and JavaScript chooses which ones an
-//! engine registers. The names are the extension names in the metadata.
+//! Schema items are compiled in (architecture Decision 7), so a binding
+//! carries every StarterKit extension and its host language chooses which
+//! ones an engine registers. The names are the extension names in the
+//! metadata.
 
+use canvist_editor::BaseKeymap;
+use canvist_editor::EditorBuilder;
+use canvist_editor::EditorError;
+use canvist_editor::UndoInputRule;
 use canvist_extensions::Blockquote;
 use canvist_extensions::Bold;
 use canvist_extensions::BulletList;
@@ -23,10 +28,9 @@ use canvist_extensions::Strike;
 use canvist_extensions::TaskList;
 use canvist_extensions::TrailingNode;
 use canvist_extensions::Underline;
-use canvist_headless::canvist_editor::BaseKeymap;
-use canvist_headless::canvist_editor::EditorBuilder;
-use canvist_headless::canvist_editor::EditorError;
-use canvist_headless::canvist_editor::UndoInputRule;
+
+use crate::Engine;
+use crate::HeadlessError;
 
 /// Extensions every engine has: the root, paragraphs, the standard keys,
 /// and Backspace undoing an input rule.
@@ -59,13 +63,13 @@ const EXCLUDED_BY_CODE: [&str; 5] = ["bold", "italic", "underline", "strike", "l
 
 /// A validated set of extension names.
 #[derive(Clone, Debug)]
-pub(crate) struct Extensions {
+struct Extensions {
 	names: Vec<&'static str>,
 }
 
 impl Extensions {
 	/// Check `names` against the extensions this build has.
-	pub(crate) fn parse(names: &[String]) -> Result<Self, EditorError> {
+	fn parse(names: &[String]) -> Result<Self, EditorError> {
 		let mut found = Vec::new();
 
 		for name in names {
@@ -91,7 +95,7 @@ impl Extensions {
 	}
 
 	/// Register the extensions on `builder`.
-	pub(crate) fn register(&self, builder: &mut EditorBuilder) {
+	fn register(&self, builder: &mut EditorBuilder) {
 		builder.add(Document);
 		builder.add(Paragraph);
 		builder.add(BaseKeymap);
@@ -167,5 +171,27 @@ impl Extensions {
 			}
 			_ => unreachable!("`Extensions::parse` admits only known names"),
 		}
+	}
+}
+
+impl Engine {
+	/// An engine with the StarterKit extensions named in `names`, such as
+	/// `["bold", "heading"]`, plus the document, paragraphs, and standard
+	/// keys every engine has. Bindings use this to let their host language
+	/// pick extensions; Rust code registers typed extensions with
+	/// [`Engine::new`] instead.
+	///
+	/// ```
+	/// use canvist_headless::Engine;
+	///
+	/// let engine = Engine::named(&["bold", "heading"])?;
+	/// let doc = engine.parse(canvist_headless::Format::Markdown, "# Hi")?;
+	/// assert_eq!(doc.export(canvist_headless::Format::Html), "<h1>Hi</h1>");
+	/// # Ok::<(), canvist_headless::HeadlessError>(())
+	/// ```
+	pub fn named(names: &[impl AsRef<str>]) -> Result<Self, HeadlessError> {
+		let names: Vec<String> = names.iter().map(|name| name.as_ref().to_owned()).collect();
+		let extensions = Extensions::parse(&names).map_err(HeadlessError::Config)?;
+		Self::new(move |builder| extensions.register(builder))
 	}
 }

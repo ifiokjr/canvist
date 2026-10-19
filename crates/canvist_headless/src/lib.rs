@@ -89,6 +89,8 @@ mod doc;
 mod engine;
 mod error;
 mod format;
+#[cfg(feature = "starter-kit")]
+mod named;
 mod position;
 mod snapshot;
 

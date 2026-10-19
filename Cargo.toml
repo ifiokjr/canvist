@@ -14,7 +14,7 @@ members = [
 	"crates/canvist_test",
 	"crates/canvist_wasm",
 	"docs",
-	"platforms/flutter/rust",
+	"platforms/dart/rust",
 ]
 default-members = [
 	"crates/canvist",

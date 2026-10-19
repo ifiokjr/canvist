@@ -189,7 +189,7 @@ To make this automatic, every extension declares machine-readable metadata. It l
   - The `ssr` feature renders the HTML and SVG the canvas would paint, through `canvist_layout` and `parley` with a bundled font.
   - The default build pulls in neither layout nor parley, nor yrs.
 - **TypeScript:** a wasm-bindgen package over `canvist_headless` with no `web-sys` and no DOM, loadable in Node, Deno, Bun, and Workers. Its types come from the extension metadata (Decision 8).
-- **Dart:** a pure Dart package, `canvist`, over `canvist_headless` through `flutter_rust_bridge` with no Flutter dependency, so it runs under `dart run` and `dart compile exe`. The Flutter plugin, `canvist_flutter`, builds on it.
+- **Dart:** a pure Dart package, `canvist`, over `canvist_headless` through `flutter_rust_bridge` with no Flutter dependency, so it runs under `dart run`, `dart test`, and `dart build cli`. The Flutter plugin, `canvist_flutter`, builds on it.
 
 **Why:**
 
@@ -230,6 +230,7 @@ These budgets are enforced by benchmarks and checked in CI once each host exists
 | Headless: apply one Yjs keystroke, 10k paragraphs  | < 20 µs                                     | 2.3 µs               |
 | Headless TypeScript: one command / Yjs update      | < 5 µs / < 30 µs                            | 0.71 µs / 4.6 µs     |
 | Headless TypeScript wasm module, after `wasm-opt`  | < 1,200 KB raw                              | 1,058 KB (433 KB gz) |
+| Headless Dart: one command / Yjs update            | < 10 µs / < 30 µs                           | 2.0 µs / 3.5 µs      |
 | Keystroke → paint on the web (Event Timing), p95   | < 8 ms                                      | (M3)                 |
 | Typing burst: 1,000 key events in one task         | no crash, no dropped input, ≤ 2 frames late | model passes 20k ops |
 | Open a 10k-paragraph document → first paint        | < 50 ms                                     | layout 0.6 ms (M2)   |

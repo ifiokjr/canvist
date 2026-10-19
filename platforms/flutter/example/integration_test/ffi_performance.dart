@@ -2,9 +2,9 @@ import 'package:canvist_flutter/canvist_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Registers a test that measures one Dart → Rust round trip with the same
-/// workload as `crates/canvist_ffi/benches/round_trip.rs`, so the difference is
-/// the cost of the flutter_rust_bridge binding. Results are printed as
+/// Registers a test that measures Dart → Rust round trips on a device, with
+/// the same operations as `platforms/dart/benchmark/overhead.dart`, so the
+/// numbers compare with the desktop ones. Results are printed as
 /// `PERF dart …` lines; the assertions only guard against a broken
 /// measurement.
 ///
@@ -14,46 +14,40 @@ import 'package:flutter_test/flutter_test.dart';
 /// registers it. Debug builds run Dart in JIT mode, so for representative
 /// numbers run in profile mode on an Android emulator or a device:
 /// `flutter drive --profile --driver test_driver/integration_test.dart --target integration_test/canvist_test.dart`.
-void ffiPerformanceTests() {
-  test('insert_text and text round trips', () {
-    const warmup = 1000;
+void ffiPerformanceTests(Engine Function() engine) {
+  test('command, query, and keystroke round trips', () {
     const samples = 200;
     const batch = 100;
-
-    final warm = EditorHandle();
-    for (var offset = 0; offset < warmup; offset++) {
-      warm.insertText(offset: offset, text: 'a');
-    }
-    warm.dispose();
-
-    final inserts = <double>[];
-    final reads = <double>[];
+    final doc = engine().parse(Format.markdown, 'The quick brown fox')
+      ..select(const Position([0], 4));
+    final commands = <double>[];
+    final exports = <double>[];
     final stopwatch = Stopwatch();
+
     for (var sample = 0; sample < samples; sample++) {
-      final editor = EditorHandle();
       stopwatch
         ..reset()
         ..start();
-      for (var offset = 0; offset < batch; offset++) {
-        editor.insertText(offset: offset, text: 'a');
+      for (var call = 0; call < batch; call++) {
+        doc.insertText('a');
       }
       stopwatch.stop();
-      inserts.add(_nanoseconds(stopwatch) / batch);
+      commands.add(_nanoseconds(stopwatch) / batch);
 
       stopwatch
         ..reset()
         ..start();
       for (var call = 0; call < batch; call++) {
-        editor.text();
+        doc.export(Format.text);
       }
       stopwatch.stop();
-      reads.add(_nanoseconds(stopwatch) / batch);
-      expect(editor.text().length, batch);
-      editor.dispose();
+      exports.add(_nanoseconds(stopwatch) / batch);
     }
 
-    _report('insert_text', inserts);
-    _report('text', reads);
+    expect(doc.export(Format.text).length, 19 + samples * batch);
+    doc.dispose();
+    _report('insert_text', commands);
+    _report('export_text', exports);
   });
 }
 
