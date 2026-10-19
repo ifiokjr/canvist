@@ -4,7 +4,12 @@ import {
 	type LiveEditor,
 	loadV1Engine,
 } from "./engine.ts";
-import { prefersReducedMotion, resolveColor, whenNear } from "./motion.ts";
+import {
+	prefersReducedMotion,
+	resolveColor,
+	trackVisibility,
+	whenScrollSettles,
+} from "./motion.ts";
 
 /**
  * "Owns every pixel": the v1 engine paints into the page and a readout
@@ -16,7 +21,7 @@ import { prefersReducedMotion, resolveColor, whenNear } from "./motion.ts";
  */
 
 const GHOST_TEXT =
-	"Every glyph here was measured, laid out and painted by canvist, not by the browser. Click in and type to try it.";
+	"Every glyph here is laid out and painted by canvist, not the browser. Click in and type.";
 const HISTORY = 48;
 
 type Source = "auto" | "you";
@@ -55,15 +60,12 @@ export function mountPixelDemo(root: HTMLElement): void {
 		"[data-pixel-start-label]",
 	);
 	const status = root.querySelector<HTMLElement>("[data-pixel-status]");
-	const spark = root.querySelector<HTMLCanvasElement>("[data-pixel-spark]");
 	const out = {
 		last: root.querySelector<HTMLElement>("[data-pixel-last]"),
 		p50: root.querySelector<HTMLElement>("[data-pixel-p50]"),
-		p95: root.querySelector<HTMLElement>("[data-pixel-p95]"),
-		count: root.querySelector<HTMLElement>("[data-pixel-count]"),
 		source: root.querySelector<HTMLElement>("[data-pixel-source]"),
 	};
-	if (!canvas || !paper || !start || !startLabel || !status || !spark) {
+	if (!canvas || !paper || !start || !startLabel || !status) {
 		throw new Error("Every-pixel section markup is incomplete");
 	}
 
@@ -94,32 +96,6 @@ export function mountPixelDemo(root: HTMLElement): void {
 		const sorted = [...samples].sort((a, b) => a - b);
 		if (out.last) out.last.textContent = format(ms);
 		if (out.p50) out.p50.textContent = format(percentile(sorted, 0.5));
-		if (out.p95) out.p95.textContent = format(percentile(sorted, 0.95));
-		if (out.count) out.count.textContent = String(samples.length);
-		drawSpark();
-	}
-
-	function drawSpark(): void {
-		const ctx = spark?.getContext("2d");
-		if (!spark || !ctx) return;
-		const { width, height } = spark;
-		ctx.clearRect(0, 0, width, height);
-		const max = Math.max(16.7, ...samples);
-		const barWidth = width / HISTORY;
-		// The 8 ms budget line.
-		const budgetY = height - (8 / max) * height;
-		ctx.fillStyle = "rgba(245, 243, 255, 0.35)";
-		ctx.fillRect(0, budgetY, width, 1);
-		for (const [index, value] of samples.entries()) {
-			const barHeight = Math.max(2, (value / max) * height);
-			ctx.fillStyle = value > 8 ? "#ff7a93" : "#8a80ff";
-			ctx.fillRect(
-				index * barWidth + 1,
-				height - barHeight,
-				Math.max(1, barWidth - 2),
-				barHeight,
-			);
-		}
 	}
 
 	function setSource(next: Source): void {
@@ -128,8 +104,8 @@ export function mountPixelDemo(root: HTMLElement): void {
 		samples.length = 0;
 		if (out.source) {
 			out.source.textContent = next === "you"
-				? "Your keystrokes to the next painted frame, measured in this browser"
-				: "Auto-typing to the next painted frame, measured in this browser";
+				? "Your keystroke to paint"
+				: "Keystroke to paint";
 		}
 	}
 
@@ -181,7 +157,7 @@ export function mountPixelDemo(root: HTMLElement): void {
 	async function load(): Promise<void> {
 		if (!canvas) return;
 		root.dataset["state"] = "loading";
-		if (startLabel) startLabel.textContent = "Loading the engine…";
+		if (startLabel) startLabel.textContent = "Loading the editor…";
 		const loaded = performance.now();
 		try {
 			editor = await loadV1Engine(canvas, theme());
@@ -228,10 +204,26 @@ export function mountPixelDemo(root: HTMLElement): void {
 	});
 
 	if (!prefersReducedMotion() && !savesData()) {
-		whenNear(root, () => {
-			ensureLoaded().catch((error: unknown) =>
-				console.warn("canvist v1 engine failed to load", error)
-			);
-		}, "0px");
+		// Start the engine when the section is on screen and scrolling has
+		// paused: its start-up is main-thread work that would otherwise drop
+		// frames mid-scroll on slower phones. A visitor who scrolls straight
+		// past never pays for it.
+		let onScreen = false;
+		let waiting = false;
+		const attempt = () => {
+			if (waiting || loading !== undefined) return;
+			waiting = true;
+			void whenScrollSettles().then(() => {
+				waiting = false;
+				if (!onScreen) return;
+				ensureLoaded().catch((error: unknown) =>
+					console.warn("canvist v1 engine failed to load", error)
+				);
+			});
+		};
+		trackVisibility(root, (visible) => {
+			onScreen = visible;
+			if (visible) attempt();
+		});
 	}
 }

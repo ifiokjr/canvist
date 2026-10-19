@@ -6,3 +6,4 @@ playwright-report/
 shoot.tmp.ts
 .lighthouseci/
 lighthouse-reports/
+perf-reports/

@@ -9,7 +9,6 @@
 		"@fontsource-variable/geist-mono": "5.3.0",
 		"@rive-app/canvas-lite": "2.44.2",
 		"astro": "7.3.8",
-		"gsap": "3.15.0",
 		"sharp": "0.35.5"
 	},
 	"devDependencies": {

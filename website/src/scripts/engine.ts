@@ -41,7 +41,12 @@ export function channels(color: string): [number, number, number, number] {
 
 /** The v1 editor from packages/canvist, compiled to wasm. */
 export const loadV1Engine: EngineLoader = async (canvas, theme) => {
-	const { createEditor } = await import("../../../packages/canvist/src/mod.ts");
+	const { createEditor, initWasm } = await import(
+		"../../../packages/canvist/src/mod.ts"
+	);
+	// Download and compile first, so creating the editor below runs without
+	// a pause in which the visitor could scroll.
+	await initWasm();
 
 	const box = canvas.getBoundingClientRect();
 	const dpr = Math.min(devicePixelRatio, 2);
@@ -49,7 +54,20 @@ export const loadV1Engine: EngineLoader = async (canvas, theme) => {
 	canvas.height = Math.round(box.height * dpr);
 	canvas.getContext("2d")?.scale(dpr, dpr);
 
+	// The v1 editor focuses its hidden textarea when it is created, which
+	// would steal focus (and the scroll position) from whatever the visitor is
+	// doing. With the wasm already initialised, creation finishes within
+	// microtasks, so both can be put back safely: the visitor focuses the
+	// editor by clicking in.
+	const previousFocus = document.activeElement;
+	const previousScroll = { x: scrollX, y: scrollY };
 	const editor = await createEditor(canvas.id, { title: "Owns every pixel" });
+	if (previousFocus instanceof HTMLElement && previousFocus !== document.body) {
+		previousFocus.focus({ preventScroll: true });
+	} else if (document.activeElement instanceof HTMLElement) {
+		document.activeElement.blur();
+	}
+	scrollTo(previousScroll.x, previousScroll.y);
 	editor.setSize(box.width, box.height);
 	editor.setFontSize(20);
 	editor.setWordWrap(true);

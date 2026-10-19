@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import process from "node:process";
-import { SECTIONS } from "./pages.ts";
+import { SECTIONS, VIEWPORT_MATRIX } from "./pages.ts";
 
 /**
  * Visual snapshots of each landing section, plus the other page types, in
@@ -75,11 +75,7 @@ for (const scheme of ["light", "dark"] as const) {
 				await page.setViewportSize({ width, height: 900 });
 				await open(page, "/");
 				for (const id of SECTIONS) {
-					// The speed chip's table and headline come from the repo's budget
-					// table, which grows with every benchmark; snapshot its fixed header.
-					const section = id === "speed"
-						? page.locator("#speed .speed__copy")
-						: page.locator(`#${id}`);
+					const section = page.locator(`#${id}`);
 					await section.scrollIntoViewIfNeeded();
 					await expect(page).toHaveScreenshot(
 						`${id}-${width}-${scheme}.png`,
@@ -90,6 +86,21 @@ for (const scheme of ["light", "dark"] as const) {
 						},
 					);
 				}
+			});
+		}
+
+		// The first screen at every size in the layout matrix.
+		for (const viewport of VIEWPORT_MATRIX) {
+			test(`first screen at ${viewport.width}×${viewport.height}`, async ({ page }) => {
+				await page.setViewportSize({
+					width: viewport.width,
+					height: viewport.height,
+				});
+				await open(page, "/");
+				await expect(page).toHaveScreenshot(
+					`first-screen-${viewport.name}-${scheme}.png`,
+					{ mask: masks(page) },
+				);
 			});
 		}
 

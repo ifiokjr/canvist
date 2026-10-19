@@ -103,6 +103,8 @@
 	/* Motion */
 	--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 	--ease-paint: cubic-bezier(0.65, 0, 0.35, 1);
+	/* The one easing for arrivals: fast, then a long wet settle. */
+	--ease-wet: cubic-bezier(0.16, 1, 0.3, 1);
 	--dur-1: 140ms;
 	--dur-2: 280ms;
 }

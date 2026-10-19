@@ -1,0 +1,70 @@
+---
+import { GITHUB_URL, mark } from "../../lib/brand.ts";
+---
+
+<section class="chip cta" data-chip="4" id="start" aria-labelledby="start-title" data-settle>
+	<div class="chip-inner cta__inner">
+		<div class="cta__mark" aria-hidden="true" set:html={mark} />
+		<div class="cta__copy">
+			<h2 id="start-title" class="cta__title">Pick up the brush.</h2>
+			<div class="cta__actions">
+				<a class="btn cta__primary" href="/docs/quick-start" data-astro-prefetch>Get started</a>
+				<a class="btn btn--ghost" href={GITHUB_URL}>Star on GitHub</a>
+			</div>
+		</div>
+	</div>
+</section>
+
+<style>
+	.cta__inner {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: center;
+		gap: var(--s-5) var(--s-7);
+	}
+
+	/* The mark in mono Paper on Paint: the caret takes the single mono colour. */
+	.cta__mark {
+		--logo-ink: var(--paper);
+		--logo-paint: var(--paper);
+		width: clamp(4rem, 11vw, 8.5rem);
+	}
+
+	.cta__mark :global(svg) {
+		width: 100%;
+		height: auto;
+	}
+
+	.cta__copy {
+		display: grid;
+		gap: var(--s-5);
+	}
+
+	.cta__title {
+		font-size: var(--t-1);
+		line-height: 0.95;
+		font-weight: 800;
+		letter-spacing: -0.04em;
+	}
+
+	.cta__actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--s-3);
+	}
+
+	.cta__primary {
+		--btn-bg: var(--paper);
+		--btn-fg: var(--paint);
+	}
+
+	.cta .btn--ghost {
+		color: var(--paper);
+	}
+
+	@media (max-width: 36rem) {
+		.cta__inner {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>
