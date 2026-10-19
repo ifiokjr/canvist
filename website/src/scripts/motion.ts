@@ -50,6 +50,21 @@ function firstIntent(): Promise<void> {
 	});
 }
 
+/**
+ * Callers create their scroll triggers when the kit resolves, and pinned
+ * sections insert scroll space above whatever follows them. If the visitor
+ * is looking at a `#section` they jumped to, bring it back once that layout
+ * change has happened.
+ */
+function keepAnchorInView(): void {
+	const id = decodeURIComponent(location.hash.slice(1));
+	const anchor = id === "" ? null : document.getElementById(id);
+	if (anchor === null) return;
+	const box = anchor.getBoundingClientRect();
+	if (box.bottom <= 0 || box.top >= innerHeight) return;
+	requestAnimationFrame(() => anchor.scrollIntoView());
+}
+
 let kit: Promise<ScrollKit> | undefined;
 
 /** Resolves to GSAP with ScrollTrigger registered, or `null` under reduced motion. */
@@ -59,6 +74,7 @@ export async function loadScrollKit(): Promise<ScrollKit | null> {
 		.then(() => Promise.all([import("gsap"), import("gsap/ScrollTrigger")]))
 		.then(([core, plugin]) => {
 			core.gsap.registerPlugin(plugin.ScrollTrigger);
+			keepAnchorInView();
 			return { gsap: core.gsap, ScrollTrigger: plugin.ScrollTrigger };
 		});
 	return kit;

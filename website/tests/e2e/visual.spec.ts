@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import process from "node:process";
 import { SECTIONS } from "./pages.ts";
 
@@ -31,6 +31,23 @@ async function open(page: Page, path: string): Promise<void> {
 		.toBe(true);
 }
 
+/**
+ * An element's box in document coordinates, rounded. Sections sit at
+ * fractional offsets that shift when content above them changes, and an
+ * element screenshot's size would round differently with them.
+ */
+async function documentBox(page: Page, element: Locator) {
+	const box = await element.boundingBox();
+	if (box === null) throw new Error("Section is not rendered");
+	const scrollY = await page.evaluate(() => scrollY);
+	return {
+		x: Math.round(box.x),
+		y: Math.round(box.y + scrollY),
+		width: Math.round(box.width),
+		height: Math.round(box.height),
+	};
+}
+
 /** The live demos paint changing numbers; mask them so snapshots stay stable. */
 function masks(page: Page) {
 	return [
@@ -57,9 +74,13 @@ for (const scheme of ["light", "dark"] as const) {
 						? page.locator("#speed .speed__copy")
 						: page.locator(`#${id}`);
 					await section.scrollIntoViewIfNeeded();
-					await expect(section).toHaveScreenshot(
+					await expect(page).toHaveScreenshot(
 						`${id}-${width}-${scheme}.png`,
-						{ mask: masks(page) },
+						{
+							mask: masks(page),
+							fullPage: true,
+							clip: await documentBox(page, section),
+						},
 					);
 				}
 			});
