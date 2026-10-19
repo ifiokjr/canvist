@@ -86,6 +86,22 @@ This list covers everything in TipTap v3's MIT set. See [the research brief](../
 - **Import/export:** Markdown and HTML, plus static rendering to HTML and SVG.
 - **Stretch goals,** beyond TipTap's free tier: comments as anchored ranges, version snapshots, tracked changes, and paged layout.
 
+## M10: canvist Cloud, website, and launch
+
+See [the business model](./business.md).
+
+- **canvist Cloud on Railway:**
+  - Sync: a multi-tenant `yrs` relay with Postgres persistence, JWT and API-key auth, presence, and webhooks.
+  - Metering of monthly active documents (MADs) and Stripe Meters billing, in test mode until launch.
+  - A dashboard for projects, keys, and usage, with free dev and staging environments.
+- **Convert:** a REST API (JSON ⇄ Markdown, HTML, and plain text) on `canvist_headless`. **History:** snapshots, named versions, and restore.
+- **Website:**
+  - built with Astro, Rive, and GSAP, in the Wet Caret brand;
+  - a landing page with scroll-driven animation, live demos, and a pricing page with a usage calculator;
+  - the docs site in the same project;
+  - hosted on Railway.
+- **Demo video:** made with Remotion from real canvist renders, and re-rendered whenever the product changes.
+
 ## M9: documentation, AI readiness, and release
 
 - **Documentation website:** interactive examples on every page, with a live editor running in the docs themselves.
