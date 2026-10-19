@@ -121,10 +121,14 @@ const EXCEPTIONS: Readonly<Record<string, Exception>> = {
 	},
 	"webkit-rtl": {
 		horizontal: 2.5,
-		pixels: 0.0075,
-		ssim: 0.96,
+		// CI's macOS image sets the Latin in these lines in a different
+		// fallback face, whose glyphs shade the sub-pixel offsets of bidi runs
+		// more: 1.03% of pixels and SSIM 0.958 at 1×, against 0.19% and 0.995
+		// on a current Mac.
+		pixels: 0.0125,
+		ssim: 0.95,
 		reason:
-			"Caret stops inside Arabic words come from DOM grapheme boxes, which WebKit rounds to whole pixels.",
+			"Caret stops inside Arabic words come from DOM grapheme boxes, which WebKit rounds to whole pixels, and bidi runs sit a fraction of a pixel apart.",
 	},
 	"firefox-cjk": {
 		vertical: 24,
