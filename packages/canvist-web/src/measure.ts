@@ -32,8 +32,14 @@ const SAME_FACE_TOLERANCE = 0.05;
 const LIGATURE_CANDIDATES = ["ffi", "ffl", "ff", "fi", "fl", "fj", "ft", "Th"];
 /** A space then letters that fonts with Times's metrics kern together. */
 const SPACE_PAIRS = [" A", " T", " Y", " V", " W"];
-/** How far, in CSS px at the probe size, a space pair must kern to count. */
-const SPACE_KERN_TOLERANCE = 0.5;
+/**
+ * Space pairs are probed at the font's own size, because fonts with optical
+ * sizes (the system fonts among them) kern differently at large sizes.
+ * Canvas kerns a pair when it moves the letter by more than this, in CSS px.
+ */
+const SPACE_KERN_MIN = 1 / 16;
+/** The DOM leaves a pair unkerned when it moves the letter by less than this: half a layout unit. */
+const SPACE_KERN_NONE = 1 / 128;
 
 /** The font size ligatures are probed at, in CSS px: large, so whole-pixel DOM rectangles barely round. */
 const LIGATURE_PROBE_PX = 200;
@@ -512,15 +518,12 @@ export class CanvasMeasurer implements HostMeasurer {
 	 * Whether the DOM lays out `css` without the kerning `canvasFont`'s
 	 * canvas applies between a space and the letter after it. Browsers
 	 * shape a run across its spaces only when they see the font kern them,
-	 * and engines disagree on that, so both are measured at a large size.
+	 * and engines disagree on that, so both are measured.
 	 */
 	#spacesApart(canvasFont: string, css: string): boolean {
 		const texts = SPACE_PAIRS.flatMap((pair) => [pair, pair.slice(1)]);
-		const dom = this.#domWidths(atSize(css, LIGATURE_PROBE_PX), [
-			" ",
-			...texts,
-		]);
-		this.#context.font = atSize(canvasFont, LIGATURE_PROBE_PX);
+		const dom = this.#domWidths(css, [" ", ...texts]);
+		this.#context.font = canvasFont;
 		this.#font = "";
 		const canvas = (text: string) => this.#context.measureText(text).width;
 		const space = dom[0] ?? 0;
@@ -530,8 +533,8 @@ export class CanvasMeasurer implements HostMeasurer {
 				(dom[2 + 2 * index] ?? 0);
 			const canvasKern = canvas(pair) - canvas(" ") - canvas(pair.slice(1));
 
-			return Math.abs(canvasKern) > SPACE_KERN_TOLERANCE &&
-				Math.abs(domKern) < SPACE_KERN_TOLERANCE;
+			return Math.abs(canvasKern) > SPACE_KERN_MIN &&
+				Math.abs(domKern) < SPACE_KERN_NONE;
 		});
 	}
 
