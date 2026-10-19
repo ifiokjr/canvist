@@ -115,7 +115,7 @@ Applying a step returns its inverse and the nodes it touched, and whether the tr
 - The root is a `Y.Map` named `"nodes"`, from node id to a node `Y.Map`. The tree is stored flat; a node points at its parent.
 - Each node map holds:
   - `"type"`: the type name;
-  - `"pos"`: `[parent, key, clock, previousParent, previousKey]`, one atomic value, so a reparent can never take its parent from one peer and its key from another;
+  - `"pos"`: `[parent, key, clock, client, previousParent]`, one atomic value, so a reparent can never take its parent from one peer and its key from another;
   - `"props"`: a `Y.Map` from property name to value, each key a last-writer-wins register;
   - `"text"`, for text frames only: a `Y.Array` of block maps in exactly the shape `canvist_collab` already uses for documents.
 - The reserved parent `"root"` holds pages.
@@ -127,7 +127,7 @@ Applying a step returns its inverse and the nodes it touched, and whether the tr
 - **Concurrent property edits:** the last writer in Yjs order wins, per property.
 - **Delete versus edit:** a node deleted while a peer edits it stays deleted; the edit lands on the tombstone.
 - **Delete versus insert:** a node whose parent is missing is an orphan. Orphans are hidden from the model but kept in the shared document, like the text binding's rejected blocks, and reappear if the parent comes back (for example when the delete is undone). `SceneBinding::orphans()` reports them.
-- **Concurrent moves that form a cycle:** two peers move A into B and B into A. The scene is computed from the shared state; any cycle is broken at the node whose `pos` has the greatest `(clock, client)`, which falls back to its `previousParent`, or to the first page if that would still cycle. The clock is a Lamport counter carried in `pos`. This is Kleppmann's rule (the later move loses), evaluated over state rather than an operation log, which yrs does not expose.
+- **Concurrent moves that form a cycle:** two peers move A into B and B into A. The scene is computed from the shared state; any cycle is broken at the node whose `pos` has the greatest `(clock, client, id)`, which falls back to its `previousParent`; if the result still cycles, its greatest member falls back to the first page. Both rules are evaluated per node from the shared state alone, so the order in which peers receive updates cannot change the result. The clock is a Lamport counter carried in `pos`. This is Kleppmann's rule (the later move loses), evaluated over state rather than an operation log, which yrs does not expose.
 - **Concurrent moves of one node:** last writer wins on `pos`. Unlike the text editor's block moves, nothing is copied, so edits inside a moved node always survive. This is the main reason the scene is a flat map and not nested arrays.
 
 ## Decision C4: text frames embed a full canvist text document
@@ -201,7 +201,8 @@ Everything a design tool's interaction needs is geometry and state in Rust:
 | Pan/zoom frame (paint list + encode), 10k nodes    | < 8 ms (120 fps capable) | (renderer)    |
 | Selection hit test, 100k nodes                     | < 1 ms                   | (canvas)      |
 | Drag-transform step (steps + index update), 1 node | < 0.5 ms                 | (canvas)      |
-| Apply a remote property change                     | < 50 µs                  | (collab)      |
+| Apply a remote property change                     | < 50 µs                  | 3.4 µs        |
+| Encode a local property change, 10k nodes          | < 50 µs                  | 2.1 µs        |
 | Set one property (model), 100k nodes               | < 2 µs                   | 0.15 µs       |
 | Reorder a layer in its frame (model), 100k nodes   | < 2 µs                   | 0.61 µs       |
 | Insert 10k nodes in one transaction                | < 20 ms                  | 7.1 ms        |
@@ -215,9 +216,14 @@ Each is a release-mode test in its crate's `tests/perf_budgets.rs`. The web demo
 
 All additive:
 
-- **`canvist_collab`** gains a `scene` feature with `SceneBinding`. To bind a text frame's `Y.Array` inside the scene's Yjs document, the block binding's internals split into a mirror over any `ArrayRef` and the document-level parts (update outbox, undo manager, reorder buffer). `Binding`'s public API does not change.
+- **`canvist_collab`** gains a `scene` feature with `SceneBinding`. To bind a text frame's `Y.Array` inside the scene's Yjs document, the block binding's internals split into a mirror that works on whatever array its owner passes in, and the document-level parts (update outbox, undo manager, reorder buffer). `Binding`'s public API does not change. `CollabError` gains two variants behind the feature.
 - **`canvist_headless`** gains a `scene` feature.
 - **`canvist_editor`, `canvist_model`, `canvist_layout`:** no changes.
+
+## Recorded tradeoffs
+
+- **Scene documents keep deleted content.** yrs 0.28 frees a deleted nested type even while the undo manager still points at content inside it: it only keeps what this peer's tracked transactions deleted. Undoing after a collaborator deletes a node then reads freed memory (a property test found it as a segfault). Scene documents therefore turn off yrs garbage collection, so deleted nodes stay as tombstones with their content. Documents grow with their editing history, as Yjs documents with `gc: false` do. The fix belongs upstream; once yrs keeps undo-referenced content alive, scenes can collect garbage again. A direct probe of the document `Binding`, which keeps collection on, did not reproduce it.
+- **A text frame's array is looked up in every transaction.** Holding a reference to a nested yrs type across transactions can outlive the type, so the scene binding stores item ids and resolves arrays when it needs them.
 
 ## Rejected alternatives
 

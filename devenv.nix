@@ -201,6 +201,8 @@ in
         # The conformance fixtures for collaboration and the SSR renderer only
         # run with canvist_headless's optional features.
         cargo nextest run -p canvist_headless --all-features
+        # Scene collaboration lives behind canvist_collab's `scene` feature.
+        cargo nextest run -p canvist_collab --features scene
       '';
       description = "Run cargo tests with nextest.";
       binary = "bash";
@@ -210,6 +212,7 @@ in
         set -e
         cargo test --doc --workspace --exclude canvist_wasm --exclude canvist_test
         cargo test --doc -p canvist_headless --all-features
+        cargo test --doc -p canvist_collab --features scene
       '';
       description = "Run documentation tests.";
       binary = "bash";
@@ -217,7 +220,7 @@ in
     "test:perf" = {
       exec = ''
         set -e
-        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --features canvist_headless/collab --test perf_budgets -- --ignored --test-threads=1 --nocapture
+        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --features canvist_headless/collab,canvist_collab/scene --test perf_budgets -- --ignored --test-threads=1 --nocapture
       '';
       description = "Fail when a hot path exceeds its performance budget (release mode; CANVIST_PERF_SLACK scales budgets).";
       binary = "bash";

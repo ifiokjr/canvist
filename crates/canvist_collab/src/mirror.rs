@@ -1,11 +1,13 @@
 //! The two-way translation between one model document and one `Y.Array` of
 //! block maps.
 //!
-//! A [`Mirror`] does not own a yrs document: it works inside transactions
-//! its owner opens. [`Binding`](crate::Binding) owns one over the root
-//! `"blocks"` array; the scene binding owns one per text frame, over the
-//! frame's nested `"text"` array, so every frame shares the scene's update
-//! stream and undo history.
+//! A [`Mirror`] owns neither a yrs document nor a reference into one: it
+//! works inside transactions its owner opens, on the array its owner passes
+//! in. [`Binding`](crate::Binding) passes the root `"blocks"` array; the
+//! scene binding passes each text frame's nested `"text"` array, looked up
+//! afresh in every transaction, because yrs frees a deleted nested type and
+//! a reference held across transactions could outlive it. The owner's
+//! observer feeds the mirror's inbox through [`Mirror::record`].
 
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -18,11 +20,9 @@ use canvist_model::Schema;
 use canvist_model::Step;
 use yrs::Array;
 use yrs::ArrayRef;
-use yrs::DeepObservable;
 use yrs::Origin;
 use yrs::ReadTxn;
 use yrs::TransactionMut;
-use yrs::types::Events;
 
 use crate::CollabError;
 use crate::claims::Owners;
@@ -30,7 +30,6 @@ use crate::local::Local;
 use crate::local::position_of;
 use crate::registry::Registration;
 use crate::registry::Registry;
-use crate::registry::branch_id;
 use crate::remote::Remote;
 use crate::remote::Repair;
 use crate::remote::record;
@@ -45,12 +44,11 @@ pub(crate) const LOCAL: &str = "canvist:local";
 pub(crate) const UNTRACKED: &str = "canvist:untracked";
 /// Transactions that integrate updates from other peers.
 pub(crate) const REMOTE: &str = "canvist:remote";
-/// The key of the binding's own yrs observers.
+/// The key of the bindings' own yrs observers.
 pub(crate) const OBSERVER: &str = "canvist:binding";
 
 /// Mirrors one document into one array of block maps and back.
 pub(crate) struct Mirror {
-	root: ArrayRef,
 	schema: Arc<Schema>,
 	registry: Registry,
 	inbox: Arc<Mutex<Vec<Record>>>,
@@ -65,23 +63,25 @@ impl std::fmt::Debug for Mirror {
 }
 
 impl Mirror {
-	/// A mirror over `root`, recording every change other peers (or undo)
-	/// make inside it.
-	pub(crate) fn new(root: ArrayRef, schema: Arc<Schema>) -> Self {
-		let inbox = Arc::new(Mutex::new(Vec::new()));
-		observe(&root, &schema, &inbox);
-
+	/// An empty mirror. Its owner records remote changes into it with
+	/// [`Mirror::record`].
+	pub(crate) fn new(schema: Arc<Schema>) -> Self {
 		Self {
-			root,
 			schema,
 			registry: Registry::default(),
-			inbox,
+			inbox: Arc::new(Mutex::new(Vec::new())),
 		}
 	}
 
-	/// The array this mirror reads and writes.
-	pub(crate) fn root(&self) -> &ArrayRef {
-		&self.root
+	/// Queue records an owner's observer took from a nested array.
+	#[cfg(feature = "scene")]
+	pub(crate) fn receive(&self, records: Vec<Record>) {
+		lock(&self.inbox).extend(records);
+	}
+
+	/// The inbox, for an observer that outlives a borrow of the mirror.
+	pub(crate) fn inbox(&self) -> Arc<Mutex<Vec<Record>>> {
+		self.inbox.clone()
 	}
 
 	/// The schema of the mirrored document.
@@ -100,6 +100,7 @@ impl Mirror {
 	}
 
 	/// Whether remote changes are waiting to be mirrored.
+	#[cfg(feature = "scene")]
 	pub(crate) fn has_changes(&self) -> bool {
 		!lock(&self.inbox).is_empty()
 	}
@@ -108,9 +109,10 @@ impl Mirror {
 	pub(crate) fn seed(
 		&mut self,
 		txn: &mut TransactionMut<'_>,
+		root: &ArrayRef,
 		doc: &Document,
 	) -> Result<(), CollabError> {
-		if self.root.len(txn) > 0 {
+		if root.len(txn) > 0 {
 			return Err(CollabError::NotEmpty);
 		}
 
@@ -120,13 +122,7 @@ impl Mirror {
 		// last to first keeps seeding linear in the document's size.
 		for &block in doc.children(None).iter().rev() {
 			let tree = doc.tree(block).ok_or(CollabError::NotShared(block))?;
-			tree::write(
-				txn,
-				&self.schema,
-				(&self.root, 0, None),
-				&tree,
-				&mut registration,
-			)?;
+			tree::write(txn, &self.schema, (root, 0, None), &tree, &mut registration)?;
 		}
 
 		self.registry = Registry::default();
@@ -139,19 +135,20 @@ impl Mirror {
 	pub(crate) fn document<T: ReadTxn>(
 		&mut self,
 		txn: &T,
+		root: &ArrayRef,
 		client: u32,
 	) -> Result<(Document, Vec<Repair>), CollabError> {
 		lock(&self.inbox).clear();
 		let mut doc = Document::empty(self.schema.clone(), client);
 		let mut owners = Owners::default();
-		owners.scan_array(&self.root, None, txn, &self.schema);
+		owners.scan_array(root, None, txn, &self.schema);
 		let mut registration = Registration::default();
 		let mut reader = Reader {
 			txn,
 			schema: &self.schema,
 			claims: &mut owners,
 		};
-		let blocks = reader.children(&self.root, Parent::ROOT, &mut registration);
+		let blocks = reader.children(root, Parent::ROOT, &mut registration);
 
 		doc.apply_steps([Step::InsertBlocks {
 			parent: None,
@@ -170,6 +167,7 @@ impl Mirror {
 	pub(crate) fn translate(
 		&mut self,
 		txn: &mut TransactionMut<'_>,
+		root: &ArrayRef,
 		doc: &Document,
 		commit: &Commit,
 	) -> Result<Vec<BlockId>, CollabError> {
@@ -180,7 +178,7 @@ impl Mirror {
 			.count();
 		let mut local = Local {
 			txn,
-			root: &self.root,
+			root,
 			schema: &self.schema,
 			registry: &mut self.registry,
 			doc,
@@ -200,13 +198,14 @@ impl Mirror {
 	pub(crate) fn reveal<T: ReadTxn>(
 		&mut self,
 		txn: &T,
+		root: &ArrayRef,
 		doc: &mut Document,
 		retyped: &[BlockId],
 	) -> Result<(Commit, Vec<Repair>), CollabError> {
 		let remote = Remote::new(
 			doc.transaction(),
 			txn,
-			(&self.root, &self.schema),
+			(root, &self.schema),
 			&mut self.registry,
 		);
 		remote.reveal(retyped)
@@ -216,23 +215,29 @@ impl Mirror {
 	pub(crate) fn mirror<T: ReadTxn>(
 		&mut self,
 		txn: &T,
+		root: &ArrayRef,
 		doc: &mut Document,
 	) -> Result<(Commit, Vec<Repair>), CollabError> {
 		let records = std::mem::take(&mut *lock(&self.inbox));
 		let remote = Remote::new(
 			doc.transaction(),
 			txn,
-			(&self.root, &self.schema),
+			(root, &self.schema),
 			&mut self.registry,
 		);
 		remote.apply(records)
 	}
 
 	/// Delete block maps that lost their block id to another map.
-	pub(crate) fn repair(&mut self, txn: &mut TransactionMut<'_>, repairs: &[Repair]) {
+	pub(crate) fn repair(
+		&mut self,
+		txn: &mut TransactionMut<'_>,
+		root: &ArrayRef,
+		repairs: &[Repair],
+	) {
 		for repair in repairs {
 			let array = match repair.parent {
-				None => Some(self.root.clone()),
+				None => Some(root.clone()),
 				Some(parent) => {
 					self.registry
 						.block(parent)
@@ -252,33 +257,20 @@ impl Mirror {
 	}
 }
 
-impl Drop for Mirror {
-	fn drop(&mut self) {
-		self.root.unobserve_deep(OBSERVER);
-	}
-}
-
-/// Subscribe the inbox to changes inside `root` that this peer did not make
-/// from local commits.
-fn observe(root: &ArrayRef, schema: &Arc<Schema>, inbox: &Arc<Mutex<Vec<Record>>>) {
-	let schema = schema.clone();
-	let inbox = inbox.clone();
-	// A nested root array has an item id; records name it as "the root" so
-	// the translation treats both kinds of root alike.
-	let root_id = branch_id(root);
-	root.observe_deep(
-		OBSERVER,
-		move |txn: &TransactionMut<'_>, events: &Events<'_>| {
-			if is_local(txn) {
-				return;
-			}
-
-			let records = events
-				.iter()
-				.filter_map(|event| record::record(txn, event, &schema, root_id));
-			lock(&inbox).extend(records);
-		},
-	);
+/// Record every event inside a mirrored array that this peer did not make
+/// from local commits. `root` is the mirrored array's item id when it is
+/// nested inside another shared type, or `None` for a root type.
+pub(crate) fn record_events<'e>(
+	txn: &TransactionMut<'_>,
+	events: impl IntoIterator<Item = &'e yrs::types::Event>,
+	schema: &Schema,
+	root: Option<yrs::ID>,
+	inbox: &Mutex<Vec<Record>>,
+) {
+	let records = events
+		.into_iter()
+		.filter_map(|event| record::record(txn, event, schema, root));
+	lock(inbox).extend(records);
 }
 
 /// Whether `txn` was made by this peer from local commits.

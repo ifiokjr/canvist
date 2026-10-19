@@ -219,6 +219,22 @@ impl Prop {
 		}
 	}
 
+	/// Whether a node of `kind` accepts this property: it is valid, a shape
+	/// fits the kind, and only instances take overrides. Collaboration
+	/// bindings use it to skip values a peer wrote that this schema rejects.
+	#[must_use]
+	pub fn fits(&self, kind: crate::NodeKind) -> bool {
+		if !self.is_valid() {
+			return false;
+		}
+
+		match self {
+			Self::Shape(shape) => shape.fits(kind),
+			Self::Override(..) | Self::ClearOverride(..) => kind == crate::NodeKind::Instance,
+			_ => true,
+		}
+	}
+
 	/// Whether this property's numbers are usable: finite, in range, and not
 	/// nested overrides.
 	#[must_use]

@@ -6,6 +6,8 @@ use std::sync::Mutex;
 use canvist_model::Commit;
 use canvist_model::Document;
 use canvist_model::Schema;
+use yrs::ArrayRef;
+use yrs::DeepObservable;
 use yrs::Doc;
 use yrs::OffsetKind;
 use yrs::Options;
@@ -13,9 +15,11 @@ use yrs::Origin;
 use yrs::ReadTxn;
 use yrs::StateVector;
 use yrs::Transact;
+use yrs::TransactionMut;
 use yrs::UndoManager;
 use yrs::Update;
 use yrs::block::ClientID;
+use yrs::types::Events;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 
@@ -26,7 +30,9 @@ use crate::mirror::Mirror;
 use crate::mirror::OBSERVER;
 use crate::mirror::REMOTE;
 use crate::mirror::UNTRACKED;
+use crate::mirror::is_local;
 use crate::mirror::lock;
+use crate::mirror::record_events;
 use crate::registry::Registry;
 use crate::remote::Repair;
 use crate::reorder::Reorder;
@@ -67,6 +73,7 @@ pub enum Encoding {
 /// [`Binding::document`] rebuilds the document from the shared state.
 pub struct Binding {
 	doc: Doc,
+	root: ArrayRef,
 	mirror: Mirror,
 	outbox: Arc<Mutex<Vec<Vec<u8>>>>,
 	undo: UndoManager,
@@ -91,13 +98,16 @@ impl Binding {
 	/// A binding over an empty shared document with the given yrs client id,
 	/// which must be unique among peers and never reused with lost state.
 	pub fn with_client_id(schema: Arc<Schema>, client_id: u64) -> Result<Self, CollabError> {
-		let doc = shared_doc(client_id);
+		let doc = shared_doc(client_id, true);
 		let root = doc.get_or_insert_array(keys::ROOT);
 		let outbox = observe_updates(&doc)?;
 		let undo = undo_manager(&doc, &root);
+		let mirror = Mirror::new(schema);
+		observe_root(&root, &mirror);
 
 		Ok(Self {
-			mirror: Mirror::new(root, schema),
+			mirror,
+			root,
 			doc,
 			outbox,
 			undo,
@@ -120,14 +130,14 @@ impl Binding {
 	/// this; peers that join call [`Binding::document`] after syncing.
 	pub fn seed(&mut self, doc: &Document) -> Result<(), CollabError> {
 		let mut txn = self.doc.transact_mut_with(UNTRACKED);
-		self.mirror.seed(&mut txn, doc)
+		self.mirror.seed(&mut txn, &self.root, doc)
 	}
 
 	/// Build a document from the shared state, making it the tracked document.
 	/// `client` seeds block id allocation as in [`Document::new`].
 	pub fn document(&mut self, client: u32) -> Result<Document, CollabError> {
 		let txn = self.doc.transact();
-		let (doc, repairs) = self.mirror.document(&txn, client)?;
+		let (doc, repairs) = self.mirror.document(&txn, &self.root, client)?;
 		drop(txn);
 		self.repair(&repairs);
 		Ok(doc)
@@ -159,7 +169,7 @@ impl Binding {
 			Track::Untracked => UNTRACKED,
 		};
 		let mut txn = self.doc.transact_mut_with(origin);
-		let retyped = self.mirror.translate(&mut txn, doc, commit)?;
+		let retyped = self.mirror.translate(&mut txn, &self.root, doc, commit)?;
 		drop(txn);
 
 		if retyped.is_empty() {
@@ -167,7 +177,7 @@ impl Binding {
 		}
 
 		let txn = self.doc.transact();
-		let (follow_up, repairs) = self.mirror.reveal(&txn, doc, &retyped)?;
+		let (follow_up, repairs) = self.mirror.reveal(&txn, &self.root, doc, &retyped)?;
 		drop(txn);
 		self.repair(&repairs);
 		Ok(follow_up)
@@ -219,7 +229,7 @@ impl Binding {
 	/// Translate the recorded yrs events into one model commit.
 	pub(crate) fn mirror(&mut self, doc: &mut Document) -> Result<Commit, CollabError> {
 		let txn = self.doc.transact();
-		let (commit, repairs) = self.mirror.mirror(&txn, doc)?;
+		let (commit, repairs) = self.mirror.mirror(&txn, &self.root, doc)?;
 		drop(txn);
 		self.repair(&repairs);
 		Ok(commit)
@@ -232,7 +242,7 @@ impl Binding {
 		}
 
 		let mut txn = self.doc.transact_mut_with(UNTRACKED);
-		self.mirror.repair(&mut txn, repairs);
+		self.mirror.repair(&mut txn, &self.root, repairs);
 	}
 
 	/// The state vector of the shared document, v1 encoded, for the first
@@ -306,18 +316,35 @@ impl Binding {
 
 impl Drop for Binding {
 	fn drop(&mut self) {
-		// The observer only touches state this binding owns. Unsubscribing can
+		// The observers only touch state this binding owns. Unsubscribing can
 		// only fail while a transaction is open, which no `&mut self` method
 		// leaves behind, so there is nothing to report here.
 		let _ = self.doc.unobserve_update_v1(OBSERVER);
+		self.root.unobserve_deep(OBSERVER);
 	}
 }
 
-/// A yrs document with the options every canvist binding uses.
-pub(crate) fn shared_doc(client_id: u64) -> Doc {
+/// Record remote changes inside the root array into the mirror's inbox.
+fn observe_root(root: &ArrayRef, mirror: &Mirror) {
+	let schema = mirror.schema().clone();
+	let inbox = mirror.inbox();
+	root.observe_deep(
+		OBSERVER,
+		move |txn: &TransactionMut<'_>, events: &Events<'_>| {
+			if !is_local(txn) {
+				record_events(txn, events.iter(), &schema, None, &inbox);
+			}
+		},
+	);
+}
+
+/// A yrs document with the options every canvist binding uses. `gc` lets
+/// yrs free deleted content.
+pub(crate) fn shared_doc(client_id: u64, gc: bool) -> Doc {
 	let options = Options {
 		offset_kind: OffsetKind::Utf16,
 		cleanup_formatting: false,
+		skip_gc: !gc,
 		..Options::with_client_id(ClientID::new(client_id))
 	};
 	Doc::with_options(options)

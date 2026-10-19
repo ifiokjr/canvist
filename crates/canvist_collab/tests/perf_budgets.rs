@@ -260,3 +260,146 @@ fn join_a_10k_paragraph_document() {
 	// mirror is the rest.
 	assert_within("join 10k paragraphs", measured, Duration::from_millis(50));
 }
+
+/// Scene budgets: one property change crossing the wire at 10,000 nodes.
+#[cfg(feature = "scene")]
+mod scene {
+	use std::sync::Arc;
+	use std::time::Duration;
+
+	use canvist_collab::Encoding;
+	use canvist_collab::SceneBinding;
+	use canvist_collab::Track;
+	use canvist_model::BlockSpec;
+	use canvist_model::Schema;
+	use canvist_scene::NodeId;
+	use canvist_scene::Prop;
+	use canvist_scene::Props;
+	use canvist_scene::Scene;
+	use canvist_scene::SceneSchema;
+	use kurbo::Affine;
+	use kurbo::Vec2;
+
+	use super::assert_within;
+	use super::median_per_call;
+
+	const FRAMES: usize = 100;
+	const PER_FRAME: usize = 99;
+	const BATCH: u32 = 200;
+
+	fn schema() -> Arc<SceneSchema> {
+		let text = Arc::new(
+			Schema::builder()
+				.block(BlockSpec::text("paragraph"))
+				.build()
+				.expect("text schema"),
+		);
+		Arc::new(SceneSchema::standard(text).expect("scene schema"))
+	}
+
+	/// Two synced peers sharing a 10k-node scene, and one rectangle in it.
+	fn pair() -> ((Scene, SceneBinding), (Scene, SceneBinding), NodeId) {
+		let schema = schema();
+		let mut scene = Scene::new(schema.clone(), 1).expect("scene");
+		let page = scene.pages()[0];
+		let mut transaction = scene.transaction();
+		let mut target = page;
+
+		for frame in 0..FRAMES {
+			let id = transaction
+				.insert(page, None, "frame", Props::default())
+				.expect("frame");
+
+			for index in 0..PER_FRAME {
+				let props = Props {
+					size: Vec2::new(10.0, 10.0),
+					..Props::default()
+				};
+				let rect = transaction
+					.insert(id, None, "rectangle", props)
+					.expect("rect");
+
+				if frame == FRAMES / 2 && index == PER_FRAME / 2 {
+					target = rect;
+				}
+			}
+		}
+
+		let _ = transaction.commit();
+		let mut binding = SceneBinding::with_client_id(schema.clone(), 1).expect("binding");
+		binding.seed(&scene).expect("seed");
+		// The follower joins from the full state, which includes the seed.
+		let _ = binding.take_updates();
+		let mut follower = SceneBinding::with_client_id(schema, 2).expect("binding");
+		follower
+			.apply_state(&binding.encode_state(Encoding::V1), Encoding::V1)
+			.expect("state");
+		let follower_scene = follower.scene(2).expect("join");
+		((scene, binding), (follower_scene, follower), target)
+	}
+
+	/// Move `node` and return the one update that carries it.
+	fn nudge(scene: &mut Scene, binding: &mut SceneBinding, node: NodeId, x: f64) -> Vec<u8> {
+		let mut transaction = scene.transaction();
+		transaction
+			.set(node, Prop::Transform(Affine::translate((x, 0.0))))
+			.expect("move");
+		let commit = transaction.commit();
+		binding
+			.apply_local(scene, &commit, Track::Merge)
+			.expect("encode");
+		let mut updates = binding.take_updates();
+		assert_eq!(updates.len(), 1, "one commit makes one update");
+		updates.pop().unwrap_or_default()
+	}
+
+	#[test]
+	#[ignore = "release-mode performance budget; run with `test:perf`"]
+	fn encode_a_property_change_in_a_10k_node_scene() {
+		let ((mut scene, mut binding), _, node) = pair();
+		let mut x = 0.0;
+
+		let measured = median_per_call(BATCH, || {
+			x += 1.0;
+			std::hint::black_box(nudge(&mut scene, &mut binding, node, x));
+		});
+
+		assert_within(
+			"encode a scene prop change @10k nodes",
+			measured,
+			Duration::from_micros(50),
+		);
+	}
+
+	#[test]
+	#[ignore = "release-mode performance budget; run with `test:perf`"]
+	fn apply_a_remote_property_change_in_a_10k_node_scene() {
+		let ((mut scene, mut binding), (mut follower_scene, mut follower), node) = pair();
+		let total = BATCH as usize * (super::SAMPLES + 1);
+		let mut updates: Vec<Vec<u8>> = (0..total)
+			.map(|step| nudge(&mut scene, &mut binding, node, step as f64))
+			.collect();
+		updates.reverse();
+
+		let measured = median_per_call(BATCH, || {
+			let update = updates.pop().expect("enough updates");
+			let commit = follower
+				.apply_update(&mut follower_scene, &update, Encoding::V1, None)
+				.expect("apply");
+			std::hint::black_box(commit);
+		});
+
+		assert!(!follower.is_waiting(), "every update applied");
+		assert_eq!(
+			follower_scene
+				.node(node)
+				.map(|found| found.props().transform),
+			scene.node(node).map(|found| found.props().transform),
+		);
+		assert_within(
+			"apply a remote scene prop change @10k nodes",
+			measured,
+			Duration::from_micros(50),
+		);
+	}
+}
