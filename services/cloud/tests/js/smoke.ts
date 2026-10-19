@@ -134,6 +134,9 @@ const providers = [alice, bob].map(
 	(doc) =>
 		new WebsocketProvider(`${wsBase}/v1/sync`, "smoke/notes", doc, {
 			params: { token },
+			// Same-process clients would otherwise sync over BroadcastChannel
+			// and bypass the server being tested.
+			disableBc: true,
 		}),
 );
 check(

@@ -66,6 +66,18 @@ impl StoredDocument {
 	}
 }
 
+/// What [`Store::append_batch`] stored, per document.
+pub type Appended = std::collections::HashMap<DocumentKey, AppendedRows>;
+
+/// The rows one document gained in a batch.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AppendedRows {
+	/// How many rows.
+	pub rows: usize,
+	/// The newest row's sequence number.
+	pub last_seq: i64,
+}
+
 /// A stored document's name and size, for listings.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct DocumentSummary {
@@ -354,9 +366,25 @@ impl Store {
 
 	/// Append a v1 update to `key` and return its sequence number.
 	pub async fn append(&self, key: &DocumentKey, update: &[u8]) -> Result<i64, StoreError> {
+		let appended = self.append_batch(&[(key, update)]).await?;
+
+		Ok(appended.get(key).map_or(0, |appended| appended.last_seq))
+	}
+
+	/// Append many v1 updates, to any documents, in one transaction: the
+	/// flush loop writes every dirty room at once. Updates to one document
+	/// keep their order.
+	pub async fn append_batch(
+		&self,
+		rows: &[(&DocumentKey, &[u8])],
+	) -> Result<Appended, StoreError> {
+		if rows.is_empty() {
+			return Ok(Appended::new());
+		}
+
 		match self {
-			Self::Memory(store) => Ok(store.append(key, update)),
-			Self::Postgres(store) => store.append(key, update).await,
+			Self::Memory(store) => Ok(store.append_batch(rows)),
+			Self::Postgres(store) => store.append_batch(rows).await,
 		}
 	}
 
