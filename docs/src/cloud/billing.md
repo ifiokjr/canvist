@@ -27,11 +27,26 @@ Conversions cost $0.01 each on Builder and $0.005 on Scale. Open-source projects
 
 Your app, or your own admin page, drives billing through three routes:
 
-1. **Subscribe:** `POST /v1/billing/checkout` returns a Stripe Checkout page for Builder or Scale. Subscriptions bill on the first of each month; the first partial month's base fee is prorated.
-2. **Switch plans:** `POST /v1/billing/plan` moves between Builder and Scale. The base fee is prorated, and usage before the switch is billed at the old plan's rates.
+1. **Subscribe:** `POST /v1/billing/checkout` returns a Stripe Checkout page for Builder or Scale. Send `"interval": "year"` for the annual price; monthly is the default. Subscriptions bill on the first of each month; the first partial month's base fee is prorated.
+2. **Switch plans:** `POST /v1/billing/plan` moves between Builder and Scale, keeping the billing interval. The base fee is prorated, and usage before the switch is billed at the old plan's rates.
 3. **Manage:** `POST /v1/billing/portal` opens the Stripe Customer Portal for cards, invoices, billing details, tax IDs, and cancelling at the end of the period.
 
-Annual plans aren't sold through Checkout yet; ask for one.
+```json
+{
+	"plan": "builder",
+	"interval": "year",
+	"success_url": "https://app.example/billing/done",
+	"cancel_url": "https://app.example/billing"
+}
+```
+
+### Annual plans
+
+An annual plan bills its base fee once a year and its overage every month, on the same calendar months as a monthly plan. Its Checkout page saves your card instead of charging it; canvist Cloud starts the subscription the moment you finish, and the plan applies within seconds.
+
+- **First invoice:** the annual fee prorated to the first of next month.
+- **Then, on the first of each month:** an invoice for the previous month's overage. On the first of the month the subscription renews, the same invoice also carries the full annual fee for the next twelve months.
+- **Cancelling:** for now, ask us to cancel an annual plan. The Customer Portal would end it at the end of the current month rather than the paid year.
 
 ## If a payment fails
 

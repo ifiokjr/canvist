@@ -24,7 +24,7 @@ This is the plan for billing canvist Cloud through Stripe. It records what Strip
 | Recurring revenue     | [Billing](https://docs.stripe.com/billing) subscriptions, not raw PaymentIntents | Billing subscriptions                                                                                   |
 | Customer object       | Customers v1 (Accounts v2 as customers is in public preview)                     | Customers v1, one per paying project                                                                    |
 | Usage-based billing   | Metronome for new integrations; Billing Meters for simple pay-as-you-go          | **Billing Meters**: two meters, graduated tiers, no credits or commitments (see below)                  |
-| Payment page          | Checkout Sessions in `subscription` mode                                         | Checkout, hosted, for monthly plans                                                                     |
+| Payment page          | Checkout Sessions in `subscription` mode                                         | Checkout, hosted: `subscription` mode for monthly plans, `setup` mode for annual ones                   |
 | Self-serve management | Customer Portal                                                                  | Portal for payment methods, invoices, billing details, tax IDs, and cancellation; plan switches via API |
 | Subscription state    | Webhooks for `customer.subscription.*`, `invoice.paid`, `invoice.payment_failed` | All of them, plus `checkout.session.completed`                                                          |
 | Tax                   | Stripe Tax with `automatic_tax`, product tax codes, and an active registration   | Tax codes and tax behaviour in the catalog; `automatic_tax` behind a switch until a registration exists |
@@ -57,7 +57,7 @@ The tax code is the one Stripe's guidance names for SaaS sold to businesses; con
 
 A MAD is counted per **UTC calendar month**, and a Billing Meter sums events per **subscription billing period**. If the two disagree, a document active on the 20th of one month and the 3rd of the next is counted twice in one billing period, and the included allowance applies to the wrong window.
 
-So every subscription is anchored to the first of the month: Checkout sets `subscription_data.billing_cycle_anchor` to 00:00 UTC on the first of the next month. The base fee for the partial first month is prorated (Stripe's default), and the first partial period gets the full included allowance, which favours the customer.
+So every subscription is anchored to the first of the month: Checkout sets `subscription_data.billing_cycle_anchor`, and the server sets `billing_cycle_anchor` on annual subscriptions, to 00:00 UTC on the first of the next month. The base fee for the partial first month is prorated (Stripe's default), and the first partial period gets the full included allowance, which favours the customer.
 
 ## Usage reporting
 
@@ -69,24 +69,25 @@ So every subscription is anchored to the first of the month: Checkout sets `subs
 
 ## Checkout, plan changes, and the Portal
 
-- **`POST /v1/billing/checkout`** (API key) creates a Checkout Session for Builder or Scale: the base price plus both overage prices, `metadata.canvist_project` on the session and the subscription, the month-start anchor, tax ID collection, and `automatic_tax` when enabled. A project that already pays gets `409` and is pointed at the next two endpoints.
-- **`POST /v1/billing/plan`** (API key) switches between Builder and Scale by swapping each item's price, prorating the base fee. Stripe bills metered usage before the switch at the old plan's rates and starts the new plan's tiers from the switch, which favours the customer either way (tested in test mode on 2026-10-19). The Portal cannot do this: it refuses plan switches on subscriptions with usage-based prices or several products.
+- **`POST /v1/billing/checkout`** (API key) creates a Checkout Session for Builder or Scale, billed `"interval": "month"` (the default) or `"year"`. A monthly session is in `subscription` mode: the base price plus both overage prices, `metadata.canvist_project` on the session and the subscription, the month-start anchor, tax ID collection, and `automatic_tax` when enabled. A project that already pays gets `409` and is pointed at the next two endpoints.
+- **Annual plans use setup-mode Checkout and the Subscriptions API.** An annual base fee with monthly metered overage is a [mixed-interval subscription](https://docs.stripe.com/billing/subscriptions/mixed-interval), which needs `billing_mode[type]=flexible` and which Checkout cannot create. So a yearly checkout is a `setup` mode session (the price's currency, the customer created or reused, tax ID collection, `metadata.canvist_project` and `metadata.canvist_plan`) that only saves a card. On `checkout.session.completed` for a `setup` session, the server retrieves the session with its SetupIntent expanded and calls `POST /v1/subscriptions`: the annual base price plus both monthly overage prices, flexible billing mode, the month-start anchor, the saved card as `default_payment_method`, `off_session=true`, and `metadata.canvist_project` and `metadata.canvist_checkout_session`. Then it applies the subscription like any other.
+- **Creating the annual subscription is idempotent twice over.** The request carries the idempotency key `canvist-annual-<session id>`, so retries within Stripe's 24-hour key window return the first subscription. Stripe retries webhooks for three days, so before creating, the server also lists the customer's subscriptions and applies the one whose `metadata.canvist_checkout_session` names the session. A project that already pays through another subscription gets nothing new: the card is saved, nothing is billed twice.
+- **`POST /v1/billing/plan`** (API key) switches between Builder and Scale by swapping each item's price for the same price of the new plan, so an annual subscription stays annual, prorating the base fee. Stripe bills metered usage before the switch at the old plan's rates and starts the new plan's tiers from the switch, which favours the customer either way (tested in test mode on 2026-10-19). The Portal cannot do this: it refuses plan switches on subscriptions with usage-based prices or several products.
 - **`POST /v1/billing/portal`** (API key) opens the Customer Portal for payment methods, invoices, billing details, tax IDs, and cancelling at the end of the period.
-- **Annual plans are not in Checkout yet.** An annual base fee with monthly metered overage needs a mixed-interval subscription (`billing_mode: flexible`), and Checkout cannot create those. The path is a Checkout Session in `setup` mode to collect the payment method, then `POST /v1/subscriptions` from the server. That is a follow-up; until then annual plans are sold by hand.
 
 ## Webhooks
 
 The endpoint `POST /v1/stripe/webhook` verifies `Stripe-Signature` against the endpoint secret with a five-minute tolerance, then acts on:
 
-| Event                                                   | What it means for canvist                                |
-| ------------------------------------------------------- | -------------------------------------------------------- |
-| `checkout.session.completed`                            | A project subscribed: link its customer and subscription |
-| `customer.subscription.created`, `.updated`, `.deleted` | The plan, status, or items changed                       |
-| `customer.subscription.paused`, `.resumed`              | Collection paused or resumed                             |
-| `invoice.paid`                                          | A payment recovered a `past_due` subscription            |
-| `invoice.payment_failed`                                | A payment failed; Stripe is retrying                     |
+| Event                                                   | What it means for canvist                                                                                                     |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `checkout.session.completed`                            | A project subscribed: link its customer and subscription; for an annual (`setup` mode) session, create the subscription first |
+| `customer.subscription.created`, `.updated`, `.deleted` | The plan, status, or items changed                                                                                            |
+| `customer.subscription.paused`, `.resumed`              | Collection paused or resumed                                                                                                  |
+| `invoice.paid`                                          | A payment recovered a `past_due` subscription                                                                                 |
+| `invoice.payment_failed`                                | A payment failed; Stripe is retrying                                                                                          |
 
-Stripe does not deliver events in order, so the handler never trusts the event body's snapshot. Every event names a subscription, and the handler **retrieves that subscription** and applies its current state. Applying the same state twice changes nothing, so retries and duplicates are harmless.
+Stripe does not deliver events in order, so the handler never trusts the event body's snapshot. Every event names a subscription (or, for an annual checkout, a session whose subscription the server creates), and the handler **retrieves that subscription** and applies its current state. Applying the same state twice changes nothing, so retries and duplicates are harmless.
 
 A project points at one subscription. An event for a different subscription that is no longer paying (an old one, cancelled after an upgrade) is ignored, so it cannot downgrade the project.
 
@@ -113,7 +114,7 @@ Threshold monitoring only counts live-mode sales, so its clock starts at the fir
 
 ## Keys and secrets
 
-- **Server (`sync`)**: a restricted test key with write access to Billing Meter Events, Checkout Sessions, Customer Portal Sessions, and Subscriptions, and read access to Prices and Customer Portal configurations. The server refuses live keys outright.
+- **Server (`sync`)**: a restricted test key with write access to Billing Meter Events, Checkout Sessions, Customer Portal Sessions, and Subscriptions, and read access to Prices, SetupIntents (for annual checkouts), and Customer Portal configurations. The server refuses live keys outright.
 - **Setup script**: a full test-mode key from the Stripe CLI or `STRIPE_SECRET_KEY`. It refuses live keys and any account not named "canvist".
 - **Webhook signing secret**: `STRIPE_WEBHOOK_SECRET` on `sync`.
 - All of them live only in Railway variables (set from stdin) or Monosecret, never in the repository or logs. Production has none until the owner approves live billing.
@@ -130,5 +131,4 @@ Threshold monitoring only counts live-mode sales, so its clock starts at the fir
 - Approve the prices and the product tax code.
 - Set the head office address, add tax registrations, and then enable `STRIPE_AUTOMATIC_TAX`.
 - Configure branding, invoice settings, Smart Retries, and the dunning emails.
-- Decide whether annual plans need self-serve Checkout before launch.
 - Approve live billing, which also means lifting the server's refusal of live keys.
