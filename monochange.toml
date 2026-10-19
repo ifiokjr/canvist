@@ -136,6 +136,11 @@ path = "crates/canvist_collab"
 [package.canvist_headless]
 path = "crates/canvist_headless"
 
+# The canvas: canvist's design-tool sibling of the text editor
+# (`docs/internal/canvas.md`).
+[package.canvist_scene]
+path = "crates/canvist_scene"
+
 # Binding crates. They are versioned with the SDK so the bindings they back
 # report the right version, but they are never published on their own:
 # `canvist_ffi` ships inside the Swift and Android artifacts and
@@ -234,6 +239,7 @@ packages = [
 	"canvist_layout",
 	"canvist_model",
 	"canvist_render",
+	"canvist_scene",
 	"canvist_wasm",
 	"canvist_web",
 ]
