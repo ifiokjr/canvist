@@ -9,6 +9,7 @@ export const PAGES = [
 	{ path: "/docs", title: /Introduction · canvist/ },
 	{ path: "/docs/concepts/how-it-works", title: /How canvist works · canvist/ },
 	{ path: "/docs/crates/canvist_core", title: /canvist_core · canvist/ },
+	{ path: "/changelog", title: /Changelog · canvist/ },
 ] as const;
 
 /** The landing page's sections, in deck order. */
