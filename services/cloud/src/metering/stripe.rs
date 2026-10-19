@@ -104,11 +104,23 @@ impl StripeClient {
 	/// its single retry after a transport failure, so a request that reached
 	/// Stripe is not applied twice.
 	pub async fn post(&self, path: &str, form: &[(String, String)]) -> Result<Json, StripeError> {
-		let key = random_token(IDEMPOTENCY_KEY_LENGTH);
+		self.post_once(path, form, &random_token(IDEMPOTENCY_KEY_LENGTH))
+			.await
+	}
+
+	/// `POST path` with `form` under the caller's idempotency `key`, so
+	/// separate attempts at the same request (a retried webhook) are applied
+	/// once. Stripe remembers a key for at least 24 hours.
+	pub async fn post_once(
+		&self,
+		path: &str,
+		form: &[(String, String)],
+		key: &str,
+	) -> Result<Json, StripeError> {
 		let request = || {
 			self.http
 				.post(format!("{}{path}", self.config.api_base))
-				.header("idempotency-key", &key)
+				.header("idempotency-key", key)
 				.form(form)
 		};
 

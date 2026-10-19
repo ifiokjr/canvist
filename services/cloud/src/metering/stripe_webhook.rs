@@ -1,10 +1,10 @@
-//! Stripe webhooks: verifying them, and finding the subscription an event
-//! is about.
+//! Stripe webhooks: verifying them, and finding what an event asks for.
 //!
 //! Stripe does not deliver events in order, so the server never applies an
 //! event's snapshot of a subscription. It retrieves the subscription the
 //! event names and applies its current state ([`super::billing`]), which
-//! makes duplicates, retries, and reordering harmless.
+//! makes duplicates, retries, and reordering harmless. A completed annual
+//! checkout names no subscription yet: the server creates one, idempotently.
 
 use hmac::Hmac;
 use hmac::Mac;
@@ -75,18 +75,32 @@ fn decode_hex(text: &str) -> Option<Vec<u8>> {
 		.collect()
 }
 
-/// The subscription `event` is about, if it is one this endpoint acts on.
-pub fn subscription_id(event: &Json) -> Option<&str> {
+/// What a webhook event asks the server to do.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Action<'a> {
+	/// Apply this subscription's current state.
+	Sync(&'a str),
+	/// Create the annual subscription this setup-mode Checkout Session saved
+	/// a payment method for.
+	CompleteAnnualCheckout(&'a str),
+}
+
+/// What `event` asks for, if it is one this endpoint acts on.
+pub fn action(event: &Json) -> Option<Action<'_>> {
 	let kind = event.get("type")?.as_str()?;
 	let object = event.get("data")?.get("object")?;
+	let field = |name: &str| object.get(name)?.as_str();
 
 	match kind {
 		"customer.subscription.created"
 		| "customer.subscription.updated"
 		| "customer.subscription.deleted"
 		| "customer.subscription.paused"
-		| "customer.subscription.resumed" => object.get("id")?.as_str(),
-		"checkout.session.completed" => object.get("subscription")?.as_str(),
+		| "customer.subscription.resumed" => field("id").map(Action::Sync),
+		"checkout.session.completed" if field("mode") == Some("setup") => {
+			field("id").map(Action::CompleteAnnualCheckout)
+		}
+		"checkout.session.completed" => field("subscription").map(Action::Sync),
 		"invoice.paid" | "invoice.payment_failed" => {
 			object
 				.get("parent")
@@ -94,6 +108,7 @@ pub fn subscription_id(event: &Json) -> Option<&str> {
 				.and_then(|details| details.get("subscription"))
 				.or_else(|| object.get("subscription"))?
 				.as_str()
+				.map(Action::Sync)
 		}
 		_ => None,
 	}
@@ -137,46 +152,54 @@ mod tests {
 	}
 
 	#[test]
-	fn events_name_their_subscription() {
+	fn events_name_what_to_do() {
 		let event =
 			|kind: &str, object: Json| json!({ "type": kind, "data": { "object": object } });
 
 		assert_eq!(
-			subscription_id(&event(
+			action(&event(
 				"customer.subscription.updated",
 				json!({ "id": "sub_1" })
 			)),
-			Some("sub_1")
+			Some(Action::Sync("sub_1"))
 		);
 		assert_eq!(
-			subscription_id(&event(
+			action(&event(
 				"checkout.session.completed",
-				json!({ "id": "cs_1", "subscription": "sub_2" })
+				json!({ "id": "cs_1", "mode": "subscription", "subscription": "sub_2" })
 			)),
-			Some("sub_2")
+			Some(Action::Sync("sub_2"))
 		);
 		assert_eq!(
-			subscription_id(&event(
+			action(&event(
+				"checkout.session.completed",
+				json!({ "id": "cs_2", "mode": "setup", "subscription": null })
+			)),
+			Some(Action::CompleteAnnualCheckout("cs_2")),
+			"an annual checkout saves a card for a subscription the server creates"
+		);
+		assert_eq!(
+			action(&event(
 				"invoice.payment_failed",
 				json!({ "parent": { "subscription_details": { "subscription": "sub_3" } } })
 			)),
-			Some("sub_3")
+			Some(Action::Sync("sub_3"))
 		);
 		assert_eq!(
-			subscription_id(&event("invoice.paid", json!({ "subscription": "sub_4" }))),
-			Some("sub_4"),
+			action(&event("invoice.paid", json!({ "subscription": "sub_4" }))),
+			Some(Action::Sync("sub_4")),
 			"older API versions put the subscription on the invoice"
 		);
 		assert_eq!(
-			subscription_id(&event(
+			action(&event(
 				"checkout.session.completed",
-				json!({ "subscription": null })
+				json!({ "mode": "payment", "subscription": null })
 			)),
 			None,
 			"a payment-mode session has no subscription"
 		);
 		assert_eq!(
-			subscription_id(&event("charge.refunded", json!({ "id": "ch_1" }))),
+			action(&event("charge.refunded", json!({ "id": "ch_1" }))),
 			None
 		);
 	}
