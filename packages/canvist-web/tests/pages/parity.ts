@@ -7,9 +7,15 @@
 import { fontFaceCss, fonts, type FontSource } from "../../src/fonts.ts";
 import { createEditor, type ThemeOptions } from "../../src/mod.ts";
 import { fixture } from "../parity/fixtures.ts";
-import { type CanvasGeometry, compare } from "../parity/geometry.ts";
+import {
+	type CanvasGeometry,
+	compare,
+	type GeometryReport,
+} from "../parity/geometry.ts";
 
 const GAP = 16;
+/** How many frame pairs to wait for the DOM to stop moving. */
+const MAX_SETTLE_FRAMES = 20;
 const params = new URLSearchParams(location.search);
 const chosen = fixture(params.get("fixture") ?? "system-sans");
 const width = chosen.width ?? 480;
@@ -75,11 +81,37 @@ for (const frame of document.querySelectorAll<HTMLElement>(".frame")) {
 	frame.style.height = `${height}px`;
 }
 
-await new Promise((resolve) =>
-	requestAnimationFrame(() => requestAnimationFrame(resolve))
-);
-const report = compare(geometry, root);
+const report = await settledComparison(geometry, root);
 Object.assign(globalThis, {
 	parity: { ready: true, width, height, report, stats: editor.stats() },
 	editor,
 });
+
+/**
+ * Compare once the DOM has settled. Under load, a face can finish loading
+ * after `document.fonts.ready` resolves, and the DOM reflows when it does,
+ * so compare until two frames in a row measure the same DOM.
+ */
+async function settledComparison(
+	geometry: CanvasGeometry,
+	root: Element,
+): Promise<GeometryReport> {
+	let previous = "";
+
+	for (let attempt = 0; attempt < MAX_SETTLE_FRAMES; attempt += 1) {
+		await document.fonts.ready;
+		await new Promise((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(resolve))
+		);
+		const report = compare(geometry, root);
+		const measured = JSON.stringify(report);
+
+		if (measured === previous) {
+			return report;
+		}
+
+		previous = measured;
+	}
+
+	throw new Error(`the DOM did not settle in ${MAX_SETTLE_FRAMES} frames`);
+}
