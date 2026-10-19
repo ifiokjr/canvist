@@ -4,7 +4,8 @@
  * its poster to `assets/brand/video-poster.png`. The MP4 isn't hosted yet,
  * so the slot shows the poster, marked as coming soon. To ship the film, put
  * the MP4 in `public/media/` and pass its path as `src`; the 16:9 box stays
- * the same, so nothing shifts.
+ * the same, so nothing shifts. The poster is often the largest thing in the
+ * first viewport (the LCP element), so it loads eagerly, at high priority.
  */
 import type { ImageMetadata } from "astro";
 import { getImage, Image } from "astro:assets";
@@ -33,7 +34,8 @@ const posterUrl = src === undefined ? undefined : (await getImage({ src: poster,
 					widths={[480, 720, 960]}
 					sizes="(max-width: 64rem) calc(100vw - 4rem), 30rem"
 					format="webp"
-					loading="lazy"
+					loading="eager"
+					fetchpriority="high"
 					decoding="async"
 				/>
 				<span class="film__badge" aria-hidden="true">
