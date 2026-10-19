@@ -78,10 +78,18 @@ pub(crate) enum ArrayOp {
 }
 
 /// Copy one event, or `None` for event kinds canvist does not use.
-pub(crate) fn record(txn: &TransactionMut<'_>, event: &Event, schema: &Schema) -> Option<Record> {
+///
+/// `root` is the item id of the mirrored array when it is nested inside
+/// another shared type; events on it are recorded as events on the root.
+pub(crate) fn record(
+	txn: &TransactionMut<'_>,
+	event: &Event,
+	schema: &Schema,
+	root: Option<ID>,
+) -> Option<Record> {
 	match event {
 		Event::Text(event) => text_record(txn, event, schema),
-		Event::Array(event) => Some(array_record(txn, event)),
+		Event::Array(event) => Some(array_record(txn, event, root)),
 		Event::Map(event) => {
 			Some(Record::Map {
 				map: branch_id(event.target())?,
@@ -115,7 +123,7 @@ fn text_record(txn: &TransactionMut<'_>, event: &TextEvent, schema: &Schema) -> 
 	})
 }
 
-fn array_record(txn: &TransactionMut<'_>, event: &ArrayEvent) -> Record {
+fn array_record(txn: &TransactionMut<'_>, event: &ArrayEvent, root: Option<ID>) -> Record {
 	let ops = event
 		.delta(txn)
 		.iter()
@@ -139,7 +147,7 @@ fn array_record(txn: &TransactionMut<'_>, event: &ArrayEvent) -> Record {
 		.collect();
 
 	Record::Array {
-		array: branch_id(event.target()),
+		array: branch_id(event.target()).filter(|id| Some(*id) != root),
 		ops,
 		inserted,
 		removed: event.removes(txn).iter().copied().collect(),

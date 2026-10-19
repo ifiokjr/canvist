@@ -151,6 +151,7 @@ mod error;
 mod history;
 pub mod keys;
 mod local;
+mod mirror;
 mod presence;
 mod registry;
 mod remote;
