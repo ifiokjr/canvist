@@ -38,6 +38,7 @@ use crate::metering::billing;
 use crate::metering::billing::BillingError;
 use crate::metering::stripe::StripeClient;
 use crate::metering::stripe_webhook;
+use crate::metering::stripe_webhook::Action;
 use crate::names::DocumentKey;
 use crate::names::DocumentName;
 use crate::names::Environment;
@@ -471,7 +472,8 @@ async fn usage(
 
 /// `POST /v1/stripe/webhook`: subscription, checkout, and invoice events.
 /// Each names a subscription, which is retrieved from Stripe and applied as
-/// it is now, so out-of-order and repeated events are harmless. Off (`404`)
+/// it is now, so out-of-order and repeated events are harmless. A completed
+/// annual checkout creates its subscription first, idempotently. Off (`404`)
 /// without `STRIPE_WEBHOOK_SECRET` and `STRIPE_SECRET_KEY`. Events for other
 /// products or unknown projects are acknowledged and ignored, so Stripe
 /// does not retry them; a Stripe or store failure answers `503` so it does.
@@ -491,18 +493,22 @@ async fn stripe_webhook(
 		.map_err(|error| ApiError::bad_request(error.to_string()))?;
 	let event: JsonValue = serde_json::from_slice(&body)
 		.map_err(|_| ApiError::bad_request(stripe_webhook::WebhookError::Payload.to_string()))?;
-	let Some(subscription) = stripe_webhook::subscription_id(&event) else {
-		return Ok(Json(json!({ "handled": false })));
+	let applied = match stripe_webhook::action(&event) {
+		None => return Ok(Json(json!({ "handled": false }))),
+		Some(Action::CompleteAnnualCheckout(session)) => {
+			billing::complete_annual_checkout(stripe, &app.store, session).await?
+		}
+		Some(Action::Sync(subscription)) => {
+			if event.get("type").and_then(JsonValue::as_str) == Some("invoice.payment_failed") {
+				tracing::warn!(
+					subscription,
+					"a subscription payment failed; Stripe is retrying it"
+				);
+			}
+
+			billing::sync_subscription(stripe, &app.store, subscription).await?
+		}
 	};
-
-	if event.get("type").and_then(JsonValue::as_str) == Some("invoice.payment_failed") {
-		tracing::warn!(
-			subscription,
-			"a subscription payment failed; Stripe is retrying it"
-		);
-	}
-
-	let applied = billing::sync_subscription(stripe, &app.store, subscription).await?;
 
 	Ok(Json(json!({ "handled": applied.is_some() })))
 }
@@ -519,8 +525,9 @@ struct UrlResponse {
 	url: String,
 }
 
-/// `POST /v1/billing/checkout`: a Checkout Session for a monthly Builder or
-/// Scale subscription. API keys only.
+/// `POST /v1/billing/checkout`: a Checkout Session for a Builder or Scale
+/// subscription, billed monthly or (`"interval": "year"`) yearly. API keys
+/// only.
 async fn checkout(
 	State(app): State<SharedApp>,
 	headers: HeaderMap,

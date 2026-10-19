@@ -1,6 +1,6 @@
-//! Stripe billing: usage reported through the outbox, Checkout, plan
-//! switches, the Customer Portal, and subscription webhooks. Stripe is the
-//! fake in `support/stripe.rs`.
+//! Stripe billing: usage reported through the outbox, Checkout for monthly
+//! and annual plans, plan switches, the Customer Portal, and subscription
+//! webhooks. Stripe is the fake in `support/stripe.rs`.
 
 mod support;
 
@@ -475,6 +475,216 @@ async fn plans_switch_between_builder_and_scale() {
 		Some("price_canvist_scale_conversion_overage")
 	);
 	assert_eq!(usage(&fixture).await["plan"], "scale");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn annual_checkout_saves_a_card_for_the_subscription() {
+	let stripe = FakeStripe::start().await;
+	let fixture = start(&stripe).await;
+	let project = fixture.project.as_str();
+	let request = json!({
+		"plan": "scale",
+		"interval": "year",
+		"success_url": "https://app.example/billing/done",
+		"cancel_url": "https://app.example/billing",
+	});
+	let response = post(&fixture, "/v1/billing/checkout", request.clone()).await;
+	assert_eq!(response.status(), 200);
+	let body: Json = response.json().await.expect("json");
+	assert_eq!(body["url"], "https://checkout.stripe.test/cs_test_1");
+
+	let [session] = stripe
+		.posts("/v1/checkout/sessions")
+		.try_into()
+		.expect("one session");
+	assert_eq!(
+		session.field("mode"),
+		Some("setup"),
+		"Checkout cannot create a mixed-interval subscription"
+	);
+	assert_eq!(session.field("currency"), Some("usd"));
+	assert_eq!(session.field("metadata[canvist_project]"), Some(project));
+	assert_eq!(session.field("metadata[canvist_plan]"), Some("scale"));
+	assert_eq!(session.field("client_reference_id"), Some(project));
+	assert_eq!(session.field("tax_id_collection[enabled]"), Some("true"));
+	assert_eq!(session.field("customer_creation"), Some("always"));
+	assert_eq!(session.field("customer"), None);
+	assert_eq!(session.field("line_items[0][price]"), None);
+	assert_eq!(
+		session.field("subscription_data[billing_cycle_anchor]"),
+		None
+	);
+
+	// A returning customer keeps their customer.
+	let returning = Terms {
+		stripe_customer: Some("cus_test".to_owned()),
+		..Terms::of(Plan::Hobby)
+	};
+	fixture
+		.store
+		.set_terms(&fixture.project, &returning)
+		.await
+		.expect("sets terms");
+	let response = post(&fixture, "/v1/billing/checkout", request).await;
+	assert_eq!(response.status(), 200);
+	let sessions = stripe.posts("/v1/checkout/sessions");
+	let session = sessions.last().expect("a second session");
+	assert_eq!(session.field("customer"), Some("cus_test"));
+	assert_eq!(session.field("customer_update[address]"), Some("auto"));
+	assert_eq!(session.field("customer_creation"), None);
+
+	let weekly = post(
+		&fixture,
+		"/v1/billing/checkout",
+		json!({ "plan": "scale", "interval": "week", "success_url": "https://a.example", "cancel_url": "https://a.example" }),
+	)
+	.await;
+	assert!(weekly.status().is_client_error(), "{}", weekly.status());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_completed_annual_checkout_starts_one_subscription() {
+	let stripe = FakeStripe::start().await;
+	let fixture = start(&stripe).await;
+	let project = fixture.project.as_str();
+	let completed = |id: &str| json!({ "id": id, "object": "checkout.session", "mode": "setup" });
+
+	// The customer left before saving a card.
+	stripe.put_annual_checkout_session("cs_open", project, "scale", "open");
+	let response = deliver(&fixture, "checkout.session.completed", completed("cs_open")).await;
+	assert_eq!(response.status(), 200);
+	assert_eq!(
+		response.json::<Json>().await.expect("json")["handled"],
+		false
+	);
+	assert!(stripe.posts("/v1/subscriptions").is_empty());
+
+	stripe.put_annual_checkout_session("cs_annual", project, "scale", "complete");
+	let response = deliver(
+		&fixture,
+		"checkout.session.completed",
+		completed("cs_annual"),
+	)
+	.await;
+	assert_eq!(response.status(), 200);
+	assert_eq!(
+		response.json::<Json>().await.expect("json")["handled"],
+		true
+	);
+
+	let [created] = stripe
+		.posts("/v1/subscriptions")
+		.try_into()
+		.expect("one subscription");
+	let anchor = Month::current().next().start_unix_seconds().to_string();
+	assert_eq!(
+		created.headers["idempotency-key"], "canvist-annual-cs_annual",
+		"a retried webhook cannot create a second subscription"
+	);
+	assert_eq!(created.field("customer"), Some("cus_test"));
+	assert_eq!(
+		created.field("default_payment_method"),
+		Some("pm_card_visa")
+	);
+	assert_eq!(created.field("billing_mode[type]"), Some("flexible"));
+	assert_eq!(created.field("billing_cycle_anchor"), Some(anchor.as_str()));
+	assert_eq!(created.field("off_session"), Some("true"));
+	assert_eq!(created.field("metadata[canvist_project]"), Some(project));
+	assert_eq!(
+		created.field("metadata[canvist_checkout_session]"),
+		Some("cs_annual")
+	);
+	assert_eq!(
+		created.field("items[0][price]"),
+		Some("price_canvist_scale_annual")
+	);
+	assert_eq!(created.field("items[0][quantity]"), Some("1"));
+	assert_eq!(
+		created.field("items[1][price]"),
+		Some("price_canvist_scale_mad_overage")
+	);
+	assert_eq!(created.field("items[1][quantity]"), None);
+	assert_eq!(
+		created.field("items[2][price]"),
+		Some("price_canvist_scale_conversion_overage")
+	);
+	assert_eq!(created.field("automatic_tax[enabled]"), None);
+
+	let usage_now = usage(&fixture).await;
+	assert_eq!(usage_now["plan"], "scale");
+	assert_eq!(usage_now["included_documents"], 150_000);
+	assert_eq!(usage_now["subscription_status"], "active");
+
+	// Stripe retries and duplicates find the subscription instead of making
+	// another, even after Stripe forgets the idempotency key.
+	for _ in 0..2 {
+		let again = deliver(
+			&fixture,
+			"checkout.session.completed",
+			completed("cs_annual"),
+		)
+		.await;
+		assert_eq!(again.status(), 200);
+		assert_eq!(again.json::<Json>().await.expect("json")["handled"], true);
+	}
+
+	assert_eq!(stripe.posts("/v1/subscriptions").len(), 1);
+
+	// A second annual checkout for a project that already pays saves a card
+	// but never bills twice.
+	stripe.put_annual_checkout_session("cs_second", project, "builder", "complete");
+	let second = deliver(
+		&fixture,
+		"checkout.session.completed",
+		completed("cs_second"),
+	)
+	.await;
+	assert_eq!(second.status(), 200);
+	assert_eq!(second.json::<Json>().await.expect("json")["handled"], false);
+	assert_eq!(stripe.posts("/v1/subscriptions").len(), 1);
+	assert_eq!(usage(&fixture).await["plan"], "scale");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn annual_subscriptions_stay_annual_when_switching_plans() {
+	let stripe = FakeStripe::start().await;
+	let fixture = start(&stripe).await;
+	stripe.put_subscription_billed(
+		"sub_1",
+		fixture.project.as_str(),
+		"builder",
+		"annual",
+		"active",
+	);
+	deliver(
+		&fixture,
+		"customer.subscription.created",
+		json!({ "id": "sub_1" }),
+	)
+	.await;
+	assert_eq!(usage(&fixture).await["plan"], "builder");
+
+	let response = post(&fixture, "/v1/billing/plan", json!({ "plan": "scale" })).await;
+	assert_eq!(response.status(), 200);
+	let [update] = stripe
+		.posts("/v1/subscriptions/sub_1")
+		.try_into()
+		.expect("one update");
+	assert_eq!(update.field("items[0][id]"), Some("si_sub_1_0"));
+	assert_eq!(
+		update.field("items[0][price]"),
+		Some("price_canvist_scale_annual")
+	);
+	assert_eq!(
+		update.field("items[1][price]"),
+		Some("price_canvist_scale_mad_overage")
+	);
+	assert_eq!(usage(&fixture).await["plan"], "scale");
+	let switched = stripe.subscription("sub_1").expect("still exists");
+	assert_eq!(
+		switched["items"]["data"][0]["price"]["recurring"]["interval"],
+		"year"
+	);
 }
 
 #[tokio::test(flavor = "multi_thread")]

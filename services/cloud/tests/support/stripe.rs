@@ -1,5 +1,6 @@
-//! A stand-in for the Stripe API: the canvist catalog, subscriptions the
-//! test controls, and a record of every request.
+//! A stand-in for the Stripe API: the canvist catalog, subscriptions and
+//! Checkout Sessions the test controls, subscriptions the server creates,
+//! and a record of every request.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -42,6 +43,9 @@ impl Recorded {
 #[derive(Default)]
 struct Inner {
 	subscriptions: HashMap<String, Value>,
+	checkout_sessions: HashMap<String, Value>,
+	/// Responses to creations, by idempotency key.
+	idempotent: HashMap<String, Value>,
 	failing_meter_events: usize,
 	posts: Vec<Recorded>,
 }
@@ -60,11 +64,13 @@ pub struct FakeStripe {
 }
 
 /// The lookup keys of the catalog's prices, and whether each is metered.
-const PRICES: [(&str, bool); 6] = [
+const PRICES: [(&str, bool); 8] = [
 	("canvist_builder_monthly", false),
+	("canvist_builder_annual", false),
 	("canvist_builder_mad_overage", true),
 	("canvist_builder_conversion_overage", true),
 	("canvist_scale_monthly", false),
+	("canvist_scale_annual", false),
 	("canvist_scale_mad_overage", true),
 	("canvist_scale_conversion_overage", true),
 ];
@@ -80,6 +86,11 @@ impl FakeStripe {
 			.route("/v1/billing/meter_events", post(meter_event))
 			.route("/v1/prices", get(prices))
 			.route("/v1/checkout/sessions", post(checkout_session))
+			.route("/v1/checkout/sessions/{id}", get(retrieve_checkout_session))
+			.route(
+				"/v1/subscriptions",
+				get(list_subscriptions).post(create_subscription),
+			)
 			.route(
 				"/v1/subscriptions/{id}",
 				get(subscription).post(update_subscription),
@@ -115,9 +126,22 @@ impl FakeStripe {
 		}
 	}
 
-	/// Store a subscription for `project` on `plan` with `status`.
+	/// Store a monthly subscription for `project` on `plan` with `status`.
 	pub fn put_subscription(&self, id: &str, project: &str, plan: &str, status: &str) {
-		let items: Vec<Value> = ["monthly", "mad_overage", "conversion_overage"]
+		self.put_subscription_billed(id, project, plan, "monthly", status);
+	}
+
+	/// Store a subscription for `project` on `plan` with `status`, whose base
+	/// price is `canvist_<plan>_<base>`.
+	pub fn put_subscription_billed(
+		&self,
+		id: &str,
+		project: &str,
+		plan: &str,
+		base: &str,
+		status: &str,
+	) {
+		let items: Vec<Value> = [base, "mad_overage", "conversion_overage"]
 			.iter()
 			.enumerate()
 			.map(|(index, suffix)| {
@@ -138,6 +162,31 @@ impl FakeStripe {
 		self.lock()
 			.subscriptions
 			.insert(id.to_owned(), subscription);
+	}
+
+	/// Store a setup-mode Checkout Session for an annual `plan`, with
+	/// `status`, that saved `pm_card_visa` for `cus_test`.
+	pub fn put_annual_checkout_session(&self, id: &str, project: &str, plan: &str, status: &str) {
+		let session = json!({
+			"id": id,
+			"object": "checkout.session",
+			"mode": "setup",
+			"status": status,
+			"customer": "cus_test",
+			"subscription": null,
+			"metadata": { "canvist_project": project, "canvist_plan": plan },
+			"setup_intent": {
+				"id": format!("seti_{id}"),
+				"object": "setup_intent",
+				"payment_method": "pm_card_visa",
+			},
+		});
+		self.lock().checkout_sessions.insert(id.to_owned(), session);
+	}
+
+	/// The subscription with `id`, as the fake holds it now.
+	pub fn subscription(&self, id: &str) -> Option<Value> {
+		self.lock().subscriptions.get(id).cloned()
 	}
 
 	/// Answer the next `count` meter events with a server error.
@@ -186,10 +235,19 @@ fn price_item(id: &str, lookup_key: &str) -> Value {
 }
 
 fn price(lookup_key: &str, metered: bool) -> Value {
+	let interval = if lookup_key.ends_with("_annual") {
+		"year"
+	} else {
+		"month"
+	};
 	json!({
 		"id": format!("price_{lookup_key}"),
 		"lookup_key": lookup_key,
-		"recurring": { "usage_type": if metered { "metered" } else { "licensed" } },
+		"currency": "usd",
+		"recurring": {
+			"interval": interval,
+			"usage_type": if metered { "metered" } else { "licensed" },
+		},
 	})
 }
 
@@ -253,6 +311,109 @@ async fn checkout_session(
 ) -> Json<Value> {
 	record(&shared, "/v1/checkout/sessions", headers, &body);
 	Json(json!({ "id": "cs_test_1", "url": "https://checkout.stripe.test/cs_test_1" }))
+}
+
+/// A stored Checkout Session, with its setup intent as an id unless the
+/// query expands it, as Stripe does.
+async fn retrieve_checkout_session(
+	State(shared): State<Shared>,
+	Path(id): Path<String>,
+	RawQuery(query): RawQuery,
+) -> Result<Json<Value>, StatusCode> {
+	let mut session = shared
+		.inner
+		.lock()
+		.expect("not poisoned")
+		.checkout_sessions
+		.get(&id)
+		.cloned()
+		.ok_or(StatusCode::NOT_FOUND)?;
+	let expanded = decode_form(&query.unwrap_or_default())
+		.iter()
+		.any(|(key, value)| key == "expand[]" && value == "setup_intent");
+
+	if !expanded {
+		session["setup_intent"] = session["setup_intent"]["id"].clone();
+	}
+
+	Ok(Json(session))
+}
+
+/// The subscriptions of `customer`, of any status.
+async fn list_subscriptions(
+	State(shared): State<Shared>,
+	RawQuery(query): RawQuery,
+) -> Json<Value> {
+	let query = decode_form(&query.unwrap_or_default());
+	let customer = query
+		.iter()
+		.find(|(key, _)| key == "customer")
+		.map(|(_, value)| value.as_str());
+	let data: Vec<Value> = shared
+		.inner
+		.lock()
+		.expect("not poisoned")
+		.subscriptions
+		.values()
+		.filter(|subscription| customer.is_none_or(|customer| subscription["customer"] == customer))
+		.cloned()
+		.collect();
+	Json(json!({ "object": "list", "data": data }))
+}
+
+/// Create an active subscription from `items[i][price]` and `metadata[…]`.
+/// A repeated idempotency key returns the first response, as Stripe does.
+async fn create_subscription(
+	State(shared): State<Shared>,
+	headers: HeaderMap,
+	body: String,
+) -> Result<Json<Value>, StatusCode> {
+	let recorded = record(&shared, "/v1/subscriptions", headers, &body);
+	let key = recorded
+		.headers
+		.get("idempotency-key")
+		.and_then(|key| key.to_str().ok())
+		.ok_or(StatusCode::BAD_REQUEST)?
+		.to_owned();
+	let mut inner = shared.inner.lock().expect("not poisoned");
+
+	if let Some(response) = inner.idempotent.get(&key) {
+		return Ok(Json(response.clone()));
+	}
+
+	let id = format!("sub_created_{}", inner.idempotent.len() + 1);
+	let mut items = Vec::new();
+
+	for index in 0.. {
+		let Some(price) = recorded.field(&format!("items[{index}][price]")) else {
+			break;
+		};
+		let lookup_key = price
+			.strip_prefix("price_")
+			.ok_or(StatusCode::BAD_REQUEST)?;
+		items.push(price_item(&format!("si_{id}_{index}"), lookup_key));
+	}
+
+	let metadata: serde_json::Map<String, Value> = recorded
+		.form
+		.iter()
+		.filter_map(|(field, value)| {
+			let name = field.strip_prefix("metadata[")?.strip_suffix(']')?;
+			Some((name.to_owned(), Value::from(value.as_str())))
+		})
+		.collect();
+	let subscription = json!({
+		"id": id,
+		"object": "subscription",
+		"customer": recorded.field("customer").ok_or(StatusCode::BAD_REQUEST)?,
+		"status": "active",
+		"metadata": metadata,
+		"items": { "data": items },
+	});
+	inner.subscriptions.insert(id, subscription.clone());
+	inner.idempotent.insert(key, subscription.clone());
+
+	Ok(Json(subscription))
 }
 
 async fn subscription(

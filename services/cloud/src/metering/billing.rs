@@ -8,6 +8,12 @@
 //! billing periods match the calendar months monthly active documents are
 //! counted in.
 //!
+//! Monthly plans are sold by Checkout in `subscription` mode. An annual plan
+//! bills its base fee yearly and its overage monthly, a mixed-interval
+//! subscription that Checkout cannot create, so Checkout runs in `setup`
+//! mode to save a payment method and the webhook creates the subscription
+//! ([`complete_annual_checkout`]).
+//!
 //! Losing a paid plan never makes documents read-only: the project returns
 //! to Hobby, documents already active this month keep syncing, and new ones
 //! past the free cap pause sync while clients keep editing locally.
@@ -29,8 +35,14 @@ use crate::store::StoreError;
 const INTEGRATION_IDENTIFIER: &str = "canvist-cloud-checkout-qhzvmbte";
 /// The metadata key that names a subscription's project.
 const PROJECT_METADATA: &str = "canvist_project";
-/// The prices a Checkout subscription is made of, after `canvist_<plan>_`.
-const SUBSCRIPTION_PRICES: [&str; 3] = ["monthly", "mad_overage", "conversion_overage"];
+/// The metadata key that names the plan an annual Checkout Session sells.
+const PLAN_METADATA: &str = "canvist_plan";
+/// The metadata key that names the Checkout Session an annual subscription
+/// was created for, so a retried webhook finds it instead of creating
+/// another.
+const CHECKOUT_SESSION_METADATA: &str = "canvist_checkout_session";
+/// The overage prices every subscription has, after `canvist_<plan>_`.
+const OVERAGE_PRICES: [&str; 2] = ["mad_overage", "conversion_overage"];
 
 /// Why a billing request failed.
 #[derive(Debug, thiserror::Error)]
@@ -69,22 +81,48 @@ pub enum BillingError {
 	Store(#[from] StoreError),
 }
 
+/// How often a plan's base fee is billed. Overage is billed monthly either
+/// way.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Interval {
+	/// Monthly.
+	#[default]
+	Month,
+	/// Yearly, at the annual price.
+	Year,
+}
+
+impl Interval {
+	/// The base price's lookup key suffix, after `canvist_<plan>_`.
+	fn base_price(self) -> &'static str {
+		match self {
+			Self::Month => "monthly",
+			Self::Year => "annual",
+		}
+	}
+}
+
 /// What a checkout needs from the caller.
 #[derive(Debug, serde::Deserialize)]
 pub struct CheckoutRequest {
 	/// `builder` or `scale`.
 	pub plan: Plan,
+	/// `month` (the default) or `year`.
+	#[serde(default)]
+	pub interval: Interval,
 	/// Where Stripe sends the customer after paying.
 	pub success_url: String,
 	/// Where Stripe sends the customer if they go back.
 	pub cancel_url: String,
 }
 
-/// Start a monthly subscription to `request.plan` for `project`, returning
-/// the Checkout Session's URL.
+/// Start a subscription to `request.plan` for `project`, returning the
+/// Checkout Session's URL.
 ///
-/// Annual plans are not sold here: an annual fee with monthly metered
-/// overage is a mixed-interval subscription, which Checkout cannot create.
+/// A monthly plan is a `subscription` mode session. An annual plan is a
+/// `setup` mode session that saves a payment method; the subscription is
+/// created when it completes ([`complete_annual_checkout`]).
 pub async fn checkout(
 	stripe: &StripeClient,
 	store: &Store,
@@ -98,38 +136,57 @@ pub async fn checkout(
 		return Err(BillingError::AlreadySubscribed);
 	}
 
-	let keys = SUBSCRIPTION_PRICES.map(|suffix| lookup_key(plan, suffix));
-	let prices = prices(stripe, &keys).await?;
-	let anchor = Month::current().next().start_unix_seconds();
+	// Looked up for annual plans too, so a missing price fails before the
+	// customer enters a card.
+	let prices = plan_prices(stripe, plan, request.interval).await?;
 	let mut form = form(&[
-		("mode", "subscription"),
 		("client_reference_id", project.as_str()),
 		("success_url", &request.success_url),
 		("cancel_url", &request.cancel_url),
 		("metadata[canvist_project]", project.as_str()),
-		(
-			"subscription_data[metadata][canvist_project]",
-			project.as_str(),
-		),
-		(
-			"subscription_data[billing_cycle_anchor]",
-			&anchor.to_string(),
-		),
 		("tax_id_collection[enabled]", "true"),
 		("integration_identifier", INTEGRATION_IDENTIFIER),
 	]);
 
-	for (index, price) in prices.iter().enumerate() {
-		form.push((format!("line_items[{index}][price]"), price.id.clone()));
+	match request.interval {
+		Interval::Month => {
+			form.extend(self::form(&[
+				("mode", "subscription"),
+				(
+					"subscription_data[metadata][canvist_project]",
+					project.as_str(),
+				),
+				("subscription_data[billing_cycle_anchor]", &next_anchor()),
+			]));
+			form.extend(items("line_items", &prices));
 
-		// Metered prices take no quantity.
-		if !price.metered {
-			form.push((format!("line_items[{index}][quantity]"), "1".to_owned()));
+			if stripe.config().automatic_tax {
+				form.push(("automatic_tax[enabled]".to_owned(), "true".to_owned()));
+			}
 		}
-	}
+		Interval::Year => {
+			let base = prices
+				.first()
+				.ok_or(BillingError::Malformed("a plan without prices"))?;
+			form.extend(self::form(&[
+				("mode", "setup"),
+				("currency", &base.currency),
+				("metadata[canvist_plan]", plan.as_str()),
+			]));
 
-	if stripe.config().automatic_tax {
-		form.push(("automatic_tax[enabled]".to_owned(), "true".to_owned()));
+			// The subscription is taxed when it is created, from the address
+			// saved here.
+			if stripe.config().automatic_tax {
+				form.push((
+					"billing_address_collection".to_owned(),
+					"required".to_owned(),
+				));
+			}
+
+			if terms.stripe_customer.is_none() {
+				form.push(("customer_creation".to_owned(), "always".to_owned()));
+			}
+		}
 	}
 
 	if let Some(customer) = &terms.stripe_customer {
@@ -188,9 +245,10 @@ pub async fn portal(
 }
 
 /// Switch `project`'s subscription to `plan`, swapping each canvist price
-/// for the same price of the new plan. The base fee is prorated. Metered
-/// usage before the switch is billed at the old plan's rates; the new plan's
-/// tiers, included documents and all, start from the switch.
+/// for the same price of the new plan, so an annual subscription stays
+/// annual. The base fee is prorated. Metered usage before the switch is
+/// billed at the old plan's rates; the new plan's tiers, included documents
+/// and all, start from the switch.
 pub async fn change_plan(
 	stripe: &StripeClient,
 	store: &Store,
@@ -212,7 +270,7 @@ pub async fn change_plan(
 	let current = stripe
 		.get(&format!("/v1/subscriptions/{}", subscription.id), &[])
 		.await?;
-	let swaps: Vec<(String, String)> = items(&current)
+	let swaps: Vec<(String, String)> = subscription_items(&current)
 		.iter()
 		.filter_map(|item| {
 			let key = item
@@ -243,6 +301,135 @@ pub async fn change_plan(
 		))
 }
 
+/// Create the annual subscription that completed setup-mode Checkout
+/// Session `id` was for, then apply it as [`sync_subscription`] does.
+///
+/// The subscription bills the plan's annual base fee and both monthly
+/// overage prices in flexible billing mode, anchored to the first of next
+/// month and charged to the payment method the session saved. Creating it is
+/// safe to repeat: the request's idempotency key comes from the session, and
+/// a subscription already created for the session is found and applied
+/// instead, after Stripe has forgotten the key. Returns `None` when the
+/// session is not a finished canvist annual checkout, or its project already
+/// pays through another subscription.
+pub async fn complete_annual_checkout(
+	stripe: &StripeClient,
+	store: &Store,
+	id: &str,
+) -> Result<Option<(ProjectId, Terms)>, BillingError> {
+	let session = stripe
+		.get(
+			&format!("/v1/checkout/sessions/{id}"),
+			&[("expand[]", "setup_intent")],
+		)
+		.await?;
+	let Some(order) = AnnualOrder::of(&session)? else {
+		return Ok(None);
+	};
+	let Some(terms) = known_terms(store, &order.project).await? else {
+		return Ok(None);
+	};
+	let existing = stripe
+		.get(
+			"/v1/subscriptions",
+			&[
+				("customer", &order.customer),
+				("status", "all"),
+				("limit", "100"),
+			],
+		)
+		.await?;
+
+	if let Some(subscription) = list(&existing).iter().find(|subscription| {
+		subscription
+			.get("metadata")
+			.and_then(|metadata| text(metadata, CHECKOUT_SESSION_METADATA))
+			.as_deref()
+			== Some(id)
+	}) {
+		return apply(store, subscription).await;
+	}
+
+	if terms.is_subscribed() {
+		tracing::warn!(project = %order.project, session = id, "an annual checkout finished for a project that already pays; not starting a second subscription");
+		return Ok(None);
+	}
+
+	let prices = plan_prices(stripe, order.plan, Interval::Year).await?;
+	let mut form = form(&[
+		("customer", &order.customer),
+		("default_payment_method", &order.payment_method),
+		("billing_mode[type]", "flexible"),
+		("billing_cycle_anchor", &next_anchor()),
+		// The customer saved the card for this and is no longer on the page.
+		("off_session", "true"),
+		("metadata[canvist_project]", order.project.as_str()),
+		("metadata[canvist_checkout_session]", id),
+	]);
+	form.extend(items("items", &prices));
+
+	if stripe.config().automatic_tax {
+		form.push(("automatic_tax[enabled]".to_owned(), "true".to_owned()));
+	}
+
+	let created = stripe
+		.post_once("/v1/subscriptions", &form, &format!("canvist-annual-{id}"))
+		.await?;
+
+	apply(store, &created).await
+}
+
+/// What a completed setup-mode Checkout Session ordered.
+#[derive(Debug, PartialEq, Eq)]
+struct AnnualOrder {
+	project: ProjectId,
+	plan: Plan,
+	customer: String,
+	payment_method: String,
+}
+
+impl AnnualOrder {
+	/// The order in `session`, retrieved with its setup intent expanded, or
+	/// `None` when it is not a finished canvist annual checkout.
+	fn of(session: &Json) -> Result<Option<Self>, BillingError> {
+		let metadata = session.get("metadata");
+		let field = |name: &str| metadata.and_then(|metadata| text(metadata, name));
+		let (Some(project), Some(plan)) = (field(PROJECT_METADATA), field(PLAN_METADATA)) else {
+			return Ok(None);
+		};
+
+		if text(session, "mode").as_deref() != Some("setup")
+			|| text(session, "status").as_deref() != Some("complete")
+		{
+			return Ok(None);
+		}
+
+		let plan = plan
+			.parse()
+			.ok()
+			.and_then(|plan| self_serve(plan).ok())
+			.ok_or(BillingError::Malformed(
+				"an annual checkout for a plan that is not sold",
+			))?;
+		let customer = text(session, "customer").ok_or(BillingError::Malformed(
+			"an annual checkout without a customer",
+		))?;
+		let payment_method = session
+			.get("setup_intent")
+			.and_then(|intent| text(intent, "payment_method"))
+			.ok_or(BillingError::Malformed(
+				"an annual checkout without a payment method",
+			))?;
+
+		Ok(Some(Self {
+			project: ProjectId::new(project),
+			plan,
+			customer,
+			payment_method,
+		}))
+	}
+}
+
 /// Retrieve subscription `id` and apply its current state to its project.
 /// Returns the project and its new terms, or `None` when the subscription is
 /// not canvist's or no longer concerns the project.
@@ -267,13 +454,8 @@ async fn apply(
 	else {
 		return Ok(None);
 	};
-	let current = match store.terms(&project).await {
-		Ok(current) => current,
-		Err(StoreError::UnknownProject) => {
-			tracing::warn!(%project, "a Stripe subscription names an unknown project");
-			return Ok(None);
-		}
-		Err(error) => return Err(error.into()),
+	let Some(current) = known_terms(store, &project).await? else {
+		return Ok(None);
 	};
 	let Some(terms) = terms_after(&current, subscription)? else {
 		return Ok(None);
@@ -285,6 +467,19 @@ async fn apply(
 	}
 
 	Ok(Some((project, terms)))
+}
+
+/// `project`'s terms, or `None` when Stripe names a project this server does
+/// not know.
+async fn known_terms(store: &Store, project: &ProjectId) -> Result<Option<Terms>, BillingError> {
+	match store.terms(project).await {
+		Ok(terms) => Ok(Some(terms)),
+		Err(StoreError::UnknownProject) => {
+			tracing::warn!(%project, "Stripe names an unknown project");
+			Ok(None)
+		}
+		Err(error) => Err(error.into()),
+	}
 }
 
 /// The terms a project with `current` terms has under `subscription`, or
@@ -330,7 +525,7 @@ fn terms_after(current: &Terms, subscription: &Json) -> Result<Option<Terms>, Bi
 
 /// The plan a subscription's prices name through their lookup keys.
 fn subscribed_plan(subscription: &Json) -> Option<Plan> {
-	items(subscription)
+	subscription_items(subscription)
 		.iter()
 		.filter_map(|item| {
 			item.get("price")
@@ -356,11 +551,47 @@ fn lookup_key(plan: Plan, suffix: &str) -> String {
 	format!("canvist_{}_{suffix}", plan.as_str())
 }
 
+/// 00:00 UTC on the first of next month, where subscriptions are anchored.
+fn next_anchor() -> String {
+	Month::current().next().start_unix_seconds().to_string()
+}
+
 /// An active price, found by lookup key.
 #[derive(Debug)]
 struct Price {
 	id: String,
+	currency: String,
 	metered: bool,
+}
+
+/// The base price for `interval` and the overage prices of `plan`, in that
+/// order.
+async fn plan_prices(
+	stripe: &StripeClient,
+	plan: Plan,
+	interval: Interval,
+) -> Result<Vec<Price>, BillingError> {
+	let keys: Vec<String> = std::iter::once(interval.base_price())
+		.chain(OVERAGE_PRICES)
+		.map(|suffix| lookup_key(plan, suffix))
+		.collect();
+	prices(stripe, &keys).await
+}
+
+/// Form fields `<field>[i][price]` for each of `prices`, with a quantity of
+/// one for licensed prices. Metered prices take no quantity.
+fn items(field: &str, prices: &[Price]) -> Vec<(String, String)> {
+	let mut form = Vec::new();
+
+	for (index, price) in prices.iter().enumerate() {
+		form.push((format!("{field}[{index}][price]"), price.id.clone()));
+
+		if !price.metered {
+			form.push((format!("{field}[{index}][quantity]"), "1".to_owned()));
+		}
+	}
+
+	form
 }
 
 /// The active prices with `keys`, in the same order.
@@ -384,6 +615,8 @@ async fn prices(stripe: &StripeClient, keys: &[String]) -> Result<Vec<Price>, Bi
 
 			Ok(Price {
 				id: text(price, "id").ok_or(BillingError::Malformed("a price without an id"))?,
+				currency: text(price, "currency")
+					.ok_or(BillingError::Malformed("a price without a currency"))?,
 				metered,
 			})
 		})
@@ -408,7 +641,7 @@ fn list(value: &Json) -> &[Json] {
 		.map_or(&[], Vec::as_slice)
 }
 
-fn items(subscription: &Json) -> &[Json] {
+fn subscription_items(subscription: &Json) -> &[Json] {
 	subscription.get("items").map_or(&[], list)
 }
 
@@ -522,6 +755,50 @@ mod tests {
 		);
 		assert_eq!(plan_of_lookup_key("canvist_hobby_monthly"), None);
 		assert_eq!(plan_of_lookup_key("canvist_enterprise_monthly"), None);
+	}
+
+	fn setup_session(status: &str) -> Json {
+		json!({
+			"id": "cs_1",
+			"mode": "setup",
+			"status": status,
+			"customer": "cus_1",
+			"metadata": { "canvist_project": "prj_a", "canvist_plan": "scale" },
+			"setup_intent": { "id": "seti_1", "payment_method": "pm_1" },
+		})
+	}
+
+	#[test]
+	fn completed_annual_checkouts_name_their_order() {
+		assert_eq!(
+			AnnualOrder::of(&setup_session("complete")).expect("valid"),
+			Some(AnnualOrder {
+				project: ProjectId::new("prj_a"),
+				plan: Plan::Scale,
+				customer: "cus_1".to_owned(),
+				payment_method: "pm_1".to_owned(),
+			})
+		);
+		assert_eq!(
+			AnnualOrder::of(&setup_session("open")).expect("valid"),
+			None,
+			"an unfinished session orders nothing"
+		);
+
+		let mut foreign = setup_session("complete");
+		foreign["metadata"] = json!({});
+		assert_eq!(AnnualOrder::of(&foreign).expect("valid"), None);
+
+		let mut enterprise = setup_session("complete");
+		enterprise["metadata"]["canvist_plan"] = json!("enterprise");
+		assert!(AnnualOrder::of(&enterprise).is_err());
+
+		let mut unexpanded = setup_session("complete");
+		unexpanded["setup_intent"] = json!("seti_1");
+		assert!(
+			AnnualOrder::of(&unexpanded).is_err(),
+			"the payment method needs the setup intent expanded"
+		);
 	}
 
 	#[test]
