@@ -461,8 +461,9 @@ impl<'a, 'doc, T: ReadTxn> Remote<'a, 'doc, T> {
 		shared: &MapRef,
 		parent: Option<BlockId>,
 	) -> (Option<BlockTree>, Registration, Vec<BlockId>) {
+		let parent_kind = self.parent_kind(parent);
 		let mut incoming = Owners::default();
-		incoming.scan(shared, self.txn);
+		incoming.scan(shared, parent_kind, self.txn, self.schema);
 		let none = FxHashSet::default();
 		let mut claims = RemoteClaims::new(
 			self.tx.doc(),
@@ -478,7 +479,7 @@ impl<'a, 'doc, T: ReadTxn> Remote<'a, 'doc, T> {
 		};
 		let found = Parent {
 			id: parent,
-			kind: self.parent_kind(parent),
+			kind: parent_kind,
 		};
 		let tree = reader.block(shared, found, &mut registration);
 

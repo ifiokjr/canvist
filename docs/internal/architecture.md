@@ -82,7 +82,7 @@ A `Transaction` applies steps atomically and can roll back. If any step fails, t
   - The 1:1 step mapping makes the mirror a translation, not a reconciliation.
 - **This is a known risk.** If the binding turns out to need diffing anywhere, revisit the decision.
 - **`Split` loses concurrent edits.** If a peer edits the tail of a block while another peer splits it, the tail is re-created in a new `Y.Text` and the edit lands on the deleted original. M4 measured it (`canvist_collab/tests/concurrent_split.rs`): inserted text survives but moves to the end of the first block, while deletions and formatting in the tail are lost. Edits before the split point are unaffected. Every Yjs editor shares this limitation.
-- **Moving a block deletes and copies it.** yrs 0.28 has no move, so text typed concurrently into a moved block is lost, and when two peers move the same block at once every peer keeps the copy with the smallest yrs item id and deletes the others.
+- **Moving a block deletes and copies it.** yrs 0.28 has no move, so text typed concurrently into a moved block is lost, and when two peers move the same block at once every peer keeps the shown copy with the smallest yrs item id and deletes the others (a hidden copy claims nothing until it becomes valid).
 
 ## Decision 3: UTF-8 offsets inside, UTF-16 at the edges
 

@@ -466,7 +466,9 @@ impl RoomState {
 		self.reorder.hold(update);
 		let mut txn = self.doc.transact_mut();
 
-		for ready in self.reorder.take_ready(&txn.state_vector()) {
+		// Re-read the state after each update, so one that yrs keeps pending
+		// never releases its client's later updates.
+		while let Some(ready) = self.reorder.take_next(&txn.state_vector()) {
 			// An update that cannot integrate stays pending inside yrs.
 			if let Err(error) = txn.apply_update(ready) {
 				tracing::warn!(%error, "update did not integrate");

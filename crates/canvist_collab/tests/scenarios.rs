@@ -74,6 +74,34 @@ fn sync(a: &mut Peer, b: &mut Peer) {
 	}
 }
 
+/// Deliver every pending update to every other peer until all are quiet.
+fn sync_all(peers: &mut [&mut Peer]) {
+	loop {
+		let pending: Vec<(usize, Vec<u8>)> = peers
+			.iter_mut()
+			.enumerate()
+			.flat_map(|(from, peer)| {
+				peer.binding
+					.take_updates()
+					.into_iter()
+					.map(move |update| (from, update))
+			})
+			.collect();
+
+		if pending.is_empty() {
+			return;
+		}
+
+		for (from, update) in pending {
+			for (to, peer) in peers.iter_mut().enumerate() {
+				if to != from {
+					peer.receive(&update);
+				}
+			}
+		}
+	}
+}
+
 fn texts(peer: &Peer) -> Vec<String> {
 	peer.doc
 		.text_blocks()
@@ -164,6 +192,186 @@ fn a_peer_receiving_both_copies_at_once_keeps_one() {
 		carol.json(),
 		alice.json(),
 		"the copy carol keeps is everyone's"
+	);
+}
+
+/// A copy that loses its block id to an incoming copy is evicted from the
+/// position it holds in the shared array, not the one it held in the model.
+/// Here the losing copy ends up between two paragraphs inserted in the same
+/// update, and the second one is anchored after it.
+#[test]
+fn blocks_anchored_after_an_evicted_copy_keep_their_order() {
+	let schema = support::schema();
+	let mut alice = Peer::seed(support::starter(&schema, 1), 1);
+	let state = alice.binding.encode_state(Encoding::V1);
+	let mut bob = Peer::join(schema.clone(), 2, &state);
+	let mut carol = Peer::join(schema.clone(), 3, &state);
+	let quote = block(&alice, 3);
+	let divider = block(&alice, 4);
+	let paragraph = |id: u32, text: &str| {
+		BlockTree::text(
+			BlockId::new(1, id),
+			schema.default_text_block(),
+			InlineText::plain(text, MarkSet::empty()),
+		)
+	};
+	let insert = |index, tree| {
+		Step::InsertBlocks {
+			parent: Some(quote),
+			index,
+			blocks: vec![tree],
+		}
+	};
+
+	// Bob moves the divider into the quote, so carol's quote holds bob's copy.
+	bob.step(Step::MoveBlocks {
+		parent: None,
+		index: 4,
+		count: 1,
+		to_parent: Some(quote),
+		to_index: 0,
+	})
+	.expect("bob moves the divider into the quote");
+
+	let bob_moves = bob.binding.take_updates();
+
+	for update in &bob_moves {
+		carol.receive(update);
+	}
+
+	// Concurrently, alice moves the same divider to the top and rewrites the
+	// quote. Her copy of the divider has the smaller item id, so it wins.
+	alice
+		.step(insert(0, paragraph(100, "first")))
+		.expect("first");
+	alice
+		.step(Step::RemoveBlocks {
+			parent: Some(quote),
+			index: 1,
+			count: 1,
+		})
+		.expect("remove quoted");
+	alice
+		.step(insert(1, paragraph(101, "second")))
+		.expect("second");
+	alice
+		.step(Step::MoveBlocks {
+			parent: None,
+			index: 4,
+			count: 1,
+			to_parent: None,
+			to_index: 0,
+		})
+		.expect("alice moves the divider to the top");
+	assert_eq!(alice.doc.children(None)[0], divider);
+
+	// Carol gets all of alice's edits in one update, so one yrs transaction
+	// both evicts bob's copy and inserts the paragraphs around it.
+	let updates = alice.binding.take_updates();
+	let updates: Vec<&[u8]> = updates.iter().map(Vec::as_slice).collect();
+	let merged = yrs::merge_updates_v1(&updates).expect("updates merge");
+	carol.receive(&merged);
+
+	assert_eq!(
+		carol.json(),
+		carol.rebuilt(),
+		"carol's model matches her shared state"
+	);
+	let quoted: Vec<String> = carol
+		.doc
+		.children(Some(quote))
+		.iter()
+		.filter_map(|&id| carol.doc.inline(id))
+		.map(|text| text.as_str().to_owned())
+		.collect();
+	assert_eq!(quoted, ["first", "second"]);
+	assert_eq!(carol.doc.children(None)[0], divider);
+
+	for update in &bob_moves {
+		alice.receive(update);
+	}
+
+	bob.receive(&merged);
+	sync_all(&mut [&mut alice, &mut bob, &mut carol]);
+	assert_eq!(alice.json(), bob.json());
+	assert_eq!(alice.json(), carol.json());
+}
+
+/// A hidden copy of a block claims nothing, even when its item id is the
+/// smallest. Carol moves a paragraph out of a quote, alice turns the emptied
+/// quote into a list, and bob, who has the retype but not the move, moves
+/// the list: his copy of it carries a hidden copy of the paragraph with a
+/// smaller item id than carol's. Reading the document from scratch must keep
+/// carol's copy, not hide the block and delete it.
+#[test]
+fn a_hidden_copy_does_not_take_a_shown_blocks_id() {
+	let schema = support::schema();
+	let mut alice = Peer::seed(support::starter(&schema, 1), 1);
+	let state = alice.binding.encode_state(Encoding::V1);
+	let mut bob = Peer::join(schema.clone(), 2, &state);
+	let mut carol = Peer::join(schema.clone(), 3, &state);
+	let quote = block(&alice, 3);
+	let quoted = alice.doc.children(Some(quote))[0];
+
+	carol
+		.step(Step::MoveBlocks {
+			parent: Some(quote),
+			index: 0,
+			count: 1,
+			to_parent: None,
+			to_index: 6,
+		})
+		.expect("carol moves the paragraph out");
+	let moved_out = carol.binding.take_updates();
+
+	for update in &moved_out {
+		alice.receive(update);
+	}
+
+	alice
+		.step(Step::SetBlock {
+			block: quote,
+			kind: schema.block_type("bullet_list").expect("bullet_list"),
+			attrs: Attrs::new(),
+		})
+		.expect("an empty quote can become a list");
+	let retype = alice.binding.take_updates();
+
+	for update in &retype {
+		bob.receive(update);
+		carol.receive(update);
+	}
+
+	bob.step(Step::MoveBlocks {
+		parent: None,
+		index: 3,
+		count: 1,
+		to_parent: None,
+		to_index: 0,
+	})
+	.expect("bob moves the list and the hidden paragraph in it");
+
+	for update in &moved_out {
+		bob.receive(update);
+	}
+
+	sync_all(&mut [&mut alice, &mut bob, &mut carol]);
+	assert_eq!(alice.json(), bob.json());
+	assert_eq!(alice.json(), carol.json());
+	assert!(alice.doc.contains(quoted), "carol's copy shows");
+
+	let state = alice.binding.encode_state(Encoding::V1);
+	let mut fresh = canvist_collab::Binding::with_client_id(schema.clone(), 4).expect("binding");
+	let mut doc = Document::empty(schema, 4);
+	fresh
+		.apply_update(&mut doc, &state, Encoding::V1)
+		.expect("state applies");
+	let full = fresh.document(4).expect("document rebuilds");
+
+	assert_eq!(full.to_json(), alice.json(), "a full read agrees");
+	assert!(
+		fresh.take_updates().is_empty(),
+		"reading deletes no shown copy"
 	);
 }
 

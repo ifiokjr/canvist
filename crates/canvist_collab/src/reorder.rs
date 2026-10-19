@@ -8,6 +8,12 @@
 //! therefore hands yrs an update only once every client's earlier changes it
 //! builds on, including the items it deletes, are already in the document.
 //!
+//! An update can also build on another client's items, through the items it
+//! is inserted next to or inside. yrs keeps such an update pending until
+//! those arrive, so it does not count as integrated: its client's later
+//! updates are released only once the document's state vector, which leaves
+//! pending items out, shows it.
+//!
 //! [`Reorder`] is public so hosts that keep a bare yrs document, such as a
 //! relay server, apply updates in the same safe order.
 
@@ -19,8 +25,8 @@ use yrs::block::ClientID;
 /// Updates waiting for the updates they build on.
 ///
 /// Hold every incoming update, then apply what
-/// [`take_ready`](Reorder::take_ready) returns for the document's current
-/// state vector:
+/// [`take_next`](Reorder::take_next) returns for the document's current
+/// state vector until it returns `None`:
 ///
 /// ```
 /// use canvist_collab::Reorder;
@@ -48,7 +54,7 @@ use yrs::block::ClientID;
 /// for update in [second, first] {
 /// 	reorder.hold(Update::decode_v1(&update)?);
 /// 	let mut txn = target.transact_mut();
-/// 	for ready in reorder.take_ready(&txn.state_vector()) {
+/// 	while let Some(ready) = reorder.take_next(&txn.state_vector()) {
 /// 		txn.apply_update(ready)?;
 /// 	}
 /// }
@@ -77,20 +83,21 @@ impl Reorder {
 		self.held.push(update);
 	}
 
-	/// Take every queued update that can apply to a document with `state`,
-	/// in an order where each one's dependencies come first.
+	/// Take one queued update that can apply to a document with `state`.
+	///
+	/// Apply it and call again with the document's new state vector, which
+	/// may make more updates ready. The state must be read after each
+	/// update: an update that yrs keeps pending, because it builds on another
+	/// client's items that have not arrived, leaves the state unchanged, so
+	/// its client's later updates keep waiting instead of overtaking it.
 	#[must_use]
-	pub fn take_ready(&mut self, state: &StateVector) -> Vec<Update> {
-		let mut reach = clocks(state);
-		let mut ready = Vec::new();
-
-		while let Some(index) = self.held.iter().position(|update| is_ready(update, &reach)) {
-			let update = self.held.swap_remove(index);
-			extend(&mut reach, &update);
-			ready.push(update);
-		}
-
-		ready
+	pub fn take_next(&mut self, state: &StateVector) -> Option<Update> {
+		let reach = clocks(state);
+		let index = self
+			.held
+			.iter()
+			.position(|update| is_ready(update, &reach))?;
+		Some(self.held.swap_remove(index))
 	}
 
 	/// Whether updates are waiting for earlier ones.
@@ -135,5 +142,71 @@ fn extend(reach: &mut FxHashMap<ClientID, u32>, update: &Update) {
 			let clock = reach.entry(*client).or_default();
 			*clock = (*clock).max(end);
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use yrs::Doc;
+	use yrs::GetString;
+	use yrs::ReadTxn;
+	use yrs::Text;
+	use yrs::Transact;
+	use yrs::updates::decoder::Decode;
+
+	use super::*;
+
+	fn insert(doc: &Doc, index: u32, chunk: &str) -> Vec<u8> {
+		let text = doc.get_or_insert_text("text");
+		let mut txn = doc.transact_mut();
+		text.insert(&mut txn, index, chunk);
+		txn.encode_update_v1()
+	}
+
+	fn decode(update: &[u8]) -> Update {
+		Update::decode_v1(update).expect("decodes")
+	}
+
+	/// Apply every ready update to `doc` the way the binding does.
+	fn apply_ready(reorder: &mut Reorder, doc: &Doc) {
+		let mut txn = doc.transact_mut();
+
+		while let Some(update) = reorder.take_next(&txn.state_vector()) {
+			txn.apply_update(update).expect("applies");
+		}
+	}
+
+	#[test]
+	fn an_update_yrs_keeps_pending_holds_back_its_clients_later_updates() {
+		let alice = Doc::with_client_id(1);
+		let typed = insert(&alice, 0, "x");
+		let bob = Doc::with_client_id(2);
+		bob.transact_mut()
+			.apply_update(decode(&typed))
+			.expect("applies");
+		// Bob's first update is inserted after alice's text, so it builds on
+		// alice even though it starts bob's history.
+		let first = insert(&bob, 1, "y");
+		let second = insert(&bob, 2, "z");
+
+		let carol = Doc::with_client_id(3);
+		let mut reorder = Reorder::default();
+		reorder.hold(decode(&second));
+		reorder.hold(decode(&first));
+		apply_ready(&mut reorder, &carol);
+
+		assert!(
+			reorder.is_waiting(),
+			"bob's second update waits while his first is pending in yrs"
+		);
+
+		reorder.hold(decode(&typed));
+		apply_ready(&mut reorder, &carol);
+
+		assert!(!reorder.is_waiting());
+		let text = carol.get_or_insert_text("text");
+		let txn = carol.transact();
+		assert!(txn.store().pending_update().is_none());
+		assert_eq!(text.get_string(&txn), "xyz");
 	}
 }
