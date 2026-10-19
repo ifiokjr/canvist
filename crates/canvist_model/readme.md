@@ -1,3 +1,12 @@
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
+      <img alt="canvist" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" width="220">
+    </picture>
+  </a>
+</p>
+
 # canvist_model
 
 The block-based rich-text document model behind [canvist](https://github.com/ifiokjr/canvist).

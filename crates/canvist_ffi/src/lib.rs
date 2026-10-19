@@ -1,3 +1,7 @@
+#![doc(
+	html_logo_url = "https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/web/icon.svg",
+	html_favicon_url = "https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/web/favicon.svg"
+)]
 //! # `canvist_ffi`
 //!
 //! The native binding surface for canvist, exported through
