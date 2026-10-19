@@ -47,6 +47,10 @@ async function bundled(): Promise<WasmSource> {
 		return BUNDLED;
 	}
 
-	const { readFile } = await import("node:fs/promises");
-	return readFile(BUNDLED);
+	const [{ readFile }, { fileURLToPath }] = await Promise.all([
+		import("node:fs/promises"),
+		import("node:url"),
+	]);
+	// A path, not the URL: Node's `URL` type and the global one differ.
+	return readFile(fileURLToPath(BUNDLED));
 }
