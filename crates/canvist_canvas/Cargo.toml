@@ -1,0 +1,43 @@
+[package]
+name = "canvist_canvas"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_canvas"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["canvas", "design-tool", "hit-testing", "infinite-canvas", "headless"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "Headless interaction core for the canvist canvas: camera, spatial index, hit testing, selection, transform handles, snapping, and tools"
+
+[features]
+default = []
+# Text frame editing sessions on the real canvist text editor.
+editor = ["dep:canvist_editor", "canvist_layout/editor"]
+
+[dependencies]
+canvist_editor = { workspace = true, optional = true }
+canvist_layout = { workspace = true }
+canvist_model = { workspace = true }
+canvist_scene = { workspace = true }
+i_overlay = { version = "^9.1", default-features = false }
+kurbo = { workspace = true, features = ["std"] }
+rstar = { version = "^0.13", default-features = false }
+rustc-hash = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+divan = { workspace = true }
+proptest = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "canvas"
+harness = false
+
+[lints]
+workspace = true
