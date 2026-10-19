@@ -1,8 +1,9 @@
 /**
  * Create or update canvist Cloud's billing catalog in a Stripe **test-mode**
  * account. Every object is found by a stable key first (meter event name,
- * product `metadata.canvist_key`, price lookup key, webhook URL), so running
- * it again changes nothing.
+ * product `metadata.canvist_key`, price lookup key, portal configuration
+ * `metadata.canvist_key`, webhook URL), so running it again changes nothing.
+ * It also reports whether Stripe Tax is ready, without changing tax settings.
  *
  *   deno task stripe:setup --dry-run
  *   deno task stripe:setup [--account acct_…] [--webhook-url https://…/v1/stripe/webhook]
@@ -18,7 +19,14 @@
 
 import { parseArgs } from "@std/cli/parse-args";
 
-import { METERS, PRICES, PRODUCTS, WEBHOOK_EVENTS } from "./catalog.ts";
+import {
+	API_VERSION,
+	METERS,
+	PORTAL,
+	PRICES,
+	PRODUCTS,
+	WEBHOOK_EVENTS,
+} from "./catalog.ts";
 import type { MeterSpec, PriceSpec, ProductSpec } from "./catalog.ts";
 import { type Json, Stripe } from "./stripe.ts";
 
@@ -147,6 +155,7 @@ async function ensureProduct(
 	const fields = {
 		name: spec.name,
 		description: spec.description,
+		tax_code: spec.taxCode,
 		metadata: { canvist_key: spec.key },
 	};
 
@@ -157,7 +166,10 @@ async function ensureProduct(
 		);
 	}
 
-	if (found.name !== spec.name || found.description !== spec.description) {
+	if (
+		found.name !== spec.name || found.description !== spec.description ||
+		found.tax_code !== spec.taxCode
+	) {
 		await stripe.post(
 			`/v1/products/${found.id}`,
 			fields,
@@ -179,6 +191,7 @@ function priceParams(
 		nickname: spec.nickname,
 		currency: "usd",
 		lookup_key: spec.lookupKey,
+		tax_behavior: "exclusive",
 	};
 
 	if (spec.licensed) {
@@ -224,6 +237,7 @@ async function ensurePrice(
 	const signature = JSON.stringify({
 		licensed: spec.licensed,
 		metered: spec.metered,
+		taxBehavior: "exclusive",
 	});
 	const [found] = await stripe.list("/v1/prices", {
 		lookup_keys: [spec.lookupKey],
@@ -309,7 +323,9 @@ async function ensureWebhook(
 	const created = await stripe.post("/v1/webhook_endpoints", {
 		url: options.webhookUrl,
 		enabled_events: events,
-		description: "canvist Cloud: subscription changes set project plans",
+		api_version: API_VERSION,
+		description:
+			"canvist Cloud: subscriptions, checkouts, and invoices set project plans",
 	}, `create webhook endpoint ${options.webhookUrl}`);
 
 	if (typeof created.secret === "string") {
@@ -317,6 +333,66 @@ async function ensureWebhook(
 	}
 
 	return String(created.id);
+}
+
+/**
+ * The Customer Portal configuration the server opens sessions with, found
+ * by `metadata.canvist_key`. `metadata.canvist_spec` records its settings,
+ * so it is only updated when they change.
+ */
+async function ensurePortal(stripe: Stripe): Promise<string> {
+	const signature = JSON.stringify(PORTAL.params);
+	const existing = await stripe.list("/v1/billing_portal/configurations", {
+		active: true,
+	});
+	const found = existing.find((configuration) =>
+		(configuration.metadata as Json)?.canvist_key === PORTAL.key
+	);
+	const params = {
+		...PORTAL.params,
+		metadata: { canvist_key: PORTAL.key, canvist_spec: signature },
+	};
+
+	if (!found) {
+		return String(
+			(await stripe.post(
+				"/v1/billing_portal/configurations",
+				params,
+				"create the Customer Portal configuration",
+			)).id,
+		);
+	}
+
+	if ((found.metadata as Json)?.canvist_spec !== signature) {
+		await stripe.post(
+			`/v1/billing_portal/configurations/${found.id}`,
+			params,
+			"update the Customer Portal configuration",
+		);
+	}
+
+	return String(found.id);
+}
+
+/**
+ * Report whether Stripe Tax can calculate anything yet. This only reads:
+ * the head office address and registrations are the owner's to set, and
+ * `STRIPE_AUTOMATIC_TAX` stays off until both exist.
+ */
+async function reportTax(stripe: Stripe) {
+	const settings = await stripe.get("/v1/tax/settings");
+	const registrations = await stripe.list("/v1/tax/registrations", {
+		status: "active",
+	});
+	console.log(
+		`tax settings ${settings.status}, ${registrations.length} active registration(s)`,
+	);
+
+	if (settings.status !== "active" || registrations.length === 0) {
+		console.log(
+			"  leave STRIPE_AUTOMATIC_TAX off: without a head office address and a registration, Stripe collects no tax",
+		);
+	}
 }
 
 async function main() {
@@ -345,7 +421,9 @@ async function main() {
 		);
 	}
 
+	const portal = await ensurePortal(stripe);
 	const webhook = await ensureWebhook(stripe, opts);
+	await reportTax(stripe);
 
 	console.log(
 		JSON.stringify(
@@ -353,6 +431,7 @@ async function main() {
 				meters: Object.fromEntries(meters),
 				products: Object.fromEntries(products),
 				prices: Object.fromEntries(prices),
+				portal,
 				webhook,
 			},
 			null,

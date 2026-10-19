@@ -82,6 +82,7 @@ const WEBHOOK_MAX_WAIT_SECONDS: u64 = 30;
 const PAUSE_RECHECK_SECONDS: u64 = 30;
 const MAX_CONVERT_MEBIBYTES: usize = 8;
 const CONVERT_TIMEOUT_SECONDS: u64 = 10;
+const STRIPE_REPORT_SECONDS: u64 = 10;
 /// The port when `PORT` is unset; Railway always sets it.
 const DEFAULT_PORT: u16 = 8080;
 /// The shortest token secret: 256 bits, HS256's key size.
@@ -150,15 +151,23 @@ impl Default for ConvertConfig {
 	}
 }
 
-/// Stripe Billing Meters, test mode only.
+/// Stripe Billing, test mode only.
 #[derive(Clone, Debug)]
 pub struct StripeConfig {
 	/// A `sk_test_` or `rk_test_` key. Live keys are refused at startup.
 	pub secret_key: Secret,
-	/// The meter's event name.
+	/// The monthly active document meter's event name.
 	pub meter_event: String,
+	/// The conversion meter's event name.
+	pub conversion_meter_event: String,
 	/// The Stripe API base URL, overridable for tests.
 	pub api_base: String,
+	/// How often unreported usage is sent to Stripe.
+	pub report_interval: Duration,
+	/// Whether Checkout calculates tax with Stripe Tax. Leave it off until
+	/// the account has a head office address and an active registration:
+	/// without them Stripe silently collects no tax.
+	pub automatic_tax: bool,
 }
 
 /// Everything the server needs.
@@ -283,9 +292,17 @@ fn stripe_config(env: &Env<'_>) -> Result<Option<StripeConfig>, ConfigError> {
 		meter_event: env
 			.get("STRIPE_METER_EVENT")
 			.unwrap_or_else(|| "canvist_active_document".to_owned()),
+		conversion_meter_event: env
+			.get("STRIPE_CONVERSION_METER_EVENT")
+			.unwrap_or_else(|| "canvist_conversion".to_owned()),
 		api_base: env
 			.get("STRIPE_API_BASE")
 			.unwrap_or_else(|| "https://api.stripe.com".to_owned()),
+		report_interval: env.millis(
+			"STRIPE_REPORT_INTERVAL_MS",
+			Duration::from_secs(STRIPE_REPORT_SECONDS),
+		)?,
+		automatic_tax: env.parse("STRIPE_AUTOMATIC_TAX", false)?,
 	}))
 }
 
@@ -365,9 +382,12 @@ mod tests {
 		assert!(config(&[SECRET, ("STRIPE_SECRET_KEY", "sk_live_abc")]).is_err());
 		assert!(config(&[SECRET, ("STRIPE_SECRET_KEY", "rk_live_abc")]).is_err());
 		let test = config(&[SECRET, ("STRIPE_SECRET_KEY", "sk_test_abc")]).expect("valid");
-		assert_eq!(
-			test.stripe.map(|stripe| stripe.meter_event),
-			Some("canvist_active_document".to_owned())
+		let stripe = test.stripe.expect("Stripe is configured");
+		assert_eq!(stripe.meter_event, "canvist_active_document");
+		assert_eq!(stripe.conversion_meter_event, "canvist_conversion");
+		assert!(
+			!stripe.automatic_tax,
+			"tax stays off until it is switched on"
 		);
 	}
 

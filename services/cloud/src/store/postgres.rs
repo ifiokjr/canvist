@@ -14,6 +14,8 @@ use tokio_postgres::NoTls;
 
 use super::Admit;
 use super::DocumentSummary;
+use super::PendingConversions;
+use super::PendingDocument;
 use super::StoreError;
 use super::StoredDocument;
 use super::UsageRow;
@@ -22,6 +24,7 @@ use crate::auth::KeyHash;
 use crate::auth::NewApiKey;
 use crate::metering::Month;
 use crate::metering::Plan;
+use crate::metering::Subscription;
 use crate::metering::Terms;
 use crate::names::DocumentKey;
 use crate::names::DocumentName;
@@ -32,6 +35,7 @@ use crate::names::ProjectId;
 const MIGRATIONS: &[(i32, &str)] = &[
 	(1, include_str!("../../migrations/0001_sync.sql")),
 	(2, include_str!("../../migrations/0002_metering.sql")),
+	(3, include_str!("../../migrations/0003_billing.sql")),
 ];
 
 /// Connections per instance. Railway's smallest Postgres allows 100, so
@@ -273,18 +277,29 @@ impl PgStore {
 			.included_documents
 			.filter(|included| Some(*included) != terms.plan.included_documents())
 			.map(|included| i64::try_from(included).unwrap_or(i64::MAX));
+		let subscription = terms
+			.subscription
+			.as_ref()
+			.map(|subscription| subscription.id.as_str());
+		let status = terms
+			.subscription
+			.as_ref()
+			.map(|subscription| subscription.status.as_str());
 		let updated = self
 			.pool
 			.get()
 			.await?
 			.execute(
-				"UPDATE projects SET plan = $2, included_documents = $3, stripe_customer = $4
+				"UPDATE projects SET plan = $2, included_documents = $3, stripe_customer = $4,
+					stripe_subscription = $5, subscription_status = $6
 				WHERE id = $1",
 				&[
 					&project.as_str(),
 					&terms.plan.as_str(),
 					&included,
 					&terms.stripe_customer,
+					&subscription,
+					&status,
 				],
 			)
 			.await?;
@@ -352,11 +367,13 @@ impl PgStore {
 			});
 		}
 
+		let customer = terms.metered_customer();
 		let inserted = transaction
 			.execute(
-				"INSERT INTO active_documents (project_id, environment, month, name)
-				VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
-				&row,
+				"INSERT INTO active_documents (project_id, environment, month, name, \
+				 stripe_customer)
+				VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING",
+				&[row[0], row[1], row[2], row[3], &customer],
 			)
 			.await?
 			== 1;
@@ -391,19 +408,159 @@ impl PgStore {
 		count: u64,
 	) -> Result<(), StoreError> {
 		let count = i64::try_from(count).unwrap_or(i64::MAX);
+		// Billable when the project meters usage, as `Terms::metered_customer`
+		// decides.
 		self.pool
 			.get()
 			.await?
 			.execute(
-				"INSERT INTO usage (project_id, environment, month, conversions)
-				VALUES ($1, $2, $3, $4)
+				"INSERT INTO usage (project_id, environment, month, conversions, billable_conversions)
+				SELECT id, $2::text, $3::text, $4::bigint,
+					CASE WHEN plan <> 'hobby' AND stripe_customer IS NOT NULL THEN $4::bigint ELSE 0 END
+				FROM projects WHERE id = $1
 				ON CONFLICT (project_id, environment, month)
-				DO UPDATE SET conversions = usage.conversions + EXCLUDED.conversions",
+				DO UPDATE SET conversions = usage.conversions + EXCLUDED.conversions,
+					billable_conversions = usage.billable_conversions + EXCLUDED.billable_conversions",
 				&[
 					&project.as_str(),
 					&environment.as_str(),
 					&month.to_string(),
 					&count,
+				],
+			)
+			.await?;
+		Ok(())
+	}
+
+	pub(super) async fn pending_documents(
+		&self,
+		limit: usize,
+	) -> Result<Vec<PendingDocument>, StoreError> {
+		let limit = i64::try_from(limit).unwrap_or(i64::MAX);
+		let rows = self
+			.pool
+			.get()
+			.await?
+			.query(
+				"SELECT project_id, environment, month, name, stripe_customer,
+					extract(epoch FROM first_active_at)::bigint
+				FROM active_documents
+				WHERE stripe_customer IS NOT NULL AND reported_at IS NULL
+				ORDER BY first_active_at LIMIT $1",
+				&[&limit],
+			)
+			.await?;
+
+		Ok(rows
+			.into_iter()
+			.filter_map(|row| {
+				let environment: String = row.get(1);
+				let month: String = row.get(2);
+				let name: String = row.get(3);
+				Some(PendingDocument {
+					key: DocumentKey {
+						project: ProjectId::new(row.get::<_, String>(0)),
+						environment: Environment::parse(&environment).ok()?,
+						name: DocumentName::parse(&name).ok()?,
+					},
+					month: month.parse().ok()?,
+					customer: row.get(4),
+					first_active_at: row.get(5),
+				})
+			})
+			.collect())
+	}
+
+	pub(super) async fn mark_document_reported(
+		&self,
+		key: &DocumentKey,
+		month: Month,
+	) -> Result<(), StoreError> {
+		let ids = document_ids(key);
+		self.pool
+			.get()
+			.await?
+			.execute(
+				"UPDATE active_documents SET reported_at = now()
+				WHERE project_id = $1 AND environment = $2 AND month = $3 AND name = $4",
+				&[
+					&ids.project,
+					&ids.environment,
+					&month.to_string(),
+					&ids.name,
+				],
+			)
+			.await?;
+		Ok(())
+	}
+
+	pub(super) async fn reserve_conversions(
+		&self,
+		limit: usize,
+	) -> Result<Vec<PendingConversions>, StoreError> {
+		let limit = i64::try_from(limit).unwrap_or(i64::MAX);
+		let client = self.pool.get().await?;
+		client
+			.execute(
+				"UPDATE usage SET reserved_conversions = billable_conversions
+				WHERE (project_id, environment, month) IN (
+					SELECT project_id, environment, month FROM usage
+					WHERE reserved_conversions IS NULL
+						AND billable_conversions > reported_conversions
+					LIMIT $1
+				)",
+				&[&limit],
+			)
+			.await?;
+		let rows = client
+			.query(
+				"SELECT usage.project_id, usage.environment, usage.month, \
+				 projects.stripe_customer,
+					usage.reported_conversions, usage.reserved_conversions
+				FROM usage JOIN projects ON projects.id = usage.project_id
+				WHERE usage.reserved_conversions IS NOT NULL
+					AND projects.stripe_customer IS NOT NULL
+				LIMIT $1",
+				&[&limit],
+			)
+			.await?;
+
+		Ok(rows
+			.into_iter()
+			.filter_map(|row| {
+				let environment: String = row.get(1);
+				let month: String = row.get(2);
+				let from: i64 = row.get(4);
+				let to: i64 = row.get(5);
+				Some(PendingConversions {
+					project: ProjectId::new(row.get::<_, String>(0)),
+					environment: Environment::parse(&environment).ok()?,
+					month: month.parse().ok()?,
+					customer: row.get(3),
+					from: u64::try_from(from).ok()?,
+					to: u64::try_from(to).ok()?,
+				})
+			})
+			.collect())
+	}
+
+	pub(super) async fn mark_conversions_reported(
+		&self,
+		pending: &PendingConversions,
+	) -> Result<(), StoreError> {
+		let to = i64::try_from(pending.to).unwrap_or(i64::MAX);
+		self.pool
+			.get()
+			.await?
+			.execute(
+				"UPDATE usage SET reported_conversions = $4, reserved_conversions = NULL
+				WHERE project_id = $1 AND environment = $2 AND month = $3
+					AND reserved_conversions = $4",
+				&[
+					&pending.project.as_str(),
+					&pending.environment.as_str(),
+					&pending.month.to_string(),
+					&to,
 				],
 			)
 			.await?;
@@ -590,7 +747,9 @@ async fn read_terms(
 ) -> Result<Terms, StoreError> {
 	let row = client
 		.query_opt(
-			"SELECT plan, included_documents, stripe_customer FROM projects WHERE id = $1",
+			"SELECT plan, included_documents, stripe_customer, stripe_subscription,
+				subscription_status
+			FROM projects WHERE id = $1",
 			&[&project.as_str()],
 		)
 		.await?
@@ -598,6 +757,8 @@ async fn read_terms(
 	let plan: String = row.get(0);
 	let included: Option<i64> = row.get(1);
 	let plan: Plan = plan.parse().unwrap_or(Plan::Hobby);
+	let subscription: Option<String> = row.get(3);
+	let status: Option<String> = row.get(4);
 
 	Ok(Terms {
 		plan,
@@ -605,6 +766,12 @@ async fn read_terms(
 			.and_then(|included| u64::try_from(included).ok())
 			.or_else(|| plan.included_documents()),
 		stripe_customer: row.get(2),
+		subscription: subscription.zip(status).and_then(|(id, status)| {
+			Some(Subscription {
+				id,
+				status: status.parse().ok()?,
+			})
+		}),
 	})
 }
 

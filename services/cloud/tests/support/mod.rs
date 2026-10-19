@@ -3,6 +3,7 @@
 #![allow(dead_code, reason = "each test binary uses a different subset")]
 
 pub mod deno;
+pub mod stripe;
 
 use std::net::SocketAddr;
 use std::time::Duration;

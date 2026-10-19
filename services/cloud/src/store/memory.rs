@@ -2,12 +2,13 @@
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
 use super::Admit;
 use super::DocumentSummary;
+use super::PendingConversions;
+use super::PendingDocument;
 use super::StoreError;
 use super::StoredDocument;
 use super::UsageRow;
@@ -35,14 +36,26 @@ struct Inner {
 	documents: BTreeMap<DocumentKey, MemoryDocument>,
 	next_seq: i64,
 	terms: HashMap<ProjectId, Terms>,
-	active: HashSet<(DocumentKey, Month)>,
+	active: BTreeMap<(DocumentKey, Month), Activation>,
 	usage: BTreeMap<(ProjectId, Month, Environment), Counters>,
+}
+
+/// A document's first activity in a month.
+#[derive(Debug)]
+struct Activation {
+	/// The customer billed for it; `None` on unpaid plans.
+	customer: Option<String>,
+	first_active_at: i64,
+	reported: bool,
 }
 
 #[derive(Debug, Default)]
 struct Counters {
 	active_documents: u64,
 	conversions: u64,
+	billable_conversions: u64,
+	reported_conversions: u64,
+	reserved_conversions: Option<u64>,
 }
 
 #[derive(Debug, Default)]
@@ -102,7 +115,7 @@ impl MemoryStore {
 			.cloned()
 			.ok_or(StoreError::UnknownProject)?;
 
-		if inner.active.contains(&(key.clone(), month)) {
+		if inner.active.contains_key(&(key.clone(), month)) {
 			return Ok(Admit {
 				admitted: true,
 				new: false,
@@ -122,7 +135,14 @@ impl MemoryStore {
 			});
 		}
 
-		inner.active.insert((key.clone(), month));
+		inner.active.insert(
+			(key.clone(), month),
+			Activation {
+				customer: terms.metered_customer().map(str::to_owned),
+				first_active_at: crate::auth::unix_now() as i64,
+				reported: false,
+			},
+		);
 		inner
 			.usage
 			.entry((key.project.clone(), month, key.environment.clone()))
@@ -144,11 +164,89 @@ impl MemoryStore {
 		month: Month,
 		count: u64,
 	) {
-		self.lock()
+		let mut inner = self.lock();
+		let billable = inner
+			.terms
+			.get(project)
+			.is_some_and(|terms| terms.metered_customer().is_some());
+		let counters = inner
 			.usage
 			.entry((project.clone(), month, environment.clone()))
-			.or_default()
-			.conversions += count;
+			.or_default();
+		counters.conversions += count;
+
+		if billable {
+			counters.billable_conversions += count;
+		}
+	}
+
+	pub(super) fn pending_documents(&self, limit: usize) -> Vec<PendingDocument> {
+		let inner = self.lock();
+		let mut pending: Vec<PendingDocument> = inner
+			.active
+			.iter()
+			.filter(|(_, activation)| !activation.reported)
+			.filter_map(|((key, month), activation)| {
+				Some(PendingDocument {
+					key: key.clone(),
+					month: *month,
+					customer: activation.customer.clone()?,
+					first_active_at: activation.first_active_at,
+				})
+			})
+			.collect();
+		pending.sort_by_key(|document| document.first_active_at);
+		pending.truncate(limit);
+		pending
+	}
+
+	pub(super) fn mark_document_reported(&self, key: &DocumentKey, month: Month) {
+		if let Some(activation) = self.lock().active.get_mut(&(key.clone(), month)) {
+			activation.reported = true;
+		}
+	}
+
+	pub(super) fn reserve_conversions(&self, limit: usize) -> Vec<PendingConversions> {
+		let mut inner = self.lock();
+		let Inner { usage, terms, .. } = &mut *inner;
+
+		usage
+			.iter_mut()
+			.filter_map(|((project, month, environment), counters)| {
+				let customer = terms.get(project)?.stripe_customer.clone()?;
+
+				if counters.reserved_conversions.is_none()
+					&& counters.billable_conversions > counters.reported_conversions
+				{
+					counters.reserved_conversions = Some(counters.billable_conversions);
+				}
+
+				Some(PendingConversions {
+					project: project.clone(),
+					environment: environment.clone(),
+					month: *month,
+					customer,
+					from: counters.reported_conversions,
+					to: counters.reserved_conversions?,
+				})
+			})
+			.take(limit)
+			.collect()
+	}
+
+	pub(super) fn mark_conversions_reported(&self, pending: &PendingConversions) {
+		let key = (
+			pending.project.clone(),
+			pending.month,
+			pending.environment.clone(),
+		);
+
+		if let Some(counters) = self.lock().usage.get_mut(&key)
+			&& counters.reserved_conversions == Some(pending.to)
+		{
+			counters.reported_conversions = pending.to;
+			counters.reserved_conversions = None;
+		}
 	}
 
 	pub(super) fn usage(&self, project: &ProjectId, month: Month) -> Vec<UsageRow> {

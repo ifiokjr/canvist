@@ -3,6 +3,8 @@
  * a dry-run mode that reports writes instead of sending them.
  */
 
+import { API_VERSION } from "./catalog.ts";
+
 export type Json = Record<string, unknown>;
 type Params = Record<string, unknown>;
 
@@ -92,6 +94,7 @@ export class Stripe {
 			method,
 			headers: {
 				authorization: `Bearer ${this.#key}`,
+				"stripe-version": API_VERSION,
 				"content-type": "application/x-www-form-urlencoded",
 			},
 			body,

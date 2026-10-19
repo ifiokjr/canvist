@@ -45,6 +45,7 @@ railway run --service sync --environment staging -- \
 | `CANVIST_ADMIN_TOKEN`     | 32 random bytes, hex, per environment   | `${{sync.CANVIST_ADMIN_TOKEN}}`  |
 | `RAILWAY_DOCKERFILE_PATH` | `services/cloud/Dockerfile`             | `services/cloud/Dockerfile`      |
 | `STRIPE_SECRET_KEY`       | a **test-mode** key, when billing is on | unset                            |
+| `STRIPE_WEBHOOK_SECRET`   | the webhook's signing secret            | unset                            |
 
 Secrets live only in Railway variables, never in the repository. Generate one without printing it:
 

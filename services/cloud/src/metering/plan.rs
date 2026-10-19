@@ -74,9 +74,13 @@ pub struct Terms {
 	pub plan: Plan,
 	/// Included documents, after any per-project override.
 	pub included_documents: Option<u64>,
-	/// The Stripe customer to report usage for.
+	/// The project's Stripe customer. It outlives subscriptions, so a
+	/// project that subscribes again keeps one customer.
 	#[serde(skip)]
 	pub stripe_customer: Option<String>,
+	/// The Stripe subscription behind the plan, if there ever was one.
+	#[serde(skip)]
+	pub subscription: Option<Subscription>,
 }
 
 impl Terms {
@@ -86,7 +90,23 @@ impl Terms {
 			plan,
 			included_documents: plan.included_documents(),
 			stripe_customer: None,
+			subscription: None,
 		}
+	}
+
+	/// The customer to bill usage to: only while a paid plan is in force.
+	pub fn metered_customer(&self) -> Option<&str> {
+		match self.plan {
+			Plan::Hobby => None,
+			Plan::Builder | Plan::Scale | Plan::Enterprise => self.stripe_customer.as_deref(),
+		}
+	}
+
+	/// Whether a subscription currently pays for the plan.
+	pub fn is_subscribed(&self) -> bool {
+		self.subscription
+			.as_ref()
+			.is_some_and(|subscription| subscription.status.grants_plan())
 	}
 
 	/// Whether `active` documents leave no room for another under a cap.
@@ -97,6 +117,86 @@ impl Terms {
 				.is_some_and(|included| active >= included)
 	}
 }
+
+/// A Stripe subscription and its last known status.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Subscription {
+	/// `sub_…`.
+	pub id: String,
+	/// Its status when Stripe last told us.
+	pub status: SubscriptionStatus,
+}
+
+/// A Stripe subscription status.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SubscriptionStatus {
+	/// Created, waiting for its first payment.
+	Incomplete,
+	/// The first payment never came.
+	IncompleteExpired,
+	/// In a free trial.
+	Trialing,
+	/// Paid up.
+	Active,
+	/// A payment failed and Stripe is retrying it.
+	PastDue,
+	/// Ended.
+	Canceled,
+	/// Retries ran out; the latest invoice is still open.
+	Unpaid,
+	/// Collection is paused.
+	Paused,
+}
+
+impl SubscriptionStatus {
+	const ALL: [Self; 8] = [
+		Self::Incomplete,
+		Self::IncompleteExpired,
+		Self::Trialing,
+		Self::Active,
+		Self::PastDue,
+		Self::Canceled,
+		Self::Unpaid,
+		Self::Paused,
+	];
+
+	/// Whether the subscription keeps its paid plan. A failed payment keeps
+	/// it while Stripe retries, so customers never lose service mid-dunning.
+	pub fn grants_plan(self) -> bool {
+		matches!(self, Self::Trialing | Self::Active | Self::PastDue)
+	}
+
+	/// The status as Stripe writes it.
+	pub fn as_str(self) -> &'static str {
+		match self {
+			Self::Incomplete => "incomplete",
+			Self::IncompleteExpired => "incomplete_expired",
+			Self::Trialing => "trialing",
+			Self::Active => "active",
+			Self::PastDue => "past_due",
+			Self::Canceled => "canceled",
+			Self::Unpaid => "unpaid",
+			Self::Paused => "paused",
+		}
+	}
+}
+
+impl FromStr for SubscriptionStatus {
+	type Err = UnknownStatus;
+
+	fn from_str(name: &str) -> Result<Self, Self::Err> {
+		Self::ALL
+			.into_iter()
+			.find(|status| status.as_str() == name)
+			.ok_or(UnknownStatus)
+	}
+}
+
+/// A subscription status the server does not know.
+#[derive(Debug, PartialEq, Eq, thiserror::Error)]
+#[error("unknown subscription status")]
+pub struct UnknownStatus;
 
 /// A UTC calendar month, the billing period, written `YYYY-MM`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -136,9 +236,52 @@ impl Month {
 			month: month as u8,
 		}
 	}
+
+	/// The month after this one.
+	#[must_use]
+	pub fn next(self) -> Self {
+		if self.month == MONTHS_PER_YEAR {
+			Self {
+				year: self.year + 1,
+				month: 1,
+			}
+		} else {
+			Self {
+				month: self.month + 1,
+				..self
+			}
+		}
+	}
+
+	/// 00:00 UTC on the first day, in Unix seconds, by Howard Hinnant's
+	/// `days_from_civil`.
+	pub fn start_unix_seconds(self) -> i64 {
+		// Years start in March here, so a leap day ends its year.
+		let year = i64::from(self.year) - i64::from(self.month <= 2);
+		let era = year.div_euclid(YEARS_PER_ERA);
+		let year_of_era = year - era * YEARS_PER_ERA;
+		let months_since_march = (i64::from(self.month) + 9) % 12;
+		// Days before each month from March, whose lengths run 31, 30, 31,
+		// 30, 31 and repeat.
+		let day_of_year = (153 * months_since_march + 2) / 5;
+		let leap_days = year_of_era / 4 - year_of_era / 100;
+		let day_of_era = year_of_era * DAYS_PER_YEAR + leap_days + day_of_year;
+		let days = era * DAYS_PER_ERA + day_of_era - DAYS_FROM_YEAR_ZERO;
+
+		days * SECONDS_PER_DAY as i64
+	}
+
+	/// The last second of the month, in Unix seconds.
+	pub fn end_unix_seconds(self) -> i64 {
+		self.next().start_unix_seconds() - 1
+	}
 }
 
 const SECONDS_PER_DAY: u64 = 86_400;
+const MONTHS_PER_YEAR: u8 = 12;
+const DAYS_PER_YEAR: i64 = 365;
+/// Years in a Gregorian cycle, after which the calendar repeats.
+const YEARS_PER_ERA: i64 = 400;
 /// Days from 0000-03-01 to 1970-01-01 in the proleptic Gregorian calendar.
 const DAYS_FROM_YEAR_ZERO: i64 = 719_468;
 /// Days in a 400-year Gregorian cycle.
@@ -183,6 +326,58 @@ mod tests {
 		assert_eq!(Month::from_unix_days(19_782).to_string(), "2024-02");
 		assert_eq!(Month::from_unix_days(19_783).to_string(), "2024-03");
 		assert_eq!(Month::from_unix_days(-1).to_string(), "1969-12");
+	}
+
+	/// 2026-11-01T00:00:00Z.
+	const NOVEMBER_2026: i64 = 1_793_491_200;
+	/// 2024-03-01T00:00:00Z, the day after a leap day.
+	const MARCH_2024: i64 = 1_709_251_200;
+	/// Days around and far from the epoch, either side of it.
+	const SAMPLE_DAYS: [i64; 6] = [-400_000, -1, 0, 19_782, 20_745, 400_000];
+
+	#[test]
+	fn months_know_their_bounds() {
+		let month = |text: &str| text.parse::<Month>().expect("valid");
+		assert_eq!(month("1970-01").start_unix_seconds(), 0);
+		assert_eq!(month("2026-11").start_unix_seconds(), NOVEMBER_2026);
+		assert_eq!(month("2024-02").end_unix_seconds(), MARCH_2024 - 1);
+		assert_eq!(month("2026-12").next(), month("2027-01"));
+		let day = SECONDS_PER_DAY as i64;
+
+		for days in SAMPLE_DAYS {
+			let start = Month::from_unix_days(days).start_unix_seconds();
+			assert_eq!(
+				Month::from_unix_days(start.div_euclid(day)),
+				Month::from_unix_days(days)
+			);
+			assert!(start <= days * day);
+		}
+	}
+
+	#[test]
+	fn subscription_statuses_round_trip() {
+		for status in SubscriptionStatus::ALL {
+			assert_eq!(status.as_str().parse(), Ok(status));
+		}
+
+		assert!(SubscriptionStatus::PastDue.grants_plan());
+		assert!(!SubscriptionStatus::Unpaid.grants_plan());
+		assert!("bogus".parse::<SubscriptionStatus>().is_err());
+	}
+
+	#[test]
+	fn only_paid_plans_meter_usage() {
+		let customer = Some("cus_1".to_owned());
+		let hobby = Terms {
+			stripe_customer: customer.clone(),
+			..Terms::of(Plan::Hobby)
+		};
+		let builder = Terms {
+			stripe_customer: customer,
+			..Terms::of(Plan::Builder)
+		};
+		assert_eq!(hobby.metered_customer(), None);
+		assert_eq!(builder.metered_customer(), Some("cus_1"));
 	}
 
 	#[test]

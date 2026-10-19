@@ -100,6 +100,39 @@ pub struct UsageRow {
 	pub conversions: u64,
 }
 
+/// A document's first activity in a month on a paid plan, not yet reported
+/// to Stripe.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PendingDocument {
+	/// The document.
+	pub key: DocumentKey,
+	/// The month it became active in.
+	pub month: Month,
+	/// The Stripe customer billed for it.
+	pub customer: String,
+	/// When it became active, in Unix seconds.
+	pub first_active_at: i64,
+}
+
+/// Conversions reserved for one report: Stripe has `from`, and will have
+/// `to` once the report lands. A reservation stays until it is marked
+/// reported, so a retry resends exactly the same range.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PendingConversions {
+	/// The project.
+	pub project: ProjectId,
+	/// The environment.
+	pub environment: Environment,
+	/// The month the conversions ran in.
+	pub month: Month,
+	/// The project's Stripe customer.
+	pub customer: String,
+	/// Conversions Stripe already has.
+	pub from: u64,
+	/// Conversions Stripe will have.
+	pub to: u64,
+}
+
 /// The durable store.
 #[derive(Clone, Debug)]
 pub enum Store {
@@ -237,7 +270,60 @@ impl Store {
 		}
 	}
 
-	/// Count `count` conversions for a project environment in `month`.
+	/// Up to `limit` document activations waiting for Stripe, oldest first.
+	pub async fn pending_documents(
+		&self,
+		limit: usize,
+	) -> Result<Vec<PendingDocument>, StoreError> {
+		match self {
+			Self::Memory(store) => Ok(store.pending_documents(limit)),
+			Self::Postgres(store) => store.pending_documents(limit).await,
+		}
+	}
+
+	/// Record that Stripe has `key`'s activation in `month`.
+	pub async fn mark_document_reported(
+		&self,
+		key: &DocumentKey,
+		month: Month,
+	) -> Result<(), StoreError> {
+		match self {
+			Self::Memory(store) => {
+				store.mark_document_reported(key, month);
+				Ok(())
+			}
+			Self::Postgres(store) => store.mark_document_reported(key, month).await,
+		}
+	}
+
+	/// Reserve up to `limit` unreported conversion counts, including any
+	/// reserved earlier and not yet reported.
+	pub async fn reserve_conversions(
+		&self,
+		limit: usize,
+	) -> Result<Vec<PendingConversions>, StoreError> {
+		match self {
+			Self::Memory(store) => Ok(store.reserve_conversions(limit)),
+			Self::Postgres(store) => store.reserve_conversions(limit).await,
+		}
+	}
+
+	/// Record that Stripe has the conversions `pending` reserved.
+	pub async fn mark_conversions_reported(
+		&self,
+		pending: &PendingConversions,
+	) -> Result<(), StoreError> {
+		match self {
+			Self::Memory(store) => {
+				store.mark_conversions_reported(pending);
+				Ok(())
+			}
+			Self::Postgres(store) => store.mark_conversions_reported(pending).await,
+		}
+	}
+
+	/// Count `count` conversions for a project environment in `month`. They
+	/// are billable when the project is on a paid plan with a customer.
 	pub async fn add_conversions(
 		&self,
 		project: &ProjectId,

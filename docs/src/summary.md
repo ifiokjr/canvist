@@ -18,4 +18,5 @@
   - [API](./cloud/api.md)
   - [Self-hosting](./cloud/self-hosting.md)
   - [Billing](./cloud/billing.md)
+  - [Stripe plan](./cloud/stripe-plan.md)
   - [Railway](./cloud/railway.md)

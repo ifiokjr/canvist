@@ -1,35 +1,18 @@
-//! Stripe subscription webhooks: a subscription change sets the project's
-//! plan, so an upgrade lifts a free plan's cap without anyone calling the
-//! admin API.
+//! Stripe webhooks: verifying them, and finding the subscription an event
+//! is about.
 //!
-//! The subscription names its project in `metadata.canvist_project`, and
-//! its plan through the lookup key of one of its prices (`canvist_builder_…`
-//! or `canvist_scale_…`, as `services/cloud/stripe/setup.ts` creates them).
-//! An active, trialing, or past-due subscription grants its plan; any other
-//! status, or a deleted subscription, returns the project to Hobby.
+//! Stripe does not deliver events in order, so the server never applies an
+//! event's snapshot of a subscription. It retrieves the subscription the
+//! event names and applies its current state ([`super::billing`]), which
+//! makes duplicates, retries, and reordering harmless.
 
 use hmac::Hmac;
 use hmac::Mac;
 use serde_json::Value as Json;
 use sha2::Sha256;
 
-use super::Plan;
-use super::Terms;
-use crate::names::ProjectId;
-
 /// How old a signed event may be, in seconds, as Stripe's libraries allow.
 pub const TOLERANCE_SECONDS: u64 = 300;
-
-/// The events this endpoint acts on.
-pub const EVENTS: [&str; 3] = [
-	"customer.subscription.created",
-	"customer.subscription.updated",
-	"customer.subscription.deleted",
-];
-
-/// Subscription statuses that keep a paid plan. `past_due` keeps it while
-/// Stripe retries the payment.
-const PAYING: [&str; 3] = ["active", "trialing", "past_due"];
 
 /// Why a webhook was refused.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -92,66 +75,27 @@ fn decode_hex(text: &str) -> Option<Vec<u8>> {
 		.collect()
 }
 
-/// A project's new terms, from a subscription event.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PlanChange {
-	/// The project the subscription pays for.
-	pub project: ProjectId,
-	/// Its terms from now on.
-	pub terms: Terms,
-}
-
-/// The plan change `event` asks for, if it is a subscription event for a
-/// canvist project with a canvist price.
-pub fn plan_change(event: &Json) -> Option<PlanChange> {
+/// The subscription `event` is about, if it is one this endpoint acts on.
+pub fn subscription_id(event: &Json) -> Option<&str> {
 	let kind = event.get("type")?.as_str()?;
+	let object = event.get("data")?.get("object")?;
 
-	if !EVENTS.contains(&kind) {
-		return None;
-	}
-
-	let subscription = event.get("data")?.get("object")?;
-	let project = subscription
-		.get("metadata")?
-		.get("canvist_project")?
-		.as_str()?;
-	let customer = subscription.get("customer")?.as_str()?;
-	let plan = subscribed_plan(subscription)?;
-	let status = subscription.get("status")?.as_str()?;
-	let paying = kind != "customer.subscription.deleted" && PAYING.contains(&status);
-	let terms = if paying {
-		Terms {
-			stripe_customer: Some(customer.to_owned()),
-			..Terms::of(plan)
+	match kind {
+		"customer.subscription.created"
+		| "customer.subscription.updated"
+		| "customer.subscription.deleted"
+		| "customer.subscription.paused"
+		| "customer.subscription.resumed" => object.get("id")?.as_str(),
+		"checkout.session.completed" => object.get("subscription")?.as_str(),
+		"invoice.paid" | "invoice.payment_failed" => {
+			object
+				.get("parent")
+				.and_then(|parent| parent.get("subscription_details"))
+				.and_then(|details| details.get("subscription"))
+				.or_else(|| object.get("subscription"))?
+				.as_str()
 		}
-	} else {
-		Terms::of(Plan::Hobby)
-	};
-
-	Some(PlanChange {
-		project: ProjectId::new(project),
-		terms,
-	})
-}
-
-/// The plan a subscription's prices name through their lookup keys.
-fn subscribed_plan(subscription: &Json) -> Option<Plan> {
-	subscription
-		.get("items")?
-		.get("data")?
-		.as_array()?
-		.iter()
-		.filter_map(|item| item.get("price")?.get("lookup_key")?.as_str())
-		.find_map(plan_of_lookup_key)
-}
-
-fn plan_of_lookup_key(key: &str) -> Option<Plan> {
-	let rest = key.strip_prefix("canvist_")?;
-	let (plan, _) = rest.split_once('_')?;
-
-	match plan.parse().ok()? {
-		Plan::Hobby | Plan::Enterprise => None,
-		plan => Some(plan),
+		_ => None,
 	}
 }
 
@@ -168,21 +112,6 @@ mod tests {
 		let mut mac = Hmac::<Sha256>::new_from_slice(SECRET.as_bytes()).expect("any key");
 		mac.update(format!("{timestamp}.{body}").as_bytes());
 		format!("t={timestamp},v1={}", hex(&mac.finalize().into_bytes()))
-	}
-
-	fn subscription(kind: &str, status: &str, lookup_key: &str) -> Json {
-		json!({
-			"type": kind,
-			"data": { "object": {
-				"customer": "cus_1",
-				"status": status,
-				"metadata": { "canvist_project": "prj_a" },
-				"items": { "data": [
-					{ "price": { "lookup_key": "canvist_builder_mad_overage" } },
-					{ "price": { "lookup_key": lookup_key } },
-				] },
-			} },
-		})
 	}
 
 	#[test]
@@ -208,44 +137,47 @@ mod tests {
 	}
 
 	#[test]
-	fn active_subscriptions_set_their_plan() {
-		let change = plan_change(&subscription(
-			"customer.subscription.created",
-			"active",
-			"canvist_scale_monthly",
-		))
-		.expect("a plan change");
-		assert_eq!(change.project, ProjectId::new("prj_a"));
-		assert_eq!(
-			change.terms.plan,
-			Plan::Builder,
-			"the first canvist price wins"
-		);
-		assert_eq!(change.terms.stripe_customer.as_deref(), Some("cus_1"));
-	}
+	fn events_name_their_subscription() {
+		let event =
+			|kind: &str, object: Json| json!({ "type": kind, "data": { "object": object } });
 
-	#[test]
-	fn cancelled_subscriptions_return_to_hobby() {
-		for (kind, status) in [
-			("customer.subscription.deleted", "canceled"),
-			("customer.subscription.updated", "unpaid"),
-		] {
-			let change = plan_change(&subscription(kind, status, "canvist_builder_monthly"))
-				.expect("a plan change");
-			assert_eq!(change.terms, Terms::of(Plan::Hobby));
-		}
-	}
-
-	#[test]
-	fn other_events_and_foreign_prices_are_ignored() {
-		assert_eq!(plan_change(&json!({ "type": "invoice.paid" })), None);
-		let mut foreign = subscription("customer.subscription.created", "active", "other_price");
-		foreign["data"]["object"]["items"]["data"][0]["price"]["lookup_key"] = json!("acme_pro");
-		assert_eq!(plan_change(&foreign), None);
 		assert_eq!(
-			plan_of_lookup_key("canvist_scale_annual"),
-			Some(Plan::Scale)
+			subscription_id(&event(
+				"customer.subscription.updated",
+				json!({ "id": "sub_1" })
+			)),
+			Some("sub_1")
 		);
-		assert_eq!(plan_of_lookup_key("canvist_hobby_monthly"), None);
+		assert_eq!(
+			subscription_id(&event(
+				"checkout.session.completed",
+				json!({ "id": "cs_1", "subscription": "sub_2" })
+			)),
+			Some("sub_2")
+		);
+		assert_eq!(
+			subscription_id(&event(
+				"invoice.payment_failed",
+				json!({ "parent": { "subscription_details": { "subscription": "sub_3" } } })
+			)),
+			Some("sub_3")
+		);
+		assert_eq!(
+			subscription_id(&event("invoice.paid", json!({ "subscription": "sub_4" }))),
+			Some("sub_4"),
+			"older API versions put the subscription on the invoice"
+		);
+		assert_eq!(
+			subscription_id(&event(
+				"checkout.session.completed",
+				json!({ "subscription": null })
+			)),
+			None,
+			"a payment-mode session has no subscription"
+		);
+		assert_eq!(
+			subscription_id(&event("charge.refunded", json!({ "id": "ch_1" }))),
+			None
+		);
 	}
 }

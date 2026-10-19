@@ -19,6 +19,7 @@ use crate::error::ApiError;
 use crate::metering::Admission;
 use crate::metering::Meter;
 use crate::metering::Month;
+use crate::metering::stripe::StripeClient;
 use crate::names::DocumentKey;
 use crate::store::Store;
 use crate::store::StoreError;
@@ -39,6 +40,8 @@ pub struct App {
 	pub meter: Meter,
 	/// Runs conversions.
 	pub converter: Converter,
+	/// Stripe, when billing is configured.
+	pub stripe: Option<StripeClient>,
 	shutdown: watch::Receiver<bool>,
 	sockets: TaskTracker,
 }
@@ -58,6 +61,7 @@ impl App {
 		Self {
 			signer: TokenSigner::new(config.token_secret.expose()),
 			converter: Converter::new(config.convert.clone()),
+			stripe: config.stripe.clone().map(StripeClient::new),
 			config,
 			store,
 			rooms,
