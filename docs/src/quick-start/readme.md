@@ -13,9 +13,9 @@ Every platform runs the same Rust core, so documents, extensions, and commands b
 | Server: Dart                     | `canvist`                          | Available                            | [Dart](./server-dart.md)                   |
 | Server-side rendering            | `canvist_headless` (`ssr` feature) | Available in Rust; JavaScript soon   | [SSR](./ssr.md)                            |
 | Flutter                          | `canvist_flutter`                  | Engine available; editor widget soon | [Flutter](./flutter.md)                    |
-| Web                              | `@canvist/core`                    | Preview; extension-based editor soon | [Web](./web.md)                            |
-| React                            | `@canvist/react`                   | Coming soon                          | [React](./react.md)                        |
-| Vue                              | `@canvist/vue`                     | Coming soon                          | [Vue](./vue.md)                            |
+| Web                              | `@canvist/web`                     | Preview                              | [Web](./web.md)                            |
+| React                            | `@canvist/react`                   | Preview                              | [React](./react.md)                        |
+| Vue                              | `@canvist/vue`                     | Preview                              | [Vue](./vue.md)                            |
 | iOS                              | `Canvist` Swift package            | Coming soon                          | [iOS](./ios.md)                            |
 | Android                          | `canvist-android`                  | Coming soon                          | [Android](./android.md)                    |
 | macOS, Windows, Linux            | `canvist_desktop`                  | Coming soon                          | [Desktop](./desktop.md)                    |
@@ -27,5 +27,5 @@ Every platform runs the same Rust core, so documents, extensions, and commands b
 
 - **You're processing content on a server:** importing Markdown, cleaning pasted HTML, migrating TipTap JSON, or running a collaboration endpoint. Use the server package for your language.
 - **You're building a Flutter app:** use `canvist_flutter`. Your engine code stays the same when the editor widget ships.
-- **You want an editor in a web page today:** try the [web preview](./web.md), and do the heavy lifting with `@canvist/headless`.
+- **You want an editor in a web page:** use [`@canvist/web`](./web.md), or its [React](./react.md) and [Vue](./vue.md) bindings. Do server work with `@canvist/headless`.
 - **You're an AI coding agent:** read [Integrate canvist with an agent](../agents/readme.md) first.

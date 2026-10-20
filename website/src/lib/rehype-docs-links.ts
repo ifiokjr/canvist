@@ -122,18 +122,19 @@ function isBlankText(node: RootContent): boolean {
 }
 
 /**
- * Readmes open with a centred logo for GitHub and crates.io. On the site the
- * header already carries the logo, so the leading logo block is dropped.
+ * Readmes open with a centred header for GitHub, crates.io, npm, and pub.dev:
+ * the logo, then links and badges. On the site the page header already
+ * carries all of that, so every leading centred block is dropped.
  */
-function dropReadmeLogo(tree: Root): void {
-	const index = tree.children.findIndex((child) => !isBlankText(child));
-	// `unknown`: raw nodes are not in hast's own union, so narrowing one is `never`.
-	const first: unknown = tree.children[index];
-	if (
-		isRaw(first) &&
-		/^<p align="center">[\s\S]*<picture>[\s\S]*<\/p>\s*$/.test(first.value)
-	) {
-		tree.children.splice(index, 1);
+function dropReadmeHeader(tree: Root): void {
+	for (;;) {
+		const index = tree.children.findIndex((child) => !isBlankText(child));
+		// `unknown`: raw nodes are not in hast's own union, so narrowing one is `never`.
+		const first: unknown = tree.children[index];
+		if (
+			!isRaw(first) || !/^<p align="center">[\s\S]*<\/p>\s*$/.test(first.value)
+		) return;
+		tree.children.splice(0, index + 1);
 	}
 }
 
@@ -145,7 +146,7 @@ function dropReadmeLogo(tree: Root): void {
 export function rehypeDocsLinks() {
 	return (tree: Root, file: { path?: string }) => {
 		if (file.path === undefined || !rendersInDocs(file.path)) return;
-		if (!file.path.startsWith(DOCS_SOURCE)) dropReadmeLogo(tree);
+		if (!file.path.startsWith(DOCS_SOURCE)) dropReadmeHeader(tree);
 		visit(tree, file.path);
 	};
 }

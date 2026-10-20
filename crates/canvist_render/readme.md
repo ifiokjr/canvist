@@ -2,67 +2,22 @@
   <a href="https://github.com/ifiokjr/canvist">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
-      <img alt="canvist" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" width="220">
+      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
     </picture>
   </a>
 </p>
 
-# canvist_render
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+</p>
 
-> Platform-agnostic rendering traits and text layout for the canvist canvas editor.
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
+  <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
+</p>
 
-## Overview
+# canvist_render (v1)
 
-This crate defines the abstract rendering interface that platform backends implement. The core editor in `canvist_core` produces layout information, and a `Renderer` turns that into pixels.
-
-## Traits
-
-- **`Canvas`** — draw rectangles, text, and lines
-- **`Renderer`** — viewport management
-- **`TextMeasure`** — measure character and text widths
-
-## Implementing a backend
-
-```rust
-use canvist_core::Color;
-use canvist_core::Style;
-use canvist_render::Canvas;
-use canvist_render::Rect;
-use canvist_render::Renderer;
-use canvist_render::Viewport;
-
-struct MyCanvas {
-	viewport: Viewport,
-}
-
-impl Canvas for MyCanvas {
-	fn fill_rect(&mut self, rect: Rect, color: Color) { /* draw */
-	}
-
-	fn draw_text(&mut self, x: f32, y: f32, text: &str, style: &Style) { /* draw */
-	}
-
-	fn clear(&mut self, color: Color) { /* clear */
-	}
-}
-
-impl Renderer for MyCanvas {
-	fn viewport(&self) -> &Viewport {
-		&self.viewport
-	}
-
-	fn set_viewport(&mut self, vp: Viewport) {
-		self.viewport = vp;
-	}
-}
-```
-
-## Components
-
-- **`Viewport`** — scroll position, zoom, coordinate transforms
-- **`FontCache`** — fontdue-based glyph measurement
-- **`Rect` / `Size`** — geometry primitives
-
-## License
-
-[Unlicense](https://unlicense.org/)
+The first canvist engine's rendering traits and text layout, kept while the website's live demo moves to the v2 editor. It isn't published. [`canvist_layout`](../canvist_layout) and [`canvist_paint`](../canvist_paint) replace it.

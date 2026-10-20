@@ -1,45 +1,23 @@
-<h1 align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
-    <img alt="canvist" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" width="320">
-  </picture>
-</h1>
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
+      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
+    </picture>
+  </a>
+</p>
 
-> A canvas-based text editor written in Rust — build your own Google Docs.
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+</p>
 
-**canvist** gives you full control over the editing experience by rendering text through a custom canvas engine, just like Figma and Google Docs do. Instead of relying on `contenteditable` or platform text views, canvist owns every pixel.
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
+  <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
+</p>
 
-## Features
+# canvist (v1)
 
-- **Custom render engine** — platform-agnostic rendering via canvas APIs
-- **Real-time collaboration** — built-in CRDT support via [Yjs](https://yjs.dev)
-- **Full accessibility** — parallel hidden DOM for screen readers
-- **Cross-platform** — native, WebAssembly, and server-side rendering
-- **Beautiful API** — ergonomic builder patterns for documents, styles, and operations
-
-## Quick start
-
-```rust
-use canvist::prelude::*;
-
-// Create a new document
-let mut doc = Document::new();
-
-// Insert styled text
-let style = Style::new().bold().font_size(24.0).font_family("Inter");
-doc.insert_text(Position::zero(), "Hello, canvist!");
-doc.apply_style(Selection::all(&doc), &style);
-```
-
-## Crate structure
-
-| Crate                                                       | Description                                           |
-| ----------------------------------------------------------- | ----------------------------------------------------- |
-| [`canvist`](https://crates.io/crates/canvist)               | Umbrella re-export crate (this crate)                 |
-| [`canvist_core`](https://crates.io/crates/canvist_core)     | Document model, operations, selections, collaboration |
-| [`canvist_render`](https://crates.io/crates/canvist_render) | Platform-agnostic rendering traits and text layout    |
-| [`canvist_wasm`](https://crates.io/crates/canvist_wasm)     | WebAssembly + Canvas2D rendering backend              |
-
-## License
-
-This project is licensed under the [Unlicense](https://unlicense.org/).
+The first canvist engine's Rust facade, kept while the website's live demo moves to the v2 editor. It isn't published. For new work, use [`canvist_headless`](../canvist_headless) on servers and [`@canvist/web`](../../packages/canvist-web) in the browser.

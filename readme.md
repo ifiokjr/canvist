@@ -1,46 +1,85 @@
-<h1 align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./assets/brand/vector/lockup-dark.svg">
-    <img alt="canvist" src="./assets/brand/vector/lockup.svg" width="320">
-  </picture>
-</h1>
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="./assets/brand/vector/lockup-dark.svg">
+      <img width="360" src="./assets/brand/vector/lockup.svg" alt="canvist" />
+    </picture>
+  </a>
+</p>
 
-> A rich-text editor you build from plugins. Add bold, headings, lists, links, and live collaboration, as little or as much as you want, up to your own Google Docs.
+<p align="center">
+  A <strong>rich-text editor</strong> painted on a <em>canvas</em>, with a <em>Rust</em> core.<br />
+  Start with a comment box. Grow it into your own Google Docs, one plugin at a time.
+</p>
 
-[![ci](https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg)](https://github.com/ifiokjr/canvist/actions/workflows/ci.yml)
+<br />
 
-![A canvist document with a heading, formatted text, a bullet list, a quote, a task, and a code block](./docs/src/images/editor.png)
+<p align="center">
+  <a href="#why"><strong>Why?</strong></a> ·
+  <a href="./docs/src/quick-start/readme.md"><strong>Quick start</strong></a> ·
+  <a href="#platforms"><strong>Platforms</strong></a> ·
+  <a href="./docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="./docs/src/agents/readme.md"><strong>For agents</strong></a> ·
+  <a href="./docs/src/cloud/readme.md"><strong>Cloud</strong></a> ·
+  <a href="./docs/src/reference/contributing.md"><strong>Contributing</strong></a>
+</p>
 
-- **You choose every feature.** Each one is an extension. Register only what your app needs.
-- **It paints every pixel.** A Rust core lays out text and paints it to a canvas, like Google Docs and Figma, so it looks and behaves the same everywhere.
-- **One core, every platform.** Servers (Rust, TypeScript, Dart) and Flutter today; web, React, Vue, iOS, Android, desktop, React Native, and Lynx on the way.
-- **Collaboration built in.** Documents are Yjs-compatible: y-websocket, Hocuspocus, or canvist Cloud.
-- **Typed, headless APIs.** No built-in toolbar. Calling a command from an extension you didn't register is a compile error, for people and AI agents alike.
+<br />
+
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status" /></a>
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/web.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/web.yml/badge.svg?branch=main" alt="Web status" /></a>
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/native.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/native.yml/badge.svg?branch=main" alt="Native status" /></a>
+  <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
+</p>
+
+<br />
+
+<p align="center">
+  <img width="720" src="./docs/src/images/editor.png" alt="A canvist document with a heading, formatted text, a bullet list, a quote, a task, and a code block" />
+</p>
+
+## Why?
+
+- **You choose every feature.** Bold, headings, lists, links, and collaboration are each an extension. Register only what your app needs, and ship only that.
+- **It paints every pixel.** A Rust core lays out text and paints it to a canvas, the way Google Docs and Figma do, so it looks and behaves the same everywhere.
+- **It's typed end to end.** There's no built-in toolbar. Calling a command from an extension you didn't register is a compile error, for people and AI agents alike.
+- **Collaboration is built in.** Documents are Yjs-compatible, so y-websocket, Hocuspocus, and canvist Cloud all work.
+- **It's fast.** A keystroke costs about 0.3 µs in the model and 2.5 µs to lay out, at 100 blocks or 100,000, and every pull request is held to those budgets.
 
 ```ts
-import { bold, createEngine, heading } from "@canvist/headless";
+import { bold, createEditor, heading } from "@canvist/web";
 
-const engine = await createEngine([bold, heading]);
-const doc = engine.parse("markdown", "# Notes\n\nShip it today");
+const editor = await createEditor(element, { extensions: [bold, heading] });
 
-doc.select({ path: [1], offset: 8 }, { path: [1], offset: 13 });
-doc.commands.toggleBold();
-
-doc.export("html"); // <h1>Notes</h1><p>Ship it <strong>today</strong></p>
+editor.commands.setHeading({ level: 2 });
+editor.commands.toggleItalic(); // type error: italic isn't registered
 ```
 
-## Get started
+## Platforms
 
-- **[Pick your platform](./docs/src/quick-start/readme.md)** and get a working document in five minutes.
+One core runs everywhere, so a document exports byte for byte the same in Rust, TypeScript, and Dart.
+
+| Platform                 | Package                                            | Status                  |
+| ------------------------ | -------------------------------------------------- | ----------------------- |
+| Web                      | [`@canvist/web`](./packages/canvist-web)           | Preview                 |
+| React                    | [`@canvist/react`](./packages/canvist-react)       | Preview                 |
+| Vue                      | [`@canvist/vue`](./packages/canvist-vue)           | Preview                 |
+| Servers: Node, Deno, Bun | [`@canvist/headless`](./packages/canvist-headless) | Available               |
+| Servers: Rust            | [`canvist_headless`](./crates/canvist_headless)    | Available               |
+| Servers: Dart            | [`canvist`](./platforms/dart)                      | Available               |
+| Flutter                  | [`canvist_flutter`](./platforms/flutter)           | Engine now, widget soon |
+| Design canvas            | [`@canvist/canvas`](./packages/canvist-canvas)     | Preview                 |
+| iOS, Android, desktop    | Swift, Kotlin, and Rust packages                   | Coming soon             |
+| React Native and Lynx    | `@canvist/react-native`, `@canvist/lynx`           | Coming soon             |
+
+canvist hasn't had its first release yet. Each [quick start](./docs/src/quick-start/readme.md) shows how to install from GitHub until it does.
+
+## Learn more
+
 - **[Build your own editor](./docs/src/extensions/build-your-own-editor.md)**, one extension at a time.
 - **[Integrate canvist with an agent](./docs/src/agents/readme.md)**, if you're an AI coding agent.
-- **[Read the docs](./docs/src/readme.md)**: concepts, the extension catalogue, guides, and canvist Cloud.
-
-canvist hasn't had its first release yet. Every quick start shows how to install from GitHub.
-
-## Contributing
-
-See [Contributing](./docs/src/reference/contributing.md).
+- **[canvist Cloud](./docs/src/cloud/readme.md)**: hosted real-time sync and document conversion, so you don't have to run your own servers.
 
 ## License
 

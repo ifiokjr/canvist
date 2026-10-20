@@ -2,17 +2,26 @@
   <a href="https://github.com/ifiokjr/canvist">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
-      <img alt="canvist" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" width="220">
+      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
     </picture>
   </a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/native.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/native.yml/badge.svg?branch=main" alt="native status" /></a>
+  <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
+</p>
+
 # canvist_ffi
 
-> Native binding surface for the canvist canvas editor.
+The native binding surface for canvist's iOS and Android packages. It exports an `EditorHandle` through [UniFFI](https://mozilla.github.io/uniffi-rs/), which the `Canvist` Swift package and the Kotlin library wrap. It isn't published on its own.
 
-`canvist_ffi` exports an `EditorHandle` through [UniFFI](https://mozilla.github.io/uniffi-rs/) for Swift (iOS) and Kotlin (Android). The Flutter package wraps the same handle through `flutter_rust_bridge`.
+**The handle is a placeholder for now.** It holds plain text, which proves the native build and test pipelines end to end. The v2 editor engine replaces it behind the same handle. Flutter and Dart don't use this crate: they bind [`canvist_headless`](../canvist_headless) through `flutter_rust_bridge`.
 
-**This is a placeholder.** The handle is backed by a plain `String` so the native build pipelines can be proven before the v2 editor engine exists. The engine will replace it behind the same handle.
-
-See [the native toolchain guide](../../docs/internal/native-toolchain.md) for building and testing on iOS, Android and Flutter.
+See [the native toolchain guide](../../docs/internal/native-toolchain.md) for building and testing on iOS and Android.

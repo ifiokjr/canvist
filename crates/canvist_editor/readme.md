@@ -2,17 +2,34 @@
   <a href="https://github.com/ifiokjr/canvist">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
-      <img alt="canvist" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" width="220">
+      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
     </picture>
   </a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/quick-start/server-rust.md"><strong>Quick start</strong></a> ·
+  <a href="https://docs.rs/canvist_editor"><strong>API</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://crates.io/crates/canvist_editor"><img src="https://img.shields.io/crates/v/canvist_editor?color=3B2CF5" alt="crates.io version" /></a>
+  <a href="https://docs.rs/canvist_editor"><img src="https://img.shields.io/docsrs/canvist_editor" alt="docs.rs status" /></a>
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
+  <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
+</p>
+
 # canvist_editor
 
-The platform-agnostic editing engine behind [canvist](https://github.com/ifiokjr/canvist), built on [`canvist_model`](../canvist_model).
+The platform-agnostic editing engine behind [canvist](https://github.com/ifiokjr/canvist), built on [`canvist_model`](../canvist_model). It has no UI: hosts send it input and draw what it returns.
 
-- **Editor state:** the document, selection, stored marks, and IME composition, changed through one path so they never disagree.
-- **Commands:** typing with mark inclusivity, deleting by grapheme, word, line, or document, Enter and Backspace that understand lists and quotes, marks, block types, wrapping and lifting, and copy and paste.
-- **Selection motion:** by grapheme cluster and word (UAX #29), line, and document, with inline embeds and atomic blocks treated as single stops. Line and vertical motion ask a `LineNavigator`, which the layout engine implements and hosts pass per event through `Env::new`; carets carry an `Affinity` so the two sides of a soft wrap stay distinct.
-- **Editor:** history with grouping by time and kind of edit and selection restore (behind a `History` trait the collaboration crate replaces), keymaps where `Mod` is Cmd on Apple platforms and Ctrl elsewhere, input rules such as `##` to a heading, and paste rules, all contributed by `Extension`s so an app pays only for what it registers.
-- **Headless, typed API:** registering an extension returns a typed handle whose methods are the only typed way to reach its commands, queries, and attributes. Named commands and queries with checked arguments serve dynamic hosts, and machine-readable metadata (`Editor::metadata_json`) feeds binding generators. `can()` dry runs and `chain()` all-or-nothing chains change nothing unless they apply, down to block revisions.
+- **One state:** the document, selection, stored marks, and IME composition change through one path, so they never disagree.
+- **Commands:** typing, deleting by grapheme, word, or line, Enter and Backspace that understand lists and quotes, marks, block types, and copy and paste.
+- **Selection motion:** by grapheme and word (UAX #29), line, and document. The layout engine answers line and vertical moves.
+- **Extensions:** history, keymaps (`Mod` is Cmd on Apple platforms and Ctrl elsewhere), input rules such as `##` to a heading, and paste rules, so an app pays only for what it registers.
+- **Typed handles:** registering an extension returns the only typed way to reach its commands and queries. `can()` dry runs and all-or-nothing `chain()`s change nothing unless they apply.
+
+Dynamic hosts call commands by name with checked arguments, and `Editor::metadata_json` describes every command for generated bindings. The StarterKit extensions are in [`canvist_extensions`](../canvist_extensions).

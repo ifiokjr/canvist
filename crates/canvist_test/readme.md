@@ -2,28 +2,22 @@
   <a href="https://github.com/ifiokjr/canvist">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
-      <img alt="canvist" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" width="220">
+      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
     </picture>
   </a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
+  <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
+</p>
+
 # canvist_test
 
-> Integration test utilities for the canvist canvas editor.
-
-## Current status
-
-This crate currently provides shared path/workspace helpers and smoke tests for core logic.
-
-- Browser automation is currently executed from `packages/canvist` via Deno + Playwright (including CI workflow coverage).
-- `crates/canvist_test/tests/smoke.rs` contains non-browser smoke tests only.
-- Playwright-driven Rust crate tests are planned, but not implemented in this crate yet.
-
-## Test coverage in this crate
-
-Current smoke tests validate core document behaviors without a browser:
-
-1. Document creation and text insertion
-2. Styling and selection operations
-3. Deletion behavior
-4. JSON serialization roundtrip
+Shared workspace helpers and smoke tests for the v1 engine: document creation, styling, deletion, and JSON round trips, with no browser. It isn't published. Browser tests live with each package, run by Playwright.

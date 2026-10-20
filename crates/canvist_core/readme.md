@@ -2,72 +2,22 @@
   <a href="https://github.com/ifiokjr/canvist">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
-      <img alt="canvist" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" width="220">
+      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
     </picture>
   </a>
 </p>
 
-# canvist_core
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+</p>
 
-> Core document model, runtime, operations, and CRDT collaboration for the canvist canvas editor.
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
+  <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
+</p>
 
-## Features
+# canvist_core (v1)
 
-- **Document model** — paragraph tree with styled text runs
-- **Runtime** — event processing, undo/redo with coalescing, cursor management
-- **Operations** — insert, delete, format with transaction batching and replay
-- **Styling** — bold, italic, underline, strikethrough, font size, color, alignment
-- **Layout** — Unicode-aware line breaking with dynamic line height
-- **Collaboration** — Yrs CRDT integration for real-time multi-peer sync
-- **Import/Export** — HTML, Markdown, and JSON serialization
-
-## Quick start
-
-```rust
-use canvist_core::{Document, EditorRuntime, EditorEvent, Position, Selection, Style};
-
-// Create a runtime.
-let mut runtime = EditorRuntime::new(
-    Document::new(),
-    Selection::collapsed(Position::zero()),
-    "user:demo",
-);
-
-// Insert and format text.
-runtime.handle_event(EditorEvent::TextInsert {
-    text: "Hello, world!".to_string(),
-}).unwrap();
-
-runtime.apply_operation(canvist_core::operation::Operation::format(
-    Selection::range(Position::new(0), Position::new(5)),
-    Style::new().bold(),
-));
-
-assert_eq!(runtime.document().plain_text(), "Hello, world!");
-
-// Export.
-let html = runtime.document().to_html();
-let md = runtime.document().to_markdown();
-
-// Undo.
-runtime.undo();
-```
-
-## Collaboration
-
-```rust
-use canvist_core::collaboration::CollaborationSession;
-
-let peer_a = CollaborationSession::new();
-let peer_b = CollaborationSession::new();
-
-peer_a.insert(0, "Hello");
-let update = peer_a.encode_state();
-peer_b.apply_update(&update);
-
-assert_eq!(peer_b.text(), "Hello");
-```
-
-## License
-
-[Unlicense](https://unlicense.org/)
+The first canvist engine's document model, runtime, and Yrs collaboration, kept while the website's live demo moves to the v2 editor. It isn't published. The v2 crates replace it: [`canvist_model`](../canvist_model) for documents, [`canvist_editor`](../canvist_editor) for editing, and [`canvist_collab`](../canvist_collab) for collaboration.
