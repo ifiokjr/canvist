@@ -1,6 +1,32 @@
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
+      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
+    </picture>
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/quick-start/web.md"><strong>Quick start</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/@canvist/web"><img src="https://img.shields.io/npm/v/%40canvist%2Fweb?color=3B2CF5" alt="npm version" /></a>
+  <a href="https://github.com/ifiokjr/canvist/actions/workflows/web.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/web.yml/badge.svg?branch=main" alt="web status" /></a>
+  <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
+</p>
+
 # @canvist/web
 
-The canvist editor for the browser. Every pixel of the document is painted on a canvas, but text is measured by the browser itself: the canvas wraps each line exactly where canvist's server-rendered HTML does, so hydrating from SSR moves nothing. It is the Rust core, [`canvist_web`](../../crates/canvist_web), compiled to WebAssembly.
+The canvist editor for the browser. Every pixel of the document is painted on a canvas, but the browser measures the text, so the canvas wraps each line exactly where canvist's server-rendered HTML does and hydrating moves nothing.
+
+```sh
+npm install @canvist/web
+```
 
 ```ts
 import { createEditor } from "@canvist/web";
@@ -14,9 +40,11 @@ editor.commands.toggleItalic();
 editor.toHtml(); // what a server would send: { html, css }
 ```
 
+Using React or Vue? See [`@canvist/react`](../canvist-react) and [`@canvist/vue`](../canvist-vue).
+
 ## Types follow what you register
 
-Commands, queries, and document JSON are typed from the extensions you pass (TipTap's StarterKit by default), with the same generated descriptors as [`@canvist/headless`](../canvist-headless). Plugins add their own API under `editor.plugins`. Using an extension or plugin you did not register is a type error:
+Commands, queries, and document JSON are typed from the extensions you pass, TipTap's StarterKit by default. Plugins add their own API under `editor.plugins`:
 
 ```ts
 import { bold, createEditor, heading } from "@canvist/web";
@@ -32,15 +60,15 @@ editor.commands.toggleItalic(); // type error: italic is not registered
 await editor.plugins.fonts.local(); // installed fonts, where the browser allows it
 ```
 
-## Fonts
+## Built for real typing
 
-Installed fonts and every web font the page already declares work with no configuration. `@canvist/web/fonts` loads faces the way `@font-face` does (URLs or bytes, `unicode-range`, `font-display`), adds metric-compatible fallbacks so a font swap barely moves anything, lists local fonts through the Local Font Access API, and writes the same faces as `@font-face` CSS for server rendering. See [Fonts and text rendering](../../docs/src/guides/fonts.md).
+- **Fonts:** installed fonts and the page's web fonts work with no setup. `@canvist/web/fonts` loads faces the way `@font-face` does and adds metric-compatible fallbacks, so a font swap barely moves anything. See [Fonts and text rendering](../../docs/src/guides/fonts.md).
+- **Input:** `EditContext` in Chromium and a hidden textarea elsewhere, so input methods, dictation, and autocorrect work as they do in a text field. See [Text input on the web](../../docs/src/guides/web-input.md).
+- **Accessibility:** a visually hidden copy of the document lets screen readers read it.
+- **Latency:** every input event is painted in its own task, and `editor.inputLatency()` reports how long that took.
 
-## Editing
-
-Text arrives through `EditContext` in Chromium, so input methods, dictation, and autocorrect work as they do in a text field, and through a hidden textarea elsewhere; `input: "textarea"` forces the textarea. Key bindings follow the platform, compositions show in place, copy and paste carry HTML and plain text, the selection drags to move, and a visually hidden copy of the document lets screen readers read it. Every input event is painted in its own task; `editor.inputLatency()` reports how long that took. See [Text input on the web](../../docs/src/guides/web-input.md).
-
-## Development
+<details>
+<summary><strong>Development</strong></summary>
 
 ```sh
 npm ci
@@ -52,3 +80,5 @@ node scripts/parity-report.ts
 ```
 
 The parity tests and their thresholds are described in [Rendering parity](../../docs/src/guides/rendering-parity.md).
+
+</details>

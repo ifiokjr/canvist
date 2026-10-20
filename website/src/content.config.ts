@@ -31,7 +31,11 @@ const docs = defineCollection({
 const readmes = defineCollection({
 	loader: glob({
 		base: repoPath(""),
-		pattern: ["crates/*/readme.md", "packages/*/README.md"],
+		pattern: [
+			"crates/*/readme.md",
+			"packages/*/readme.md",
+			"packages/*/README.md",
+		],
 		generateId: ({ entry }) => entry,
 	}),
 });
