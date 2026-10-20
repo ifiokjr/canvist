@@ -380,7 +380,10 @@ base = "main"
 title = "chore(release): prepare release"
 labels = ["release", "automated"]
 auto_merge = false
-verified_commits = true
+# The API-built verified commit drops `.monochange/releases/<hash>/release.json`
+# (and commits the local release manifest instead), so the tag job cannot read
+# the release record. Push the locally built commit until monochange signs it.
+verified_commits = false
 body_style = "full"
 
 [changesets.affected]
