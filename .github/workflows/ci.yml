@@ -3,6 +3,9 @@ permissions:
   pull-requests: write
   contents: write
 on:
+  # Dispatched by hand on the release pull request: GITHUB_TOKEN opens it,
+  # and GitHub starts no pull_request workflows for that.
+  workflow_dispatch:
   push:
     branches:
       - main
