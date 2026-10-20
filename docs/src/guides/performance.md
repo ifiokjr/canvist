@@ -13,46 +13,47 @@ Read this page to see what canvist costs: the time each operation takes, how tha
 
 Every number below has a budget, and a test fails the build when an operation goes over it. "Today" is measured on Apple silicon. Rows marked "Coming soon" belong to editor hosts that haven't shipped yet.
 
-| Metric                                              | Budget                                      | Today                |
-| --------------------------------------------------- | ------------------------------------------- | -------------------- |
-| Apply one keystroke (model), 100k blocks            | < 2 µs                                      | 0.29 µs              |
-| Enter / Backspace across blocks, 100k blocks        | < 100 µs                                    | 45 µs                |
-| Keystroke in a 100 KB paragraph                     | < 5 µs                                      | 0.94 µs              |
-| Keystroke with every extension, 100k blocks         | < 5 µs                                      | 0.80 µs              |
-| Relayout one edited paragraph, 10k or 100k blocks   | < 100 µs                                    | 2.5 µs               |
-| Relayout after a keystroke in a 100 KB paragraph    | < 100 µs                                    | 25 µs                |
-| Relayout after Enter, 10k / 100k blocks ¹           | < 200 µs / < 2 ms                           | 83 µs / 1.4 ms       |
-| Hit test / caret rectangle                          | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
-| Display list for one screen                         | < 100 µs                                    | 5 µs                 |
-| Scroll one screen into unmeasured blocks            | < 1 ms                                      | 53 µs                |
-| Relayout after a web font loads, 10k blocks         | < 200 µs                                    | 43 µs                |
-| Measure cache hit rate: resize / typing             | ≥ 99% / ≥ 85%                               | 100% / 98.5%         |
-| Measure cache memory per segment, per face          | ≤ 160 B                                     | 144 B                |
-| Mirror a keystroke into a Yjs update, 100k blocks   | < 20 µs                                     | 1.9 µs               |
-| Apply a collaborator's keystroke, 100k blocks       | < 20 µs                                     | 2.7 µs               |
-| Mirror Enter into Yjs, 10k blocks²                  | < 150 µs                                    | 45 µs                |
-| Apply a collaborator's Enter, 10k blocks²           | < 400 µs                                    | 114 µs               |
-| Join a 10k-paragraph document from Yjs state        | < 50 ms                                     | 24 ms                |
-| Headless: load 10k paragraphs (Markdown / JSON)     | < 50 ms / < 50 ms                           | 10 ms / 17 ms        |
-| Headless: export 10k paragraphs (JSON / MD / HTML)  | < 50 / 25 / 25 ms                           | 19 / 7 / 2.4 ms      |
-| Headless: run one command, 10k paragraphs           | < 2 µs                                      | 0.21 µs              |
-| Headless: create a StarterKit document              | < 250 µs                                    | 56 µs                |
-| Headless: apply one Yjs keystroke, 10k paragraphs   | < 20 µs                                     | 2.3 µs               |
-| Headless TypeScript: one command / Yjs update       | < 5 µs / < 30 µs                            | 0.71 µs / 4.6 µs     |
-| Headless TypeScript wasm module, after `wasm-opt`   | < 1,400 KB raw                              | 1,248 KB (509 KB gz) |
-| Headless Dart: one command / Yjs update             | < 10 µs / < 30 µs                           | 2.0 µs / 3.5 µs      |
-| Keystroke → paint on the web, p95 ⁴                 | < 8 ms                                      | 0.5 / 2 / 2 ms       |
-| Typing burst: 1,000 key events on the web ⁴         | no crash, no dropped input, ≤ 2 frames late | 1,000 of 1,000       |
-| Open a 10k-paragraph document → first paint         | < 50 ms                                     | layout 0.6 ms        |
-| Native: keystroke → frame in Rust, 10k paragraphs ⁵ | < 200 µs                                    | 35 µs                |
-| Native: IME update → frame, 10k paragraphs ⁵        | < 200 µs                                    | 29 µs                |
-| Native: collaborator's keystroke → frame ⁵          | < 200 µs                                    | 57 µs                |
-| iOS: keystroke → paint, p95 ⁶                       | < 16 ms                                     | 1.2 ms               |
-| Desktop: keystroke → frame, 10k paragraphs ⁷        | < 4 ms                                      | 0.14 ms              |
-| Desktop: keystroke → frame, 100 KB paragraph ⁷      | < 4 ms                                      | 0.56 ms              |
-| Desktop: open 10k paragraphs → first frame          | < 100 ms                                    | 26 ms                |
-| Desktop: typing burst, 1,000 keys with a frame each | no crash, < 1.5 s                           | 0.23 s               |
-| Web bundle (core + StarterKit), gzipped             | < 350 KB                                    | 349.6 KB ³           |
+| Metric                                               | Budget                                      | Today                |
+| ---------------------------------------------------- | ------------------------------------------- | -------------------- |
+| Apply one keystroke (model), 100k blocks             | < 2 µs                                      | 0.29 µs              |
+| Enter / Backspace across blocks, 100k blocks         | < 100 µs                                    | 45 µs                |
+| Keystroke in a 100 KB paragraph                      | < 5 µs                                      | 0.94 µs              |
+| Keystroke with every extension, 100k blocks          | < 5 µs                                      | 0.80 µs              |
+| Relayout one edited paragraph, 10k or 100k blocks    | < 100 µs                                    | 2.5 µs               |
+| Relayout after a keystroke in a 100 KB paragraph     | < 100 µs                                    | 25 µs                |
+| Relayout after a keystroke in a table of 1,000 cells | < 100 µs                                    | 7 µs                 |
+| Relayout after Enter, 10k / 100k blocks ¹            | < 200 µs / < 2 ms                           | 83 µs / 1.4 ms       |
+| Hit test / caret rectangle                           | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
+| Display list for one screen                          | < 100 µs                                    | 5 µs                 |
+| Scroll one screen into unmeasured blocks             | < 1 ms                                      | 53 µs                |
+| Relayout after a web font loads, 10k blocks          | < 200 µs                                    | 43 µs                |
+| Measure cache hit rate: resize / typing              | ≥ 99% / ≥ 85%                               | 100% / 98.5%         |
+| Measure cache memory per segment, per face           | ≤ 160 B                                     | 144 B                |
+| Mirror a keystroke into a Yjs update, 100k blocks    | < 20 µs                                     | 1.9 µs               |
+| Apply a collaborator's keystroke, 100k blocks        | < 20 µs                                     | 2.7 µs               |
+| Mirror Enter into Yjs, 10k blocks²                   | < 150 µs                                    | 45 µs                |
+| Apply a collaborator's Enter, 10k blocks²            | < 400 µs                                    | 114 µs               |
+| Join a 10k-paragraph document from Yjs state         | < 50 ms                                     | 24 ms                |
+| Headless: load 10k paragraphs (Markdown / JSON)      | < 50 ms / < 50 ms                           | 10 ms / 17 ms        |
+| Headless: export 10k paragraphs (JSON / MD / HTML)   | < 50 / 25 / 25 ms                           | 19 / 7 / 2.4 ms      |
+| Headless: run one command, 10k paragraphs            | < 2 µs                                      | 0.21 µs              |
+| Headless: create a StarterKit document               | < 250 µs                                    | 56 µs                |
+| Headless: apply one Yjs keystroke, 10k paragraphs    | < 20 µs                                     | 2.3 µs               |
+| Headless TypeScript: one command / Yjs update        | < 5 µs / < 30 µs                            | 0.71 µs / 4.6 µs     |
+| Headless TypeScript wasm module, after `wasm-opt`    | < 1,400 KB raw                              | 1,303 KB (534 KB gz) |
+| Headless Dart: one command / Yjs update              | < 10 µs / < 30 µs                           | 2.0 µs / 3.5 µs      |
+| Keystroke → paint on the web, p95 ⁴                  | < 8 ms                                      | 0.5 / 2 / 2 ms       |
+| Typing burst: 1,000 key events on the web ⁴          | no crash, no dropped input, ≤ 2 frames late | 1,000 of 1,000       |
+| Open a 10k-paragraph document → first paint          | < 50 ms                                     | layout 0.6 ms        |
+| Native: keystroke → frame in Rust, 10k paragraphs ⁵  | < 200 µs                                    | 35 µs                |
+| Native: IME update → frame, 10k paragraphs ⁵         | < 200 µs                                    | 29 µs                |
+| Native: collaborator's keystroke → frame ⁵           | < 200 µs                                    | 57 µs                |
+| iOS: keystroke → paint, p95 ⁶                        | < 16 ms                                     | 1.2 ms               |
+| Desktop: keystroke → frame, 10k paragraphs ⁷         | < 4 ms                                      | 0.14 ms              |
+| Desktop: keystroke → frame, 100 KB paragraph ⁷       | < 4 ms                                      | 0.56 ms              |
+| Desktop: open 10k paragraphs → first frame           | < 100 ms                                    | 26 ms                |
+| Desktop: typing burst, 1,000 keys with a frame each  | no crash, < 1.5 s                           | 0.23 s               |
+| Web bundle (core + StarterKit), gzipped              | < 350 KB                                    | 349.6 KB ³           |
 
 ¹ Pressing Enter grows slowly with document size, about 10 ns per block, because every later line moves down one row. It stays well under a frame at 100,000 blocks.
 

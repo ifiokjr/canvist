@@ -22,6 +22,7 @@ use canvist_model::Document;
 use canvist_model::Value;
 use rustc_hash::FxHashMap;
 
+use super::grid::Grid;
 use crate::geometry::to_units;
 use crate::style::StyleId;
 use crate::style::Styles;
@@ -33,6 +34,8 @@ use crate::text::Previous;
 use crate::text::TextLayout;
 use crate::theme::LeafStyle;
 use crate::theme::MarkerKind;
+#[cfg(feature = "tables")]
+use crate::theme::TableRole;
 use crate::theme::TextStyle;
 
 /// What a row holds.
@@ -91,9 +94,19 @@ pub(crate) struct Row {
 	pub(crate) previous: Option<Previous>,
 	/// The marker, when the row is itself a list item.
 	pub(crate) marker: Option<Marker>,
+	/// The span of the table whose grid places the row, if any.
+	pub(crate) table: Option<u32>,
+	/// The row's top relative to its grid's top, when it has one.
+	pub(crate) grid_y: i64,
 }
 
 impl Row {
+	/// The span of the table whose grid places the row. Always `None`
+	/// without the `tables` feature, so the grid paths compile out.
+	pub(crate) fn table(&self) -> Option<u32> {
+		self.table.filter(|_| cfg!(feature = "tables"))
+	}
+
 	/// Whether the row still needs measuring.
 	pub(crate) fn needs_layout(&self) -> bool {
 		self.kind == RowKind::Text && self.layout.is_none()
@@ -134,6 +147,41 @@ pub(crate) struct Span {
 	pub(crate) bottom: i64,
 	pub(crate) parent: Option<u32>,
 	pub(crate) marker: Option<Marker>,
+	/// Its part in a table grid, if any.
+	pub(crate) grid: Option<GridPart>,
+}
+
+impl Span {
+	/// Its part in a table grid. Always `None` without the `tables`
+	/// feature, so the grid paths compile out.
+	pub(crate) fn grid_part(&self) -> Option<&GridPart> {
+		self.grid.as_ref().filter(|_| cfg!(feature = "tables"))
+	}
+}
+
+/// A span's part in a table grid.
+#[cfg_attr(
+	not(feature = "tables"),
+	allow(dead_code, reason = "only the `tables` feature builds grids")
+)]
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum GridPart {
+	/// The table, holding its grid.
+	Table(Box<Grid>),
+	/// Table row `row` of the table span `table`.
+	Row { table: u32, row: u32 },
+	/// Cell `cell` of the table span `table`.
+	Cell { table: u32, cell: u32 },
+}
+
+impl GridPart {
+	/// The table span index a row or cell part points at.
+	pub(crate) fn table_mut(&mut self) -> Option<&mut u32> {
+		match self {
+			Self::Table(_) => None,
+			Self::Row { table, .. } | Self::Cell { table, .. } => Some(table),
+		}
+	}
 }
 
 /// What one root-level block contributed to the flattened document.
@@ -181,6 +229,38 @@ pub(crate) struct Flat {
 	pub(crate) tail: i64,
 }
 
+impl Flat {
+	/// The grid of table span `table`, with the index of its first row.
+	pub(crate) fn grid(&self, table: Option<u32>) -> Option<(usize, &Grid)> {
+		let span = self.spans.get(table? as usize)?;
+
+		match span.grid_part() {
+			Some(GridPart::Table(grid)) => Some((span.first_row as usize, grid)),
+			_ => None,
+		}
+	}
+
+	/// Row `index`'s share of the document height: its leading space and
+	/// height, or for a row placed by a grid, the table's leading space on
+	/// its first row and the grid's height on its last.
+	pub(crate) fn extent(&self, index: usize) -> i64 {
+		let Some(row) = self.rows.get(index) else {
+			return 0;
+		};
+		let Some((first, grid)) = self.grid(row.table()) else {
+			return row.lead + row.height;
+		};
+		let last = self
+			.spans
+			.get(row.table.unwrap_or_default() as usize)
+			.map_or(first, |span| span.last_row as usize);
+		let lead = if index == first { grid.lead } else { 0 };
+		let height = if index == last { grid.height } else { 0 };
+
+		lead + height
+	}
+}
+
 /// Flatten `doc` at `width`. Rows of `previous` whose block, revision,
 /// style, and width are unchanged keep their layouts; other known blocks keep
 /// their old height as an estimate, which avoids scroll jumps.
@@ -209,6 +289,8 @@ pub(crate) fn flatten(doc: &Document, styles: &mut Styles, width: f32, previous:
 			..Flat::default()
 		},
 		pending: 0,
+		#[cfg(feature = "tables")]
+		in_table: false,
 	};
 
 	flattener.run(doc.children(None), width, Seed::default())
@@ -235,6 +317,8 @@ pub(crate) fn flatten_roots(
 		previous: previous.into_iter().map(Some).collect(),
 		flat: Flat::default(),
 		pending: 0,
+		#[cfg(feature = "tables")]
+		in_table: false,
 	};
 
 	flattener.run(region.roots, region.width, region.seed)
@@ -253,32 +337,36 @@ const AVERAGE_GLYPH_WIDTH_EM: f32 = 0.5;
 
 /// Where a block's children are placed.
 #[derive(Clone, Copy)]
-struct Frame {
-	x: f32,
-	width: f32,
-	span: Option<u32>,
+pub(super) struct Frame {
+	pub(super) x: f32,
+	pub(super) width: f32,
+	pub(super) span: Option<u32>,
 	/// How many marker-bearing containers enclose the children.
-	lists: usize,
+	pub(super) lists: usize,
 }
 
 /// Everything about a block's place in the tree that its row or span needs.
-struct Placement {
+pub(super) struct Placement {
 	/// The block's own resolved style.
-	style: StyleId,
-	parent_kind: Option<BlockTypeId>,
-	parent_style: Option<StyleId>,
-	frame: Frame,
-	marker: Option<Marker>,
+	pub(super) style: StyleId,
+	pub(super) parent_kind: Option<BlockTypeId>,
+	pub(super) parent_style: Option<StyleId>,
+	pub(super) frame: Frame,
+	pub(super) marker: Option<Marker>,
 }
 
-struct Flattener<'a> {
-	doc: &'a Document,
-	styles: &'a mut Styles,
+pub(super) struct Flattener<'a> {
+	pub(super) doc: &'a Document,
+	pub(super) styles: &'a mut Styles,
 	previous: Vec<Option<Row>>,
 	previous_index: FxHashMap<BlockId, u32>,
-	flat: Flat,
+	pub(super) flat: Flat,
 	/// Vertical space accumulated since the last row.
-	pending: i64,
+	pub(super) pending: i64,
+	/// Whether the blocks being flattened are inside a table's cell. A table
+	/// nested in a cell stacks its cells instead of laying out a grid.
+	#[cfg(feature = "tables")]
+	pub(super) in_table: bool,
 }
 
 impl Flattener<'_> {
@@ -391,12 +479,20 @@ impl Flattener<'_> {
 		}
 	}
 
-	fn block(&mut self, block: &Block, placement: Placement) {
+	pub(super) fn block(&mut self, block: &Block, placement: Placement) {
 		let kind = match block.content() {
 			Content::Inline(_) => RowKind::Text,
 			Content::Leaf => RowKind::Leaf,
 			Content::Blocks(children) if children.is_empty() => RowKind::Empty,
 			Content::Blocks(_) => {
+				#[cfg(feature = "tables")]
+				if let (Some(TableRole::Table { rule }), false) =
+					(self.styles.get(placement.style).table, self.in_table)
+				{
+					self.table(block, placement, rule.width);
+					return;
+				}
+
 				self.container(block, placement);
 				return;
 			}
@@ -405,7 +501,7 @@ impl Flattener<'_> {
 		self.row(block, kind, placement);
 	}
 
-	fn container(&mut self, block: &Block, placement: Placement) {
+	pub(super) fn container(&mut self, block: &Block, placement: Placement) {
 		let Placement {
 			style,
 			frame,
@@ -431,10 +527,10 @@ impl Flattener<'_> {
 		self.children(Some(block), Some(style), inner);
 		self.pending += to_units(padding_bottom);
 
+		let top = self
+			.flow_lead(first_row as usize)
+			.map_or(0, |lead| lead - pending_before);
 		let rows = &self.flat.rows;
-		let top = rows
-			.get(first_row as usize)
-			.map_or(0, |row| row.lead - pending_before);
 		let last_row = (rows.len() as u32).saturating_sub(1).max(first_row);
 		let span = &mut self.flat.spans[index as usize];
 		span.top = top;
@@ -444,7 +540,7 @@ impl Flattener<'_> {
 
 	/// Open a span for container `block`, returning its index. Its row range
 	/// and padding are filled in once its children are flattened.
-	fn push_span(
+	pub(super) fn push_span(
 		&mut self,
 		block: &Block,
 		style: StyleId,
@@ -470,6 +566,7 @@ impl Flattener<'_> {
 			bottom: 0,
 			parent: frame.span,
 			marker,
+			grid: None,
 		});
 
 		index
@@ -517,6 +614,8 @@ impl Flattener<'_> {
 			layout,
 			previous: None,
 			marker: placement.marker,
+			table: None,
+			grid_y: 0,
 		});
 		self.flat.row_of.insert(block.id(), key);
 		self.pending = 0;

@@ -18,6 +18,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 canvist_headless = { workspace = true, features = ["starter-kit"] }
+# No tables: the web editor's StarterKit schema has none to lay out.
 canvist_layout = { workspace = true, features = ["editor", "json"] }
 js-sys = { workspace = true, features = ["std"] }
 rustc-hash = { workspace = true, features = ["std"] }

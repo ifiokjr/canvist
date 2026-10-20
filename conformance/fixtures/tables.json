@@ -1,0 +1,328 @@
+{
+	"description": "Tables: inserting, Tab between cells, merged cells, headers, and HTML and Markdown.",
+	"cases": [
+		{
+			"name": "inserts a table and fills it with Tab",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"steps": [
+				{
+					"op": "query",
+					"query": "tableCell",
+					"expect": null
+				},
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"rows": 2,
+						"cols": 2
+					},
+					"applied": true
+				},
+				{
+					"op": "typeText",
+					"text": "Name"
+				},
+				{
+					"op": "press",
+					"key": "Tab"
+				},
+				{
+					"op": "typeText",
+					"text": "Score"
+				},
+				{
+					"op": "press",
+					"key": "Tab"
+				},
+				{
+					"op": "typeText",
+					"text": "Ada"
+				},
+				{
+					"op": "press",
+					"key": "Tab"
+				},
+				{
+					"op": "typeText",
+					"text": "10"
+				},
+				{
+					"op": "query",
+					"query": "tableCell",
+					"expect": {
+						"row": 1,
+						"column": 1,
+						"rowspan": 1,
+						"colspan": 1,
+						"header": false,
+						"rows": 2,
+						"columns": 2
+					}
+				},
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"rows": 0
+					},
+					"error": "invalidArgs"
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><th><p>Name</p></th><th><p>Score</p></th></tr><tr><td><p>Ada</p></td><td><p>10</p></td></tr></tbody></table><p></p>",
+				"markdown": "| Name | Score |\n| --- | --- |\n| Ada | 10 |"
+			}
+		},
+		{
+			"name": "Tab past the last cell adds a row",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"steps": [
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"rows": 1,
+						"cols": 1,
+						"withHeaderRow": false
+					},
+					"applied": true
+				},
+				{
+					"op": "press",
+					"key": "Tab"
+				},
+				{
+					"op": "typeText",
+					"text": "new"
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><td><p></p></td></tr><tr><td><p>new</p></td></tr></tbody></table><p></p>"
+			}
+		},
+		{
+			"name": "merges a selection of cells and splits it again",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "html",
+				"content": "<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>"
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							0,
+							0,
+							0
+						],
+						"offset": 0
+					},
+					"head": {
+						"path": [
+							0,
+							0,
+							1,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "run",
+					"command": "mergeCells",
+					"applied": true
+				},
+				{
+					"op": "query",
+					"query": "tableCell",
+					"expect": {
+						"row": 0,
+						"column": 0,
+						"rowspan": 1,
+						"colspan": 2,
+						"header": false,
+						"rows": 2,
+						"columns": 2
+					}
+				},
+				{
+					"op": "run",
+					"command": "addColumnAfter",
+					"applied": true
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><td colspan=\"2\"><p>a</p><p>b</p></td><td><p></p></td></tr><tr><td><p>c</p></td><td><p>d</p></td><td><p></p></td></tr></tbody></table><p></p>",
+				"markdown": "<table><tbody><tr><td colspan=\"2\"><p>a</p><p>b</p></td><td><p></p></td></tr><tr><td><p>c</p></td><td><p>d</p></td><td><p></p></td></tr></tbody></table>"
+			}
+		},
+		{
+			"name": "reads GitHub pipe tables with their alignment",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "markdown",
+				"content": "| a | b |\n| :-: | --- |\n| c |"
+			},
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "table",
+							"content": [
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableHeader",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "a"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableHeader",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "b"
+														}
+													]
+												}
+											]
+										}
+									]
+								},
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "c"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "toggles the header row and deletes rows and columns",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "html",
+				"content": "<table><tr><th>a</th><th>b</th></tr><tr><td>c</td><td>d</td></tr></table>"
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							1,
+							1,
+							0
+						],
+						"offset": 1
+					}
+				},
+				{
+					"op": "run",
+					"command": "toggleHeaderRow",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "deleteColumn",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "deleteRow",
+					"applied": true
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><td><p>a</p></td></tr></tbody></table><p></p>"
+			}
+		}
+	]
+}

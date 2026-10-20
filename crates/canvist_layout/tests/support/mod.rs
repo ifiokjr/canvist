@@ -25,7 +25,7 @@ use canvist_model::MarkSpec;
 use canvist_model::Schema;
 use serde_json::Value as Json;
 
-/// The schema of TipTap's `StarterKit`, plus task lists, images, highlights, scripts, text
+/// The schema of TipTap's `StarterKit`, plus task lists, tables, images, highlights, scripts, text
 /// styles, and mentions, using TipTap's type names.
 pub fn schema() -> Arc<Schema> {
 	let schema = Schema::builder()
@@ -49,6 +49,18 @@ pub fn schema() -> Arc<Schema> {
 				.attrs(Attrs::new().with("checked", false))
 				.groups(&[]),
 		)
+		.block(BlockSpec::container("table", &["tableRow"]))
+		.block(BlockSpec::container("tableRow", &["tableCell", "tableHeader"]).groups(&[]))
+		.block(
+			BlockSpec::container("tableCell", &["block"])
+				.attrs(cell_attrs())
+				.groups(&[]),
+		)
+		.block(
+			BlockSpec::container("tableHeader", &["block"])
+				.attrs(cell_attrs())
+				.groups(&[]),
+		)
 		.mark(MarkSpec::new("bold"))
 		.mark(MarkSpec::new("italic"))
 		.mark(MarkSpec::new("underline"))
@@ -64,6 +76,37 @@ pub fn schema() -> Arc<Schema> {
 		.embed(EmbedSpec::new("inlineImage"))
 		.build();
 	Arc::new(schema.expect("the support schema is valid"))
+}
+
+/// TipTap's table cell attributes and their defaults.
+fn cell_attrs() -> Attrs {
+	Attrs::new()
+		.with("colspan", 1)
+		.with("rowspan", 1)
+		.with("colwidth", canvist_model::Value::Null)
+}
+
+/// A TipTap table of rows of cells, each cell a paragraph of its text.
+/// Cells written `"text|2x1"` span two columns and one row.
+pub fn table(rows: &[&[&str]]) -> Json {
+	let cell = |text: &str| {
+		let (text, spans) = text.split_once('|').unwrap_or((text, "1x1"));
+		let (colspan, rowspan) = spans.split_once('x').expect("spans are written CxR");
+		serde_json::json!({
+			"type": "tableCell",
+			"attrs": {
+				"colspan": colspan.parse::<i64>().expect("a number"),
+				"rowspan": rowspan.parse::<i64>().expect("a number"),
+			},
+			"content": [paragraph(text)],
+		})
+	};
+	let rows: Vec<Json> = rows
+		.iter()
+		.map(|row| serde_json::json!({ "type": "tableRow", "content": row.iter().map(|text| cell(text)).collect::<Vec<_>>() }))
+		.collect();
+
+	serde_json::json!({ "type": "table", "content": rows })
 }
 
 /// A document from TipTap JSON content (the `content` array of a `doc`).

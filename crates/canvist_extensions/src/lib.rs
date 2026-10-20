@@ -63,6 +63,7 @@
 //! | [`Details`]         | `details`          | `details`, a summary that opens          |
 //! | [`Callout`]         | `callout`          | `callout`, `:::warning `                 |
 //! | [`Mathematics`]     | `mathematics`      | `inlineMath`, `blockMath`, `$$x$$`       |
+//! | [`Table`]           | `table`            | `table`, rows, cells, and header cells   |
 //!
 //! `docs/src/extensions/parity.md` compares the whole set with Remirror and
 //! TipTap.
@@ -162,6 +163,8 @@ mod resolve;
 mod starter_kit;
 #[cfg(any(feature = "mention", feature = "hashtag", feature = "emoji"))]
 mod suggestion;
+#[cfg(feature = "table")]
+mod table;
 #[cfg(feature = "task-list")]
 mod task_list;
 #[cfg(feature = "text-align")]
@@ -304,6 +307,14 @@ pub use placeholder::Placeholder;
 pub use placeholder::PlaceholderHandle;
 pub use starter_kit::StarterKit;
 pub use starter_kit::StarterKitHandles;
+#[cfg(feature = "table")]
+pub use table::HeaderPart;
+#[cfg(feature = "table")]
+pub use table::Table;
+#[cfg(feature = "table")]
+pub use table::TableCell;
+#[cfg(feature = "table")]
+pub use table::TableHandle;
 #[cfg(feature = "task-list")]
 pub use task_list::TaskList;
 #[cfg(feature = "task-list")]

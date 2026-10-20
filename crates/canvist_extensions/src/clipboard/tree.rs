@@ -72,6 +72,22 @@ impl<'s> Builder<'s> {
 		Self { schema, next: 0 }
 	}
 
+	/// `tree` with fresh ids from this builder, so trees read by another
+	/// builder join its slice without clashing.
+	pub(super) fn adopt(&mut self, mut tree: BlockTree) -> BlockTree {
+		tree.id = self.id();
+
+		if let TreeContent::Blocks(children) = tree.content {
+			let children = children
+				.into_iter()
+				.map(|child| self.adopt(child))
+				.collect();
+			tree.content = TreeContent::Blocks(children);
+		}
+
+		tree
+	}
+
 	fn id(&mut self) -> BlockId {
 		self.next += 1;
 		BlockId::new(0, self.next)

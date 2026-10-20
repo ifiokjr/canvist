@@ -1738,8 +1738,296 @@ export const typography = {
 	"queries": []
 } as const satisfies ExtensionDescriptor;
 
+/** The `table` extension. */
+export const table = {
+	"commands": [
+		{
+			"args": [
+				{
+					"default": 3,
+					"doc": "How many rows, from 1 to 1000.",
+					"name": "rows",
+					"type": {
+						"type": "int"
+					}
+				},
+				{
+					"default": 3,
+					"doc": "How many columns, from 1 to 1000.",
+					"name": "cols",
+					"type": {
+						"type": "int"
+					}
+				},
+				{
+					"default": true,
+					"doc": "Whether the first row is header cells.",
+					"name": "withHeaderRow",
+					"type": {
+						"type": "bool"
+					}
+				}
+			],
+			"doc": "Insert a table of empty cells at the selection, with the caret in the first cell.",
+			"name": "insertTable"
+		},
+		{
+			"args": [],
+			"doc": "Add a column left of the selected cells.",
+			"name": "addColumnBefore"
+		},
+		{
+			"args": [],
+			"doc": "Add a column right of the selected cells.",
+			"name": "addColumnAfter"
+		},
+		{
+			"args": [],
+			"doc": "Delete the selected columns.",
+			"name": "deleteColumn"
+		},
+		{
+			"args": [],
+			"doc": "Add a row above the selected cells.",
+			"name": "addRowBefore"
+		},
+		{
+			"args": [],
+			"doc": "Add a row below the selected cells.",
+			"name": "addRowAfter"
+		},
+		{
+			"args": [],
+			"doc": "Delete the selected rows.",
+			"name": "deleteRow"
+		},
+		{
+			"args": [],
+			"doc": "Delete the table around the selection.",
+			"name": "deleteTable"
+		},
+		{
+			"args": [],
+			"doc": "Merge the selected cells into one.",
+			"name": "mergeCells"
+		},
+		{
+			"args": [],
+			"doc": "Split the merged cell holding the selection.",
+			"name": "splitCell"
+		},
+		{
+			"args": [],
+			"doc": "Merge the selected cells, or split the merged cell holding the caret.",
+			"name": "mergeOrSplit"
+		},
+		{
+			"args": [],
+			"doc": "Toggle header cells for the first row.",
+			"name": "toggleHeaderRow"
+		},
+		{
+			"args": [],
+			"doc": "Toggle header cells for the first column.",
+			"name": "toggleHeaderColumn"
+		},
+		{
+			"args": [],
+			"doc": "Toggle header cells for the selected cells.",
+			"name": "toggleHeaderCell"
+		},
+		{
+			"args": [
+				{
+					"doc": "The attribute, such as `backgroundColor`.",
+					"name": "name",
+					"type": {
+						"type": "string"
+					}
+				},
+				{
+					"doc": "Its value, or null to remove it.",
+					"name": "value",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"doc": "Set an attribute of the selected cells, or remove it when the value is null.",
+			"name": "setCellAttribute"
+		},
+		{
+			"args": [],
+			"doc": "Select the next cell's content.",
+			"name": "goToNextCell"
+		},
+		{
+			"args": [],
+			"doc": "Select the previous cell's content.",
+			"name": "goToPreviousCell"
+		},
+		{
+			"args": [],
+			"doc": "Give every short row of every table empty cells up to its width.",
+			"name": "fixTables"
+		}
+	],
+	"name": "table",
+	"nodes": [
+		{
+			"attrs": [],
+			"kind": "block",
+			"name": "table"
+		},
+		{
+			"attrs": [],
+			"kind": "block",
+			"name": "tableRow"
+		},
+		{
+			"attrs": [
+				{
+					"default": 1,
+					"doc": "How many columns the cell spans.",
+					"name": "colspan",
+					"type": {
+						"type": "int"
+					}
+				},
+				{
+					"default": 1,
+					"doc": "How many rows the cell spans.",
+					"name": "rowspan",
+					"type": {
+						"type": "int"
+					}
+				},
+				{
+					"default": null,
+					"doc": "The width in pixels the cell gives each column it spans, or 0 for none.",
+					"name": "colwidth",
+					"type": {
+						"of": {
+							"of": {
+								"type": "int"
+							},
+							"type": "list"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"kind": "block",
+			"name": "tableCell"
+		},
+		{
+			"attrs": [
+				{
+					"default": 1,
+					"doc": "How many columns the cell spans.",
+					"name": "colspan",
+					"type": {
+						"type": "int"
+					}
+				},
+				{
+					"default": 1,
+					"doc": "How many rows the cell spans.",
+					"name": "rowspan",
+					"type": {
+						"type": "int"
+					}
+				},
+				{
+					"default": null,
+					"doc": "The width in pixels the cell gives each column it spans, or 0 for none.",
+					"name": "colwidth",
+					"type": {
+						"of": {
+							"of": {
+								"type": "int"
+							},
+							"type": "list"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"kind": "block",
+			"name": "tableHeader"
+		}
+	],
+	"queries": [
+		{
+			"args": [],
+			"doc": "Where the selection head sits in its table, or null outside one.",
+			"name": "tableCell",
+			"returns": {
+				"of": {
+					"fields": [
+						{
+							"doc": "The cell's top row, from zero.",
+							"name": "row",
+							"type": {
+								"type": "int"
+							}
+						},
+						{
+							"doc": "The cell's leftmost column, from zero.",
+							"name": "column",
+							"type": {
+								"type": "int"
+							}
+						},
+						{
+							"doc": "How many rows it spans.",
+							"name": "rowspan",
+							"type": {
+								"type": "int"
+							}
+						},
+						{
+							"doc": "How many columns it spans.",
+							"name": "colspan",
+							"type": {
+								"type": "int"
+							}
+						},
+						{
+							"doc": "Whether it is a header cell.",
+							"name": "header",
+							"type": {
+								"type": "bool"
+							}
+						},
+						{
+							"doc": "How many rows its table has.",
+							"name": "rows",
+							"type": {
+								"type": "int"
+							}
+						},
+						{
+							"doc": "How many columns its table has.",
+							"name": "columns",
+							"type": {
+								"type": "int"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
 /** Every extension beyond the StarterKit, which `@canvist/headless/full` compiles in. */
-export const extras = [textStyle, mention, details, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, image, youtube, twitch, audio, file, callout, mathematics, typography] as const;
+export const extras = [textStyle, mention, details, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, image, youtube, twitch, audio, file, callout, mathematics, typography, table] as const;
 
 /** Every optional extension canvist ships, the StarterKit's included. */
 export const allExtensions = [...starterKit, ...extras] as const;

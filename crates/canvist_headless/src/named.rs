@@ -59,7 +59,7 @@ const STARTER_KIT: [&str; 17] = [
 
 /// Extensions beyond the StarterKit, compiled with the `extras` feature.
 #[cfg(feature = "extras")]
-const EXTRA: [&str; 24] = [
+const EXTRA: [&str; 25] = [
 	"subscript",
 	"superscript",
 	"highlight",
@@ -84,6 +84,7 @@ const EXTRA: [&str; 24] = [
 	"details",
 	"callout",
 	"mathematics",
+	"table",
 ];
 
 #[cfg(not(feature = "extras"))]
@@ -242,6 +243,7 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 	use canvist_extensions::Placeholder;
 	use canvist_extensions::Subscript;
 	use canvist_extensions::Superscript;
+	use canvist_extensions::Table;
 	use canvist_extensions::TextAlign;
 	use canvist_extensions::TextStyle;
 	use canvist_extensions::Twitch;
@@ -320,6 +322,9 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 		}
 		"mathematics" => {
 			builder.add(Mathematics);
+		}
+		"table" => {
+			builder.add(Table);
 		}
 		_ => unreachable!("`Extensions::parse` admits only known names"),
 	}

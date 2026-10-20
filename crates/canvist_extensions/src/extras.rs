@@ -47,5 +47,6 @@ pub fn extras() -> Vec<Arc<dyn Extension>> {
 		Arc::new(crate::Details),
 		Arc::new(crate::Callout),
 		Arc::new(crate::Mathematics),
+		Arc::new(crate::Table),
 	]
 }

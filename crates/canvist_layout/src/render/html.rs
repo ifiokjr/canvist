@@ -24,6 +24,13 @@ use super::attribute;
 use super::escape_into;
 use super::num;
 use crate::Color;
+#[cfg(feature = "tables")]
+use crate::document::column_widths;
+use crate::document::span_attr;
+#[cfg(feature = "tables")]
+use crate::document::table_cells;
+#[cfg(feature = "tables")]
+use crate::document::table_map;
 use crate::style::BlockStyle;
 use crate::style::StyleId;
 use crate::style::Styles;
@@ -36,6 +43,7 @@ use crate::theme::EmbedStyle;
 use crate::theme::FontSize;
 use crate::theme::LeafStyle;
 use crate::theme::MarkerKind;
+use crate::theme::TableRole;
 use crate::theme::TextPatch;
 use crate::theme::TextStyle;
 use crate::theme::Theme;
@@ -93,9 +101,10 @@ pub fn to_html(doc: &Document, theme: &Arc<Theme>, options: &HtmlOptions) -> Htm
 		doc,
 		styles: Styles::new(theme.clone(), doc.schema().clone()),
 		out: String::new(),
+		stacked_tables: 0,
 	};
 	writer.out.push_str("<div class=\"cv-doc\">");
-	writer.children(None, None, 0);
+	writer.children(None, None, 0, options.width);
 	writer.out.push_str("</div>");
 
 	let css = stylesheet(&writer.styles, options.width);
@@ -109,10 +118,19 @@ struct Writer<'a> {
 	doc: &'a Document,
 	styles: Styles,
 	out: String,
+	/// How many tables enclose the block being written that stack their
+	/// cells, as layout does for a table nested in a cell.
+	stacked_tables: usize,
 }
 
 impl Writer<'_> {
-	fn children(&mut self, parent: Option<&Block>, parent_style: Option<StyleId>, lists: usize) {
+	fn children(
+		&mut self,
+		parent: Option<&Block>,
+		parent_style: Option<StyleId>,
+		lists: usize,
+		width: f32,
+	) {
 		let doc = self.doc;
 		let marker = parent_style.and_then(|style| self.styles.get(style).marker);
 		let open = parent.is_none_or(|parent| crate::document::is_open(doc, parent));
@@ -144,7 +162,7 @@ impl Writer<'_> {
 				};
 				(kind, depth)
 			});
-			self.block(block, style, margin, marker, lists);
+			self.block(block, style, margin, marker, (lists, width));
 		}
 	}
 
@@ -159,10 +177,15 @@ impl Writer<'_> {
 		style: StyleId,
 		margin: f32,
 		marker: Option<(MarkerKind, usize)>,
-		lists: usize,
+		(lists, width): (usize, f32),
 	) {
 		let resolved = self.styles.get(style).clone();
 		let tag = tag_name(&resolved.tag);
+
+		if self.table(block, (style, &resolved), margin, (lists, width)) {
+			return;
+		}
+
 		self.open_tag(block, style, tag, marker);
 
 		// A host draws a slot's picture into the empty element, so the
@@ -178,7 +201,11 @@ impl Writer<'_> {
 			attribute(&mut self.out, "aria-label", alt);
 		}
 
-		let inline_style = self.inline_style(block, &resolved, margin);
+		let mut inline_style = self.inline_style(block, &resolved, margin);
+
+		if self.stacks(&resolved) {
+			inline_style.push_str("display:flow-root;");
+		}
 
 		if !inline_style.is_empty() {
 			attribute(&mut self.out, "style", &inline_style);
@@ -205,14 +232,124 @@ impl Writer<'_> {
 
 		match block.content() {
 			Content::Inline(inline) => self.inline(inline, &resolved.text),
-			Content::Blocks(_) => {
-				let lists = lists + usize::from(resolved.marker.is_some());
-				self.children(Some(block), Some(style), lists);
-			}
+			Content::Blocks(_) => self.child_blocks(block, (style, &resolved), (lists, width)),
 			Content::Leaf => {}
 		}
 
 		let _ = write!(self.out, "</{tag}>");
+	}
+
+	/// Write a container's children, inside its insets.
+	fn child_blocks(
+		&mut self,
+		block: &Block,
+		(style, resolved): (StyleId, &BlockStyle),
+		(lists, width): (usize, f32),
+	) {
+		let lists = lists + usize::from(resolved.marker.is_some());
+		let inner = (width - resolved.inset_left() - resolved.inset_right()).max(0.0);
+		let table = matches!(resolved.table, Some(TableRole::Table { .. }));
+		self.stacked_tables += usize::from(table);
+		self.children(Some(block), Some(style), lists, inner);
+		self.stacked_tables -= usize::from(table);
+	}
+
+	/// Whether a block styled `resolved` is a table, row, or cell that
+	/// stacks as plain blocks: a table layout could not place on a grid, or
+	/// any part of one.
+	fn stacks(&self, resolved: &BlockStyle) -> bool {
+		match resolved.table {
+			Some(TableRole::Table { .. }) => true,
+			Some(_) => self.stacked_tables > 0,
+			None => false,
+		}
+	}
+
+	#[cfg(feature = "tables")]
+	/// Write a table whose cells layout places on a grid: a `<colgroup>`
+	/// with the column widths layout uses, then its rows and cells, each
+	/// cell's content as wide as its columns. Returns `false`, writing
+	/// nothing, for any other block, a table nested in a cell, and a table
+	/// without cells, which are written as containers.
+	fn table(
+		&mut self,
+		block: &Block,
+		(style, resolved): (StyleId, &BlockStyle),
+		margin: f32,
+		(lists, width): (usize, f32),
+	) -> bool {
+		let Some(TableRole::Table { rule }) = resolved.table else {
+			return false;
+		};
+		let rule = rule.width;
+		let doc = self.doc;
+		let cells = table_cells(doc, block);
+		let (map, hints) = table_map(doc, &cells);
+
+		if self.stacked_tables > 0 || map.cells().is_empty() {
+			return false;
+		}
+
+		let inner = (width - resolved.inset_left() - resolved.inset_right()).max(0.0);
+		let widths = column_widths(&map, &hints, (inner - rule).max(0.0));
+		let tag = tag_name(&resolved.tag);
+		self.open_tag(block, style, tag, None);
+		let mut inline_style = self.inline_style(block, resolved, margin);
+		let _ = write!(
+			inline_style,
+			"width:{}px;",
+			num(widths.iter().sum::<f32>() + rule)
+		);
+		attribute(&mut self.out, "style", &inline_style);
+		self.out.push_str("><colgroup>");
+
+		for width in &widths {
+			let _ = write!(self.out, "<col style=\"width:{}px\">", num(*width));
+		}
+
+		self.out.push_str("</colgroup><tbody>");
+
+		for (row, (row_block, row_cells)) in cells.iter().enumerate() {
+			let row_style = self
+				.styles
+				.resolve(row_block, Some(block.kind()), Some(style));
+			let row_tag = tag_name(&self.styles.get(row_style).tag).to_owned();
+			self.open_tag(row_block, row_style, &row_tag, None);
+			self.out.push('>');
+
+			for (index, cell) in row_cells.iter().enumerate() {
+				let Some(placed) = map.find(row, index).map(|found| map.cells()[found]) else {
+					continue;
+				};
+				let cell_width: f32 = widths[placed.columns()].iter().sum::<f32>() - rule;
+				let cell_style = self
+					.styles
+					.resolve(cell, Some(row_block.kind()), Some(row_style));
+				self.block(cell, cell_style, 0.0, None, (lists, cell_width.max(0.0)));
+			}
+
+			let _ = write!(self.out, "</{row_tag}>");
+		}
+
+		let _ = write!(self.out, "</tbody></{tag}>");
+		true
+	}
+
+	/// Without the `tables` feature every table is written as a container.
+	#[cfg(not(feature = "tables"))]
+	#[allow(
+		clippy::unused_self,
+		clippy::trivially_copy_pass_by_ref,
+		reason = "the same signature as the grid writer"
+	)]
+	fn table(
+		&mut self,
+		_block: &Block,
+		_style: (StyleId, &BlockStyle),
+		_margin: f32,
+		_frame: (usize, f32),
+	) -> bool {
+		false
 	}
 
 	/// Write the start of `block`'s opening tag: its classes, `data-id`, and,
@@ -253,12 +390,28 @@ impl Writer<'_> {
 
 		attribute(&mut self.out, "data-id", &block.id().to_string());
 
+		if self.styles.get(style).table == Some(TableRole::Cell) {
+			self.cell_spans(block);
+		}
+
 		if matches!(block.content(), Content::Inline(_)) {
 			let dir = attr(block.attrs(), defaults, "dir")
 				.and_then(Value::as_str)
 				.filter(|dir| matches!(*dir, "ltr" | "rtl"))
 				.unwrap_or("auto");
 			attribute(&mut self.out, "dir", dir);
+		}
+	}
+
+	/// A cell's `colspan` and `rowspan` attributes, when it spans more than
+	/// one column or row.
+	fn cell_spans(&mut self, cell: &Block) {
+		for key in ["colspan", "rowspan"] {
+			let span = span_attr(self.doc, cell, key);
+
+			if span > 1 {
+				attribute(&mut self.out, key, &span.to_string());
+			}
 		}
 	}
 
@@ -561,6 +714,7 @@ fn stylesheet(styles: &Styles, width: f32) -> String {
 		);
 		box_css(&mut css, style);
 		css.push('}');
+		grid_css(&mut css, id, style);
 	}
 
 	marker_css(&mut css, theme);
@@ -676,6 +830,31 @@ fn box_css(css: &mut String, style: &BlockStyle) {
 
 	if let LeafStyle::Rule { thickness, color } = style.leaf {
 		let _ = write!(css, "height:{}px;background-color:{color};", num(thickness));
+	}
+
+	match style.table {
+		Some(TableRole::Table { .. }) => {
+			css.push_str("display:table;table-layout:fixed;border-collapse:collapse;");
+		}
+		Some(TableRole::Row) => css.push_str("display:table-row;"),
+		Some(TableRole::Cell) => {
+			css.push_str("display:table-cell;vertical-align:top;text-align:start;");
+		}
+		None => {}
+	}
+}
+
+/// The grid lines of a table styled `id`, on its own cells: collapsed
+/// borders centred on each cell edge, as layout draws them.
+fn grid_css(css: &mut String, id: StyleId, style: &BlockStyle) {
+	if let Some(TableRole::Table { rule }) = style.table {
+		let _ = write!(
+			css,
+			".cv-doc .cv-s{}>tbody>tr>.cv-b{{border:{}px solid {}}}",
+			id.index(),
+			num(rule.width),
+			rule.color
+		);
 	}
 }
 

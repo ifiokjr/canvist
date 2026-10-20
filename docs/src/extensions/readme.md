@@ -493,6 +493,38 @@ console.log(doc.export("markdown"));
 // Area $\pi r^2$
 ```
 
+### Table
+
+TipTap's TableKit: a `table` of `tableRow`s holding `tableCell`s and `tableHeader`s, each cell holding blocks. Cells take TipTap's `colspan`, `rowspan`, and `colwidth` (one pixel width per column a cell spans). The canvas lays a table out on a grid: each column as wide as a cell's `colwidth` says, or an even share of what is left; each row as tall as its tallest cell; and hairlines between cells.
+
+| Commands                                                                                         | Queries     | Keys                                           |
+| ------------------------------------------------------------------------------------------------ | ----------- | ---------------------------------------------- |
+| `insertTable({ rows?, cols?, withHeaderRow? })`                                                  | `tableCell` | `Tab` / `Shift-Tab` move between cells         |
+| `addColumnBefore`, `addColumnAfter`, `deleteColumn`, `addRowBefore`, `addRowAfter`, `deleteRow`  |             | `Tab` in the last cell adds a row              |
+| `mergeCells`, `splitCell`, `mergeOrSplit`, `deleteTable`                                         |             | `Backspace` and `Delete` stop at a cell's edge |
+| `toggleHeaderRow`, `toggleHeaderColumn`, `toggleHeaderCell`, `setCellAttribute({ name, value })` |             |                                                |
+| `goToNextCell`, `goToPreviousCell`, `fixTables`                                                  |             |                                                |
+
+A selection from one cell to another selects the rectangle of cells between them, grown to whole merged cells, and the commands act on it. `tableCell` answers where the selection head is: its row, column, spans, whether it is a header, and the table's size. A cell spanning a new row's or column's place grows instead of splitting, and rows that come out short are padded with empty cells, as TipTap's `fixTables` does.
+
+HTML reads and writes `<table>` with TipTap's `colspan`, `rowspan`, and `colwidth`. Markdown writes a GitHub pipe table when the table fits one exactly: no merged cells, one line of text per cell, header cells in the first row only, and the same alignment down each column. Any other table is written as HTML, which GitHub renders and the reader reads back.
+
+```ts
+import { createEngine, table } from "@canvist/headless/full";
+
+const doc = (await createEngine([table])).create();
+doc.commands.insertTable({ rows: 2, cols: 2 });
+doc.typeText("Name");
+doc.press("Tab");
+doc.typeText("Score");
+doc.press("Tab");
+doc.typeText("Ada");
+console.log(doc.export("markdown"));
+// | Name | Score |
+// | --- | --- |
+// | Ada |  |
+```
+
 ## Lists
 
 Lists need list items. Adding `bulletList` or `orderedList` adds `listItem` for you.
@@ -632,7 +664,6 @@ console.log(doc.query.placeholder());
 
 These extensions are planned, in roughly this order. Each will follow the same pattern: typed commands, queries, and TipTap-compatible JSON.
 
-- **Tables:** merged cells, header rows and columns, and cell navigation.
 - **Find and replace, table of contents, comments, and drag handles.**
 
 [Parity with TipTap and Remirror](./parity.md) lists every extension in both, with what canvist ships, plans, or leaves to the host.

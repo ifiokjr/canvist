@@ -118,6 +118,29 @@ void main() {
     expect(doc.export(Format.markdown), r'$x^2$Careful');
   });
 
+  test('tables insert, move by Tab, and answer where the caret is', () async {
+    final builder = EngineBuilder();
+    final table = builder.add(Extensions.table);
+    final engine = await builder.build();
+    final doc = engine.create();
+
+    expect(doc.query(table.tableCell()), isNull);
+    expect(doc.run(table.insertTable(rows: 2, cols: 2)), isTrue);
+    doc
+      ..typeText('Name')
+      ..run(table.goToNextCell())
+      ..typeText('Score');
+
+    final cell = doc.query(table.tableCell());
+    expect(cell?.column, 1);
+    expect(cell?.header, isTrue);
+    expect(cell?.columns, 2);
+    expect(
+      doc.export(Format.markdown),
+      '| Name | Score |\n| --- | --- |\n|  |  |',
+    );
+  });
+
   test('a handle from one engine is refused by another', () async {
     final (:engine, kit: _) = await Engine.starterKit();
     final other = EngineBuilder();

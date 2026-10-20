@@ -18,6 +18,7 @@ use canvist_model::Mark;
 use canvist_model::MarkSet;
 use canvist_model::Point;
 use canvist_model::Step;
+use canvist_model::TableMap;
 use proptest::prelude::*;
 
 /// An edit described by seeds, resolved against the current document so
@@ -390,6 +391,42 @@ proptest! {
 	fn caret_mapping_stays_inside_the_document(edits in prop::collection::vec(edit(), 1..40), seed in 0..64usize) {
 		caret_survives(&edits, seed)?;
 	}
+
+	#[test]
+	fn table_maps_cover_each_slot_once(
+		rows in prop::collection::vec(prop::collection::vec((1..4usize, 1..4usize), 0..5), 1..6),
+	) {
+		table_map_is_consistent(&rows)?;
+	}
+}
+
+/// Every cell of a table map covers exactly the slots its spans say, no
+/// slot belongs to two cells, and each cell is found again by its row and
+/// index.
+fn table_map_is_consistent(rows: &[Vec<(usize, usize)>]) -> Result<(), TestCaseError> {
+	let map = TableMap::new(rows.iter().map(|row| row.iter().copied()));
+	let mut covered = 0;
+
+	for (index, cell) in map.cells().iter().enumerate() {
+		prop_assert!(cell.rows().end <= map.height());
+		prop_assert!(cell.columns().end <= map.width());
+		prop_assert_eq!(map.find(cell.row, cell.index), Some(index));
+
+		for row in cell.rows() {
+			for column in cell.columns() {
+				prop_assert_eq!(map.cell_at(row, column), Some(index));
+				covered += 1;
+			}
+		}
+	}
+
+	let filled = (0..map.height())
+		.flat_map(|row| (0..map.width()).map(move |column| (row, column)))
+		.filter(|&(row, column)| map.cell_at(row, column).is_some())
+		.count();
+	prop_assert_eq!(filled, covered, "no slot is covered twice");
+	prop_assert_eq!(map.cells().len(), rows.iter().map(Vec::len).sum::<usize>());
+	Ok(())
 }
 
 /// Simulates a fast typist: thousands of single-character insertions,

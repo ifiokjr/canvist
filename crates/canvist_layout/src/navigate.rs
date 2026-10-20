@@ -13,6 +13,7 @@ use crate::Caret;
 use crate::DocumentLayout;
 use crate::LayoutError;
 use crate::TextMeasurer;
+use crate::document::GridStep;
 use crate::document::RowKind;
 
 /// Up or down.
@@ -89,16 +90,21 @@ impl LayoutNavigator<'_> {
 		&mut self,
 		index: usize,
 		direction: VerticalDirection,
+		goal_x: f32,
 	) -> Result<Option<usize>, LayoutError> {
 		let rows = self.layout.rows();
+		let step = self
+			.layout
+			.grid_step(index, direction == VerticalDirection::Down, goal_x);
 
-		let found = match direction {
-			VerticalDirection::Up => {
+		let found = match (step, direction) {
+			(GridStep::Row(found), _) => found,
+			(GridStep::Flow, VerticalDirection::Up) => {
 				rows[..index]
 					.iter()
 					.rposition(|row| row.kind == RowKind::Text)
 			}
-			VerticalDirection::Down => {
+			(GridStep::Flow, VerticalDirection::Down) => {
 				rows[index + 1..]
 					.iter()
 					.position(|row| row.kind == RowKind::Text)
@@ -121,6 +127,7 @@ impl LayoutNavigator<'_> {
 		index: usize,
 		line: usize,
 		direction: VerticalDirection,
+		goal_x: f32,
 	) -> Result<Option<(usize, usize)>, LayoutError> {
 		let line_count = self.layout.rows()[index]
 			.layout
@@ -136,7 +143,7 @@ impl LayoutNavigator<'_> {
 			return Ok(Some((index, within)));
 		}
 
-		let Some(row) = self.neighbour(index, direction)? else {
+		let Some(row) = self.neighbour(index, direction, goal_x)? else {
 			return Ok(None);
 		};
 		let Some(layout) = self.layout.rows()[row].layout.as_ref() else {
@@ -169,7 +176,7 @@ impl LayoutNavigator<'_> {
 			return Ok(None);
 		};
 		let line = layout.line_index(from.point.offset, from.affinity);
-		let Some((row, line)) = self.adjacent_line(index, line, direction)? else {
+		let Some((row, line)) = self.adjacent_line(index, line, direction, goal_x)? else {
 			return Ok(None);
 		};
 		let origin = self.layout.origin(row);
