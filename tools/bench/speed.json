@@ -2,7 +2,13 @@
 	"rounds": 5,
 	"confirmRounds": 5,
 	"threshold": 10,
-	"thresholds": {},
+	"thresholds": {
+		"canvas/build_index/*": 15,
+		"canvas/drag_step/*": 20,
+		"headless/run_command/*": 20,
+		"model/toggle_bold/*": 20,
+		"scene/set_prop/*": 20
+	},
 	"globalPaths": [
 		".cargo",
 		".github/workflows/bench-speed.yml",
@@ -12,17 +18,44 @@
 		"tools/bench"
 	],
 	"suites": [
-		{ "package": "canvist_model", "bench": "model" },
-		{ "package": "canvist_extensions", "bench": "keystroke" },
-		{ "package": "canvist_layout", "bench": "layout" },
-		{ "package": "canvist_collab", "bench": "collab" },
+		{
+			"package": "canvist_model",
+			"bench": "model"
+		},
+		{
+			"package": "canvist_extensions",
+			"bench": "keystroke"
+		},
+		{
+			"package": "canvist_layout",
+			"bench": "layout"
+		},
+		{
+			"package": "canvist_collab",
+			"bench": "collab"
+		},
 		{
 			"package": "canvist_headless",
 			"bench": "headless",
-			"features": ["collab"]
+			"features": [
+				"collab"
+			]
 		},
-		{ "package": "canvist_scene", "bench": "scene" },
-		{ "package": "canvist_canvas", "bench": "canvas" },
-		{ "package": "canvist_paint", "bench": "paint", "features": ["cpu", "gpu"] }
+		{
+			"package": "canvist_scene",
+			"bench": "scene"
+		},
+		{
+			"package": "canvist_canvas",
+			"bench": "canvas"
+		},
+		{
+			"package": "canvist_paint",
+			"bench": "paint",
+			"features": [
+				"cpu",
+				"gpu"
+			]
+		}
 	]
 }

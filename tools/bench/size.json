@@ -12,8 +12,12 @@
 	],
 	"groups": {
 		"headless": {
-			"crates": ["canvist_headless_wasm"],
-			"paths": ["packages/canvist-headless"],
+			"crates": [
+				"canvist_headless_wasm"
+			],
+			"paths": [
+				"packages/canvist-headless"
+			],
 			"build": [
 				{
 					"cwd": "packages/canvist-headless",
@@ -22,16 +26,28 @@
 			]
 		},
 		"web": {
-			"crates": ["canvist_web", "canvist_headless_wasm"],
-			"paths": ["packages/canvist-headless", "packages/canvist-web"],
-			"needs": ["headless"],
-			"build": [{
-				"cwd": "packages/canvist-web",
-				"run": "npm ci && npm run build:wasm && npm run build && npx vite build --config tests/bundle/vite.config.ts --logLevel error"
-			}]
+			"crates": [
+				"canvist_web",
+				"canvist_headless_wasm"
+			],
+			"paths": [
+				"packages/canvist-headless",
+				"packages/canvist-web"
+			],
+			"needs": [
+				"headless"
+			],
+			"build": [
+				{
+					"cwd": "packages/canvist-web",
+					"run": "npm ci && npm run build:wasm && npm run build && npx vite build --config tests/bundle/vite.config.ts --logLevel error"
+				}
+			]
 		},
 		"react": {
-			"paths": ["packages/canvist-react"],
+			"paths": [
+				"packages/canvist-react"
+			],
 			"build": [
 				{
 					"cwd": "packages/canvist-react",
@@ -40,7 +56,9 @@
 			]
 		},
 		"vue": {
-			"paths": ["packages/canvist-vue"],
+			"paths": [
+				"packages/canvist-vue"
+			],
 			"build": [
 				{
 					"cwd": "packages/canvist-vue",
@@ -49,14 +67,23 @@
 			]
 		},
 		"canvas": {
-			"crates": ["canvist_canvas_wasm"],
-			"paths": ["packages/canvist-canvas"],
+			"crates": [
+				"canvist_canvas_wasm"
+			],
+			"paths": [
+				"packages/canvist-canvas"
+			],
 			"build": [
-				{ "cwd": "packages/canvist-canvas", "run": "deno task build:wasm" }
+				{
+					"cwd": "packages/canvist-canvas",
+					"run": "deno task build:wasm"
+				}
 			]
 		},
 		"ffi": {
-			"crates": ["canvist_ffi"],
+			"crates": [
+				"canvist_ffi"
+			],
 			"build": [
 				{
 					"cwd": ".",
@@ -65,25 +92,42 @@
 			]
 		},
 		"apple": {
-			"crates": ["canvist_ffi"],
-			"paths": ["platforms/apple"]
+			"crates": [
+				"canvist_ffi"
+			],
+			"paths": [
+				"platforms/apple"
+			]
 		},
 		"android": {
-			"crates": ["canvist_ffi"],
-			"paths": ["platforms/android"]
+			"crates": [
+				"canvist_ffi"
+			],
+			"paths": [
+				"platforms/android"
+			]
 		}
 	},
 	"artifacts": [
 		{
 			"name": "@canvist/web app bundle",
 			"group": "web",
-			"files": ["packages/canvist-web/report/bundle/**/*.{js,wasm,css}"],
-			"budget": { "gzip": 350000 }
+			"files": [
+				"packages/canvist-web/report/bundle/**/*.{js,wasm,css}"
+			],
+			"budget": {
+				"gzip": 350000
+			}
 		},
 		{
 			"name": "@canvist/web wasm",
 			"group": "web",
-			"files": ["packages/canvist-web/wasm/canvist_web_bg.wasm"]
+			"files": [
+				"packages/canvist-web/wasm/canvist_web_bg.wasm"
+			],
+			"budget": {
+				"gzip": 340000
+			}
 		},
 		{
 			"name": "@canvist/web JS",
@@ -91,20 +135,31 @@
 			"files": [
 				"packages/canvist-web/dist/**/*.js",
 				"packages/canvist-web/wasm/*.js"
-			]
+			],
+			"budget": {
+				"gzip": 40000
+			}
 		},
 		{
 			"name": "@canvist/headless document wasm",
 			"group": "headless",
-			"files": ["packages/canvist-headless/wasm/canvist_headless_wasm_bg.wasm"],
-			"budget": { "raw": 1228800 }
+			"files": [
+				"packages/canvist-headless/wasm/canvist_headless_wasm_bg.wasm"
+			],
+			"budget": {
+				"raw": 1228800,
+				"gzip": 480000
+			}
 		},
 		{
 			"name": "@canvist/headless scene wasm",
 			"group": "headless",
 			"files": [
 				"packages/canvist-headless/wasm-scene/canvist_headless_scene_bg.wasm"
-			]
+			],
+			"budget": {
+				"gzip": 2000000
+			}
 		},
 		{
 			"name": "@canvist/headless JS",
@@ -113,22 +168,40 @@
 				"packages/canvist-headless/dist/**/*.js",
 				"packages/canvist-headless/wasm/*.js",
 				"packages/canvist-headless/wasm-scene/*.js"
-			]
+			],
+			"budget": {
+				"gzip": 25000
+			}
 		},
 		{
 			"name": "@canvist/react JS",
 			"group": "react",
-			"files": ["packages/canvist-react/dist/**/*.js"]
+			"files": [
+				"packages/canvist-react/dist/**/*.js"
+			],
+			"budget": {
+				"gzip": 2500
+			}
 		},
 		{
 			"name": "@canvist/vue JS",
 			"group": "vue",
-			"files": ["packages/canvist-vue/dist/**/*.js"]
+			"files": [
+				"packages/canvist-vue/dist/**/*.js"
+			],
+			"budget": {
+				"gzip": 2500
+			}
 		},
 		{
 			"name": "@canvist/canvas wasm",
 			"group": "canvas",
-			"files": ["packages/canvist-canvas/wasm/canvist_canvas_wasm_bg.wasm"]
+			"files": [
+				"packages/canvist-canvas/wasm/canvist_canvas_wasm_bg.wasm"
+			],
+			"budget": {
+				"gzip": 2250000
+			}
 		},
 		{
 			"name": "@canvist/canvas JS",
@@ -136,25 +209,47 @@
 			"files": [
 				"packages/canvist-canvas/src/**/*.ts",
 				"packages/canvist-canvas/wasm/*.js"
-			]
+			],
+			"budget": {
+				"gzip": 25000
+			}
 		},
 		{
 			"name": "libcanvist_ffi, Linux x86_64",
 			"group": "ffi",
-			"files": ["target/release/libcanvist_ffi.so"],
-			"metrics": ["raw", "gzip"]
+			"files": [
+				"target/release/libcanvist_ffi.so"
+			],
+			"metrics": [
+				"raw",
+				"gzip"
+			],
+			"budget": {
+				"raw": 550000,
+				"gzip": 225000
+			}
 		},
 		{
 			"name": "CanvistFFI.xcframework",
 			"group": "apple",
-			"files": ["platforms/apple/Frameworks/CanvistFFI.xcframework/**"],
-			"metrics": ["raw", "gzip"]
+			"files": [
+				"platforms/apple/Frameworks/CanvistFFI.xcframework/**"
+			],
+			"metrics": [
+				"raw",
+				"gzip"
+			]
 		},
 		{
 			"name": "libcanvist_ffi.a, aarch64-apple-ios",
 			"group": "apple",
-			"files": ["target/aarch64-apple-ios/release/libcanvist_ffi.a"],
-			"metrics": ["raw", "gzip"]
+			"files": [
+				"target/aarch64-apple-ios/release/libcanvist_ffi.a"
+			],
+			"metrics": [
+				"raw",
+				"gzip"
+			]
 		},
 		{
 			"name": "libcanvist_ffi.so, Android arm64-v8a",
@@ -162,7 +257,10 @@
 			"files": [
 				"platforms/android/canvist/src/main/jniLibs/arm64-v8a/libcanvist_ffi.so"
 			],
-			"metrics": ["raw", "gzip"]
+			"metrics": [
+				"raw",
+				"gzip"
+			]
 		},
 		{
 			"name": "libcanvist_ffi.so, Android x86_64",
@@ -170,7 +268,10 @@
 			"files": [
 				"platforms/android/canvist/src/main/jniLibs/x86_64/libcanvist_ffi.so"
 			],
-			"metrics": ["raw", "gzip"]
+			"metrics": [
+				"raw",
+				"gzip"
+			]
 		}
 	]
 }

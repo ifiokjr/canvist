@@ -169,4 +169,5 @@ jobs:
           name: bench-size
           path: .bench/*.json
           if-no-files-found: ignore
+          include-hidden-files: true
           retention-days: 30

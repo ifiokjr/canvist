@@ -125,4 +125,5 @@ jobs:
           name: bench-speed-samples
           path: .bench/samples.json
           if-no-files-found: ignore
+          include-hidden-files: true
           retention-days: 30
