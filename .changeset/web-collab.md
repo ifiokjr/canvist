@@ -13,7 +13,10 @@ canvist_editor: feat
 import { connect, createEditor } from "@canvist/web/collab";
 
 const editor = await createEditor(element);
-const connection = connect(editor, { url: "wss://sync.example.com", room: "notes" });
+const connection = connect(editor, {
+	url: "wss://sync.example.com",
+	room: "notes",
+});
 await connection.whenSynced();
 ```
 
