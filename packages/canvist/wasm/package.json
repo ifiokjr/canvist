@@ -9,7 +9,7 @@
   "license": "Unlicense",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ifiokjr/canvist"
+    "url": "https://github.com/canvist/canvist"
   },
   "files": [
     "canvist_wasm_bg.wasm",
@@ -17,7 +17,7 @@
     "canvist_wasm.d.ts"
   ],
   "main": "canvist_wasm.js",
-  "homepage": "https://github.com/ifiokjr/canvist",
+  "homepage": "https://github.com/canvist/canvist",
   "types": "canvist_wasm.d.ts",
   "sideEffects": [
     "./snippets/*"

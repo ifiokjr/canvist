@@ -51,11 +51,11 @@ version = "0.1.0"
 authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
 categories = ["wasm", "accessibility", "multimedia", "text-processing", "text-editors"]
 edition = "2024"
-homepage = "https://github.com/ifiokjr/canvist"
+homepage = "https://github.com/canvist/canvist"
 include = ["src/**/*.rs", "Cargo.toml", "readme.md", "license"]
 license = "Unlicense"
 readme = "readme.md"
-repository = "https://github.com/ifiokjr/canvist"
+repository = "https://github.com/canvist/canvist"
 rust-version = "1.95.0"
 
 [workspace.dependencies]

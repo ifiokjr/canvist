@@ -62,7 +62,7 @@ fn main() -> Result<(), canvist_headless::HeadlessError> {
 Add `canvist_layout` next to `canvist_headless` to use themes:
 
 ```sh
-cargo add canvist_layout --git https://github.com/ifiokjr/canvist
+cargo add canvist_layout --git https://github.com/canvist/canvist
 ```
 
 ## Dark mode, fonts, and size

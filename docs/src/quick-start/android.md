@@ -9,4 +9,4 @@ Use this page to see what's planned for Android and what you can build with canv
 - **Build with Flutter.** [`canvist_flutter`](./flutter.md) runs the full engine on Android today.
 - **Process content on your server.** Use the [Rust](./server-rust.md), [TypeScript](./server-typescript.md), or [Dart](./server-dart.md) packages.
 
-Watch [the releases](https://github.com/ifiokjr/canvist/releases) to hear when it ships.
+Watch [the releases](https://github.com/canvist/canvist/releases) to hear when it ships.

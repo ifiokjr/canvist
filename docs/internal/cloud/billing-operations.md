@@ -75,7 +75,7 @@ Staging `sync` has `STRIPE_SECRET_KEY` (the Stripe CLI's test key, which expires
 
 ### Checked end to end on 2026-10-19
 
-Against staging, in test mode, with the code from [#122](https://github.com/ifiokjr/canvist/pull/122):
+Against staging, in test mode, with the code from [#122](https://github.com/canvist/canvist/pull/122):
 
 | Check                                                                      | Result                                                                                                                               |
 | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |

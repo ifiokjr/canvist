@@ -89,7 +89,7 @@ Deno.serve({ port: 8787 }, (request) => {
 
 The server holds a real canvist document, so it can read, export, or transform the room at any time. After it runs commands itself, it sends the changes to everyone with `doc.flushSync()`.
 
-The Rust (`receive_sync`) and Dart (`receiveSync`) packages have the same calls. The repository has complete servers for [TypeScript](https://github.com/ifiokjr/canvist/tree/main/packages/canvist-headless/examples/server) and [Dart](https://github.com/ifiokjr/canvist/blob/main/platforms/dart/example/server.dart), both tested against real Yjs clients.
+The Rust (`receive_sync`) and Dart (`receiveSync`) packages have the same calls. The repository has complete servers for [TypeScript](https://github.com/canvist/canvist/tree/main/packages/canvist-headless/examples/server) and [Dart](https://github.com/canvist/canvist/blob/main/platforms/dart/example/server.dart), both tested against real Yjs clients.
 
 ## Connect clients
 

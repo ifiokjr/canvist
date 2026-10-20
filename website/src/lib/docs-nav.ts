@@ -247,4 +247,4 @@ export function flatten(groups: readonly DocsGroup[]): DocsLink[] {
 	return groups.flatMap((group) => group.links);
 }
 
-export const EDIT_BASE = "https://github.com/ifiokjr/canvist/edit/main/";
+export const EDIT_BASE = "https://github.com/canvist/canvist/edit/main/";

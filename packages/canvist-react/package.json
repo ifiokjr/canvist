@@ -3,6 +3,16 @@
 	"version": "0.1.0",
 	"description": "React bindings for the canvist canvas editor: a component, and hooks typed from the extensions you register.",
 	"license": "Unlicense",
+	"homepage": "https://github.com/canvist/canvist/tree/main/packages/canvist-react#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/canvist/canvist.git",
+		"directory": "packages/canvist-react"
+	},
+	"bugs": {
+		"url": "https://github.com/canvist/canvist/issues",
+		"email": "support@canvist.dev"
+	},
 	"type": "module",
 	"exports": {
 		".": {

@@ -1,30 +1,30 @@
 <p align="center">
-  <a href="https://github.com/ifiokjr/canvist">
+  <a href="https://github.com/canvist/canvist">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
-      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/vector/lockup-dark.svg">
+      <img width="220" src="https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
     </picture>
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/quick-start/ssr.md"><strong>Quick start</strong></a> ·
+  <a href="https://github.com/canvist/canvist/blob/main/docs/src/quick-start/ssr.md"><strong>Quick start</strong></a> ·
   <a href="https://docs.rs/canvist_layout"><strong>API</strong></a> ·
-  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
-  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
-  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+  <a href="https://github.com/canvist/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/canvist/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/canvist/canvist"><strong>canvist</strong></a>
 </p>
 
 <p align="center">
   <a href="https://crates.io/crates/canvist_layout"><img src="https://img.shields.io/crates/v/canvist_layout?color=3B2CF5" alt="crates.io version" /></a>
   <a href="https://docs.rs/canvist_layout"><img src="https://img.shields.io/docsrs/canvist_layout" alt="docs.rs status" /></a>
-  <a href="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
+  <a href="https://github.com/canvist/canvist/actions/workflows/ci.yml"><img src="https://github.com/canvist/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
   <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
 </p>
 
 # canvist_layout
 
-Incremental text and block layout for [canvist](https://github.com/ifiokjr/canvist), and the display list every painter draws from.
+Incremental text and block layout for [canvist](https://github.com/canvist/canvist), and the display list every painter draws from.
 
 - **Themes:** data-driven styles for blocks, marks, and embeds, keyed by schema names so extensions add their own. The default matches TipTap's StarterKit.
 - **Measurement:** a batched `TextMeasurer` trait, so one relayout costs one call to the host. Results are cached by font and word. A deterministic measurer is included for tests, and a `parley` one behind the `parley` feature.

@@ -1,6 +1,6 @@
 #![doc(
-	html_logo_url = "https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/web/icon.svg",
-	html_favicon_url = "https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/web/favicon.svg"
+	html_logo_url = "https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/web/icon.svg",
+	html_favicon_url = "https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/web/favicon.svg"
 )]
 //! # `canvist_layout`
 //!
@@ -23,7 +23,7 @@
 //!   node-view slots, with [`DisplayList::damage`] for dirty rectangles.
 //! - Server rendering: [`to_svg`] paints a display list, and [`to_html`]
 //!   writes semantic HTML plus CSS that wraps lines exactly where the canvas
-//!   does. See the [CSS contract](https://github.com/ifiokjr/canvist/blob/main/docs/internal/ssr-css-contract.md).
+//!   does. See the [CSS contract](https://github.com/canvist/canvist/blob/main/docs/internal/ssr-css-contract.md).
 //!
 //! # Example
 //!

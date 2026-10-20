@@ -2,7 +2,7 @@
 
 Read this page to decide whether canvist Cloud is for you, and what it costs. canvist Cloud runs canvist's server-side features so you don't have to: real-time sync, format conversion, and, next, version history.
 
-**Status: early access.** The services are live, and billing runs in Stripe's test mode, so nothing is charged yet. Projects are set up by hand during early access: [open an issue](https://github.com/ifiokjr/canvist/issues) to ask for one.
+**Status: early access.** The services are live, and billing runs in Stripe's test mode, so nothing is charged yet. Projects are set up by hand during early access: [open an issue](https://github.com/canvist/canvist/issues) to ask for one.
 
 ## What's included
 

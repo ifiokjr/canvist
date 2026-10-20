@@ -1,30 +1,30 @@
 <p align="center">
-  <a href="https://github.com/ifiokjr/canvist">
+  <a href="https://github.com/canvist/canvist">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
-      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/vector/lockup-dark.svg">
+      <img width="220" src="https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
     </picture>
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/quick-start/server-rust.md"><strong>Quick start</strong></a> ·
+  <a href="https://github.com/canvist/canvist/blob/main/docs/src/quick-start/server-rust.md"><strong>Quick start</strong></a> ·
   <a href="https://docs.rs/canvist_extensions"><strong>API</strong></a> ·
-  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
-  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
-  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+  <a href="https://github.com/canvist/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/canvist/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/canvist/canvist"><strong>canvist</strong></a>
 </p>
 
 <p align="center">
   <a href="https://crates.io/crates/canvist_extensions"><img src="https://img.shields.io/crates/v/canvist_extensions?color=3B2CF5" alt="crates.io version" /></a>
   <a href="https://docs.rs/canvist_extensions"><img src="https://img.shields.io/docsrs/canvist_extensions" alt="docs.rs status" /></a>
-  <a href="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
+  <a href="https://github.com/canvist/canvist/actions/workflows/ci.yml"><img src="https://github.com/canvist/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
   <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
 </p>
 
 # canvist_extensions
 
-The [canvist](https://github.com/ifiokjr/canvist) StarterKit: the extensions TipTap's StarterKit ships, built on [`canvist_editor`](../canvist_editor) and named the way TipTap names them, so documents move between the two as ProseMirror JSON.
+The [canvist](https://github.com/canvist/canvist) StarterKit: the extensions TipTap's StarterKit ships, built on [`canvist_editor`](../canvist_editor) and named the way TipTap names them, so documents move between the two as ProseMirror JSON.
 
 - **Nodes:** paragraph, heading (levels 1 to 6), blockquote, code block, hard break, horizontal rule, bullet list, ordered list, list item, and task list.
 - **Marks:** bold, italic, underline, strike, code, and link (non-inclusive, with autolinking and linking on paste).

@@ -14,7 +14,7 @@ Add the package to `pubspec.yaml`. It isn't on pub.dev yet, so install it from G
 dependencies:
   canvist_flutter:
     git:
-      url: https://github.com/ifiokjr/canvist
+      url: https://github.com/canvist/canvist
       path: platforms/flutter
 ```
 

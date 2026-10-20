@@ -28,4 +28,4 @@ function themable(svg: string, label: string): string {
 export const lockup = themable(lockupSvg, "canvist");
 export const mark = themable(markSvg, "canvist");
 
-export const GITHUB_URL = "https://github.com/ifiokjr/canvist";
+export const GITHUB_URL = "https://github.com/canvist/canvist";

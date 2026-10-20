@@ -53,7 +53,7 @@ mavenPublishing {
         name = "canvist"
         description = "Android binding for canvist, the canvas-based rich-text editor with a Rust core."
         inceptionYear = "2026"
-        url = "https://github.com/ifiokjr/canvist"
+        url = "https://github.com/canvist/canvist"
         licenses {
             license {
                 name = "The Unlicense"
@@ -69,9 +69,9 @@ mavenPublishing {
             }
         }
         scm {
-            url = "https://github.com/ifiokjr/canvist"
-            connection = "scm:git:git://github.com/ifiokjr/canvist.git"
-            developerConnection = "scm:git:ssh://git@github.com/ifiokjr/canvist.git"
+            url = "https://github.com/canvist/canvist"
+            connection = "scm:git:git://github.com/canvist/canvist.git"
+            developerConnection = "scm:git:ssh://git@github.com/canvist/canvist.git"
         }
     }
 }

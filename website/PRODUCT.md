@@ -27,7 +27,7 @@ The only editor whose one Rust core renders the same document, pixel for pixel, 
 
 ## Operating Context
 
-- Source: github.com/ifiokjr/canvist. Docs source: `docs/src` (mdBook markdown). Design records: `docs/internal/architecture.md`. Budgets: `docs/src/guides/performance.md`. Business model: `docs/internal/business.md`; plans: `docs/src/cloud/billing.md`.
+- Source: github.com/canvist/canvist. Docs source: `docs/src` (mdBook markdown). Design records: `docs/internal/architecture.md`. Budgets: `docs/src/guides/performance.md`. Business model: `docs/internal/business.md`; plans: `docs/src/cloud/billing.md`.
 - The v1 web editor (`packages/canvist`, wasm) works today and can be embedded live. The v2 web host (M3) is not built yet.
 - canvist Cloud (Sync, Convert, History) is being built on Railway in the same project.
 

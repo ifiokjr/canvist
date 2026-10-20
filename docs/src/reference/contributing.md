@@ -7,7 +7,7 @@ Read this page if you want to change canvist itself. Everything here is for cont
 canvist uses [devenv](https://devenv.sh) for a reproducible toolchain: Rust, Deno, Node, Dart, Flutter, and the native SDKs.
 
 ```sh
-git clone https://github.com/ifiokjr/canvist
+git clone https://github.com/canvist/canvist
 cd canvist
 direnv allow .     # or: devenv shell
 install:all
@@ -77,4 +77,4 @@ On every push to `main`, the `release-pr` workflow opens or updates a release pu
 - **Docs samples are tested.** Rust samples run as doc tests through `docs/src/lib.rs`. TypeScript and Dart samples are type-checked and run by `docs/check-snippets.ts`. A sample's expected output goes in comments after the line that prints it.
 - **Style:** hard tabs and edition 2024 in Rust, and a doc comment on every public item.
 
-The design decisions behind canvist, with the alternatives considered, are in [`docs/internal/architecture.md`](https://github.com/ifiokjr/canvist/blob/main/docs/internal/architecture.md).
+The design decisions behind canvist, with the alternatives considered, are in [`docs/internal/architecture.md`](https://github.com/canvist/canvist/blob/main/docs/internal/architecture.md).

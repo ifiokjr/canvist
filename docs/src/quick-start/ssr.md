@@ -7,7 +7,7 @@ In this guide you render a canvist document to HTML and SVG on a server, laid ou
 ## 1. Install
 
 ```sh
-cargo add canvist_headless --git https://github.com/ifiokjr/canvist --features ssr
+cargo add canvist_headless --git https://github.com/canvist/canvist --features ssr
 ```
 
 ## 2. Render HTML and SVG

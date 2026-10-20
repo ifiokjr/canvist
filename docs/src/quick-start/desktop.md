@@ -10,4 +10,4 @@ Use this page to see what's planned for Desktop and what you can build with canv
 - **Render documents.** The `ssr` feature [renders HTML and SVG](./ssr.md) exactly as the editor lays them out, which works for previews and thumbnails.
 - **Build with Flutter.** [`canvist_flutter`](./flutter.md) runs the engine in Flutter desktop apps.
 
-Watch [the releases](https://github.com/ifiokjr/canvist/releases) to hear when it ships.
+Watch [the releases](https://github.com/canvist/canvist/releases) to hear when it ships.

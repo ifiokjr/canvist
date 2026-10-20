@@ -1,30 +1,30 @@
 <p align="center">
-  <a href="https://github.com/ifiokjr/canvist">
+  <a href="https://github.com/canvist/canvist">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup-dark.svg">
-      <img width="220" src="https://raw.githubusercontent.com/ifiokjr/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/vector/lockup-dark.svg">
+      <img width="220" src="https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/vector/lockup.svg" alt="canvist" />
     </picture>
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/quick-start/server-rust.md"><strong>Quick start</strong></a> ·
+  <a href="https://github.com/canvist/canvist/blob/main/docs/src/quick-start/server-rust.md"><strong>Quick start</strong></a> ·
   <a href="https://docs.rs/canvist_editor"><strong>API</strong></a> ·
-  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
-  <a href="https://github.com/ifiokjr/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
-  <a href="https://github.com/ifiokjr/canvist"><strong>canvist</strong></a>
+  <a href="https://github.com/canvist/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
+  <a href="https://github.com/canvist/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
+  <a href="https://github.com/canvist/canvist"><strong>canvist</strong></a>
 </p>
 
 <p align="center">
   <a href="https://crates.io/crates/canvist_editor"><img src="https://img.shields.io/crates/v/canvist_editor?color=3B2CF5" alt="crates.io version" /></a>
   <a href="https://docs.rs/canvist_editor"><img src="https://img.shields.io/docsrs/canvist_editor" alt="docs.rs status" /></a>
-  <a href="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml"><img src="https://github.com/ifiokjr/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
+  <a href="https://github.com/canvist/canvist/actions/workflows/ci.yml"><img src="https://github.com/canvist/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
   <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
 </p>
 
 # canvist_editor
 
-The platform-agnostic editing engine behind [canvist](https://github.com/ifiokjr/canvist), built on [`canvist_model`](../canvist_model). It has no UI: hosts send it input and draw what it returns.
+The platform-agnostic editing engine behind [canvist](https://github.com/canvist/canvist), built on [`canvist_model`](../canvist_model). It has no UI: hosts send it input and draw what it returns.
 
 - **One state:** the document, selection, stored marks, and IME composition change through one path, so they never disagree.
 - **Commands:** typing, deleting by grapheme, word, or line, Enter and Backspace that understand lists and quotes, marks, block types, and copy and paste.

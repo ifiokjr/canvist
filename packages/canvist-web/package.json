@@ -3,6 +3,16 @@
 	"version": "0.1.0",
 	"description": "The canvist editor for the browser: a canvas that wraps text exactly like canvist's server-rendered HTML, with typed commands and a font plugin.",
 	"license": "Unlicense",
+	"homepage": "https://github.com/canvist/canvist/tree/main/packages/canvist-web#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/canvist/canvist.git",
+		"directory": "packages/canvist-web"
+	},
+	"bugs": {
+		"url": "https://github.com/canvist/canvist/issues",
+		"email": "support@canvist.dev"
+	},
 	"type": "module",
 	"exports": {
 		".": {

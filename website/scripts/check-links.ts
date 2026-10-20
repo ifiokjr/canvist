@@ -18,7 +18,7 @@ const WEBSITE = fromFileUrl(new URL("..", import.meta.url));
 const REPO = join(WEBSITE, "..");
 const DIST = join(WEBSITE, Deno.args[0] ?? "dist");
 const REPO_BLOB =
-	/^https:\/\/github\.com\/ifiokjr\/canvist\/(?:blob|tree|edit)\/main\/([^?#]*)/;
+	/^https:\/\/github\.com\/canvist\/canvist\/(?:blob|tree|edit)\/main\/([^?#]*)/;
 const ATTRIBUTE = /\s(href|src)="([^"]*)"/g;
 
 interface Problem {
