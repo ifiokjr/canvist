@@ -25,7 +25,7 @@ use canvist_model::MarkSpec;
 use canvist_model::Schema;
 use serde_json::Value as Json;
 
-/// The schema of TipTap's `StarterKit`, plus task lists, tables, images, highlights, scripts, text
+/// The schema of TipTap's `StarterKit`, plus task lists, tables, ink, kinetic text, images, highlights, scripts, text
 /// styles, and mentions, using TipTap's type names.
 pub fn schema() -> Arc<Schema> {
 	let schema = Schema::builder()
@@ -61,6 +61,7 @@ pub fn schema() -> Arc<Schema> {
 				.attrs(cell_attrs())
 				.groups(&[]),
 		)
+		.block(BlockSpec::leaf("ink").attrs(Attrs::new().with("height", 400)))
 		.mark(MarkSpec::new("bold"))
 		.mark(MarkSpec::new("italic"))
 		.mark(MarkSpec::new("underline"))
@@ -71,6 +72,7 @@ pub fn schema() -> Arc<Schema> {
 		.mark(MarkSpec::new("subscript"))
 		.mark(MarkSpec::new("superscript"))
 		.mark(MarkSpec::new("textStyle"))
+		.mark(MarkSpec::new("kinetic"))
 		.embed(EmbedSpec::new("hardBreak"))
 		.embed(EmbedSpec::new("mention"))
 		.embed(EmbedSpec::new("inlineImage"))
@@ -185,6 +187,18 @@ fn describe_item(list: &DisplayList, item: &DisplayItem) -> String {
 		DisplayItem::Decoration {
 			kind, x, y, width, ..
 		} => format!("line {kind:?} x={} y={} w={}", r(*x), r(*y), r(*width)),
+		DisplayItem::Stroke {
+			points,
+			width,
+			color,
+			..
+		} => {
+			let points: Vec<String> = points
+				.chunks_exact(2)
+				.map(|point| format!("{},{}", r(point[0]), r(point[1])))
+				.collect();
+			format!("stroke w={} {color} {}", r(*width), points.join(" "))
+		}
 		DisplayItem::Slot {
 			kind, rect, offset, ..
 		} => {

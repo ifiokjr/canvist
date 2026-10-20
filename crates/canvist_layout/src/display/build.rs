@@ -14,6 +14,7 @@ use super::DisplayOptions;
 use super::RectKind;
 use super::SlotKind;
 use super::TextRun;
+use super::motion;
 use crate::BlockStyle;
 use crate::Caret;
 use crate::Color;
@@ -32,8 +33,11 @@ use crate::text::Piece;
 use crate::text::RunStyle;
 use crate::text::TextLayout;
 use crate::text::slice;
+#[cfg(feature = "ink")]
+use crate::theme::INK_WIDTH;
 use crate::theme::LeafStyle;
 use crate::theme::MarkerKind;
+use crate::theme::Motion;
 
 impl DocumentLayout {
 	/// Build the display list for `options.top..options.bottom`.
@@ -106,6 +110,8 @@ struct LineBox {
 struct Builder<'a> {
 	layout: &'a DocumentLayout,
 	list: DisplayList,
+	/// The animation clock, when kinetic text should move.
+	time: Option<f32>,
 	/// Decorations and slots, painted above all text.
 	foreground: Vec<DisplayItem>,
 }
@@ -123,7 +129,9 @@ impl<'a> Builder<'a> {
 				fonts: layout.cache().fonts().fonts().to_vec(),
 				items: Vec::new(),
 				bounds,
+				animated: false,
 			},
+			time: options.time,
 			foreground: Vec::new(),
 		}
 	}
@@ -227,6 +235,36 @@ impl Builder<'_> {
 					rect: content,
 				});
 			}
+			#[cfg(feature = "ink")]
+			LeafStyle::Ink { stroke, .. } => self.ink(row, content, stroke, style.text.color),
+			#[cfg(not(feature = "ink"))]
+			LeafStyle::Ink { .. } => {}
+		}
+	}
+
+	/// The strokes of an ink drawing filling `content`, scaled from drawing
+	/// units, in `color` and `width` drawing units where a stroke sets
+	/// neither.
+	#[cfg(feature = "ink")]
+	fn ink(&mut self, row: &Row, content: Rect, width: f32, color: Color) {
+		let Some(drawing) = &row.ink else {
+			return;
+		};
+		let scale = content.width / INK_WIDTH;
+
+		for stroke in &drawing.strokes {
+			let points: Arc<[f32]> = stroke
+				.points
+				.chunks_exact(2)
+				.flat_map(|point| [content.x + point[0] * scale, content.y + point[1] * scale])
+				.collect();
+
+			self.list.items.push(DisplayItem::Stroke {
+				points,
+				width: stroke.width.unwrap_or(width) * scale,
+				color: stroke.color.unwrap_or(color),
+				block: row.block,
+			});
 		}
 	}
 
@@ -275,9 +313,9 @@ impl Builder<'_> {
 		};
 		let origin = layout.origin(index);
 
-		for line in &text.lines {
+		for (index, line) in text.lines.iter().enumerate() {
 			for piece in &line.pieces {
-				self.piece(row.block, text, line, piece, origin);
+				self.piece(row.block, text, (index, line), piece, origin);
 			}
 		}
 	}
@@ -288,7 +326,7 @@ impl Builder<'_> {
 		&mut self,
 		block: BlockId,
 		text: &TextLayout,
-		line: &Line,
+		(line_index, line): (usize, &Line),
 		piece: &Piece,
 		origin: Origin,
 	) {
@@ -318,6 +356,24 @@ impl Builder<'_> {
 			return;
 		};
 		let baseline = baseline - style.style.baseline_shift;
+		let motion = style.style.motion;
+
+		if motion != Motion::None {
+			self.list.animated = true;
+
+			if let (Some(time), false, true) = (self.time, piece.rtl, cfg!(feature = "kinetic")) {
+				let glyphs = Glyphs {
+					block,
+					text,
+					line: (line_index, line),
+					origin,
+					baseline,
+				};
+				self.kinetic(&glyphs, piece, style, time);
+				self.decorations(block, style, x, baseline, piece.width);
+				return;
+			}
+		}
 
 		self.list.items.push(DisplayItem::Text(TextRun {
 			block,
@@ -334,6 +390,51 @@ impl Builder<'_> {
 		}));
 
 		self.decorations(block, style, x, baseline, piece.width);
+	}
+
+	/// Draw a moving piece one grapheme at a time, each where `motion` puts
+	/// it at `time`.
+	fn kinetic(&mut self, glyphs: &Glyphs<'_>, piece: &Piece, style: &RunStyle, time: f32) {
+		use unicode_segmentation::UnicodeSegmentation;
+
+		let text = glyphs.text;
+		let (line_index, line) = glyphs.line;
+		let source = slice(&text.text, &piece.range);
+		let caret = |offset: u32| {
+			glyphs.origin.x + text.caret_x(line_index, offset, crate::Affinity::Downstream)
+		};
+
+		for (index, (start, grapheme)) in source.grapheme_indices(true).enumerate() {
+			if grapheme.trim().is_empty() {
+				continue;
+			}
+
+			let start = piece.range.start + start as u32;
+			let end = start + grapheme.len() as u32;
+			let x = caret(start);
+			let width = caret(end) - x;
+			let ((dx, dy), color) = motion::glyph(
+				style.style.motion,
+				time,
+				index,
+				style.style.font.size,
+				style.style.color,
+			);
+
+			self.list.items.push(DisplayItem::Text(TextRun {
+				block: glyphs.block,
+				source: text.text.clone(),
+				range: start..end,
+				font: style.font,
+				x: x + dx,
+				baseline: glyphs.baseline + dy,
+				width,
+				color,
+				letter_spacing: style.style.letter_spacing,
+				rtl: false,
+				bounds: Rect::new(x + dx, glyphs.origin.y + line.top + dy, width, line.height),
+			}));
+		}
 	}
 
 	/// Draw each placeholder in its block, if the block is visible, empty,
@@ -631,6 +732,16 @@ fn run_source<'a>(
 		}
 		ItemKind::Tab | ItemKind::Break => None,
 	}
+}
+
+/// Where the glyphs of a moving piece sit: its block, text, line, row
+/// origin, and baseline.
+struct Glyphs<'a> {
+	block: BlockId,
+	text: &'a TextLayout,
+	line: (usize, &'a Line),
+	origin: Origin,
+	baseline: f32,
 }
 
 /// The width of a style's left border.

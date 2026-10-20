@@ -519,3 +519,48 @@ fn keystroke_relayout_in_a_table_of_a_thousand_cells() {
 		KEYSTROKE_BUDGET,
 	);
 }
+
+/// Paragraphs of the kinetic budget: a screen and a half, each with a
+/// moving phrase, more motion than a page would want.
+const KINETIC_PARAGRAPHS: usize = 60;
+
+#[test]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+fn display_list_for_one_screen_of_moving_text() {
+	let content: Vec<serde_json::Value> = (0..KINETIC_PARAGRAPHS)
+		.map(|index| {
+			let effect = ["wave", "shake", "pulse", "rainbow"][index % 4];
+			serde_json::json!({
+				"type": "paragraph",
+				"content": [
+					{ "type": "text", "text": "Every frame, " },
+					{
+						"type": "text",
+						"text": "these words move",
+						"marks": [{ "type": "kinetic", "attrs": { "effect": effect } }],
+					},
+					{ "type": "text", "text": " while the rest stays still." },
+				],
+			})
+		})
+		.collect();
+	let doc = support::doc(serde_json::Value::Array(content));
+	let mut measurer = FixedMeasurer::new();
+	let mut layout = DocumentLayout::new(&doc, Arc::new(Theme::starter_kit()), options());
+	layout
+		.ensure(&doc, &mut measurer, 0.0, SCREEN)
+		.expect("measured");
+	let mut frame = 0_u32;
+
+	let measured = median_per_call(DISPLAY_BATCH, || {
+		frame += 1;
+		let options = DisplayOptions::viewport(0.0, SCREEN).time(frame as f32 / 60.0);
+		std::hint::black_box(layout.display_list(&options));
+	});
+
+	assert_within(
+		"display list, one screen of moving text",
+		measured,
+		DISPLAY_LIST_BUDGET,
+	);
+}

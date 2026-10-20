@@ -22,6 +22,7 @@ use crate::Rect;
 use crate::text::slice;
 
 mod build;
+mod motion;
 
 /// What a rectangle is for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -139,6 +140,18 @@ pub enum DisplayItem {
 		/// The block it belongs to.
 		block: BlockId,
 	},
+	/// A freehand stroke through `points`, drawn as straight segments with
+	/// round caps and joins.
+	Stroke {
+		/// The points, as `x, y` pairs in document pixels.
+		points: Arc<[f32]>,
+		/// The line width in pixels.
+		width: f32,
+		/// The colour.
+		color: Color,
+		/// The block it belongs to.
+		block: BlockId,
+	},
 	/// A rectangle reserved for a host-rendered view.
 	Slot {
 		/// What the slot holds.
@@ -159,7 +172,9 @@ impl DisplayItem {
 		match self {
 			Self::Rect { block, .. } => *block,
 			Self::Text(run) => Some(run.block),
-			Self::Decoration { block, .. } | Self::Slot { block, .. } => Some(*block),
+			Self::Decoration { block, .. }
+			| Self::Stroke { block, .. }
+			| Self::Slot { block, .. } => Some(*block),
 		}
 	}
 
@@ -176,8 +191,33 @@ impl DisplayItem {
 				thickness,
 				..
 			} => Rect::new(*x, y - thickness * 2.0, *width, thickness * 4.0),
+			Self::Stroke { points, width, .. } => stroke_bounds(points, *width),
 		}
 	}
+}
+
+/// The box around a stroke's points, widened by half its width.
+fn stroke_bounds(points: &[f32], width: f32) -> Rect {
+	let (mut left, mut top, mut right, mut bottom) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+
+	for point in points.chunks_exact(2) {
+		left = left.min(point[0]);
+		right = right.max(point[0]);
+		top = top.min(point[1]);
+		bottom = bottom.max(point[1]);
+	}
+
+	if left > right {
+		return Rect::default();
+	}
+
+	let half = width / 2.0;
+	Rect::new(
+		left - half,
+		top - half,
+		right - left + width,
+		bottom - top + width,
+	)
 }
 
 /// What to put in a display list.
@@ -196,6 +236,11 @@ pub struct DisplayOptions {
 	/// Placeholder text for empty text blocks, such as "Write something …",
 	/// drawn at the block's start in its text colour, faded.
 	pub placeholders: Vec<(BlockId, Arc<str>)>,
+	/// The animation clock in seconds, for kinetic text. `None` keeps all
+	/// text still: pass it only while animating, and never to readers who
+	/// prefer reduced motion. [`DisplayList::animated`] says whether a
+	/// later frame would differ.
+	pub time: Option<f32>,
 }
 
 impl DisplayOptions {
@@ -230,6 +275,13 @@ impl DisplayOptions {
 		self
 	}
 
+	/// Move kinetic text as it is at `seconds` on the animation clock.
+	#[must_use]
+	pub fn time(mut self, seconds: f32) -> Self {
+		self.time = Some(seconds);
+		self
+	}
+
 	/// Show `text` in `block` while it is empty.
 	#[must_use]
 	pub fn placeholder(mut self, block: BlockId, text: &str) -> Self {
@@ -249,6 +301,9 @@ pub struct DisplayList {
 	/// The painted area: the full document width between the requested top
 	/// and bottom.
 	pub bounds: Rect,
+	/// Whether kinetic text is in view, so a host animating it should keep
+	/// asking for frames, and one that is not knows it could.
+	pub animated: bool,
 }
 
 impl DisplayList {

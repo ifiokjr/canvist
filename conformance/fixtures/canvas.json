@@ -1,0 +1,55 @@
+{
+	"description": "Canvas-native extensions: ink drawings and kinetic text.",
+	"cases": [
+		{
+			"name": "draws strokes on an ink block and writes it as HTML",
+			"requires": ["extensions"],
+			"extensions": ["ink"],
+			"steps": [
+				{ "op": "query", "query": "inks", "expect": [] },
+				{ "op": "run", "command": "insertInk", "args": { "height": 200 }, "applied": true },
+				{
+					"op": "run",
+					"command": "addInkStroke",
+					"args": { "ink": 0, "points": [10, 20, 30, 40], "width": 6 },
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "addInkStroke",
+					"args": { "ink": 0, "points": [5, 5] },
+					"applied": true
+				},
+				{ "op": "run", "command": "undoInkStroke", "args": { "ink": 0 }, "applied": true },
+				{
+					"op": "run",
+					"command": "addInkStroke",
+					"args": { "ink": 0, "points": [1, 2, 3] },
+					"error": "invalidArgs"
+				},
+				{ "op": "query", "query": "inks", "expect": [{ "height": 200, "strokes": 1 }] }
+			],
+			"expect": {
+				"html": "<figure data-type=\"ink\" data-height=\"200\" data-strokes=\"[{&quot;points&quot;:[10.0,20.0,30.0,40.0],&quot;width&quot;:6.0}]\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 200\"><path d=\"M10 20L30 40\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></figure><p></p>"
+			}
+		},
+		{
+			"name": "makes text move and reads its effect",
+			"requires": ["extensions"],
+			"extensions": ["kinetic"],
+			"input": { "format": "text", "content": "Say hello" },
+			"steps": [
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 4 },
+					"head": { "path": [0], "offset": 9 }
+				},
+				{ "op": "query", "query": "kineticEffect", "expect": null },
+				{ "op": "run", "command": "setKinetic", "args": { "effect": "wave" }, "applied": true },
+				{ "op": "query", "query": "kineticEffect", "expect": "wave" },
+				{ "op": "run", "command": "setKinetic", "args": { "effect": "spin" }, "error": "invalidArgs" }
+			],
+			"expect": { "html": "<p>Say <span data-kinetic=\"wave\">hello</span></p>", "markdown": "Say hello" }
+		}
+	]
+}

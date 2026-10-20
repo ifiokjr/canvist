@@ -120,3 +120,22 @@ mod tests {
 		assert_eq!(out, "&lt;a href=&quot;x&quot;&gt;&amp;&#39;");
 	}
 }
+
+/// An SVG path through `points`, `x, y` pairs, as straight segments. A
+/// single point is a zero-length segment, which round caps draw as a dot.
+pub(crate) fn stroke_path(points: &[f32]) -> String {
+	use std::fmt::Write as _;
+
+	let mut path = String::new();
+
+	for (index, point) in points.chunks_exact(2).enumerate() {
+		let command = if index == 0 { 'M' } else { 'L' };
+		let _ = write!(path, "{command}{} {}", num(point[0]), num(point[1]));
+	}
+
+	if points.len() == 2 {
+		let _ = write!(path, "L{} {}", num(points[0]), num(points[1]));
+	}
+
+	path
+}

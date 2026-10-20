@@ -90,7 +90,9 @@ impl ValueType {
 					.map_or(Value::Null, |&option| Value::from(option))
 			}
 			Self::Nullable(inner) => inner.sample(),
-			Self::List(inner) => Value::from(vec![inner.sample()]),
+			// Two items, so lists of pairs (such as an ink stroke's points)
+			// get a valid sample too.
+			Self::List(inner) => Value::from(vec![inner.sample(), inner.sample()]),
 			Self::Record(fields) => {
 				let map: canvist_model::Attrs = fields
 					.iter()

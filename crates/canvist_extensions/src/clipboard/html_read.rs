@@ -341,12 +341,15 @@ fn role(name: &str, attrs: &[(String, String)], parent: Option<&'static str>) ->
 				Attrs::new().with("open", attr(attrs, "open").is_some()),
 			)
 		}
-		"summary" => Role::Text("detailsSummary", Attrs::new()),
-		"table" => Role::Container("table", Attrs::new()),
-		"tr" => Role::Container("tableRow", Attrs::new()),
-		"td" => Role::Container("tableCell", cell_attrs(attrs)),
-		"th" => Role::Container("tableHeader", cell_attrs(attrs)),
-		"div" if data_type == Some("detailsContent") => {
+		"summary" if cfg!(feature = "details") => Role::Text("detailsSummary", Attrs::new()),
+		"figure" if cfg!(feature = "ink") && (data_type == Some("ink")) => {
+			Role::Leaf("ink", ink_attrs(attrs))
+		}
+		"table" if cfg!(feature = "table") => Role::Container("table", Attrs::new()),
+		"tr" if cfg!(feature = "table") => Role::Container("tableRow", Attrs::new()),
+		"td" if cfg!(feature = "table") => Role::Container("tableCell", cell_attrs(attrs)),
+		"th" if cfg!(feature = "table") => Role::Container("tableHeader", cell_attrs(attrs)),
+		"div" if cfg!(feature = "details") && (data_type == Some("detailsContent")) => {
 			Role::Container("detailsContent", Attrs::new())
 		}
 		"div" if cfg!(feature = "callout") && (attr(attrs, "data-callout-type").is_some()) => {
@@ -453,6 +456,53 @@ const ATOM_ATTRIBUTES: [(&str, &str); 6] = [
 	("data-latex", "latex"),
 ];
 
+/// An ink drawing's height and strokes, which `data-strokes` carries as
+/// JSON.
+fn ink_attrs(attrs: &[(String, String)]) -> Attrs {
+	let mut ink = Attrs::new();
+
+	if let Some(height) =
+		attr(attrs, "data-height").and_then(|height| height.trim().parse::<i64>().ok())
+	{
+		ink.set("height", height.max(1));
+	}
+
+	let strokes = attr(attrs, "data-strokes")
+		.and_then(|json| serde_json::from_str::<serde_json::Value>(json).ok())
+		.map(|json| json_value(&json));
+
+	if let Some(strokes @ Value::Array(_)) = strokes {
+		ink.set("strokes", strokes);
+	}
+
+	ink
+}
+
+/// A JSON value as a document value.
+fn json_value(json: &serde_json::Value) -> Value {
+	match json {
+		serde_json::Value::Null => Value::Null,
+		serde_json::Value::Bool(flag) => Value::Bool(*flag),
+		serde_json::Value::Number(number) => {
+			number.as_i64().map_or_else(
+				|| Value::Float(number.as_f64().unwrap_or_default()),
+				Value::Int,
+			)
+		}
+		serde_json::Value::String(text) => Value::from(text.as_str()),
+		serde_json::Value::Array(items) => {
+			Value::from(items.iter().map(json_value).collect::<Vec<_>>())
+		}
+		serde_json::Value::Object(map) => {
+			Value::from(
+				map.iter()
+					.map(|(key, value)| (key.as_str(), json_value(value)))
+					.collect::<Attrs>(),
+			)
+		}
+	}
+}
+
 /// A table cell's spans and TipTap's `colwidth`, a comma-separated list of
 /// pixel widths.
 fn cell_attrs(attrs: &[(String, String)]) -> Attrs {
@@ -533,8 +583,8 @@ fn plain_marks(
 		.collect()
 }
 
-/// The marks that carry attributes, in order: a link, a hashtag, a
-/// comment, a highlight, and a text style.
+/// The marks that carry attributes, in order: a link, a hashtag, kinetic
+/// type, a comment, a highlight, and a text style.
 fn attribute_marks(name: &str, attrs: &[(String, String)]) -> Vec<(&'static str, Attrs)> {
 	let data_type = attr(attrs, "data-type");
 	let css = attr(attrs, "style").unwrap_or_default();
@@ -547,6 +597,10 @@ fn attribute_marks(name: &str, attrs: &[(String, String)]) -> Vec<(&'static str,
 		let tag = attr(attrs, "data-tag").map_or(Value::Null, Value::from);
 		("hashtag", Attrs::new().with("tag", tag))
 	});
+	let kinetic = cfg!(feature = "kinetic")
+		.then(|| attr(attrs, "data-kinetic"))
+		.flatten()
+		.map(|effect| ("kinetic", Attrs::new().with("effect", effect)));
 	let comment = (cfg!(feature = "comments") && data_type == Some("comment")).then(|| {
 		let threads: Vec<Value> = attr(attrs, "data-threads")
 			.unwrap_or_default()
@@ -565,7 +619,7 @@ fn attribute_marks(name: &str, attrs: &[(String, String)]) -> Vec<(&'static str,
 		.filter(|styles| !styles.is_empty())
 		.map(|styles| ("textStyle", styles));
 
-	[link, hashtag, comment, highlight, text_style]
+	[link, hashtag, kinetic, comment, highlight, text_style]
 		.into_iter()
 		.flatten()
 		.collect()

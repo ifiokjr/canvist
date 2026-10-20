@@ -36,11 +36,16 @@ name = "layout"
 harness = false
 
 [features]
-default = ["tables", "theme-extensions"]
+default = ["ink", "kinetic", "tables", "theme-extensions"]
 # StarterKit theme rules for blocks, marks, and embeds beyond the
 # StarterKit. Without it a host whose schema has none of them carries
 # none of their styles.
 theme-extensions = []
+# Draw ink blocks' strokes. Without it an ink block is an empty box.
+ink = []
+# Move kinetic text when a display list is given a time. Without it the
+# text stays still.
+kinetic = []
 # Lay tables out on a grid. Without it a table's cells stack like any
 # container's children, which keeps hosts whose schema has no tables smaller.
 tables = []
