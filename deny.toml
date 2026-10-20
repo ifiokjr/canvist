@@ -20,6 +20,13 @@ ignore = [
 	# `uniffi_bindgen` (both already at their latest), which only generates the Swift and
 	# Kotlin bindings at build time.
 	{ id = "RUSTSEC-2026-0374", reason = "transitive via askama in uniffi_bindgen, build-time only, no upstream alternative yet" },
+	# `zvariant`, `zvariant_derive`, and `zbus_names` moved into `zbus` 6. They enter through
+	# zbus 5 in AccessKit's Linux adapter (`accesskit_unix`, already at its latest), which
+	# `canvist_desktop` uses for screen readers on Linux. Informational only, no known
+	# vulnerability.
+	{ id = "RUSTSEC-2026-0370", reason = "transitive via zbus 5 in accesskit_unix, no newer AccessKit yet" },
+	{ id = "RUSTSEC-2026-0371", reason = "transitive via zbus 5 in accesskit_unix, no newer AccessKit yet" },
+	{ id = "RUSTSEC-2026-0372", reason = "transitive via zbus 5 in accesskit_unix, no newer AccessKit yet" },
 ]
 
 [licenses]
