@@ -92,7 +92,7 @@ The check builds every shipped artifact and measures it raw, gzipped, and brotli
 - `@canvist/canvas`: its WebAssembly and JavaScript;
 - `libcanvist_ffi` built for Linux.
 
-An artifact **fails** when it is over its budget, or when its gzipped size grew by more than 1% and 1 KB since the base. Growth you mean to ship passes once the pull request has the `size-increase-approved` label, and adding the label re-runs the check. The label never waives a budget: raise the budget in [`tools/bench/size.json`](https://github.com/canvist/canvist/blob/main/tools/bench/size.json) in the same pull request, so the change is reviewed.
+An artifact **fails** when it is over its budget, or when its gzipped size grew by more than both 1% and 1,024 bytes since the base. Growth you mean to ship passes once the pull request has the `size-increase-approved` label, and adding the label re-runs the check. The label never waives a budget: raise the budget in [`tools/bench/size.json`](https://github.com/canvist/canvist/blob/main/tools/bench/size.json) in the same pull request, so the change is reviewed.
 
 Builds are deterministic, so every push to `main` records its sizes and pull requests compare with that record. An artifact the pull request can't affect isn't rebuilt; the report marks it `(unchanged)` and still checks it against its budget.
 
