@@ -8,7 +8,7 @@ import 'canvist.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `argb`, `block_selection`, `byte_offset`, `caret`, `clipboard_formats`, `composition_selection`, `display_options`, `display`, `edit`, `extended`, `head_block`, `item`, `lock`, `lock`, `new`, `parse_json`, `plain_offset`, `plain_point`, `point_at`, `rect`, `render`, `selection_is_collapsed`, `selection_points`, `state`, `sync`, `theme`, `unit_around`, `utf16`, `word_around`
+// These functions are ignored because they are not marked as `pub`: `argb`, `block_selection`, `blocks_start`, `byte_offset`, `caret`, `clipboard_formats`, `composition_selection`, `display_options`, `display`, `edit`, `extended`, `head_block`, `item`, `lock`, `lock`, `new`, `parse_json`, `plain_offset`, `plain_point`, `point_at`, `rect`, `render`, `selection_is_collapsed`, `selection_points`, `state`, `sync`, `theme`, `unit_around`, `utf16`, `word_around`
 // These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Drag`, `Unit`, `ViewState`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`
 
