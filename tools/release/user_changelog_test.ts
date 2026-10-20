@@ -71,6 +71,10 @@ async function writeChangesets(workspace: string): Promise<void> {
 			await Deno.remove(join(changesets, entry.name));
 		}
 	}
+	// Earlier releases' pages stay on the website; this test checks only the
+	// one it prepares.
+	await Deno.remove(join(workspace, CHANGELOG_DIRECTORY), { recursive: true })
+		.catch(() => {});
 	await Deno.writeTextFile(
 		join(changesets, "user-pricing-speed.md"),
 		`---\napp: user_fix\n---\n\n# ${USER_NOTE}\n\n## User impact\n\nThe pricing calculator is ready as soon as the page appears.\n`,
