@@ -116,6 +116,11 @@ canvist_scene = { path = "./crates/canvist_scene", version = "0.1.0" }
 canvist_wasm = { path = "./crates/canvist_wasm", version = "0.1.0" }
 canvist_web = { path = "./crates/canvist_web", version = "0.1.0" }
 
+# `platforms/dart/rust` ships in a pub.dev archive, so it names canvist crates
+# by their crates.io version (see its manifest). Build them from this checkout.
+[patch.crates-io]
+canvist_headless = { path = "./crates/canvist_headless" }
+
 [workspace.metadata.bin]
 cargo-insta = { version = "1.46.3" }
 cargo-llvm-cov = { version = "0.8.4" }

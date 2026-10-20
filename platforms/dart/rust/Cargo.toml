@@ -1,22 +1,38 @@
+# This crate ships inside the `canvist` pub.dev package, whose build hook
+# compiles it in the pub cache, outside this repository. So it inherits nothing
+# from the Cargo workspace and names the canvist crates by their crates.io
+# release: monochange pins `canvist_headless` to the version every release
+# publishes, and the workspace's `[patch.crates-io]` builds the local sources
+# instead whenever it is compiled here.
 [package]
 name = "canvist_dart"
-version.workspace = true
-authors.workspace = true
-edition.workspace = true
-homepage.workspace = true
-license.workspace = true
+authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
+edition = "2024"
+homepage = "https://github.com/canvist/canvist"
+license = "Unlicense"
 publish = false
-repository.workspace = true
-rust-version.workspace = true
+repository = "https://github.com/canvist/canvist"
+rust-version = "1.95.0"
 description = "flutter_rust_bridge adapter that exposes canvist_headless to the pure Dart `canvist` package"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-canvist_headless = { workspace = true, features = ["collab", "starter-kit"] }
-flutter_rust_bridge = { workspace = true }
-serde_json = { workspace = true, features = ["std"] }
+canvist_headless = { version = "=0.1.0", default-features = false, features = ["collab", "starter-kit"] }
+flutter_rust_bridge = { version = "=2.13.0" }
+serde_json = { version = "^1", default-features = false, features = ["std"] }
 
-[lints]
-workspace = true
+# The workspace's lints, which a standalone manifest cannot inherit.
+[lints.rust]
+unsafe_code = "deny"
+unstable_features = "deny"
+unused_qualifications = "warn"
+
+[lints.clippy]
+correctness = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+style = { level = "warn", priority = -1 }
+cast_possible_truncation = "allow"
+missing_errors_doc = "allow"
+must_use_candidate = "allow"
