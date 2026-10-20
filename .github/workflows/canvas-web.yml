@@ -81,7 +81,10 @@ jobs:
         timeout-minutes: 10
         run: npx --yes playwright@1.58 install --with-deps chromium
 
+      # `shell: bash` runs with `-o pipefail`; the default shell doesn't, and
+      # `tee` would report success for a failing test.
       - name: frame times and two-tab collaboration
+        shell: bash
         run: deno task test | tee "$RUNNER_TEMP/canvas-test.log"
 
       - name: frame times summary
