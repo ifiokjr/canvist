@@ -394,7 +394,7 @@ dependencies = [
 
 [[package]]
 name = "canvist"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_core",
  "canvist_render",
@@ -403,7 +403,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_book"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_editor",
  "canvist_headless",
@@ -414,7 +414,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_canvas"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_editor",
  "canvist_extensions",
@@ -433,7 +433,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_canvas_wasm"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_canvas",
  "canvist_collab",
@@ -456,7 +456,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_cloud"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "axum",
  "base64",
@@ -483,7 +483,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_collab"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_model",
  "canvist_scene",
@@ -498,7 +498,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_core"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "insta",
  "lib0",
@@ -522,7 +522,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_editor"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_model",
  "proptest",
@@ -535,7 +535,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_extensions"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_editor",
  "canvist_model",
@@ -547,7 +547,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_ffi"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "thiserror 2.0.18",
  "uniffi",
@@ -567,7 +567,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_headless"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "base64",
  "canvist_canvas",
@@ -586,7 +586,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_headless_wasm"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_headless",
  "js-sys",
@@ -596,7 +596,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_layout"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_editor",
  "canvist_model",
@@ -614,7 +614,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_model"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "divan",
  "proptest",
@@ -625,7 +625,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_paint"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_canvas",
  "canvist_layout",
@@ -644,7 +644,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_render"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_core",
  "fontdue",
@@ -655,7 +655,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_scene"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_model",
  "divan",
@@ -668,7 +668,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_test"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_core",
  "insta",
@@ -678,7 +678,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_wasm"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "base64",
  "canvist_core",
@@ -693,7 +693,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_web"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "canvist_headless",
  "canvist_layout",
