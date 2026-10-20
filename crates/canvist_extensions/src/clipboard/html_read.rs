@@ -258,13 +258,12 @@ enum Role {
 	Inline,
 }
 
-const BOUNDARIES: [&str; 22] = [
+const BOUNDARIES: [&str; 20] = [
 	"address",
 	"article",
 	"aside",
 	"body",
 	"dd",
-	"details",
 	"div",
 	"dl",
 	"dt",
@@ -276,7 +275,6 @@ const BOUNDARIES: [&str; 22] = [
 	"main",
 	"nav",
 	"section",
-	"summary",
 	"table",
 	"tbody",
 	"td",
@@ -335,8 +333,32 @@ fn role(name: &str, attrs: &[(String, String)], parent: Option<&'static str>) ->
 			Role::Leaf("file", media_attrs(attrs, FILE_ATTRIBUTES))
 		}
 		"br" => Role::Break,
-		"span" if data_type == Some("mention") => Role::Atom("mention", atom_attrs(attrs)),
-		"span" if data_type == Some("emoji") => Role::Atom("emoji", atom_attrs(attrs)),
+		"details" if cfg!(feature = "details") => {
+			Role::Container(
+				"details",
+				Attrs::new().with("open", attr(attrs, "open").is_some()),
+			)
+		}
+		"summary" => Role::Text("detailsSummary", Attrs::new()),
+		"div" if data_type == Some("detailsContent") => {
+			Role::Container("detailsContent", Attrs::new())
+		}
+		"div" if cfg!(feature = "callout") && (attr(attrs, "data-callout-type").is_some()) => {
+			let kind = attr(attrs, "data-callout-type").unwrap_or("info");
+			Role::Container("callout", Attrs::new().with("type", kind))
+		}
+		"div" if cfg!(feature = "mathematics") && (data_type == Some("block-math")) => {
+			Role::Leaf("blockMath", atom_attrs(attrs))
+		}
+		"span" if cfg!(feature = "mathematics") && (data_type == Some("inline-math")) => {
+			Role::Atom("inlineMath", atom_attrs(attrs))
+		}
+		"span" if cfg!(feature = "mention") && (data_type == Some("mention")) => {
+			Role::Atom("mention", atom_attrs(attrs))
+		}
+		"span" if cfg!(feature = "emoji") && (data_type == Some("emoji")) => {
+			Role::Atom("emoji", atom_attrs(attrs))
+		}
 		_ => inline_role(name, attrs),
 	}
 }
@@ -409,12 +431,13 @@ pub(super) fn video_kind(_src: &str) -> Option<&'static str> {
 
 /// The `data-` attributes TipTap writes on inline atoms, and the attributes
 /// they hold.
-const ATOM_ATTRIBUTES: [(&str, &str); 5] = [
+const ATOM_ATTRIBUTES: [(&str, &str); 6] = [
 	("data-id", "id"),
 	("data-label", "label"),
 	("data-mention-suggestion-char", "mentionSuggestionChar"),
 	("data-name", "name"),
 	("data-emoji", "emoji"),
+	("data-latex", "latex"),
 ];
 
 fn atom_attrs(attrs: &[(String, String)]) -> Attrs {

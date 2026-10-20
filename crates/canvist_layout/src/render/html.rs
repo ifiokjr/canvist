@@ -115,12 +115,20 @@ impl Writer<'_> {
 	fn children(&mut self, parent: Option<&Block>, parent_style: Option<StyleId>, lists: usize) {
 		let doc = self.doc;
 		let marker = parent_style.and_then(|style| self.styles.get(style).marker);
+		let open = parent.is_none_or(|parent| crate::document::is_open(doc, parent));
+		let shown = if open { usize::MAX } else { 1 };
 		let mut previous_after = None;
 
-		for &id in doc.children(parent.map(Block::id)) {
+		for (index, &id) in doc
+			.children(parent.map(Block::id))
+			.iter()
+			.enumerate()
+			.take(shown)
+		{
 			let Some(block) = doc.block(id) else {
 				continue;
 			};
+			let marker = marker.filter(|&kind| kind != MarkerKind::Disclosure || index == 0);
 
 			let style = self
 				.styles
@@ -128,7 +136,14 @@ impl Writer<'_> {
 			let resolved = self.styles.get(style);
 			let margin = previous_after.map_or(0.0, |after: f32| after.max(resolved.space_before));
 			previous_after = Some(resolved.space_after);
-			let marker = marker.map(|kind| (kind, lists.saturating_sub(1)));
+			let marker = marker.map(|kind| {
+				let depth = if kind == MarkerKind::Disclosure {
+					usize::from(open)
+				} else {
+					lists.saturating_sub(1)
+				};
+				(kind, depth)
+			});
 			self.block(block, style, margin, marker, lists);
 		}
 	}
@@ -224,6 +239,8 @@ impl Writer<'_> {
 				MarkerKind::Bullet => write!(self.out, " cv-mk cv-mk-b{}", depth % bullets),
 				MarkerKind::Ordered => write!(self.out, " cv-mk cv-mk-o"),
 				MarkerKind::Task => write!(self.out, " cv-mk-t"),
+				// For a disclosure, the depth slot carries whether it is open.
+				MarkerKind::Disclosure => write!(self.out, " cv-mk cv-mk-d{depth}"),
 			};
 		}
 
@@ -636,6 +653,15 @@ fn marker_css(css: &mut String, theme: &Theme) {
 		 nowrap;{color}}}.cv-doc .cv-mk-o{{counter-increment:cv-n}}.cv-doc \
 		 .cv-mk-o::before{{content:counter(cv-n) \".\"}}"
 	);
+
+	for open in [false, true] {
+		let _ = write!(
+			css,
+			".cv-doc .cv-mk-d{}::before{{content:\"{}\"}}",
+			usize::from(open),
+			crate::document::disclosure(open)
+		);
+	}
 
 	for (index, bullet) in markers.bullets.iter().enumerate() {
 		let _ = write!(

@@ -268,6 +268,9 @@ pub enum MarkerKind {
 	Ordered,
 	/// A checkbox node-view slot reflecting the item's `checked` attribute.
 	Task,
+	/// `▾` beside an open container's first child, or `▸` when its `open`
+	/// attribute is `false`, as a `<details>` summary shows.
+	Disclosure,
 }
 
 /// How a leaf block (one with no content) is drawn.

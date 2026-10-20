@@ -90,6 +90,27 @@ final class BulletListHandle extends ExtensionHandle {
   Query<bool> isBulletList() => _query('isBulletList', (json) => json! as bool);
 }
 
+/// The commands and queries of `callout`.
+final class CalloutHandle extends ExtensionHandle {
+  CalloutHandle._(super.registration) : super._();
+
+  /// Wrap the selection in a callout, or lift it out of the callout around it.
+  ///
+  /// [type]: The callout type: info, warning, error, success, or blank. One of info, warning, error, success, blank.
+  Command toggleCallout({String? type}) =>
+      _command('toggleCallout', {'type': ?type});
+
+  /// Change the type of the callout around the selection.
+  ///
+  /// [type]: The callout type: info, warning, error, success, or blank. One of info, warning, error, success, blank.
+  Command setCalloutType({required String type}) =>
+      _command('setCalloutType', {'type': type});
+
+  /// The type of the callout around the selection, or null outside one.
+  Query<String?> calloutType() =>
+      _query('calloutType', (json) => json == null ? null : json as String);
+}
+
 /// The commands and queries of `characterCount`.
 final class CharacterCountHandle extends ExtensionHandle {
   CharacterCountHandle._(super.registration) : super._();
@@ -173,6 +194,24 @@ final class ColorHandle extends ExtensionHandle {
   /// The value every selected character shares, or null.
   Query<String?> color() =>
       _query('color', (json) => json == null ? null : json as String);
+}
+
+/// The commands and queries of `details`.
+final class DetailsHandle extends ExtensionHandle {
+  DetailsHandle._(super.registration) : super._();
+
+  /// Wrap the selected blocks in an open details block with an empty summary.
+  Command setDetails() => _command('setDetails', const {});
+
+  /// Replace the details around the selection with its summary and content.
+  Command unsetDetails() => _command('unsetDetails', const {});
+
+  /// Open the details around the selection, or close it.
+  Command toggleDetailsOpen() => _command('toggleDetailsOpen', const {});
+
+  /// Whether the details around the selection is open, or null outside one.
+  Query<bool?> detailsOpen() =>
+      _query('detailsOpen', (json) => json == null ? null : json as bool);
 }
 
 /// The commands and queries of `emoji`.
@@ -495,6 +534,23 @@ final class ListItemHandle extends ExtensionHandle {
   Command liftListItem() => _command('liftListItem', const {});
 }
 
+/// The commands and queries of `mathematics`.
+final class MathematicsHandle extends ExtensionHandle {
+  MathematicsHandle._(super.registration) : super._();
+
+  /// Insert an inline formula at the selection.
+  ///
+  /// [latex]: The formula, in LaTeX.
+  Command insertInlineMath({required String latex}) =>
+      _command('insertInlineMath', {'latex': latex});
+
+  /// Insert a block formula at the selection.
+  ///
+  /// [latex]: The formula, in LaTeX.
+  Command insertBlockMath({required String latex}) =>
+      _command('insertBlockMath', {'latex': latex});
+}
+
 /// The commands and queries of `mention`.
 final class MentionHandle extends ExtensionHandle {
   MentionHandle._(super.registration) : super._();
@@ -813,6 +869,14 @@ final class BulletListExtension extends Extension<BulletListHandle> {
       BulletListHandle._(registration);
 }
 
+/// Registers `callout`.
+final class CalloutExtension extends Extension<CalloutHandle> {
+  const CalloutExtension._() : super('callout');
+  @override
+  CalloutHandle _handle(Registration registration) =>
+      CalloutHandle._(registration);
+}
+
 /// Registers `characterCount`.
 final class CharacterCountExtension extends Extension<CharacterCountHandle> {
   const CharacterCountExtension._() : super('characterCount');
@@ -841,6 +905,14 @@ final class ColorExtension extends Extension<ColorHandle> {
   const ColorExtension._() : super('color');
   @override
   ColorHandle _handle(Registration registration) => ColorHandle._(registration);
+}
+
+/// Registers `details`.
+final class DetailsExtension extends Extension<DetailsHandle> {
+  const DetailsExtension._() : super('details');
+  @override
+  DetailsHandle _handle(Registration registration) =>
+      DetailsHandle._(registration);
 }
 
 /// Registers `emoji`.
@@ -957,6 +1029,14 @@ final class ListItemExtension extends Extension<ListItemHandle> {
   @override
   ListItemHandle _handle(Registration registration) =>
       ListItemHandle._(registration);
+}
+
+/// Registers `mathematics`.
+final class MathematicsExtension extends Extension<MathematicsHandle> {
+  const MathematicsExtension._() : super('mathematics');
+  @override
+  MathematicsHandle _handle(Registration registration) =>
+      MathematicsHandle._(registration);
 }
 
 /// Registers `mention`.
@@ -1088,6 +1168,9 @@ abstract final class Extensions {
   /// The `bulletList` extension.
   static const bulletList = BulletListExtension._();
 
+  /// The `callout` extension.
+  static const callout = CalloutExtension._();
+
   /// The `characterCount` extension.
   static const characterCount = CharacterCountExtension._();
 
@@ -1099,6 +1182,9 @@ abstract final class Extensions {
 
   /// The `color` extension.
   static const color = ColorExtension._();
+
+  /// The `details` extension.
+  static const details = DetailsExtension._();
 
   /// The `emoji` extension.
   static const emoji = EmojiExtension._();
@@ -1144,6 +1230,9 @@ abstract final class Extensions {
 
   /// The `listItem` extension.
   static const listItem = ListItemExtension._();
+
+  /// The `mathematics` extension.
+  static const mathematics = MathematicsExtension._();
 
   /// The `mention` extension.
   static const mention = MentionExtension._();
@@ -1215,10 +1304,12 @@ abstract final class Extensions {
     blockquote,
     bold,
     bulletList,
+    callout,
     characterCount,
     code,
     codeBlock,
     color,
+    details,
     emoji,
     file,
     fontFamily,
@@ -1234,6 +1325,7 @@ abstract final class Extensions {
     lineHeight,
     link,
     listItem,
+    mathematics,
     mention,
     orderedList,
     placeholder,

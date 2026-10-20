@@ -93,15 +93,27 @@ fn media(name: &str, attrs: &Attrs) -> String {
 		}
 		// A video that is not on its site was never embeddable; HTML drops
 		// its source too.
-		"youtube" | "twitch" if super::html_read::video_kind(text("src")) != Some(name) => {
+		"youtube" | "twitch"
+			if cfg!(any(feature = "youtube", feature = "twitch"))
+				&& super::html_read::video_kind(text("src")) != Some(name) =>
+		{
 			String::new()
 		}
-		"youtube" | "twitch" | "audio" => format!("[{0}]({0})", text("src")),
-		"file" => {
+		"youtube" | "twitch" | "audio"
+			if cfg!(any(
+				feature = "youtube",
+				feature = "twitch",
+				feature = "audio"
+			)) =>
+		{
+			format!("[{0}]({0})", text("src"))
+		}
+		"file" if cfg!(feature = "file") => {
 			// A link needs text to be read, and to be read back at all.
 			let name = Some(text("fileName")).filter(|name| !name.is_empty());
 			format!("[{}]({})", escape(name.unwrap_or(text("url"))), text("url"))
 		}
+		"blockMath" if cfg!(feature = "mathematics") => format!("$$\n{}\n$$", text("latex")),
 		_ => String::new(),
 	}
 }
@@ -157,6 +169,12 @@ fn container(
 ) -> String {
 	match name {
 		"blockquote" => prefix_lines(&blocks(schema, children, "\n\n"), "> ", ">"),
+		"callout" if cfg!(feature = "callout") => {
+			let alert = alert_of(attrs.get("type").and_then(Value::as_str).unwrap_or("info"));
+			let content = blocks(schema, children, "\n\n");
+			prefix_lines(&format!("[!{alert}]\n{content}"), "> ", ">")
+		}
+		"details" if cfg!(feature = "details") => details(schema, attrs, children),
 		"bulletList" => list(schema, children, |_| format!("{marker} ")),
 		"taskList" => {
 			list(schema, children, |item| {
@@ -176,6 +194,47 @@ fn container(
 		}
 		_ => blocks(schema, children, "\n\n"),
 	}
+}
+
+/// The GitHub alert for each callout type, and back.
+pub(super) const ALERTS: [(&str, &str); 5] = [
+	("info", "NOTE"),
+	("success", "TIP"),
+	("blank", "IMPORTANT"),
+	("warning", "WARNING"),
+	("error", "CAUTION"),
+];
+
+fn alert_of(kind: &str) -> &'static str {
+	ALERTS
+		.iter()
+		.find(|(callout, _)| *callout == kind)
+		.map_or("NOTE", |(_, alert)| alert)
+}
+
+/// Details as the `<details>` HTML GitHub renders, with the summary's text
+/// and the content as Markdown between blank lines.
+fn details(schema: &Schema, attrs: &Attrs, children: &[BlockTree]) -> String {
+	let open = attrs.get("open").and_then(Value::as_bool) == Some(true);
+	let summary = children
+		.first()
+		.and_then(|summary| {
+			match &summary.content {
+				TreeContent::Inline(text) => Some(super::tree::plain_text(schema, text)),
+				_ => None,
+			}
+		})
+		.unwrap_or_default();
+	let content = children
+		.get(1)
+		.map(|content| block(schema, content, '-'))
+		.unwrap_or_default();
+	let tag = if open { "<details open>" } else { "<details>" };
+
+	format!(
+		"{tag}\n<summary>{}</summary>\n\n{content}\n\n</details>",
+		super::html_write::escape(&summary)
+	)
 }
 
 /// Write list items, each starting with its marker and with continuation
@@ -268,6 +327,11 @@ const INLINE_TAGS: [&str; 4] = ["<sub>", "</sub>", "<sup>", "</sup>"];
 /// brackets, `==` (highlight), and `<` when it would open a tag the reader
 /// understands.
 fn escape(text: &str) -> String {
+	escape_with(text, false)
+}
+
+/// [`escape`], also escaping `$` when `math` says it delimits formulas.
+fn escape_with(text: &str, math: bool) -> String {
 	let mut escaped = String::with_capacity(text.len());
 
 	for (index, character) in text.char_indices() {
@@ -276,8 +340,9 @@ fn escape(text: &str) -> String {
 		let highlight = cfg!(feature = "highlight") && rest.starts_with("==");
 		let tag = cfg!(any(feature = "subscript", feature = "superscript"))
 			&& INLINE_TAGS.iter().any(|tag| rest.starts_with(tag));
+		let dollar = math && character == '$';
 
-		if delimiter || highlight || tag {
+		if delimiter || highlight || tag || dollar {
 			escaped.push('\\');
 		}
 
@@ -399,7 +464,9 @@ impl InlineWriter<'_> {
 		let escaped = if literal || self.in_code() {
 			core.to_owned()
 		} else {
-			escape(core)
+			let math =
+				cfg!(feature = "mathematics") && self.schema.embed_type("inlineMath").is_some();
+			escape_with(core, math)
 		};
 
 		self.out.push_str(&escaped);
@@ -431,7 +498,9 @@ fn inline(schema: &Schema, text: &InlineText) -> String {
 
 			Some(embed) => {
 				let text = super::tree::embed_text(schema, embed);
-				writer.write(&text, run.marks.as_slice(), false);
+				let literal = cfg!(feature = "mathematics")
+					&& schema.embed(embed.kind).name.as_ref() == "inlineMath";
+				writer.write(&text, run.marks.as_slice(), literal);
 			}
 			None => writer.write(run.text, run.marks.as_slice(), false),
 		}

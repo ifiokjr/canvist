@@ -43,7 +43,10 @@ pub(super) fn embed_text(schema: &Schema, embed: &Embed) -> String {
 			let label = text("label").or_else(|| text("id")).unwrap_or_default();
 			format!("{trigger}{label}")
 		}
-		"emoji" => {
+		"inlineMath" if cfg!(feature = "mathematics") => {
+			format!("${}$", text("latex").unwrap_or_default())
+		}
+		"emoji" if cfg!(feature = "emoji") => {
 			text("emoji").map_or_else(
 				|| {
 					text("name")

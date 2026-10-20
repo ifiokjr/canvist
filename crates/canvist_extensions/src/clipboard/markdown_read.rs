@@ -167,6 +167,8 @@ pub(super) fn starts_block(line: &str) -> bool {
 		|| is_rule(line)
 		|| quote(line).is_some()
 		|| item(line).is_some()
+		|| cfg!(feature = "mathematics") && line.trim() == "$$"
+		|| cfg!(feature = "details") && details_open(line).is_some()
 }
 
 /// Parse a run of lines into blocks.
@@ -274,6 +276,14 @@ fn block_at(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>) 
 
 	if quote(line).is_some() {
 		let inner: Vec<&str> = lines.iter().map_while(|line| quote(line)).collect();
+
+		if let Some(callout) = cfg!(feature = "callout")
+			.then(|| callout(build, &inner))
+			.flatten()
+		{
+			return (inner.len(), callout);
+		}
+
 		let children = blocks(build, &inner);
 		return (
 			inner.len(),
@@ -281,7 +291,92 @@ fn block_at(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>) 
 		);
 	}
 
+	if cfg!(feature = "mathematics") && line.trim() == "$$" {
+		return block_math(build, lines);
+	}
+
+	if let Some(open) = cfg!(feature = "details")
+		.then(|| details_open(line))
+		.flatten()
+	{
+		return details(build, lines, open);
+	}
+
 	list(build, lines)
+}
+
+/// A quote that starts with a GitHub alert such as `[!WARNING]`, as a
+/// callout of that type, when the schema has callouts.
+fn callout(build: &mut Builder<'_>, inner: &[&str]) -> Option<Vec<BlockTree>> {
+	build.schema.block_type("callout")?;
+	let alert = inner
+		.first()?
+		.trim()
+		.strip_prefix("[!")?
+		.strip_suffix(']')?;
+	let (kind, _) = super::markdown_write::ALERTS
+		.iter()
+		.find(|(_, name)| name.eq_ignore_ascii_case(alert))?;
+	let children = blocks(build, &inner[1..]);
+
+	Some(build.container("callout", &Attrs::new().with("type", *kind), children))
+}
+
+/// A `$$` block, through the next `$$` line, as a block formula.
+fn block_math(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>) {
+	let close = lines[1..]
+		.iter()
+		.position(|line| line.trim() == "$$")
+		.map_or(lines.len(), |index| index + 1);
+	let latex = lines[1..close.min(lines.len())].join("\n");
+	let used = (close + 1).min(lines.len());
+	let attrs = Attrs::new().with("latex", latex.as_str());
+	let tree = build.leaf("blockMath", &attrs).unwrap_or_else(|| {
+		let inline = parse_inline(build, &format!("$${latex}$$"));
+		build.text("paragraph", Attrs::new(), inline)
+	});
+
+	(used, vec![tree])
+}
+
+/// Whether `line` opens a `<details>` block, and if so whether it is open.
+fn details_open(line: &str) -> Option<bool> {
+	match line.trim() {
+		"<details>" => Some(false),
+		"<details open>" => Some(true),
+		_ => None,
+	}
+}
+
+/// A `<details>` block as GitHub writes it: an optional `<summary>` line,
+/// then Markdown content, through the closing `</details>`.
+fn details(build: &mut Builder<'_>, lines: &[&str], open: bool) -> (usize, Vec<BlockTree>) {
+	let close = lines[1..]
+		.iter()
+		.position(|line| line.trim() == "</details>")
+		.map_or(lines.len(), |index| index + 1);
+	let inner = &lines[1..close.min(lines.len())];
+	let summary_text = inner.first().and_then(|line| {
+		line.trim()
+			.strip_prefix("<summary>")?
+			.strip_suffix("</summary>")
+	});
+	let body = if summary_text.is_some() {
+		&inner[1..]
+	} else {
+		inner
+	};
+	let summary_inline = parse_inline(build, summary_text.unwrap_or_default());
+	let summary = build.text("detailsSummary", Attrs::new(), summary_inline);
+	let content = blocks(build, body);
+	let content = build.container("detailsContent", &Attrs::new(), content);
+	let children = std::iter::once(summary).chain(content).collect();
+	let used = (close + 1).min(lines.len());
+
+	(
+		used,
+		build.container("details", &Attrs::new().with("open", open), children),
+	)
 }
 
 fn code_block(

@@ -59,7 +59,7 @@ const STARTER_KIT: [&str; 17] = [
 
 /// Extensions beyond the StarterKit, compiled with the `extras` feature.
 #[cfg(feature = "extras")]
-const EXTRA: [&str; 21] = [
+const EXTRA: [&str; 24] = [
 	"subscript",
 	"superscript",
 	"highlight",
@@ -81,6 +81,9 @@ const EXTRA: [&str; 21] = [
 	"twitch",
 	"audio",
 	"file",
+	"details",
+	"callout",
+	"mathematics",
 ];
 
 #[cfg(not(feature = "extras"))]
@@ -222,8 +225,10 @@ impl Extensions {
 fn register_extra(builder: &mut EditorBuilder, name: &str) {
 	use canvist_extensions::Audio;
 	use canvist_extensions::BackgroundColor;
+	use canvist_extensions::Callout;
 	use canvist_extensions::CharacterCount;
 	use canvist_extensions::Color;
+	use canvist_extensions::Details;
 	use canvist_extensions::Emoji;
 	use canvist_extensions::File;
 	use canvist_extensions::FontFamily;
@@ -232,6 +237,7 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 	use canvist_extensions::Highlight;
 	use canvist_extensions::Image;
 	use canvist_extensions::LineHeight;
+	use canvist_extensions::Mathematics;
 	use canvist_extensions::Mention;
 	use canvist_extensions::Placeholder;
 	use canvist_extensions::Subscript;
@@ -305,6 +311,15 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 		}
 		"file" => {
 			builder.add(File);
+		}
+		"details" => {
+			builder.add(Details);
+		}
+		"callout" => {
+			builder.add(Callout);
+		}
+		"mathematics" => {
+			builder.add(Mathematics);
 		}
 		_ => unreachable!("`Extensions::parse` admits only known names"),
 	}

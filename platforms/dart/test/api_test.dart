@@ -95,6 +95,29 @@ void main() {
     expect(doc.export(Format.text), 'Hi @Ada ');
   });
 
+  test('block extensions open, type, and write formulas', () async {
+    final builder = EngineBuilder();
+    final details = builder.add(Extensions.details);
+    final callout = builder.add(Extensions.callout);
+    final math = builder.add(Extensions.mathematics);
+    final engine = await builder.build();
+    final doc = engine.create()..typeText('Careful');
+
+    expect(doc.run(callout.toggleCallout(type: 'warning')), isTrue);
+    expect(doc.query(callout.calloutType()), 'warning');
+    expect(doc.run(callout.toggleCallout()), isTrue);
+    expect(doc.query(callout.calloutType()), isNull);
+
+    expect(doc.run(details.setDetails()), isTrue);
+    expect(doc.query(details.detailsOpen()), isTrue);
+    doc.run(details.toggleDetailsOpen());
+    expect(doc.query(details.detailsOpen()), isFalse);
+    doc.run(details.unsetDetails());
+
+    doc.run(math.insertInlineMath(latex: 'x^2'));
+    expect(doc.export(Format.markdown), r'$x^2$Careful');
+  });
+
   test('a handle from one engine is refused by another', () async {
     final (:engine, kit: _) = await Engine.starterKit();
     final other = EngineBuilder();
