@@ -135,6 +135,11 @@ path = "crates/canvist_collab"
 
 [package.canvist_headless]
 path = "crates/canvist_headless"
+# The `canvist` Dart package's Rust crate builds from crates.io outside this
+# workspace, so it pins the release it was generated against.
+versioned_files = [
+	{ path = "platforms/dart/rust/Cargo.toml", type = "cargo", fields = ["dependencies"], prefix = "=" },
+]
 
 # The canvas: canvist's design-tool sibling of the text editor
 # (`docs/internal/canvas.md`).
@@ -217,10 +222,10 @@ type = "npm"
 path = "packages/canvist-vue"
 type = "npm"
 
-# Dart packages. `mode = "external"` keeps them out of release publishing (the
-# build hook's Rust crate still resolves through the Cargo workspace, which a
-# pub.dev archive cannot include) while placeholder publishing still reserves
-# the names on pub.dev.
+# Dart packages. `mode = "external"` leaves publishing them to the `pub` job
+# in `publish.yml`, which runs after crates.io has the crates the `canvist`
+# build hook compiles (its Rust crate pins them through `canvist_headless`'s
+# versioned file). Placeholder publishing still reserves the names on pub.dev.
 [package."canvist-dart"]
 path = "platforms/dart"
 type = "dart"

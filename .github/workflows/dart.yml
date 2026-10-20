@@ -82,3 +82,60 @@ jobs:
           for attempt in $(seq 50); do curl --silent --fail localhost:8799/rooms/ping > /dev/null && break; sleep 0.2; done
           test "$(curl --silent -X POST 'localhost:8799/convert?from=markdown&to=html' -d '# Hi')" = '<h1>Hi</h1>'
           kill %1
+
+  publish:
+    # Both packages as pub.dev would receive them. `pub publish --dry-run`
+    # validates each archive, and the `canvist` archive is then built and
+    # tested outside this repository, where its build hook cannot see the
+    # Cargo workspace: only the crates.io dependencies its manifest names.
+    name: pub.dev archives
+    timeout-minutes: 40
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain
+        working-directory: platforms/dart/rust
+        run: rustup toolchain install
+
+      - name: setup flutter
+        uses: kuhnroyal/flutter-fvm-config-action/setup@v3
+        with:
+          path: platforms/flutter/.fvmrc
+
+      - name: each package ships the repository's license
+        run: |
+          cmp ../../license LICENSE
+          cmp ../../license ../flutter/LICENSE
+
+      - name: canvist publishes cleanly
+        run: |
+          dart pub get
+          dart pub publish --dry-run
+
+      - name: canvist_flutter publishes cleanly
+        working-directory: platforms/flutter
+        run: |
+          flutter pub get
+          flutter pub publish --dry-run
+
+      # pub archives what git tracks, minus ignored files. The crates.io
+      # release this version pins does not exist until the release publishes
+      # it, so the copy builds those crates from this checkout through a Cargo
+      # config patch, never through the workspace.
+      - name: the canvist archive builds and passes its tests on its own
+        run: |
+          set -euo pipefail
+          package="$RUNNER_TEMP/archive/canvist"
+          mkdir -p "$package/.cargo"
+          git ls-files -z . | xargs -0 cp --parents --target-directory="$package"
+          cat > "$package/.cargo/config.toml" <<TOML
+          [patch.crates-io]
+          canvist_headless = { path = "$GITHUB_WORKSPACE/crates/canvist_headless" }
+          TOML
+          cd "$package"
+          dart pub get
+          # The conformance fixtures live at the repository root, outside the
+          # package.
+          dart test --reporter expanded test/api_test.dart test/server_test.dart

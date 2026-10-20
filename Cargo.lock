@@ -513,7 +513,7 @@ dependencies = [
 
 [[package]]
 name = "canvist_dart"
-version = "0.1.1"
+version = "0.0.0"
 dependencies = [
  "canvist_headless",
  "flutter_rust_bridge",
