@@ -213,6 +213,28 @@ console.log(doc.query.fontSize());
 // 20px
 ```
 
+### Text alignment
+
+Left, centred, right, and justified text. Text alignment adds a `textAlign` attribute to paragraphs and headings (in Rust, `TextAlign { types }` picks other text blocks). The canvas aligns the lines, and justified lines widen their spaces, except the last line of a paragraph. HTML writes TipTap's `style="text-align: center"` and reads it back; Markdown has no alignment, so it's dropped there. An unset alignment follows the text: left, or right for right-to-left paragraphs.
+
+| Commands                                                                          | Queries     | Keys                                   |
+| --------------------------------------------------------------------------------- | ----------- | -------------------------------------- |
+| `setTextAlign({ alignment })`, `toggleTextAlign({ alignment })`, `unsetTextAlign` | `textAlign` | `Mod-Shift-l`, `e`, `r`, `j` (justify) |
+
+`alignment` is `left`, `center`, `right`, or `justify`, and `textAlign` answers the alignment every selected block shares, or `null`.
+
+```ts
+import { createEngine, heading, textAlign } from "@canvist/headless";
+
+const doc = (await createEngine([heading, textAlign])).parse(
+	"markdown",
+	"# Title",
+);
+doc.commands.setTextAlign({ alignment: "center" });
+console.log(doc.export("html"));
+// <h1 style="text-align: center">Title</h1>
+```
+
 ## Blocks
 
 ### Heading
@@ -386,11 +408,71 @@ Undo and redo. Without it, `undo()` and `redo()` still work from code; History a
 
 Keeps an empty paragraph at the end of the document, so there's always somewhere to type below a list, quote, or code block. It has no commands.
 
+### Typography
+
+Smart punctuation as you type, with TipTap's rules plus Remirror's double arrow. It has no commands or keys. Backspace straight after a replacement puts back what you typed, and rules never run in code blocks.
+
+| Typing                       | Becomes                      | Typing                       | Becomes            |
+| ---------------------------- | ---------------------------- | ---------------------------- | ------------------ |
+| `"quote"`, `'quote'`, `it's` | `“quote”`, `‘quote’`, `it’s` | `--`, `...`                  | `—`, `…`           |
+| `->`, `<-`, `<->`            | `→`, `←`, `↔`                | `(c)`, `(tm)`, `(sm)`, `(r)` | `©`, `™`, `℠`, `®` |
+| `1/2`, `1/4`, `3/4`          | `½`, `¼`, `¾`                | `+/-`, `!=`                  | `±`, `≠`           |
+| `<<`, `>>`                   | `«`, `»`                     | `2x3`, `x^2`, `x^3`          | `2×3`, `x²`, `x³`  |
+
+Fractions, `2x3`, `^2`, and `^3` change when you type the space or punctuation after them: canvist never runs rules on letters and digits, which keeps typing fast. In Rust, `Typography::default().without(&["emDash"]).with_output("laquo", "‹")` turns off or rewords a rule, by TipTap's option names.
+
+```ts
+import { createEngine, typography } from "@canvist/headless";
+
+const doc = (await createEngine([typography])).create();
+doc.typeText('"Wait" -- it\'s 1/2 done...');
+console.log(doc.export("text"));
+// “Wait” — it’s ½ done…
+```
+
+### Character count
+
+Counts characters and words, and with a limit, refuses edits that would take the document past it. A character is what a reader sees as one, so `👍🏽` counts once; TipTap counts UTF-16 code units. Inline embeds count as none. A paste that would overflow the limit is refused whole, and deleting always works, even in a document already over the limit.
+
+| Commands                       | Queries                                 |
+| ------------------------------ | --------------------------------------- |
+| `setCharacterLimit({ limit })` | `characters`, `words`, `characterLimit` |
+
+`limit` is a number, or `null` for no limit. In Rust, `CharacterCount { limit: Some(280) }` sets the starting limit.
+
+```ts
+import { characterCount, createEngine } from "@canvist/headless";
+
+const doc = (await createEngine([characterCount])).create();
+doc.commands.setCharacterLimit({ limit: 5 });
+doc.typeText("Hello, world");
+console.log(doc.export("text"), doc.query.characters());
+// Hello 5
+```
+
+### Placeholder
+
+Hint text, such as "Write something …", in empty blocks. The placeholder isn't part of the document: the canvas draws it in the block in a faded text colour. By default only the empty block holding the caret shows it, and only at the top level, as in TipTap. In Rust, `Placeholder { text, show_only_current, include_children }` changes that, and `PlaceholderHandle::placeholders` lists the blocks to pass to `DisplayOptions::placeholder`.
+
+| Commands                          | Queries       |
+| --------------------------------- | ------------- |
+| `setPlaceholder({ placeholder })` | `placeholder` |
+
+`placeholder` answers the text the caret's block shows, or `null`.
+
+```ts
+import { createEngine, placeholder } from "@canvist/headless";
+
+const doc = (await createEngine([placeholder])).create();
+doc.commands.setPlaceholder({ placeholder: "Tell a story" });
+console.log(doc.query.placeholder());
+// Tell a story
+```
+
 ## Coming soon
 
 These extensions are planned, in roughly this order. Each will follow the same pattern: typed commands, queries, and TipTap-compatible JSON.
 
-- **Text alignment, typography, character count, and placeholders.**
 - **Mentions, hashtags, and emoji,** on one shared suggestion system.
 - **Images, details, callouts, and math,** plus video, audio, and file attachments.
 - **Tables:** merged cells, header rows and columns, and cell navigation.

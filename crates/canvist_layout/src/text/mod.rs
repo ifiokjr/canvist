@@ -61,6 +61,38 @@ impl RunStyle {
 	}
 }
 
+/// Where lines sit in the content box, from a block's `textAlign`
+/// attribute.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum Align {
+	/// The paragraph's start edge: left, or right for right-to-left text.
+	#[default]
+	Start,
+	/// The left edge.
+	Left,
+	/// Centred.
+	Center,
+	/// The right edge.
+	Right,
+	/// Both edges, by widening spaces on every line that wraps; the last
+	/// line and lines ending in a forced break align to the start.
+	Justify,
+}
+
+impl Align {
+	/// The alignment a `textAlign` attribute value names, TipTap's `left`,
+	/// `center`, `right`, or `justify`.
+	pub(crate) fn from_attr(value: Option<&str>) -> Self {
+		match value {
+			Some("left") => Self::Left,
+			Some("center") => Self::Center,
+			Some("right") => Self::Right,
+			Some("justify") => Self::Justify,
+			_ => Self::Start,
+		}
+	}
+}
+
 /// A run of one item on one line, positioned in visual order.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Piece {
@@ -112,12 +144,18 @@ pub(crate) struct TextLayout {
 	pub(crate) rtl: bool,
 	/// Whether lines were reordered for bidi.
 	pub(crate) bidi: bool,
+	/// How lines sit in the content box.
+	pub(crate) align: Align,
 }
 
 /// A block whose measurements have been queued.
 pub(crate) enum Draft {
 	/// The whole block is laid out from scratch.
-	Full { text: Arc<str>, itemized: Itemized },
+	Full {
+		text: Arc<str>,
+		itemized: Itemized,
+		align: Align,
+	},
 	/// Only the part around an edit is laid out again.
 	Partial(incremental::Partial),
 }
@@ -127,6 +165,8 @@ pub(crate) struct Block<'a> {
 	pub(crate) base: &'a TextStyle,
 	pub(crate) inline: &'a InlineText,
 	pub(crate) direction: Direction,
+	/// How lines sit in the content box.
+	pub(crate) align: Align,
 	/// The content width lines will be broken to.
 	pub(crate) width: f32,
 	/// The block's previous layout and the edit since, when it has one.
@@ -140,11 +180,13 @@ pub(crate) fn prepare(context: &mut ItemContext<'_>, block: Block<'_>) -> Draft 
 		base,
 		inline,
 		direction,
+		align,
 		width,
 		previous,
 	} = block;
-	let partial =
-		previous.and_then(|previous| incremental::prepare(context, base, inline, previous, width));
+	let partial = previous
+		.filter(|previous| previous.layout.align == align)
+		.and_then(|previous| incremental::prepare(context, base, inline, previous, width));
 
 	if let Some(partial) = partial {
 		return partial;
@@ -159,6 +201,7 @@ pub(crate) fn prepare(context: &mut ItemContext<'_>, block: Block<'_>) -> Draft 
 	Draft::Full {
 		text: Arc::from(inline.as_str()),
 		itemized,
+		align,
 	}
 }
 
@@ -169,8 +212,12 @@ pub(crate) fn finish(
 	width: f32,
 	tab_size: u32,
 ) -> Result<TextLayout, LayoutError> {
-	let (text, itemized) = match draft {
-		Draft::Full { text, itemized } => (text, itemized),
+	let (text, itemized, align) = match draft {
+		Draft::Full {
+			text,
+			itemized,
+			align,
+		} => (text, itemized, align),
 		Draft::Partial(partial) => return incremental::finish(partial, cache, tab_size),
 	};
 
@@ -198,6 +245,7 @@ pub(crate) fn finish(
 		height: 0.0,
 		rtl,
 		bidi,
+		align,
 	};
 
 	layout.stack_lines(raw, bidi);
@@ -303,12 +351,20 @@ impl TextLayout {
 	fn place(&self, strut: (f32, f32), line: &mut Line) {
 		let total: f32 = line.pieces.iter().map(|piece| piece.width).sum();
 		let hang = hanging_width(&self.text, &self.items, line);
-		let mut x = if self.rtl { self.width - total } else { 0.0 };
+		let (mut x, gap) = self.alignment(line, total, hang);
+		let content_end = content_end(&self.text, &line.range);
 		let (mut above, mut below) = strut;
 
 		for piece in &mut line.pieces {
 			piece.x = x;
 			x += piece.width;
+
+			if gap > 0.0 {
+				let widened =
+					gap * justifiable_spaces(&self.text, &piece.range, content_end) as f32;
+				piece.width += widened;
+				x += widened;
+			}
 
 			let item = &self.items[piece.item as usize];
 
@@ -326,6 +382,65 @@ impl TextLayout {
 		line.baseline = snap(above);
 		line.height = snap(above + below);
 	}
+
+	/// Where `line`'s first piece starts, and the extra width each space
+	/// gets when the line is justified.
+	///
+	/// White space hanging at the line's logical end is left out of the
+	/// width being aligned, as CSS Text 3 says. It sits at the visual right
+	/// of left-to-right lines and the visual left of right-to-left ones.
+	fn alignment(&self, line: &Line, total: f32, hang: f32) -> (f32, f32) {
+		let content = (total - hang).max(0.0);
+		let free = (self.width - content).max(0.0);
+		let leading_hang = if self.rtl { hang } else { 0.0 };
+		let start = if self.rtl { Align::Right } else { Align::Left };
+
+		let align = match self.align {
+			Align::Start => return (if self.rtl { self.width - total } else { 0.0 }, 0.0),
+			Align::Justify if line.soft => {
+				let end = content_end(&self.text, &line.range);
+				let spaces = justifiable_spaces(&self.text, &line.range, end);
+
+				if spaces > 0 {
+					return (-leading_hang, free / spaces as f32);
+				}
+
+				start
+			}
+			Align::Justify => start,
+			other => other,
+		};
+
+		let visible_left = match align {
+			Align::Center => free / 2.0,
+			Align::Right => free,
+			_ => 0.0,
+		};
+
+		(visible_left - leading_hang, 0.0)
+	}
+}
+
+/// Where the content of the line covering `range` ends: before the white
+/// space and forced break hanging at its end.
+fn content_end(text: &str, range: &Range<u32>) -> usize {
+	range.start as usize + slice(text, range).trim_end_matches([' ', '\n']).len()
+}
+
+/// How many spaces in `range`, part of a line whose content ends at
+/// `content_end`, widen to justify it: every space except the hanging ones.
+fn justifiable_spaces(text: &str, range: &Range<u32>, content_end: usize) -> usize {
+	let start = range.start as usize;
+	let end = (range.end as usize).min(content_end);
+
+	if start >= end {
+		return 0;
+	}
+
+	text[start..end]
+		.bytes()
+		.filter(|&byte| byte == b' ')
+		.count()
 }
 
 /// Pieces of every item intersecting `range`, in logical order.

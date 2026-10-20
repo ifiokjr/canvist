@@ -281,14 +281,26 @@ const BOUNDARIES: [&str; 22] = [
 	"tr",
 ];
 
+/// A text block's attributes from its `style`: TipTap's text alignment.
+fn text_block_attrs(attrs: &[(String, String)]) -> Attrs {
+	let style = attr(attrs, "style").unwrap_or_default();
+
+	match css_value(style, "text-align") {
+		Some(align @ ("left" | "center" | "right" | "justify")) if cfg!(feature = "text-align") => {
+			Attrs::new().with("textAlign", align)
+		}
+		_ => Attrs::new(),
+	}
+}
+
 fn role(name: &str, attrs: &[(String, String)], parent: Option<&'static str>) -> Role {
 	let data_type = attr(attrs, "data-type");
 
 	match name {
-		"p" => Role::Text("paragraph", Attrs::new()),
+		"p" => Role::Text("paragraph", text_block_attrs(attrs)),
 		"h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
 			let level = i64::from(name.as_bytes()[1] - b'0');
-			Role::Text("heading", Attrs::new().with("level", level))
+			Role::Text("heading", text_block_attrs(attrs).with("level", level))
 		}
 		"pre" => Role::Text("codeBlock", Attrs::new()),
 		"blockquote" => Role::Container("blockquote", Attrs::new()),

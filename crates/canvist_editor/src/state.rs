@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use canvist_model::Attrs;
 use canvist_model::Bias;
 use canvist_model::BlockId;
 use canvist_model::BlockTree;
@@ -94,6 +95,7 @@ struct Transient {
 	composition: Option<Composition>,
 	goal: Option<f32>,
 	affinity: Affinity,
+	settings: Attrs,
 }
 
 /// A document, its selection, and the transient state commands consult.
@@ -111,6 +113,7 @@ pub struct EditorState {
 	composition: Option<Composition>,
 	goal: Option<f32>,
 	affinity: Affinity,
+	settings: Attrs,
 }
 
 impl EditorState {
@@ -125,6 +128,7 @@ impl EditorState {
 			composition: None,
 			goal: None,
 			affinity: Affinity::Downstream,
+			settings: Attrs::new(),
 		};
 
 		if state.doc.children(None).is_empty() {
@@ -133,6 +137,16 @@ impl EditorState {
 		}
 
 		Ok(state)
+	}
+
+	/// Settings extensions keep per editor, such as a character limit or a
+	/// placeholder, changed by commands with
+	/// [`EditorTransaction::set_setting`]. They are not part of the
+	/// document, its history, or collaboration, and an absent setting means
+	/// the extension's configured default.
+	#[must_use]
+	pub fn settings(&self) -> &Attrs {
+		&self.settings
 	}
 
 	/// The document.
@@ -305,6 +319,7 @@ impl EditorState {
 			composition: self.composition,
 			goal: self.goal,
 			affinity: self.affinity,
+			settings: self.settings.clone(),
 		}
 	}
 
@@ -314,6 +329,7 @@ impl EditorState {
 		self.composition = saved.composition;
 		self.goal = saved.goal;
 		self.affinity = saved.affinity;
+		self.settings = saved.settings;
 	}
 
 	/// The one place where a commit becomes the new state.
@@ -337,6 +353,10 @@ impl EditorState {
 					.and_then(|composition| composition.map(&commit))
 			}
 		};
+
+		for (key, value) in effects.settings.iter() {
+			self.settings.set(key, value.clone());
+		}
 
 		let unchanged = commit.is_empty() && self.selection == selection_before;
 

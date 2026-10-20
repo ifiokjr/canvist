@@ -543,6 +543,7 @@ dependencies = [
  "insta",
  "proptest",
  "serde_json",
+ "unicode-segmentation",
 ]
 
 [[package]]

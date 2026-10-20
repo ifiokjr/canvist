@@ -1,0 +1,40 @@
+//! Every extension beyond the StarterKit, for apps that want them all.
+
+use std::sync::Arc;
+
+use canvist_editor::Extension;
+
+/// Every extension beyond the StarterKit, each with its default
+/// configuration, ready to add after
+/// [`StarterKit::extensions`](crate::StarterKit::extensions).
+///
+/// ```
+/// use canvist_editor::Editor;
+/// use canvist_extensions::StarterKit;
+///
+/// let editor = Editor::builder()
+/// 	.extensions(StarterKit::default().extensions())
+/// 	.extensions(canvist_extensions::extras())
+/// 	.build()?;
+///
+/// assert!(editor.schema().mark_type("highlight").is_some());
+/// # Ok::<(), canvist_editor::EditorError>(())
+/// ```
+#[must_use]
+pub fn extras() -> Vec<Arc<dyn Extension>> {
+	vec![
+		Arc::new(crate::Subscript),
+		Arc::new(crate::Superscript),
+		Arc::new(crate::Highlight::default()),
+		Arc::new(crate::TextStyle),
+		Arc::new(crate::Color),
+		Arc::new(crate::BackgroundColor),
+		Arc::new(crate::FontFamily),
+		Arc::new(crate::FontSize),
+		Arc::new(crate::LineHeight),
+		Arc::new(crate::TextAlign::default()),
+		Arc::new(crate::Typography::default()),
+		Arc::new(crate::CharacterCount::default()),
+		Arc::new(crate::Placeholder::default()),
+	]
+}

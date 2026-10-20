@@ -88,6 +88,14 @@ pub trait Extension: Send + Sync {
 	fn after_update(&self, _state: &mut EditorState, _update: &Update) -> CommandResult {
 		Ok(None)
 	}
+
+	/// Whether a local update, fix-ups included, may stand. Returning
+	/// `false` undoes it, and the command reports that it did not apply, as
+	/// TipTap's `filterTransaction` does; a character limit uses it to
+	/// refuse text past the limit. `state` is the state after the update.
+	fn allows(&self, _state: &EditorState, _update: &Update) -> bool {
+		true
+	}
 }
 
 /// Look up a block type an extension depends on.

@@ -13,7 +13,10 @@ use canvist_editor::Command;
 use canvist_editor::Editor;
 use canvist_editor::EditorError;
 use canvist_editor::Env;
+use canvist_extensions::Alignment;
 use canvist_extensions::BackgroundColor;
+use canvist_extensions::CharacterCount;
+use canvist_extensions::CharacterCountHandle;
 use canvist_extensions::Color;
 use canvist_extensions::FontFamily;
 use canvist_extensions::FontSize;
@@ -21,12 +24,17 @@ use canvist_extensions::Highlight;
 use canvist_extensions::HighlightHandle;
 use canvist_extensions::LineHeight;
 use canvist_extensions::MarkHandle;
+use canvist_extensions::Placeholder;
+use canvist_extensions::PlaceholderHandle;
 use canvist_extensions::StarterKit;
 use canvist_extensions::StyleAttrHandle;
 use canvist_extensions::Subscript;
 use canvist_extensions::Superscript;
+use canvist_extensions::TextAlign;
+use canvist_extensions::TextAlignHandle;
 use canvist_extensions::TextStyle;
 use canvist_extensions::TextStyleHandle;
+use canvist_extensions::Typography;
 use canvist_model::Attrs;
 use insta::assert_json_snapshot;
 use support::Typist;
@@ -43,6 +51,9 @@ struct Extras {
 	font_family: StyleAttrHandle,
 	font_size: StyleAttrHandle,
 	line_height: StyleAttrHandle,
+	text_align: TextAlignHandle,
+	character_count: CharacterCountHandle,
+	placeholder: PlaceholderHandle,
 }
 
 /// The StarterKit plus every other extension, built through the typed path.
@@ -59,7 +70,11 @@ fn full() -> (Editor, Extras) {
 		font_family: builder.add(FontFamily),
 		font_size: builder.add(FontSize),
 		line_height: builder.add(LineHeight),
+		text_align: builder.add(TextAlign::default()),
+		character_count: builder.add(CharacterCount::default()),
+		placeholder: builder.add(Placeholder::default()),
 	};
+	builder.add(Typography::default());
 
 	(builder.build().expect("every extension builds"), extras)
 }
@@ -188,6 +203,27 @@ fn typed_handles_and_named_commands_agree() {
 		"setLineHeight",
 		&Attrs::new().with("lineHeight", "1.8"),
 	);
+	same_as_named(
+		|kit| kit.text_align.set(Alignment::Center),
+		"setTextAlign",
+		&Attrs::new().with("alignment", "center"),
+	);
+	same_as_named(
+		|kit| kit.text_align.toggle(Alignment::Justify),
+		"toggleTextAlign",
+		&Attrs::new().with("alignment", "justify"),
+	);
+	same_as_named(|kit| kit.text_align.unset(), "unsetTextAlign", &none);
+	same_as_named(
+		|kit| kit.character_count.set_limit(Some(3)),
+		"setCharacterLimit",
+		&Attrs::new().with("limit", 3),
+	);
+	same_as_named(
+		|kit| kit.placeholder.set("Say hi"),
+		"setPlaceholder",
+		&Attrs::new().with("placeholder", "Say hi"),
+	);
 }
 
 #[test]
@@ -214,6 +250,21 @@ fn typed_queries_read_what_commands_set() {
 	assert!(kit.highlight.is_active(editor.state()));
 	assert!(kit.subscript.is_active(editor.state()));
 	assert!(!kit.superscript.is_active(editor.state()));
+
+	editor
+		.run(&kit.text_align.set(Alignment::Right), &mut env())
+		.expect("align");
+	assert_eq!(
+		kit.text_align.alignment(editor.state()),
+		Some(Alignment::Right)
+	);
+	assert_eq!(kit.character_count.characters(editor.state()), 3);
+	assert_eq!(kit.character_count.words(editor.state()), 1);
+	assert_eq!(kit.character_count.limit(editor.state()), None);
+	assert!(
+		kit.placeholder.placeholders(editor.state()).is_empty(),
+		"the block has text"
+	);
 }
 
 #[test]

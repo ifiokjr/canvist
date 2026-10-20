@@ -1,0 +1,89 @@
+{
+	"description": "Editing helpers beyond the StarterKit: text alignment, typography, character counts and limits, and placeholders.",
+	"cases": [
+		{
+			"name": "aligns text with keys and commands and writes it to HTML",
+			"requires": ["extensions"],
+			"extensions": ["textAlign"],
+			"input": { "format": "markdown", "content": "## Title\n\nBody" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 0 } },
+				{ "op": "press", "key": "Mod-Shift-e" },
+				{ "op": "query", "query": "textAlign", "expect": "center" },
+				{ "op": "selectAll" },
+				{ "op": "query", "query": "textAlign", "expect": null },
+				{ "op": "run", "command": "setTextAlign", "args": { "alignment": "right" }, "applied": true },
+				{ "op": "query", "query": "textAlign", "expect": "right" },
+				{ "op": "run", "command": "setTextAlign", "args": { "alignment": "middle" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "toggleTextAlign", "args": { "alignment": "right" }, "applied": true }
+			],
+			"expect": { "html": "<h2>Title</h2><p>Body</p>" }
+		},
+		{
+			"name": "reads alignment from pasted HTML",
+			"requires": ["extensions"],
+			"extensions": ["textAlign"],
+			"input": { "format": "html", "content": "<h2 style=\"text-align:justify\">Title</h2><p style=\"color: red; text-align: center\">Body</p>" },
+			"expect": {
+				"html": "<h2 style=\"text-align: justify\">Title</h2><p style=\"text-align: center\">Body</p>",
+				"json": {
+					"type": "doc",
+					"content": [
+						{ "type": "heading", "attrs": { "level": 2, "textAlign": "justify" }, "content": [{ "type": "text", "text": "Title" }] },
+						{ "type": "paragraph", "attrs": { "textAlign": "center" }, "content": [{ "type": "text", "text": "Body" }] }
+					]
+				}
+			}
+		},
+		{
+			"name": "typography curls quotes and replaces dashes, fractions, and symbols",
+			"requires": ["extensions"],
+			"extensions": ["typography"],
+			"steps": [
+				{ "op": "typeText", "text": "\"Wait\" -- it's 1/2 (c) 2x3 -> x^2 " }
+			],
+			"expect": { "text": "“Wait” — it’s ½ © 2×3 → x² " }
+		},
+		{
+			"name": "Backspace after a typography rule puts back what was typed",
+			"requires": ["extensions"],
+			"extensions": ["typography"],
+			"steps": [
+				{ "op": "typeText", "text": "a--" },
+				{ "op": "press", "key": "Backspace" }
+			],
+			"expect": { "text": "a--" }
+		},
+		{
+			"name": "counts characters and words and refuses typing past a limit",
+			"requires": ["extensions"],
+			"extensions": ["characterCount"],
+			"steps": [
+				{ "op": "query", "query": "characterLimit", "expect": null },
+				{ "op": "run", "command": "setCharacterLimit", "args": { "limit": 9 }, "applied": true },
+				{ "op": "query", "query": "characterLimit", "expect": 9 },
+				{ "op": "typeText", "text": "two words and more" },
+				{ "op": "query", "query": "characters", "expect": 9 },
+				{ "op": "query", "query": "words", "expect": 2 },
+				{ "op": "can", "command": "setCharacterLimit", "args": { "limit": null }, "expect": true },
+				{ "op": "run", "command": "setCharacterLimit", "args": { "limit": -1 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setCharacterLimit", "args": { "limit": null }, "applied": true },
+				{ "op": "typeText", "text": "!" }
+			],
+			"expect": { "text": "two words!" }
+		},
+		{
+			"name": "shows a placeholder in the caret's empty block",
+			"requires": ["extensions"],
+			"extensions": ["placeholder"],
+			"steps": [
+				{ "op": "query", "query": "placeholder", "expect": "Write something …" },
+				{ "op": "run", "command": "setPlaceholder", "args": { "placeholder": "Say hello" }, "applied": true },
+				{ "op": "query", "query": "placeholder", "expect": "Say hello" },
+				{ "op": "typeText", "text": "hi" },
+				{ "op": "query", "query": "placeholder", "expect": null }
+			],
+			"expect": { "text": "hi" }
+		}
+	]
+}

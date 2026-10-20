@@ -40,7 +40,7 @@
 		"dev": "vite --config tests/vite.config.ts",
 		"build": "tsc -p tsconfig.build.json",
 		"prepack": "npm run build",
-		"size": "vite build --config tests/bundle/vite.config.ts --logLevel error && node scripts/bundle-size.ts --budget 352000"
+		"size": "vite build --config tests/bundle/vite.config.ts --logLevel error && node scripts/bundle-size.ts --budget 354000"
 	},
 	"dependencies": {
 		"@canvist/headless": "file:../canvist-headless"
