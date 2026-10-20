@@ -1,0 +1,105 @@
+{
+	"description": "Document tools: find and replace, the table of contents, comments, moving blocks, and clearing formatting.",
+	"cases": [
+		{
+			"name": "finds, steps through, and replaces matches",
+			"requires": ["extensions"],
+			"extensions": ["findAndReplace"],
+			"input": { "format": "markdown", "content": "one fish two fish\n\nred Fish" },
+			"steps": [
+				{ "op": "query", "query": "searchResults", "expect": null },
+				{ "op": "run", "command": "setSearchTerm", "args": { "term": "fish" }, "applied": true },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "fish", "count": 3, "current": null, "caseSensitive": false }
+				},
+				{ "op": "select", "anchor": { "path": [0], "offset": 0 } },
+				{ "op": "run", "command": "nextSearchResult", "applied": true },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "fish", "count": 3, "current": 0, "caseSensitive": false }
+				},
+				{ "op": "run", "command": "replace", "args": { "replacement": "cat" }, "applied": true },
+				{
+					"op": "run",
+					"command": "setCaseSensitive",
+					"args": { "caseSensitive": true },
+					"applied": true
+				},
+				{ "op": "run", "command": "replaceAll", "args": { "replacement": "dog" }, "applied": true },
+				{ "op": "run", "command": "replace", "error": "invalidArgs" }
+			],
+			"expect": { "markdown": "one cat two dog\n\nred Fish" }
+		},
+		{
+			"name": "lists headings as an outline and goes to one",
+			"requires": ["extensions"],
+			"extensions": ["tableOfContents"],
+			"input": { "format": "markdown", "content": "# Intro\n\n### Detail\n\n## Part" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [1], "offset": 2 } },
+				{
+					"op": "query",
+					"query": "tableOfContents",
+					"expect": [
+						{ "level": 1, "text": "Intro", "number": "1", "active": false },
+						{ "level": 3, "text": "Detail", "number": "1.1", "active": true },
+						{ "level": 2, "text": "Part", "number": "1.2", "active": false }
+					]
+				},
+				{ "op": "run", "command": "goToHeading", "args": { "index": 2 }, "applied": true },
+				{ "op": "typeText", "text": "First " }
+			],
+			"expect": { "markdown": "# Intro\n\n### Detail\n\n## First Part" }
+		},
+		{
+			"name": "comments overlap on text and write HTML",
+			"requires": ["extensions"],
+			"extensions": ["comments"],
+			"input": { "format": "text", "content": "Shared words" },
+			"steps": [
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 0 },
+					"head": { "path": [0], "offset": 12 }
+				},
+				{ "op": "run", "command": "setComment", "args": { "threadId": "a" }, "applied": true },
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 7 },
+					"head": { "path": [0], "offset": 12 }
+				},
+				{ "op": "run", "command": "setComment", "args": { "threadId": "b" }, "applied": true },
+				{ "op": "query", "query": "activeComments", "expect": ["a", "b"] },
+				{
+					"op": "query",
+					"query": "comments",
+					"expect": [{ "threadId": "a", "text": "Shared words" }, { "threadId": "b", "text": "words" }]
+				}
+			],
+			"expect": {
+				"html": "<p><span data-type=\"comment\" data-threads=\"a\">Shared </span><span data-type=\"comment\" data-threads=\"a b\">words</span></p>"
+			}
+		},
+		{
+			"name": "moves blocks and clears formatting",
+			"requires": ["extensions"],
+			"extensions": ["dragHandle", "clearFormatting"],
+			"input": { "format": "markdown", "content": "one\n\n> ## **two**" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [1, 0], "offset": 1 } },
+				{ "op": "run", "command": "moveBlockUp", "applied": true },
+				{
+					"op": "select",
+					"anchor": { "path": [0, 0], "offset": 0 },
+					"head": { "path": [0, 0], "offset": 3 }
+				},
+				{ "op": "run", "command": "clearFormatting", "applied": true },
+				{ "op": "run", "command": "moveBlocksTo", "args": { "index": 2 }, "applied": true }
+			],
+			"expect": { "markdown": "one\n\ntwo" }
+		}
+	]
+}

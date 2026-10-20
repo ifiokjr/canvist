@@ -660,10 +660,75 @@ console.log(doc.query.placeholder());
 // Tell a story
 ```
 
+## Document tools
+
+Tools that work across the whole document rather than on one block.
+
+### Find and replace
+
+A search term held beside the document, outside its history, and commands that step through and replace its matches. Matches are found inside text blocks, case-insensitively unless `setCaseSensitive` turns case on. `nextSearchResult` and `previousSearchResult` select the next or previous match from the selection, wrapping at the ends. `replace` replaces the selected match and selects the next. `replaceAll` replaces every match as one undo step.
+
+| Commands                                                                                              | Queries         |
+| ----------------------------------------------------------------------------------------------------- | --------------- |
+| `setSearchTerm({ term })`, `setCaseSensitive({ caseSensitive })`                                      | `searchResults` |
+| `nextSearchResult`, `previousSearchResult`, `replace({ replacement })`, `replaceAll({ replacement })` |                 |
+
+`searchResults` answers with the term, how many matches it has, and which one is selected, or `null` when nothing is being searched for. To draw every match, pass each one's range to the layout's `DisplayOptions` highlights; in Rust, `FindAndReplaceHandle::matches` lists them.
+
+```ts
+import { createEngine, findAndReplace } from "@canvist/headless/full";
+
+const doc = (await createEngine([findAndReplace])).parse(
+	"text",
+	"one fish two fish",
+);
+doc.commands.setSearchTerm({ term: "fish" });
+doc.commands.replaceAll({ replacement: "cat" });
+console.log(doc.export("text"));
+// one cat two cat
+```
+
+### Table of contents
+
+The headings as an outline. `tableOfContents` lists them in order with their level, text, outline number, and whether the selection is under it. Numbers follow the outline, not the levels: a level 3 heading straight under a level 1 heading is `1.1`, as TipTap numbers them. `goToHeading({ index })` puts the caret at the start of a heading, so your app can scroll to it.
+
+```ts
+import { createEngine, heading, tableOfContents } from "@canvist/headless/full";
+
+const doc = (await createEngine([heading, tableOfContents])).parse(
+	"markdown",
+	"# Intro\n\n### Detail\n\n## Part",
+);
+console.log(
+	doc.query.tableOfContents().map((entry) => `${entry.number} ${entry.text}`),
+);
+// [ "1 Intro", "1.1 Detail", "1.2 Part" ]
+```
+
+### Comments
+
+Ranges of text tied to discussion threads. Adds the `comment` mark, whose `threads` attribute lists the ids of the threads on that text; one mark holding a list lets comments overlap. The threads themselves (messages, authors, resolution) belong to your app.
+
+| Commands                                                 | Queries                      |
+| -------------------------------------------------------- | ---------------------------- |
+| `setComment({ threadId })`, `unsetComment({ threadId })` | `activeComments`, `comments` |
+
+`setComment` adds a thread to the selected text, and `unsetComment` removes it everywhere. `activeComments` lists the threads at the caret, and `comments` every thread in the document with the text it covers. The theme tints commented text; HTML writes `<span data-type="comment" data-threads="…">`, and Markdown drops the mark.
+
+### Drag handle
+
+The commands behind a drag handle. The handle is your app's UI: place it with the layout's `DocumentLayout::block_rect` and find where a drop lands with `hit_block`. `moveBlockUp` and `moveBlockDown` (`Alt-↑` and `Alt-↓`) swap the selected blocks with their neighbour, reaching for the enclosing block at a container's edge, so a lone paragraph in a list item moves the item. `moveBlocksTo({ index })` puts them before sibling `index`, as a drop does.
+
+### Clear formatting
+
+`unsetAllMarks` removes every mark from the selection, or at a caret from what is typed next. `clearNodes` turns the selected blocks into paragraphs and lifts them out of quotes, callouts, and lists. `clearFormatting` does both as one undo step, on `Mod-\`, as in Google Docs.
+
 ## Coming soon
 
 These extensions are planned, in roughly this order. Each will follow the same pattern: typed commands, queries, and TipTap-compatible JSON.
 
-- **Find and replace, table of contents, comments, and drag handles.**
+- **Indentation, text case, and invisible characters.**
+- **Columns,** on the table grid.
+- **Tracked changes and version compare,** after comments.
 
 [Parity with TipTap and Remirror](./parity.md) lists every extension in both, with what canvist ships, plans, or leaves to the host.

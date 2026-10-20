@@ -59,6 +59,8 @@ struct Palette {
 	callouts: [(Color, Color); 4],
 	/// Table header cells' background.
 	table_header: Color,
+	/// The tint under commented text.
+	comment: Color,
 }
 
 const LIGHT: Palette = Palette {
@@ -79,6 +81,7 @@ const LIGHT: Palette = Palette {
 		(Color::rgb(0xff, 0xe9, 0xe9), Color::rgb(0xc9, 0x2a, 0x2a)),
 	],
 	table_header: Color::rgb(0xf7, 0xf6, 0xf5),
+	comment: Color::rgba(0xe8, 0x59, 0x0c, 0x1f),
 };
 
 const DARK: Palette = Palette {
@@ -99,6 +102,7 @@ const DARK: Palette = Palette {
 		(Color::rgb(0x4a, 0x21, 0x21), Color::rgb(0xff, 0x87, 0x87)),
 	],
 	table_header: Color::rgb(0x24, 0x21, 0x1f),
+	comment: Color::rgba(0xff, 0xa9, 0x4d, 0x2e),
 };
 
 /// What [`Theme::starter_kit_with`] varies: the colour scheme, the font
@@ -575,6 +579,11 @@ fn mark_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<MarkRule> {
 
 	if cfg!(feature = "theme-extensions") {
 		rules.extend([
+			MarkRule::new(
+				"comment",
+				"span",
+				TextPatch::new().background(palette.comment).underline(true),
+			),
 			MarkRule::new(
 				"subscript",
 				"sub",

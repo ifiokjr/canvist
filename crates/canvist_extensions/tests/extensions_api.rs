@@ -21,12 +21,20 @@ use canvist_extensions::CalloutHandle;
 use canvist_extensions::CalloutType;
 use canvist_extensions::CharacterCount;
 use canvist_extensions::CharacterCountHandle;
+use canvist_extensions::ClearFormatting;
+use canvist_extensions::ClearFormattingHandle;
 use canvist_extensions::Color;
+use canvist_extensions::Comments;
+use canvist_extensions::CommentsHandle;
 use canvist_extensions::Details;
 use canvist_extensions::DetailsHandle;
+use canvist_extensions::DragHandle;
+use canvist_extensions::DragHandleHandle;
 use canvist_extensions::Emoji;
 use canvist_extensions::EmojiHandle;
 use canvist_extensions::File;
+use canvist_extensions::FindAndReplace;
+use canvist_extensions::FindAndReplaceHandle;
 use canvist_extensions::FontFamily;
 use canvist_extensions::FontSize;
 use canvist_extensions::Hashtag;
@@ -51,6 +59,8 @@ use canvist_extensions::Subscript;
 use canvist_extensions::Superscript;
 use canvist_extensions::Table;
 use canvist_extensions::TableHandle;
+use canvist_extensions::TableOfContents;
+use canvist_extensions::TableOfContentsHandle;
 use canvist_extensions::TextAlign;
 use canvist_extensions::TextAlignHandle;
 use canvist_extensions::TextStyle;
@@ -89,6 +99,11 @@ struct Extras {
 	callout: CalloutHandle,
 	math: MathematicsHandle,
 	table: TableHandle,
+	find: FindAndReplaceHandle,
+	toc: TableOfContentsHandle,
+	comments: CommentsHandle,
+	drag: DragHandleHandle,
+	clear: ClearFormattingHandle,
 }
 
 /// The StarterKit plus every other extension, built through the typed path.
@@ -120,6 +135,11 @@ fn full() -> (Editor, Extras) {
 		callout: builder.add(Callout),
 		math: builder.add(Mathematics),
 		table: builder.add(Table),
+		find: builder.add(FindAndReplace),
+		toc: builder.add(TableOfContents),
+		comments: builder.add(Comments),
+		drag: builder.add(DragHandle),
+		clear: builder.add(ClearFormatting),
 	};
 	builder.add(Typography::default());
 
@@ -366,6 +386,55 @@ fn typed_handles_and_named_commands_agree() {
 			.with("rows", 2)
 			.with("cols", 3)
 			.with("withHeaderRow", false),
+	);
+}
+
+#[test]
+fn document_tool_handles_agree_with_their_named_commands() {
+	let none = Attrs::new();
+	same_as_named(
+		|kit| kit.find.set_term("text"),
+		"setSearchTerm",
+		&Attrs::new().with("term", "text"),
+	);
+	same_as_named(
+		|kit| kit.toc.go_to(0),
+		"goToHeading",
+		&Attrs::new().with("index", 0),
+	);
+	same_as_named(
+		|kit| kit.comments.set("t1"),
+		"setComment",
+		&Attrs::new().with("threadId", "t1"),
+	);
+	same_as_named(|kit| kit.drag.up(), "moveBlockUp", &none);
+	same_as_named(|kit| kit.clear.clear(), "clearFormatting", &none);
+}
+
+#[test]
+fn document_tool_handles_read_what_commands_set() {
+	let (mut typist, kit) = typed_with("# Title⏎find me, find me");
+	let editor = &mut typist.editor;
+
+	editor
+		.run(&kit.find.set_term("find"), &mut env())
+		.expect("search");
+	assert_eq!(kit.find.matches(editor.state()).len(), 2);
+	editor.run(&kit.find.next(), &mut env()).expect("next");
+	assert!(kit.find.current(editor.state()).is_some());
+	editor
+		.run(&kit.comments.set("t1"), &mut env())
+		.expect("comment");
+	assert_eq!(kit.comments.active(editor.state()), ["t1"]);
+	assert_eq!(
+		kit.comments.threads(editor.state()),
+		[("t1".to_owned(), "find".to_owned())]
+	);
+
+	let toc = kit.toc.entries(editor.state());
+	assert_eq!(
+		(toc.len(), toc[0].number.as_str(), toc[0].active),
+		(1, "1", true)
 	);
 }
 

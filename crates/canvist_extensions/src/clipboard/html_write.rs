@@ -328,6 +328,23 @@ fn mark_tags(schema: &Schema, mark: &Mark) -> (String, &'static str) {
 		"superscript" => ("<sup>".to_owned(), "</sup>"),
 		"highlight" => (highlight_tag(&mark.attrs), "</mark>"),
 		"textStyle" => (text_style_tag(&mark.attrs), "</span>"),
+		"comment" if cfg!(feature = "comments") => {
+			let threads: Vec<&str> = mark
+				.attrs
+				.get("threads")
+				.and_then(Value::as_array)
+				.unwrap_or_default()
+				.iter()
+				.filter_map(Value::as_str)
+				.collect();
+			(
+				format!(
+					"<span data-type=\"comment\" data-threads=\"{}\">",
+					escape(&threads.join(" "))
+				),
+				"</span>",
+			)
+		}
 		"hashtag" if cfg!(feature = "hashtag") => {
 			let tag = mark.attrs.get("tag").and_then(Value::as_str);
 			let data = tag.map(|tag| format!(" data-tag=\"{}\"", escape(tag)));

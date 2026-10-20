@@ -59,7 +59,7 @@ const STARTER_KIT: [&str; 17] = [
 
 /// Extensions beyond the StarterKit, compiled with the `extras` feature.
 #[cfg(feature = "extras")]
-const EXTRA: [&str; 25] = [
+const EXTRA: [&str; 30] = [
 	"subscript",
 	"superscript",
 	"highlight",
@@ -85,6 +85,11 @@ const EXTRA: [&str; 25] = [
 	"callout",
 	"mathematics",
 	"table",
+	"findAndReplace",
+	"tableOfContents",
+	"comments",
+	"dragHandle",
+	"clearFormatting",
 ];
 
 #[cfg(not(feature = "extras"))]
@@ -228,10 +233,14 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 	use canvist_extensions::BackgroundColor;
 	use canvist_extensions::Callout;
 	use canvist_extensions::CharacterCount;
+	use canvist_extensions::ClearFormatting;
 	use canvist_extensions::Color;
+	use canvist_extensions::Comments;
 	use canvist_extensions::Details;
+	use canvist_extensions::DragHandle;
 	use canvist_extensions::Emoji;
 	use canvist_extensions::File;
+	use canvist_extensions::FindAndReplace;
 	use canvist_extensions::FontFamily;
 	use canvist_extensions::FontSize;
 	use canvist_extensions::Hashtag;
@@ -244,6 +253,7 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 	use canvist_extensions::Subscript;
 	use canvist_extensions::Superscript;
 	use canvist_extensions::Table;
+	use canvist_extensions::TableOfContents;
 	use canvist_extensions::TextAlign;
 	use canvist_extensions::TextStyle;
 	use canvist_extensions::Twitch;
@@ -325,6 +335,21 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 		}
 		"table" => {
 			builder.add(Table);
+		}
+		"findAndReplace" => {
+			builder.add(FindAndReplace);
+		}
+		"tableOfContents" => {
+			builder.add(TableOfContents);
+		}
+		"comments" => {
+			builder.add(Comments);
+		}
+		"dragHandle" => {
+			builder.add(DragHandle);
+		}
+		"clearFormatting" => {
+			builder.add(ClearFormatting);
 		}
 		_ => unreachable!("`Extensions::parse` admits only known names"),
 	}

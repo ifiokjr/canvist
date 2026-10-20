@@ -515,6 +515,15 @@ fn inline_role(name: &str, attrs: &[(String, String)]) -> Role {
 		marks.push(("hashtag", Attrs::new().with("tag", tag)));
 	}
 
+	if cfg!(feature = "comments") && attr(attrs, "data-type") == Some("comment") {
+		let threads: Vec<Value> = attr(attrs, "data-threads")
+			.unwrap_or_default()
+			.split_whitespace()
+			.map(Value::from)
+			.collect();
+		marks.push(("comment", Attrs::new().with("threads", threads)));
+	}
+
 	let css = attr(attrs, "style").unwrap_or_default();
 
 	if cfg!(feature = "highlight") && name == "mark" {

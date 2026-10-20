@@ -37,6 +37,7 @@ expression: "html.css.replace('}', \"}\\n\")"
 .cv-doc .cv-m-link{color:#6a00f5;text-decoration-line:underline;text-decoration-style:solid;}
 .cv-doc .cv-m-highlight{background-color:#faf594;}
 .cv-doc .cv-m-textStyle{}
+.cv-doc .cv-m-comment{background-color:rgba(232, 89, 12, 0.122);text-decoration-line:underline;text-decoration-style:solid;}
 .cv-doc .cv-m-subscript{font-size:0.75em;vertical-align:-0.25em;}
 .cv-doc .cv-m-superscript{font-size:0.75em;vertical-align:0.5em;}
 .cv-doc .cv-e-mention{color:#6a00f5;background-color:#eeeeff;}
