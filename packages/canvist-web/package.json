@@ -23,6 +23,10 @@
 			"types": "./dist/fonts.d.ts",
 			"default": "./dist/fonts.js"
 		},
+		"./menus": {
+			"types": "./dist/menus.d.ts",
+			"default": "./dist/menus.js"
+		},
 		"./wasm/canvist_web_bg.wasm": "./wasm/canvist_web_bg.wasm"
 	},
 	"files": [

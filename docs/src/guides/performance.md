@@ -48,7 +48,7 @@ Every number below has a budget, and a test fails the build when an operation go
 | Desktop: keystroke → frame, 100 KB paragraph ⁵      | < 4 ms                                      | 0.56 ms              |
 | Desktop: open 10k paragraphs → first frame          | < 100 ms                                    | 26 ms                |
 | Desktop: typing burst, 1,000 keys with a frame each | no crash, < 1.5 s                           | 0.23 s               |
-| Web bundle (core + StarterKit), gzipped             | < 350 KB                                    | 349.1 KB ³           |
+| Web bundle (core + StarterKit), gzipped             | < 350 KB                                    | 349.3 KB ³           |
 
 ¹ Pressing Enter grows slowly with document size, about 10 ns per block, because every later line moves down one row. It stays well under a frame at 100,000 blocks.
 

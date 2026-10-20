@@ -3,7 +3,8 @@
  *
  * `CanvistEditor` renders an editor; `useCanvistEditor` gives you the
  * editor itself, and `useEditorState` re-renders a component when
- * something it reads from the editor changes. Commands, queries, and
+ * something it reads from the editor changes. `BubbleMenu` and
+ * `FloatingMenu` keep their children next to the selection. Commands, queries, and
  * plugin APIs are typed from the extensions and plugins you pass, as in
  * `@canvist/web`.
  *
@@ -34,8 +35,15 @@ import {
 	type StarterKit,
 } from "@canvist/web";
 import {
+	bubbleMenu,
+	floatingMenu,
+	type Menu,
+	type MenuOptions,
+} from "@canvist/web/menus";
+import {
 	type CSSProperties,
 	type ReactElement,
+	type ReactNode,
 	type RefCallback,
 	useCallback,
 	useEffect,
@@ -107,7 +115,10 @@ export function useEditorState<E extends Extensions, P extends Plugins, T>(
 	);
 }
 
-/** Props for {@link CanvistEditor}: the editor's options, read once, and the element's. */
+/**
+ * Props for {@link CanvistEditor}: the editor's options, read once except
+ * `editable` and `placeholder`, which follow the props, and the element's.
+ */
 export interface CanvistEditorProps<E extends Extensions, P extends Plugins>
 	extends EditorOptions<E, P> {
 	readonly className?: string;
@@ -132,6 +143,15 @@ export function CanvistEditor<
 	const { className, style, html, onReady, onUpdate, ...options } = props;
 	const { ref, editor } = useCanvistEditor<E, P>(options);
 	const callbacks = useRef({ onReady, onUpdate });
+	const { editable = true, placeholder = "" } = options;
+
+	useEffect(() => {
+		editor?.setEditable(editable);
+	}, [editor, editable]);
+
+	useEffect(() => {
+		editor?.setPlaceholder(placeholder);
+	}, [editor, placeholder]);
 
 	useEffect(() => {
 		callbacks.current = { onReady, onUpdate };
@@ -157,6 +177,87 @@ export function CanvistEditor<
 				? undefined
 				: { __html: html }}
 		/>
+	);
+}
+
+/** Props for {@link BubbleMenu} and {@link FloatingMenu}. */
+export interface MenuProps<E extends Extensions, P extends Plugins>
+	extends MenuOptions<E, P> {
+	/** The editor to follow; the menu stays hidden while it is `null`. */
+	readonly editor: Editor<E, P> | null;
+	readonly className?: string;
+	readonly style?: CSSProperties;
+	readonly children?: ReactNode;
+}
+
+/**
+ * A menu over selected text, as `bubbleMenu` from `@canvist/web/menus`
+ * places it. Pressing inside it keeps the editor's focus and selection.
+ */
+export function BubbleMenu<E extends Extensions, P extends Plugins>(
+	props: MenuProps<E, P>,
+): ReactElement {
+	return <FollowingMenu {...props} attach={bubbleMenu} />;
+}
+
+/**
+ * A menu beside the caret on an empty line, as `floatingMenu` from
+ * `@canvist/web/menus` places it.
+ */
+export function FloatingMenu<E extends Extensions, P extends Plugins>(
+	props: MenuProps<E, P>,
+): ReactElement {
+	return <FollowingMenu {...props} attach={floatingMenu} />;
+}
+
+type Attach = <E extends Extensions, P extends Plugins>(
+	editor: Editor<E, P>,
+	element: HTMLElement,
+	options: MenuOptions<E, P>,
+) => Menu;
+
+function FollowingMenu<E extends Extensions, P extends Plugins>(
+	props: MenuProps<E, P> & { readonly attach: Attach },
+): ReactElement {
+	const { editor, attach, className, style, children, ...options } = props;
+	const element = useRef<HTMLDivElement>(null);
+	const menu = useRef<Menu | null>(null);
+	// The latest rule, without re-attaching each time a new closure renders.
+	const shouldShow = useRef(options.shouldShow);
+	shouldShow.current = options.shouldShow;
+	const custom = options.shouldShow !== undefined;
+	const { placement, offset, padding } = options;
+
+	useEffect(() => {
+		if (editor === null || element.current === null) {
+			return;
+		}
+
+		const attached = attach(editor, element.current, {
+			...(placement === undefined ? {} : { placement }),
+			...(offset === undefined ? {} : { offset }),
+			...(padding === undefined ? {} : { padding }),
+			...(custom
+				? { shouldShow: (current) => shouldShow.current?.(current) ?? false }
+				: {}),
+		});
+		menu.current = attached;
+
+		return () => {
+			attached.destroy();
+			menu.current = null;
+		};
+	}, [editor, attach, placement, offset, padding, custom]);
+
+	// A re-render can change what `shouldShow` or the children decide.
+	useEffect(() => {
+		menu.current?.update();
+	});
+
+	return (
+		<div ref={element} className={className} style={style} hidden>
+			{children}
+		</div>
 	);
 }
 
