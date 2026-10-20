@@ -16,8 +16,8 @@
  * @module
  */
 import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -115,6 +115,7 @@ function measureCommand(): void {
 		requestedGroups(),
 	);
 
+	mkdirSync(dirname(option("out")), { recursive: true });
 	writeFileSync(option("out"), `${JSON.stringify(measurement, null, "\t")}\n`);
 	console.log(JSON.stringify(measurement.artifacts, null, 2));
 }

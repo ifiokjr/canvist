@@ -83,23 +83,27 @@ jobs:
           path: ${{ env.BINS }}
           key: bench-speed-bins-${{ steps.revs.outputs.base-tree }}
 
-      - name: build the base's bench binaries
-        if: steps.plan.outputs.suites != '' && steps.base-cache.outputs.cache-hit != 'true'
-        run: |
-          base="$RUNNER_TEMP/base"
-          git worktree add --detach "$base" "${{ steps.revs.outputs.base }}"
-          # One target directory: the base reuses every compiled dependency.
-          mkdir -p target
-          ln -s "$PWD/target" "$base/target"
-          node tools/bench/speed.ts build --root "$base" --suites "${{ steps.plan.outputs.suites }}" --out "$BINS"
-
       - name: set the base's binaries aside
-        if: steps.plan.outputs.suites != ''
+        if: steps.plan.outputs.suites != '' && steps.base-cache.outputs.cache-hit == 'true'
         run: mv "$BINS" "$BASE_BINS"
 
       - name: build the head's bench binaries
         if: steps.plan.outputs.suites != ''
         run: node tools/bench/speed.ts build --root . --suites "${{ steps.plan.outputs.suites }}" --out "$BINS"
+
+      # After the head, never before: cargo hashes workspace crates by their
+      # path inside the workspace, so the two checkouts share artifacts in one
+      # target directory, and only sources newer than the last build count as
+      # changed. A base checked out after the head's build is newer everywhere
+      # and rebuilds; a head checked out before a base build would look fresh
+      # and silently reuse the base's binaries.
+      - name: build the base's bench binaries
+        if: steps.plan.outputs.suites != '' && steps.base-cache.outputs.cache-hit != 'true'
+        run: |
+          base="$RUNNER_TEMP/base"
+          git worktree add --detach "$base" "${{ steps.revs.outputs.base }}"
+          ln -s "$PWD/target" "$base/target"
+          node tools/bench/speed.ts build --root "$base" --suites "${{ steps.plan.outputs.suites }}" --out "$BASE_BINS"
 
       - name: cache the head's bench binaries for later pull requests
         if: steps.plan.outputs.suites != '' && github.ref == 'refs/heads/main'
