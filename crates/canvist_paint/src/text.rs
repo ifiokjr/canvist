@@ -58,6 +58,37 @@ pub struct ShapedRun {
 	pub size: f32,
 	/// The glyphs.
 	pub glyphs: Vec<Glyph>,
+	/// The variable font instance to draw, as normalized design
+	/// coordinates (such as a bold weight). Empty for static fonts.
+	pub coords: Vec<i16>,
+	/// Whether to embolden the outlines: the style asked for a heavier
+	/// weight than the font has.
+	pub embolden: bool,
+	/// A slant in degrees for a font without the italic the style asked
+	/// for.
+	pub skew: Option<f32>,
+}
+
+impl ShapedRun {
+	/// How far synthetic bold grows outlines on each side, in pixels: about
+	/// a 48th of the font size, as browsers embolden.
+	#[must_use]
+	pub fn embolden_amount(&self) -> f64 {
+		if self.embolden {
+			f64::from(self.size) / 48.0
+		} else {
+			0.0
+		}
+	}
+
+	/// The horizontal shear for synthetic italic (the tangent of the slant),
+	/// if any. Backends apply it in their own glyph space: vello's is y up,
+	/// `vello_cpu`'s y down, so the signs differ.
+	#[must_use]
+	pub fn shear(&self) -> Option<f64> {
+		self.skew
+			.map(|degrees| f64::from(degrees).to_radians().tan())
+	}
 }
 
 /// What a shaped run is cached by: family, size and letter spacing bits,
@@ -111,6 +142,29 @@ impl Shaper {
 				.set_generic_families(generic, families.iter().copied());
 		}
 
+		shaper
+	}
+
+	/// A shaper that also reads the fonts installed on this machine, for
+	/// desktop hosts. Generic families such as `sans-serif` and `system-ui`
+	/// resolve to the platform's own, and the bundled font is available by
+	/// name. Pair it with `ParleyMeasurer::with_system_fonts`, so layout
+	/// measures with the faces painting draws.
+	#[must_use]
+	pub fn with_system_fonts() -> Self {
+		let collection = Collection::new(CollectionOptions {
+			shared: false,
+			system_fonts: true,
+		});
+		let mut shaper = Self {
+			fonts: FontContext {
+				collection,
+				source_cache: SourceCache::default(),
+			},
+			layouts: LayoutContext::new(),
+			cache: FxHashMap::default(),
+		};
+		shaper.register(BUNDLED_FONT.to_vec());
 		shaper
 	}
 
@@ -208,10 +262,20 @@ fn shaped(run: &parley::GlyphRun<'_, ()>) -> ShapedRun {
 		})
 		.collect();
 
+	let synthesis = run.run().synthesis();
+
 	ShapedRun {
 		font: run.run().font().clone(),
 		size: run.run().font_size(),
 		glyphs,
+		coords: run
+			.run()
+			.normalized_coords()
+			.iter()
+			.map(|coord| coord.to_bits())
+			.collect(),
+		embolden: synthesis.embolden(),
+		skew: synthesis.skew(),
 	}
 }
 

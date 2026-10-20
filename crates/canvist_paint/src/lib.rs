@@ -65,6 +65,7 @@ mod chrome;
 pub mod convert;
 #[cfg(feature = "cpu")]
 mod cpu;
+mod display;
 pub mod fit;
 #[cfg(feature = "gpu")]
 mod gpu;
@@ -83,6 +84,9 @@ pub use chrome::paint_overlay;
 pub use cpu::CpuError;
 #[cfg(feature = "cpu")]
 pub use cpu::CpuPainter;
+pub use display::DisplayStyle;
+pub use display::GREEK_PIXELS;
+pub use display::paint_display_list;
 #[cfg(feature = "gpu")]
 pub use gpu::VelloPainter;
 pub use painter::BoxShadow;
@@ -102,7 +106,6 @@ pub use text::Shaper;
 pub use transformed::Transformed;
 #[cfg(feature = "gpu")]
 pub use vello;
-pub use walk::GREEK_PIXELS;
 pub use walk::LOD_PIXELS;
 pub use walk::MIN_PIXELS;
 pub use walk::Quality;

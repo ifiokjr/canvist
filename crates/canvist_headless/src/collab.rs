@@ -110,14 +110,16 @@ impl Doc {
 	/// Integrate a v1 Yjs update from another peer. Updates may arrive in
 	/// any order and more than once. Returns whether the document changed.
 	pub fn apply_update(&mut self, update: &[u8]) -> Result<bool, HeadlessError> {
+		Ok(self.integrate(update)?.doc_changed())
+	}
+
+	fn integrate(&mut self, update: &[u8]) -> Result<Update, HeadlessError> {
 		let mut env = self.env();
 		let binding = self.shared.as_mut().ok_or(HeadlessError::NotShared)?;
-		let applied = self.editor.apply_external(&mut env, |doc| {
+		self.editor.apply_external(&mut env, |doc| {
 			let commit = binding.apply_update(doc, update, Encoding::V1)?;
 			with_block(commit, doc, binding)
-		})?;
-
-		Ok(applied.doc_changed())
+		})
 	}
 
 	/// The whole shared state as one v1 update, to persist or to send to a
@@ -168,16 +170,28 @@ impl Doc {
 	///   connections.
 	/// - Awareness (presence) is relayed without being interpreted.
 	pub fn receive_sync(&mut self, message: &[u8]) -> Result<SyncReply, HeadlessError> {
+		self.receive_sync_changes(message).map(|(sync, _)| sync)
+	}
+
+	/// [`Doc::receive_sync`], also returning the commit of every update that
+	/// changed the document, in order. Interactive hosts pass each to their
+	/// layout (`DocumentLayout::apply`) so only the changed blocks lay out
+	/// again.
+	pub fn receive_sync_changes(
+		&mut self,
+		message: &[u8],
+	) -> Result<(SyncReply, Vec<Commit>), HeadlessError> {
 		let mut sync = SyncReply::default();
+		let mut commits = Vec::new();
 
 		for message in decode(message)? {
-			self.handle(message, &mut sync)?;
+			self.handle(message, &mut sync, &mut commits)?;
 		}
 
 		let repairs = self.flush_sync()?;
 		sync.reply.extend(repairs.iter().cloned());
 		sync.broadcast.extend(repairs);
-		Ok(sync)
+		Ok((sync, commits))
 	}
 
 	/// The local changes since the last call as y-sync update messages for
@@ -191,7 +205,12 @@ impl Doc {
 			.collect())
 	}
 
-	fn handle(&mut self, message: Message, sync: &mut SyncReply) -> Result<(), HeadlessError> {
+	fn handle(
+		&mut self,
+		message: Message,
+		sync: &mut SyncReply,
+		commits: &mut Vec<Commit>,
+	) -> Result<(), HeadlessError> {
 		match message {
 			Message::Sync(SyncMessage::SyncStep1(state)) => {
 				let diff = self.encode_diff(&state.encode_v1())?;
@@ -200,7 +219,13 @@ impl Doc {
 			}
 			Message::Sync(SyncMessage::SyncStep2(update) | SyncMessage::Update(update)) => {
 				if update != EMPTY_UPDATE {
-					sync.changed |= self.apply_update(&update)?;
+					let applied = self.integrate(&update)?;
+
+					if applied.doc_changed() {
+						sync.changed = true;
+						commits.push(applied.commit);
+					}
+
 					sync.broadcast
 						.push(Message::Sync(SyncMessage::Update(update)).encode_v1());
 				}

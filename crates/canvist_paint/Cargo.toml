@@ -17,7 +17,7 @@ description = "Rendering for the canvist canvas: a culled, level-of-detail scene
 [features]
 default = []
 # PNG export and the Canvas2D fallback, rasterised on the CPU by vello_cpu.
-cpu = ["dep:vello_cpu"]
+cpu = ["dep:vello_cpu", "dep:glifo"]
 # GPU rendering with vello on wgpu. Hosts enable the wgpu backends they
 # need (`webgpu` in browsers, the defaults natively).
 gpu = ["dep:vello", "vello/wgpu"]
@@ -26,6 +26,8 @@ gpu = ["dep:vello", "vello/wgpu"]
 canvist_canvas = { workspace = true }
 canvist_layout = { workspace = true }
 canvist_scene = { workspace = true }
+# vello_cpu's glyph runs take glifo's synthetic bold settings.
+glifo = { version = "^0.4", default-features = false, optional = true }
 kurbo = { workspace = true, features = ["std"] }
 parley = { version = "^0.12", default-features = false, features = ["std"] }
 peniko = { version = "^0.6", default-features = false, features = ["std"] }

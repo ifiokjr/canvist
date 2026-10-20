@@ -322,6 +322,16 @@ impl DocumentLayout {
 		self.rebuild(doc);
 	}
 
+	/// Bring the layout up to date with `doc` without the commits that
+	/// changed it. Every block is flattened again; measurements are kept, and
+	/// so are the layouts of blocks whose revision and style did not change.
+	/// It costs time in proportion to the document, so prefer
+	/// [`DocumentLayout::apply`]; this is for hosts that could not see a
+	/// commit, such as one a collaboration binding applied on its own.
+	pub fn resync(&mut self, doc: &Document) {
+		self.rebuild(doc);
+	}
+
 	/// Account for a commit. Touched blocks lose their layout and are laid
 	/// out again by the next [`DocumentLayout::ensure`]. Structural changes,
 	/// and blocks whose style changed, re-flatten only the root-level

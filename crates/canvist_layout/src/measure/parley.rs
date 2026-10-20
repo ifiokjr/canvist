@@ -39,9 +39,13 @@ const GENERICS: [GenericFamily; 8] = [
 	GenericFamily::Emoji,
 ];
 
-/// Measures text by shaping it with `parley`, using only fonts registered
-/// with [`ParleyMeasurer::register_font`]. It never reads system fonts, so
-/// results are identical on every machine with the same font files.
+/// Measures text by shaping it with `parley`.
+///
+/// [`ParleyMeasurer::new`] uses only fonts registered with
+/// [`ParleyMeasurer::register_font`] and never reads system fonts, so results
+/// are identical on every machine with the same font files.
+/// [`ParleyMeasurer::with_system_fonts`] adds the machine's fonts, for
+/// desktop editors.
 pub struct ParleyMeasurer {
 	fonts: FontContext,
 	layouts: LayoutContext<()>,
@@ -81,9 +85,32 @@ impl ParleyMeasurer {
 		}
 	}
 
+	/// A measurer that also reads the fonts installed on this machine, for
+	/// desktop hosts. Generic families such as `sans-serif` and `system-ui`
+	/// resolve to the platform's own, and registered fonts only add families:
+	/// they never stand in for the generics. Results depend on the machine's
+	/// fonts, so tests that compare output use [`ParleyMeasurer::new`].
+	#[must_use]
+	pub fn with_system_fonts() -> Self {
+		let collection = Collection::new(CollectionOptions {
+			shared: false,
+			system_fonts: true,
+		});
+
+		Self {
+			fonts: FontContext {
+				collection,
+				source_cache: SourceCache::default(),
+			},
+			layouts: LayoutContext::new(),
+			fallback_set: true,
+		}
+	}
+
 	/// Register every face in a TrueType or OpenType file (or collection) and
 	/// return the family names it added. The first font registered also
-	/// becomes the fallback for the generic families.
+	/// becomes the fallback for the generic families, unless the measurer
+	/// reads system fonts.
 	pub fn register_font(&mut self, data: Vec<u8>) -> Vec<String> {
 		let added = self.fonts.collection.register_fonts(Blob::from(data), None);
 		let families: Vec<FamilyId> = added.iter().map(|(family, _)| *family).collect();

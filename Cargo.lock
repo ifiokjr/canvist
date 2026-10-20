@@ -632,6 +632,7 @@ dependencies = [
  "canvist_model",
  "canvist_scene",
  "divan",
+ "glifo",
  "kurbo",
  "parley",
  "peniko",
