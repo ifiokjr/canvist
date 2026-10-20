@@ -3,6 +3,36 @@
 
 part of 'engine.dart';
 
+/// The commands and queries of `audio`.
+final class AudioHandle extends ExtensionHandle {
+  AudioHandle._(super.registration) : super._();
+
+  /// Insert an audio player at the selection.
+  ///
+  /// [src]: The audio URL.
+  ///
+  /// [controls]: Show playback controls.
+  ///
+  /// [autoplay]: Start playing straight away.
+  ///
+  /// [loop]: Play again from the start when it ends.
+  ///
+  /// [muted]: Start muted.
+  Command setAudio({
+    required String? src,
+    bool? controls,
+    bool? autoplay,
+    bool? loop,
+    bool? muted,
+  }) => _command('setAudio', {
+    'src': src,
+    'controls': ?controls,
+    'autoplay': ?autoplay,
+    'loop': ?loop,
+    'muted': ?muted,
+  });
+}
+
 /// The commands and queries of `backgroundColor`.
 final class BackgroundColorHandle extends ExtensionHandle {
   BackgroundColorHandle._(super.registration) : super._();
@@ -195,6 +225,32 @@ final class EmojiHandle extends ExtensionHandle {
   );
 }
 
+/// The commands and queries of `file`.
+final class FileHandle extends ExtensionHandle {
+  FileHandle._(super.registration) : super._();
+
+  /// Insert a file attachment at the selection.
+  ///
+  /// [url]: Where the file can be downloaded.
+  ///
+  /// [fileName]: The file's name, such as `report.pdf`.
+  ///
+  /// [fileType]: The file's media type, such as `application/pdf`.
+  ///
+  /// [fileSize]: The file's size in bytes.
+  Command insertFile({
+    required String? url,
+    String? fileName,
+    String? fileType,
+    double? fileSize,
+  }) => _command('insertFile', {
+    'url': url,
+    'fileName': ?fileName,
+    'fileType': ?fileType,
+    'fileSize': ?fileSize,
+  });
+}
+
 /// The commands and queries of `fontFamily`.
 final class FontFamilyHandle extends ExtensionHandle {
   FontFamilyHandle._(super.registration) : super._();
@@ -340,6 +396,36 @@ final class HorizontalRuleHandle extends ExtensionHandle {
 
   /// Insert a horizontal rule at the selection.
   Command setHorizontalRule() => _command('setHorizontalRule', const {});
+}
+
+/// The commands and queries of `image`.
+final class ImageHandle extends ExtensionHandle {
+  ImageHandle._(super.registration) : super._();
+
+  /// Insert an image at the selection.
+  ///
+  /// [src]: The image URL.
+  ///
+  /// [alt]: Text describing the image, for screen readers.
+  ///
+  /// [title]: A title shown on hover.
+  ///
+  /// [width]: The width in pixels.
+  ///
+  /// [height]: The height in pixels.
+  Command setImage({
+    required String? src,
+    String? alt,
+    String? title,
+    double? width,
+    double? height,
+  }) => _command('setImage', {
+    'src': src,
+    'alt': ?alt,
+    'title': ?title,
+    'width': ?width,
+    'height': ?height,
+  });
 }
 
 /// The commands and queries of `italic`.
@@ -611,6 +697,36 @@ final class TrailingNodeHandle extends ExtensionHandle {
   TrailingNodeHandle._(super.registration) : super._();
 }
 
+/// The commands and queries of `twitch`.
+final class TwitchHandle extends ExtensionHandle {
+  TwitchHandle._(super.registration) : super._();
+
+  /// Insert a Twitch video, clip, or channel at the selection.
+  ///
+  /// [src]: The video, clip, or channel URL.
+  ///
+  /// [width]: The width in pixels.
+  ///
+  /// [height]: The height in pixels.
+  ///
+  /// [autoplay]: Start playing straight away.
+  ///
+  /// [muted]: Start muted.
+  Command setTwitchVideo({
+    required String? src,
+    double? width,
+    double? height,
+    bool? autoplay,
+    bool? muted,
+  }) => _command('setTwitchVideo', {
+    'src': src,
+    'width': ?width,
+    'height': ?height,
+    'autoplay': ?autoplay,
+    'muted': ?muted,
+  });
+}
+
 /// The commands and queries of `typography`.
 final class TypographyHandle extends ExtensionHandle {
   TypographyHandle._(super.registration) : super._();
@@ -631,6 +747,39 @@ final class UnderlineHandle extends ExtensionHandle {
 
   /// Whether the mark is active at the selection.
   Query<bool> isUnderline() => _query('isUnderline', (json) => json! as bool);
+}
+
+/// The commands and queries of `youtube`.
+final class YoutubeHandle extends ExtensionHandle {
+  YoutubeHandle._(super.registration) : super._();
+
+  /// Insert a YouTube video at the selection.
+  ///
+  /// [src]: The video URL.
+  ///
+  /// [start]: Where playback starts, in seconds.
+  ///
+  /// [width]: The width in pixels.
+  ///
+  /// [height]: The height in pixels.
+  Command setYoutubeVideo({
+    required String? src,
+    double? start,
+    double? width,
+    double? height,
+  }) => _command('setYoutubeVideo', {
+    'src': src,
+    'start': ?start,
+    'width': ?width,
+    'height': ?height,
+  });
+}
+
+/// Registers `audio`.
+final class AudioExtension extends Extension<AudioHandle> {
+  const AudioExtension._() : super('audio');
+  @override
+  AudioHandle _handle(Registration registration) => AudioHandle._(registration);
 }
 
 /// Registers `backgroundColor`.
@@ -701,6 +850,13 @@ final class EmojiExtension extends Extension<EmojiHandle> {
   EmojiHandle _handle(Registration registration) => EmojiHandle._(registration);
 }
 
+/// Registers `file`.
+final class FileExtension extends Extension<FileHandle> {
+  const FileExtension._() : super('file');
+  @override
+  FileHandle _handle(Registration registration) => FileHandle._(registration);
+}
+
 /// Registers `fontFamily`.
 final class FontFamilyExtension extends Extension<FontFamilyHandle> {
   const FontFamilyExtension._() : super('fontFamily');
@@ -763,6 +919,13 @@ final class HorizontalRuleExtension extends Extension<HorizontalRuleHandle> {
   @override
   HorizontalRuleHandle _handle(Registration registration) =>
       HorizontalRuleHandle._(registration);
+}
+
+/// Registers `image`.
+final class ImageExtension extends Extension<ImageHandle> {
+  const ImageExtension._() : super('image');
+  @override
+  ImageHandle _handle(Registration registration) => ImageHandle._(registration);
 }
 
 /// Registers `italic`.
@@ -876,6 +1039,14 @@ final class TrailingNodeExtension extends Extension<TrailingNodeHandle> {
       TrailingNodeHandle._(registration);
 }
 
+/// Registers `twitch`.
+final class TwitchExtension extends Extension<TwitchHandle> {
+  const TwitchExtension._() : super('twitch');
+  @override
+  TwitchHandle _handle(Registration registration) =>
+      TwitchHandle._(registration);
+}
+
 /// Registers `typography`.
 final class TypographyExtension extends Extension<TypographyHandle> {
   const TypographyExtension._() : super('typography');
@@ -892,8 +1063,19 @@ final class UnderlineExtension extends Extension<UnderlineHandle> {
       UnderlineHandle._(registration);
 }
 
+/// Registers `youtube`.
+final class YoutubeExtension extends Extension<YoutubeHandle> {
+  const YoutubeExtension._() : super('youtube');
+  @override
+  YoutubeHandle _handle(Registration registration) =>
+      YoutubeHandle._(registration);
+}
+
 /// Every extension, to pass to [EngineBuilder.add].
 abstract final class Extensions {
+  /// The `audio` extension.
+  static const audio = AudioExtension._();
+
   /// The `backgroundColor` extension.
   static const backgroundColor = BackgroundColorExtension._();
 
@@ -921,6 +1103,9 @@ abstract final class Extensions {
   /// The `emoji` extension.
   static const emoji = EmojiExtension._();
 
+  /// The `file` extension.
+  static const file = FileExtension._();
+
   /// The `fontFamily` extension.
   static const fontFamily = FontFamilyExtension._();
 
@@ -944,6 +1129,9 @@ abstract final class Extensions {
 
   /// The `horizontalRule` extension.
   static const horizontalRule = HorizontalRuleExtension._();
+
+  /// The `image` extension.
+  static const image = ImageExtension._();
 
   /// The `italic` extension.
   static const italic = ItalicExtension._();
@@ -987,11 +1175,17 @@ abstract final class Extensions {
   /// The `trailingNode` extension.
   static const trailingNode = TrailingNodeExtension._();
 
+  /// The `twitch` extension.
+  static const twitch = TwitchExtension._();
+
   /// The `typography` extension.
   static const typography = TypographyExtension._();
 
   /// The `underline` extension.
   static const underline = UnderlineExtension._();
+
+  /// The `youtube` extension.
+  static const youtube = YoutubeExtension._();
 
   /// TipTap's StarterKit, which [Engine.starterKit] registers.
   static const starterKit = <Extension<ExtensionHandle>>[
@@ -1016,6 +1210,7 @@ abstract final class Extensions {
 
   /// Every extension above.
   static const all = <Extension<ExtensionHandle>>[
+    audio,
     backgroundColor,
     blockquote,
     bold,
@@ -1025,6 +1220,7 @@ abstract final class Extensions {
     codeBlock,
     color,
     emoji,
+    file,
     fontFamily,
     fontSize,
     hardBreak,
@@ -1033,6 +1229,7 @@ abstract final class Extensions {
     highlight,
     history,
     horizontalRule,
+    image,
     italic,
     lineHeight,
     link,
@@ -1047,8 +1244,10 @@ abstract final class Extensions {
     textAlign,
     textStyle,
     trailingNode,
+    twitch,
     typography,
     underline,
+    youtube,
   ];
 }
 

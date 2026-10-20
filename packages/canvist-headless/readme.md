@@ -54,6 +54,20 @@ doc.commands.toggleItalic(); // type error: italic is not registered
 doc.commands.setHeading({ level: 7 }); // type error
 ```
 
+## Every other extension
+
+`@canvist/headless` compiles in TipTap's StarterKit. Every other extension canvist ships, from highlights and text styles to mentions, emoji, and media, is in `@canvist/headless/full`: a larger WebAssembly module with the same API.
+
+```ts
+import { createEngine, highlight, starterKit } from "@canvist/headless/full";
+
+const engine = await createEngine([...starterKit, highlight]);
+const doc = engine.parse("markdown", "Hello world");
+doc.selectAll();
+doc.commands.toggleHighlight();
+doc.export("html"); // "<p><mark>Hello world</mark></p>"
+```
+
 ## What else it does
 
 - **Positions:** `{ path, offset }`, where `path` walks the block tree and `offset` counts UTF-16 code units, like JavaScript strings. Errors are `CanvistError`s with the same stable `code`s as the Rust and Dart packages.
@@ -69,7 +83,7 @@ A typed command costs about 0.7 µs in Node and a collaborator's keystroke about
 
 ```sh
 npm ci
-npm run build:wasm      # the document, scene, and rendering modules into wasm/, wasm-scene/, and wasm-ssr/
+npm run build:wasm      # the StarterKit module into wasm/, the full one into wasm-full/, the scene module into wasm-scene/, and the rendering module into wasm-ssr/
 npm test                # conformance and API tests in Node
 deno task test          # the same, plus the server example, in Deno
 npm run check:types     # tsc --noEmit, including the type-level tests

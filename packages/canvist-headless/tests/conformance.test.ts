@@ -11,12 +11,13 @@ import { test } from "node:test";
 
 import {
 	allExtensions,
-	createEngine,
+	createEngine as createFullEngine,
 	type Doc,
 	type Engine,
 	isCanvistError,
 	starterKit,
-} from "../src/mod.ts";
+} from "../src/full.ts";
+import { createEngine } from "../src/mod.ts";
 import type {
 	CommandName,
 	Format,
@@ -41,12 +42,18 @@ const FIXTURES = new URL("../../../conformance/fixtures/", import.meta.url);
 /** The optional features this binding has. */
 const FEATURES = ["collab", "extensions"];
 
-/** The StarterKit plus the `extensions` a case lists, by name. */
+/**
+ * The StarterKit plus the `extensions` a case lists, by name: from the
+ * StarterKit module when the case lists none, so both modules run the
+ * fixtures, and from the full module otherwise.
+ */
 async function caseEngine(names: readonly string[]): Promise<Engine<Every>> {
 	const extra = allExtensions.filter((extension) =>
 		names.includes(extension.name)
 	);
-	const engine = await createEngine([...starterKit, ...extra]);
+	const engine = extra.length === 0
+		? await createEngine(starterKit)
+		: await createFullEngine([...starterKit, ...extra]);
 
 	return engine as unknown as Engine<Every>;
 }

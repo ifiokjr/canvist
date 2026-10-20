@@ -6,6 +6,11 @@
  * @module
  */
 import {
+	createEngine as createFullEngine,
+	highlight,
+	starterKit,
+} from "../src/full.ts";
+import {
 	bold,
 	createEngine,
 	type DocJson,
@@ -119,4 +124,12 @@ export function documentsUseRegisteredNodes(): void {
 export async function extensionsMustExist(): Promise<void> {
 	// @ts-expect-error extensions are descriptors, not names
 	await createEngine(["bold"]);
+}
+
+export async function extrasNeedTheFullModule(): Promise<void> {
+	// @ts-expect-error highlight is only in @canvist/headless/full
+	await createEngine([bold, highlight]);
+
+	const engine = await createFullEngine([...starterKit, highlight]);
+	engine.create().commands.toggleHighlight();
 }

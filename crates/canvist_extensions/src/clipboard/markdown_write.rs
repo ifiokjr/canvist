@@ -73,7 +73,27 @@ fn block(schema: &Schema, tree: &BlockTree, marker: char) -> String {
 		TreeContent::Blocks(children) => container(schema, name, &tree.attrs, children, marker),
 
 		TreeContent::Leaf if name == "horizontalRule" => "---".to_owned(),
-		TreeContent::Leaf => String::new(),
+		TreeContent::Leaf => media(name, &tree.attrs),
+	}
+}
+
+/// A media block: an image as `![alt](src "title")`, and other media as a
+/// link to their source. Unknown leaves write nothing.
+fn media(name: &str, attrs: &Attrs) -> String {
+	let text = |key: &str| attrs.get(key).and_then(Value::as_str).unwrap_or_default();
+
+	match name {
+		"image" if cfg!(feature = "image") => {
+			let title = attrs
+				.get("title")
+				.and_then(Value::as_str)
+				.map(|title| format!(" \"{title}\""))
+				.unwrap_or_default();
+			format!("![{}]({}{title})", escape(text("alt")), text("src"))
+		}
+		"youtube" | "twitch" | "audio" => format!("[{0}]({0})", text("src")),
+		"file" => format!("[{}]({})", escape(text("fileName")), text("url")),
+		_ => String::new(),
 	}
 }
 

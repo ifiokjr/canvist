@@ -44,7 +44,39 @@ use crate::suggestion::Trigger;
 const EMOJI: &str = "emoji";
 
 /// Every emoji: the character, a tab, and its shortcodes.
-const TABLE: &str = include_str!("gemoji.txt");
+#[cfg(feature = "emoji-data")]
+#[allow(
+	clippy::unnecessary_wraps,
+	reason = "matches the loaded table, which may be missing"
+)]
+fn table() -> Option<&'static str> {
+	Some(include_str!("gemoji.txt"))
+}
+
+/// The table [`load`] was given.
+#[cfg(not(feature = "emoji-data"))]
+static LOADED: OnceLock<String> = OnceLock::new();
+
+#[cfg(not(feature = "emoji-data"))]
+fn table() -> Option<&'static str> {
+	LOADED.get().map(String::as_str)
+}
+
+/// Give the extension its table, the text of `gemoji.txt`: one emoji per
+/// line, a tab, and its space-separated shortcodes. Without the
+/// `emoji-data` feature the table is not compiled in, so a binding can
+/// load it as data on first use; until then no shortcode is known.
+/// Returns whether this call loaded it, `false` once a table is loaded.
+#[cfg(not(feature = "emoji-data"))]
+pub fn load(table: String) -> bool {
+	LOADED.set(table).is_ok()
+}
+
+/// Whether the table is available: compiled in, or given to `load`.
+#[must_use]
+pub fn is_loaded() -> bool {
+	table().is_some()
+}
 
 /// How many matches `searchEmoji` returns unless asked for more.
 const DEFAULT_LIMIT: i64 = 10;
@@ -64,12 +96,17 @@ pub struct EmojiItem {
 	pub emoji: &'static str,
 }
 
-/// Every shortcode, sorted, parsed from the table on first use.
+/// Every shortcode, sorted, parsed from the table on first use. Empty
+/// while no table is loaded.
 fn items() -> &'static [EmojiItem] {
 	static ITEMS: OnceLock<Vec<EmojiItem>> = OnceLock::new();
 
+	let Some(table) = table() else {
+		return &[];
+	};
+
 	ITEMS.get_or_init(|| {
-		let mut items: Vec<EmojiItem> = TABLE
+		let mut items: Vec<EmojiItem> = table
 			.lines()
 			.filter_map(|line| line.split_once('\t'))
 			.flat_map(|(emoji, names)| names.split(' ').map(move |name| EmojiItem { name, emoji }))
@@ -325,8 +362,16 @@ impl TypedExtension for Emoji {
 mod tests {
 	use super::*;
 
+	/// The table, loaded as a binding would when it is not compiled in.
+	fn table_loaded() {
+		#[cfg(not(feature = "emoji-data"))]
+		load(include_str!("gemoji.txt").to_owned());
+		assert!(is_loaded());
+	}
+
 	#[test]
 	fn the_table_parses_and_looks_up_every_shortcode() {
+		table_loaded();
 		assert_eq!(lookup("smile"), Some("😄"));
 		assert_eq!(lookup("+1"), Some("👍"));
 		assert_eq!(lookup("thumbsup"), lookup("+1"), "aliases share an emoji");
@@ -336,6 +381,7 @@ mod tests {
 
 	#[test]
 	fn search_puts_prefix_matches_first() {
+		table_loaded();
 		let found = search("smile", 3);
 
 		assert_eq!(found[0].name, "smile");

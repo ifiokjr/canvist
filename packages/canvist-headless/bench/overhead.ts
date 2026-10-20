@@ -23,6 +23,10 @@ const PARAGRAPHS = 10_000;
 const SAMPLES = 15;
 const CARET = { path: [PARAGRAPHS / 2], offset: 10 };
 const WASM = new URL("../wasm/canvist_headless_wasm_bg.wasm", import.meta.url);
+const WASM_FULL = new URL(
+	"../wasm-full/canvist_headless_full_bg.wasm",
+	import.meta.url,
+);
 
 const slack = Number(process.env.CANVIST_PERF_SLACK ?? 1);
 const check = process.argv.includes("--check");
@@ -128,8 +132,23 @@ report(
 	"ms",
 );
 
-const size = readFileSync(WASM).byteLength / 1024;
-report("WebAssembly module (wasm-opt, raw)", size, 1_200, "KB");
+// The StarterKit module, which `@canvist/headless` loads. New extensions go
+// in the full module, so this budget catches growth in the engine itself.
+report(
+	"WebAssembly module (wasm-opt, raw)",
+	readFileSync(WASM).byteLength / 1024,
+	1_200,
+	"KB",
+);
+// Every extension canvist ships, for `@canvist/headless/full`, so this
+// budget grows with the extension set; it catches accidental growth, not
+// new extensions.
+report(
+	"full WebAssembly module (wasm-opt, raw)",
+	readFileSync(WASM_FULL).byteLength / 1024,
+	1_400,
+	"KB",
+);
 
 if (check && failures.length > 0) {
 	console.error(`over budget: ${failures.join(", ")}`);

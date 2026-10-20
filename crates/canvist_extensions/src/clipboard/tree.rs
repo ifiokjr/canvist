@@ -107,11 +107,17 @@ impl<'s> Builder<'s> {
 		vec![BlockTree::container(self.id(), kind, children).with_attrs(attrs)]
 	}
 
-	/// An atomic block of type `name`, if the schema has one.
-	pub(super) fn leaf(&mut self, name: &str) -> Option<BlockTree> {
+	/// An atomic block of type `name` with `attrs` (those the type
+	/// declares, over its defaults), if the schema has one.
+	pub(super) fn leaf(&mut self, name: &str, attrs: &Attrs) -> Option<BlockTree> {
 		let kind = self.schema.block_type(name)?;
-		let leaf = self.schema.block(kind).content == ContentKind::Leaf;
-		leaf.then(|| BlockTree::leaf(self.id(), kind))
+
+		if self.schema.block(kind).content != ContentKind::Leaf {
+			return None;
+		}
+
+		let attrs = with_defaults(&self.schema.block(kind).attrs, attrs);
+		Some(BlockTree::leaf(self.id(), kind).with_attrs(attrs))
 	}
 
 	/// A mark of type `name`, if the schema has one, keeping only the

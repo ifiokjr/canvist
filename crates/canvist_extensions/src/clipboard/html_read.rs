@@ -244,8 +244,8 @@ enum Role {
 	Text(&'static str, Attrs),
 	/// Opens a container of the named type.
 	Container(&'static str, Attrs),
-	/// An atomic block.
-	Leaf(&'static str),
+	/// An atomic block and its attributes.
+	Leaf(&'static str, Attrs),
 	/// A line break.
 	Break,
 	/// An inline atom, such as a mention, whose text is read but not kept.
@@ -325,12 +325,82 @@ fn role(name: &str, attrs: &[(String, String)], parent: Option<&'static str>) ->
 			Role::Container("taskItem", Attrs::new().with("checked", checked))
 		}
 		"li" => Role::Container("listItem", Attrs::new()),
-		"hr" => Role::Leaf("horizontalRule"),
+		"hr" => Role::Leaf("horizontalRule", Attrs::new()),
+		"img" if cfg!(feature = "image") => {
+			Role::Leaf("image", media_attrs(attrs, IMAGE_ATTRIBUTES))
+		}
+		"audio" if cfg!(feature = "audio") => Role::Leaf("audio", audio_attrs(attrs)),
+		"iframe" if cfg!(any(feature = "youtube", feature = "twitch")) => iframe_role(attrs),
+		"div" if cfg!(feature = "file") && (data_type == Some("file")) => {
+			Role::Leaf("file", media_attrs(attrs, FILE_ATTRIBUTES))
+		}
 		"br" => Role::Break,
 		"span" if data_type == Some("mention") => Role::Atom("mention", atom_attrs(attrs)),
 		"span" if data_type == Some("emoji") => Role::Atom("emoji", atom_attrs(attrs)),
 		_ => inline_role(name, attrs),
 	}
+}
+
+/// The HTML attributes of `<img>`, and the image attributes they hold.
+const IMAGE_ATTRIBUTES: &[(&str, &str)] = &[
+	("src", "src"),
+	("alt", "alt"),
+	("title", "title"),
+	("width", "width"),
+	("height", "height"),
+];
+
+/// The HTML attributes of a video `<iframe>` that videos keep.
+const VIDEO_ATTRIBUTES: &[(&str, &str)] =
+	&[("src", "src"), ("width", "width"), ("height", "height")];
+
+/// The HTML attributes of a file card, and the file attributes they hold.
+const FILE_ATTRIBUTES: &[(&str, &str)] = &[
+	("data-url", "url"),
+	("data-file-name", "fileName"),
+	("data-file-type", "fileType"),
+	("data-file-size", "fileSize"),
+];
+
+/// The boolean attributes of `<audio>`.
+const AUDIO_FLAGS: [&str; 4] = ["controls", "autoplay", "loop", "muted"];
+
+/// The attributes `mapping` names, with sizes read as numbers.
+fn media_attrs(attrs: &[(String, String)], mapping: &[(&str, &'static str)]) -> Attrs {
+	mapping
+		.iter()
+		.filter_map(|(html, key)| {
+			let value = attr(attrs, html)?;
+			let number = matches!(*key, "width" | "height" | "fileSize")
+				.then(|| value.parse::<f64>().ok())
+				.flatten();
+			Some((*key, number.map_or_else(|| Value::from(value), Value::from)))
+		})
+		.collect()
+}
+
+/// An `<audio>` element's source and flags; a flag is on when present.
+fn audio_attrs(attrs: &[(String, String)]) -> Attrs {
+	let flags = AUDIO_FLAGS
+		.iter()
+		.map(|flag| (*flag, Value::Bool(attr(attrs, flag).is_some())));
+	let src = attr(attrs, "src").map(|src| ("src", Value::from(src)));
+	src.into_iter().chain(flags).collect()
+}
+
+/// An `<iframe>` showing a YouTube or Twitch video, as TipTap writes them;
+/// other iframes carry nothing to keep.
+fn iframe_role(attrs: &[(String, String)]) -> Role {
+	let src = attr(attrs, "src").unwrap_or_default();
+	let video = if src.contains("youtube") || src.contains("youtu.be") {
+		"youtube"
+	} else if src.contains("twitch.tv") {
+		"twitch"
+	} else {
+		return Role::Inline;
+	};
+
+	Role::Leaf(video, media_attrs(attrs, VIDEO_ATTRIBUTES))
 }
 
 /// The `data-` attributes TipTap writes on inline atoms, and the attributes
@@ -587,9 +657,9 @@ impl<'s> Reader<'s> {
 					children: Vec::new(),
 				});
 			}
-			Role::Leaf(name) => {
+			Role::Leaf(name, leaf_attrs) => {
 				self.end_text();
-				let leaf = self.build.leaf(name);
+				let leaf = self.build.leaf(name, &leaf_attrs);
 				self.children().extend(leaf);
 			}
 			Role::Break => self.line_break(),

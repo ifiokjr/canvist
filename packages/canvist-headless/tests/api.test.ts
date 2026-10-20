@@ -10,6 +10,12 @@ import { test } from "node:test";
 import * as Y from "yjs";
 
 import {
+	allExtensions,
+	createEngine as createFullEngine,
+	emoji,
+	highlight,
+} from "../src/full.ts";
+import {
 	bold,
 	createEngine,
 	heading,
@@ -59,6 +65,33 @@ test("the generated descriptors match what Rust reports", async () => {
 	);
 	assert.deepEqual(comparable(metadata), comparable(engine.extensions));
 	assert.equal(engine.extensions.length, starterKit.length + 4);
+});
+
+test("the StarterKit module has only the StarterKit", async () => {
+	await assert.rejects(
+		createEngine([bold, highlight] as unknown as [typeof bold]),
+		{ name: "CanvistError", code: "config" },
+	);
+
+	using full = await createFullEngine(allExtensions);
+	assert.equal(full.extensions.length, allExtensions.length + 4);
+	assert.deepEqual(
+		(full.metadata() as { name: string }[]).map((extension) => extension.name)
+			.sort(),
+		full.extensions.map((extension) => extension.name).sort(),
+	);
+});
+
+test("the full module loads the emoji table with the first emoji engine", async () => {
+	using engine = await createFullEngine([emoji]);
+	using doc = engine.create();
+
+	doc.typeText(":smile: ");
+	assert.equal(doc.export("text"), "😄 ");
+	assert.deepEqual(
+		doc.query.searchEmoji({ query: "thumbsu" }).map((item) => item.name),
+		["thumbsup"],
+	);
 });
 
 test("failures are CanvistErrors with stable codes", async () => {

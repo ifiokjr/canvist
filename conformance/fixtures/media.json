@@ -1,0 +1,59 @@
+{
+	"description": "Media blocks: images, YouTube and Twitch videos, audio, and file attachments.",
+	"cases": [
+		{
+			"name": "inserts an image at the caret and writes it as HTML and Markdown",
+			"requires": ["extensions"],
+			"extensions": ["image"],
+			"input": { "format": "text", "content": "Above" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 5 } },
+				{ "op": "run", "command": "setImage", "args": { "src": "cat.png", "alt": "A cat" }, "applied": true },
+				{ "op": "run", "command": "setImage", "error": "invalidArgs" }
+			],
+			"expect": {
+				"html": "<p>Above</p><img src=\"cat.png\" alt=\"A cat\"><p></p>",
+				"markdown": "Above\n\n![A cat](cat.png)"
+			}
+		},
+		{
+			"name": "reads images from Markdown and HTML",
+			"requires": ["extensions"],
+			"extensions": ["image"],
+			"input": { "format": "markdown", "content": "![Logo](logo.svg \"canvist\")" },
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{ "type": "image", "attrs": { "alt": "Logo", "height": null, "src": "logo.svg", "title": "canvist", "width": null } }
+					]
+				}
+			}
+		},
+		{
+			"name": "inserts videos, audio, and files",
+			"requires": ["extensions"],
+			"extensions": ["youtube", "twitch", "audio", "file"],
+			"steps": [
+				{ "op": "run", "command": "setYoutubeVideo", "args": { "src": "https://www.youtube.com/embed/x", "start": 30 }, "applied": true },
+				{ "op": "run", "command": "setAudio", "args": { "src": "song.mp3", "loop": true }, "applied": true },
+				{ "op": "run", "command": "insertFile", "args": { "url": "r.pdf", "fileName": "Report", "fileSize": 2048 }, "applied": true }
+			],
+			"expect": {
+				"html": "<div data-youtube-video=\"\"><iframe src=\"https://www.youtube.com/embed/x\"></iframe></div><audio src=\"song.mp3\" controls loop></audio><div data-type=\"file\" data-url=\"r.pdf\" data-file-name=\"Report\" data-file-size=\"2048\"></div><p></p>"
+			}
+		},
+		{
+			"name": "reads TipTap video embeds from HTML",
+			"requires": ["extensions"],
+			"extensions": ["youtube", "twitch"],
+			"input": {
+				"format": "html",
+				"content": "<div data-youtube-video><iframe src=\"https://www.youtube-nocookie.com/embed/a\" width=\"400\" height=\"300\"></iframe></div><div data-twitch-video><iframe src=\"https://player.twitch.tv/?channel=b\"></iframe></div>"
+			},
+			"expect": {
+				"html": "<div data-youtube-video=\"\"><iframe src=\"https://www.youtube-nocookie.com/embed/a\" width=\"400\" height=\"300\"></iframe></div><div data-twitch-video=\"\"><iframe src=\"https://player.twitch.tv/?channel=b\" width=\"640\" height=\"480\"></iframe></div>"
+			}
+		}
+	]
+}

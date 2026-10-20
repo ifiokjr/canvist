@@ -50,12 +50,114 @@ fn write_block(schema: &Schema, tree: &BlockTree, html: &mut String) {
 		}
 
 		TreeContent::Leaf if name == "horizontalRule" => html.push_str("<hr>"),
+		TreeContent::Leaf if write_media(name, &tree.attrs, html) => {}
 		TreeContent::Leaf => {
 			html.push_str("<div data-type=\"");
 			html.push_str(&escape(name));
 			html.push_str("\"></div>");
 		}
 	}
+}
+
+/// Media blocks as TipTap and Remirror write them, returning whether
+/// `name` is one.
+fn write_media(name: &str, attrs: &Attrs, html: &mut String) -> bool {
+	let (open, attributes, close): (&str, &[(&str, &str)], &str) = match name {
+		"image" if cfg!(feature = "image") => {
+			(
+				"<img",
+				&[
+					("src", "src"),
+					("alt", "alt"),
+					("title", "title"),
+					("width", "width"),
+					("height", "height"),
+				],
+				">",
+			)
+		}
+		"youtube" if cfg!(feature = "youtube") => {
+			(
+				"<div data-youtube-video=\"\"><iframe",
+				&[("src", "src"), ("width", "width"), ("height", "height")],
+				"></iframe></div>",
+			)
+		}
+		"twitch" if cfg!(feature = "twitch") => {
+			(
+				"<div data-twitch-video=\"\"><iframe",
+				&[("src", "src"), ("width", "width"), ("height", "height")],
+				"></iframe></div>",
+			)
+		}
+		"audio" if cfg!(feature = "audio") => ("<audio", &[("src", "src")], "></audio>"),
+		"file" if cfg!(feature = "file") => {
+			(
+				"<div data-type=\"file\"",
+				&[
+					("url", "data-url"),
+					("fileName", "data-file-name"),
+					("fileType", "data-file-type"),
+					("fileSize", "data-file-size"),
+				],
+				"></div>",
+			)
+		}
+		_ => return false,
+	};
+
+	html.push_str(open);
+
+	for (key, attribute) in attributes {
+		let value = match attrs.get(key) {
+			Some(Value::String(text)) => text.to_string(),
+			Some(Value::Int(number)) => number.to_string(),
+			Some(Value::Float(number)) => {
+				let Some(text) = float_text(*number) else {
+					continue;
+				};
+				text
+			}
+			_ => continue,
+		};
+		html.push(' ');
+		html.push_str(attribute);
+		html.push_str("=\"");
+		html.push_str(&escape(&value));
+		html.push('"');
+	}
+
+	if cfg!(feature = "audio") && name == "audio" {
+		for flag in ["controls", "autoplay", "loop", "muted"] {
+			// Controls are on unless turned off; the rest are off.
+			let on = attrs
+				.get(flag)
+				.and_then(Value::as_bool)
+				.unwrap_or(flag == "controls");
+
+			if on {
+				html.push(' ');
+				html.push_str(flag);
+			}
+		}
+	}
+
+	html.push_str(close);
+	true
+}
+
+/// A finite number as HTML writes it: whole numbers without a fraction.
+/// It goes through `serde_json`, whose float writer the bindings already
+/// carry, rather than `f64`'s `Display`, which would add Rust's float
+/// formatting to every WebAssembly build.
+fn float_text(number: f64) -> Option<String> {
+	const EXACT: f64 = 9_007_199_254_740_992.0;
+
+	if number.fract() == 0.0 && number.abs() < EXACT {
+		return Some((number as i64).to_string());
+	}
+
+	serde_json::Number::from_f64(number).map(|number| number.to_string())
 }
 
 fn container_tags(name: &str, attrs: &Attrs) -> (String, &'static str) {

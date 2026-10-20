@@ -3,6 +3,9 @@
  * Bun, and Workers: load and export ProseMirror JSON, HTML, Markdown, and
  * text, run typed commands, and serve Yjs collaboration.
  *
+ * This module compiles in TipTap's StarterKit. Every other extension is in
+ * `@canvist/headless/full`, a larger module with the same API.
+ *
  * ```ts
  * import { createEngine } from "@canvist/headless";
  *
@@ -15,10 +18,10 @@
  *
  * @module
  */
+export { createEngine } from "./create.ts";
 export {
 	type CanvistError,
 	type Content,
-	createEngine,
 	Doc,
 	Engine,
 	type EngineOptions,
