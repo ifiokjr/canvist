@@ -1794,7 +1794,7 @@ fn wire__crate__api__view__CanvistView_caret_rect_impl(
 				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
 			>>::sse_decode(&mut deserializer);
 			deserializer.end();
-			transform_result_sse::<_, ()>((move || {
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
 				let mut api_that_guard = None;
 				let decode_indices_ =
 					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
@@ -1809,8 +1809,7 @@ fn wire__crate__api__view__CanvistView_caret_rect_impl(
 					}
 				}
 				let api_that_guard = api_that_guard.unwrap();
-				let output_ok =
-					Ok::<_, ()>(crate::api::view::CanvistView::caret_rect(&*api_that_guard))?;
+				let output_ok = crate::api::view::CanvistView::caret_rect(&*api_that_guard)?;
 				std::result::Result::Ok(output_ok)
 			})())
 		},
@@ -2935,7 +2934,7 @@ fn wire__crate__api__view__CanvistView_selection_ends_impl(
 				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
 			>>::sse_decode(&mut deserializer);
 			deserializer.end();
-			transform_result_sse::<_, ()>((move || {
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
 				let mut api_that_guard = None;
 				let decode_indices_ =
 					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
@@ -2950,9 +2949,7 @@ fn wire__crate__api__view__CanvistView_selection_ends_impl(
 					}
 				}
 				let api_that_guard = api_that_guard.unwrap();
-				let output_ok = Ok::<_, ()>(crate::api::view::CanvistView::selection_ends(
-					&*api_that_guard,
-				))?;
+				let output_ok = crate::api::view::CanvistView::selection_ends(&*api_that_guard)?;
 				std::result::Result::Ok(output_ok)
 			})())
 		},

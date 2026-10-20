@@ -234,16 +234,20 @@ final class EngineBuilder {
         ),
       ),
       _registration,
+      platform,
     );
   }
 }
 
 /// A set of extensions that creates documents.
 final class Engine {
-  Engine._(this._bridge, this._registration);
+  Engine._(this._bridge, this._registration, this.platform);
 
   final CanvistEngine _bridge;
   final Registration _registration;
+
+  /// Which platform's key bindings the engine's documents follow.
+  final KeyPlatform platform;
 
   /// An engine with TipTap's StarterKit and the handles for all of it.
   static Future<({Engine engine, StarterKitHandles kit})> starterKit({

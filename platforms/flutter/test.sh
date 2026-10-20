@@ -26,15 +26,18 @@ cd "$flutter_dir/example"
 # `_test.dart` file relaunches the app, and on CI simulators a relaunch can
 # hang `simctl` until the job times out.
 entrypoint=integration_test/canvist_test.dart
+# `CANVIST_PERF_SLACK` multiplies the keystroke-to-frame budget, for slow
+# emulators.
+define="--dart-define=CANVIST_PERF_SLACK=${CANVIST_PERF_SLACK:-1}"
 
 for platform in ${CANVIST_FLUTTER_PLATFORMS:-$default_platforms}; do
 	case "$platform" in
 	ios)
-		"${flutter[@]}" test "$entrypoint" -d "$("$platforms_dir/apple/simulator.sh")"
+		"${flutter[@]}" test "$entrypoint" "$define" -d "$("$platforms_dir/apple/simulator.sh")"
 		;;
 	android)
 		# shellcheck disable=SC2016 # Expanded by the inner shell.
-		"$platforms_dir/android/emulator.sh" bash -c 'entrypoint=$1; shift; "$@" test "$entrypoint" -d "$ANDROID_SERIAL"' _ "$entrypoint" "${flutter[@]}"
+		"$platforms_dir/android/emulator.sh" bash -c 'entrypoint=$1; define=$2; shift 2; "$@" test "$entrypoint" "$define" -d "$ANDROID_SERIAL"' _ "$entrypoint" "$define" "${flutter[@]}"
 		;;
 	*)
 		echo "Unknown platform '$platform' (expected ios or android)" >&2

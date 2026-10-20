@@ -79,6 +79,8 @@ jobs:
         run: platforms/flutter/test.sh
         env:
           CANVIST_FLUTTER_PLATFORMS: ios
+          # Debug builds on a shared runner's simulator.
+          CANVIST_PERF_SLACK: "3"
 
       - name: upload xcresult
         if: failure()
@@ -158,4 +160,6 @@ jobs:
           target: default
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot-save -gpu swiftshader_indirect
-          script: platforms/android/test.sh && CANVIST_FLUTTER_PLATFORMS=android platforms/flutter/test.sh
+          # A software-rendered emulator running a debug build: the keystroke
+          # budget gets generous slack.
+          script: platforms/android/test.sh && CANVIST_FLUTTER_PLATFORMS=android CANVIST_PERF_SLACK=6 platforms/flutter/test.sh

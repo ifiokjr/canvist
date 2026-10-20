@@ -1,14 +1,18 @@
 # Quick start: Flutter
 
-In this guide you add canvist's engine to a Flutter app and drive a document from your own widgets. It takes about five minutes.
+In this guide you add canvist's editor to a Flutter app, with a toolbar that formats the selection. It takes about five minutes.
 
-**Status: engine available, editor widget coming soon.** `canvist_flutter` gives your app the full engine today: documents, typed commands, every format, and collaboration. It doesn't include the canvas editor widget yet, so you show the document with your own widgets for now. When the widget lands, the engine code you write today keeps working.
+**Status: Available.** `CanvistEditor` is a rich-text editor painted from canvist's Rust layout and measured by Flutter's own text engine. It supports platform text input (IME composition, autocorrect, dictation), selection handles and a toolbar on touch devices, mouse and keyboard selection on desktop, undo and redo, scrolling, accessibility, and Yjs collaboration. It runs on iOS, Android, macOS, Linux, and Windows. Flutter web isn't supported yet; use [`@canvist/web`](./web.md) in the browser.
 
 ## 1. Install
 
 You need Flutter 3.47 or newer and a [Rust toolchain](https://rustup.rs). The engine is written in Rust, and a build hook compiles it for each platform you build.
 
-Add the package to `pubspec.yaml`. It isn't on pub.dev yet, so install it from GitHub:
+```sh
+flutter pub add canvist_flutter
+```
+
+Before the first release reaches pub.dev, install it from GitHub instead:
 
 ```yaml
 dependencies:
@@ -18,13 +22,9 @@ dependencies:
       path: platforms/flutter
 ```
 
-```sh
-flutter pub get
-```
+## 2. Show an editor with a toolbar
 
-## 2. Load the engine and edit a document
-
-Load the engine once, before `runApp`. Then create documents and run commands from your widgets. This app adds what you type to a document, has a button that toggles bold, and shows the result as Markdown:
+Load the engine once, before `runApp`. Building it with `CanvistController.keyPlatform` makes shortcuts such as `Mod-b` use Cmd on Apple devices and Ctrl elsewhere. A `CanvistController` holds the document. Toolbar buttons run typed commands from the engine's handles and light up from typed queries:
 
 ```dart
 import 'package:canvist_flutter/canvist_flutter.dart';
@@ -32,7 +32,9 @@ import 'package:flutter/material.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final (:engine, :kit) = await Engine.starterKit();
+  final (:engine, :kit) = await Engine.starterKit(
+    platform: CanvistController.keyPlatform,
+  );
   runApp(MaterialApp(home: NotesScreen(engine: engine, kit: kit)));
 }
 
@@ -47,57 +49,40 @@ class NotesScreen extends StatefulWidget {
 }
 
 class _NotesScreenState extends State<NotesScreen> {
-  late final Doc _doc = widget.engine.create();
-  final _draft = TextEditingController();
-  String _markdown = '';
-
-  void _addText() {
-    final end = _doc.export(Format.text).length;
-    _doc
-      ..select(Position([0], end))
-      ..insertText(_draft.text);
-    _draft.clear();
-    _refresh();
-  }
-
-  void _toggleBold() {
-    _doc
-      ..selectAll()
-      ..run(widget.kit.bold.toggleBold());
-    _refresh();
-  }
-
-  void _refresh() => setState(() => _markdown = _doc.export(Format.markdown));
+  late final _controller = CanvistController(
+    engine: widget.engine,
+    doc: widget.engine.parse(Format.markdown, '# Notes\n\nStart typing.'),
+  );
 
   @override
   void dispose() {
-    _draft.dispose();
-    _doc.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final kit = widget.kit;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notes'),
         actions: [
+          ListenableBuilder(
+            listenable: _controller,
+            builder: (context, _) => IconButton(
+              icon: const Icon(Icons.format_bold),
+              isSelected: _controller.query(kit.bold.isBold()),
+              onPressed: () => _controller.run(kit.bold.toggleBold()),
+            ),
+          ),
           IconButton(
-            icon: const Icon(Icons.format_bold),
-            onPressed: _toggleBold,
+            icon: const Icon(Icons.undo),
+            onPressed: _controller.undo,
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(controller: _draft, onSubmitted: (_) => _addText()),
-            const SizedBox(height: 16),
-            SelectableText(_markdown),
-          ],
-        ),
-      ),
+      body: CanvistEditor(controller: _controller, autofocus: true),
     );
   }
 }
@@ -109,8 +94,39 @@ Run it on any device:
 flutter run
 ```
 
+Type `##` at the start of a line for a heading, or `-` for a list. Select text and press the bold button, or Cmd-B (Ctrl-B). Export the document whenever you need it, for example `_controller.export(Format.markdown)`.
+
+## 3. Collaborate
+
+A controller's document is a Yjs peer. Share it, send what it produces to your provider, and apply what arrives through the controller so the editor repaints:
+
+```dart no_run
+import 'dart:typed_data';
+
+import 'package:canvist_flutter/canvist_flutter.dart';
+
+void connect(CanvistController controller, void Function(Uint8List) send) {
+  controller.doc.share(1);
+  controller.addListener(() => controller.doc.flushSync().forEach(send));
+}
+
+void onMessage(
+  CanvistController controller,
+  Uint8List message,
+  void Function(Uint8List) send,
+) {
+  controller.receiveSync(message).reply.forEach(send);
+}
+```
+
+Undo on a shared document reverts only this peer's changes. The example app's **Two peers** switch shows two editors syncing one document through an in-memory relay.
+
+## Styling
+
+`CanvistEditor` follows the app's brightness and text scale. `CanvistStyle` sets the font families (as CSS lists, such as `Inter, sans-serif`), size, and line height. `CanvistFonts` decides which Flutter fonts those names mean. Layout measures and the painter draws through the same fonts, so text always wraps where it's drawn.
+
 ## Next steps
 
-- [Quick start: Dart](./server-dart.md): the same engine on a Dart server.
 - [Commands and typed handles](../concepts/commands.md): toolbar buttons map one-to-one onto commands.
 - [Collaboration](../guides/collaboration.md): sync documents with Yjs.
+- [Quick start: Dart](./server-dart.md): the same engine on a Dart server, including server rendering with `doc.toHtml`.

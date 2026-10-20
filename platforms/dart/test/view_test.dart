@@ -270,6 +270,17 @@ void _collaboratorsUpdatesReachTheView() {
     alice.applyUpdate(update);
   }
   expect(alice.export(Format.text), 'Shared note\nmore!');
+
+  expect(view.keyDown('z', ctrl: true), isTrue, reason: 'Mod-z');
+  expect(
+    bob.export(Format.text),
+    'Shared note\nmore',
+    reason: "undo reverts this peer's change, never alice's",
+  );
+  expect(view.keyDown('z', ctrl: true, shift: true), isTrue);
+  expect(bob.export(Format.text), 'Shared note\nmore!');
+  expect(view.runNamed('undo'), isTrue);
+  expect(bob.export(Format.text), 'Shared note\nmore');
 }
 
 void _semanticsExposeThePlainTextAndSelectThroughIt() {

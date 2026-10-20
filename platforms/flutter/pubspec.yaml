@@ -1,5 +1,5 @@
 name: canvist_flutter
-description: Flutter binding for canvist. The engine comes from the pure Dart `canvist` package, whose build hook compiles the Rust core; Flutter widgets belong here.
+description: canvist's rich-text editor for Flutter, painted from a Rust layout. Typed extension commands, IME and touch selection, accessibility, and Yjs collaboration.
 version: 0.1.0
 repository: https://github.com/canvist/canvist/tree/main/platforms/flutter
 issue_tracker: https://github.com/canvist/canvist/issues
@@ -20,3 +20,5 @@ dependencies:
 
 dev_dependencies:
   flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
