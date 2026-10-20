@@ -203,6 +203,8 @@ in
         cargo nextest run -p canvist_headless --all-features
         # Scene collaboration lives behind canvist_collab's `scene` feature.
         cargo nextest run -p canvist_collab --features scene
+        # Painting backends are opt-in features.
+        cargo nextest run -p canvist_paint --features cpu,gpu
       '';
       description = "Run cargo tests with nextest.";
       binary = "bash";
@@ -220,7 +222,7 @@ in
     "test:perf" = {
       exec = ''
         set -e
-        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --features canvist_headless/collab,canvist_collab/scene --test perf_budgets -- --ignored --test-threads=1 --nocapture
+        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --features canvist_headless/collab,canvist_collab/scene,canvist_paint/cpu,canvist_paint/gpu --test perf_budgets -- --ignored --test-threads=1 --nocapture
       '';
       description = "Fail when a hot path exceeds its performance budget (release mode; CANVIST_PERF_SLACK scales budgets).";
       binary = "bash";
@@ -285,6 +287,8 @@ in
         monostyle check crates/canvist_collab --fail-under 90
         monostyle check crates/canvist_scene --fail-under 90
         monostyle check crates/canvist_canvas --fail-under 90
+        monostyle check crates/canvist_canvas_wasm --fail-under 90
+        monostyle check crates/canvist_paint --fail-under 90
         monostyle check crates/canvist_headless --fail-under 90
         monostyle check crates/canvist_headless_wasm --fail-under 90
         monostyle check packages/canvist-headless --fail-under 90
@@ -292,6 +296,7 @@ in
         monostyle check packages/canvist-web --fail-under 90
         monostyle check packages/canvist-react --fail-under 90
         monostyle check packages/canvist-vue --fail-under 90
+        monostyle check packages/canvist-canvas --fail-under 90
         monostyle check platforms/dart --fail-under 90
         monostyle check services/cloud --fail-under 90
         monostyle check tools/footage --fail-under 90

@@ -156,25 +156,30 @@ Registration returns a typed handle, as in Decision 8: `let shapes = builder.add
 
 **Input is open-ended:** tools receive `Custom { kind, value }` events beside pointer and key events. A host can feed device motion, MIDI, or a gamepad to a tool. Rotating your phone to sweep a brush is a tool, not a fork.
 
-## Decision C6: rendering with one paint list and three rasterisers
+## Decision C6: rendering through one painter contract and three rasterisers
 
-**What:** the canvas produces a `PaintList` for the viewport: fills, strokes, images, glyph runs, layers (opacity, blend, clip), and effects, in world coordinates, culled to the viewport. Backends turn it into pixels or files:
+**What:** `canvist_paint` walks one page of the scene in paint order, culled to the viewport, and calls a `Painter`: fills, strokes, layers (opacity, blend, clip), images, text runs, and box shadows, in screen space. Every backend implements `Painter`:
 
-| Backend         | Where                                                         | Feature |
-| --------------- | ------------------------------------------------------------- | ------- |
-| `vello` on wgpu | WebGPU in browsers, Metal, Vulkan, DX12 on desktop and mobile | `gpu`   |
-| `vello_hybrid`  | WebGL2 in browsers without WebGPU                             | `webgl` |
-| `vello_cpu`     | Servers, PNG export, Canvas2D fallback (`putImageData`)       | `cpu`   |
-| SVG string      | Export, SSR, snapshot tests                                   | always  |
-| PDF             | Export                                                        | `pdf`   |
+| Backend         | Where                                                          | Feature |
+| --------------- | -------------------------------------------------------------- | ------- |
+| `vello` on wgpu | WebGPU in browsers, Metal, Vulkan, DX12 on desktop and mobile  | `gpu`   |
+| `vello_cpu`     | Servers, PNG export, and the browser fallback (`putImageData`) | `cpu`   |
+| SVG string      | Export, SSR, snapshot tests                                    | always  |
+| `Recorder`      | Tests: the calls themselves                                    | always  |
 
-**Caching:** each node's paint operations are cached by `rev` and world transform. A frame concatenates cached fragments of visible nodes and re-encodes only changed ones; the vello backend uses `Scene::append` for the same effect. During a drag only the dragged nodes re-encode.
+**Why a painter contract instead of a stored paint list:** the walker is cheap enough to run every frame (encoding 10,000 visible nodes for the GPU takes about 1 ms), so a retained list would add memory and invalidation without saving time. If profiles of larger scenes say otherwise, per-node vello fragments cached by `rev` and joined with `Scene::append` are the next step, and the painter contract does not change.
 
-**Culling and level of detail:** an R-tree over world bounds returns the visible nodes in `O(log n + visible)`. Below a size threshold on screen, a node draws as its bounding box in its main colour; tiny text draws as greeked line bars; blurs and shadows are skipped while the camera moves and restored when it settles. For scenes far larger than the GPU can encode per frame, the next step is a tile cache (render tiles at power-of-two zoom levels, reuse them while panning), which the benchmarks decide.
+**The browser fallback is the CPU rasteriser, not WebGL2.** `vello_hybrid` (WebGL2) currently tracks an older `vello_common` and wgpu than `vello` and `vello_cpu`, so shipping it beside them would double the GPU stack in the wasm module. `vello_cpu` rasterises the same 10,000-node frame at 1080p in about 4 ms, fast enough to be the fallback where WebGPU is missing. WebGL2 can return as a separate build once the sparse-strips crates line up.
 
-**The text `DisplayList` fits inside:** a text frame's display list becomes glyph runs, rectangles, and decorations in the paint list, transformed by the frame. The SVG renderer reuses the same structure. Text is measured and shaped with `parley` on every platform for the canvas, so a frame wraps identically in the browser, in a PNG made on the server, and in a PDF.
+**Culling and level of detail:** subtrees whose extent misses the viewport are skipped. Nodes under half a pixel are skipped; nodes under three pixels draw as a box in their main colour; text under four pixels draws as greeked bars; shadows are skipped while the camera moves (`Quality::Interactive`). For scenes far larger than a frame can encode, the next step is a tile cache (render tiles at power-of-two zoom levels and reuse them while panning), which the benchmarks decide.
 
-**Why vello:** it is pure Rust on wgpu, so one renderer covers WebGPU in wasm and native GPU APIs on every platform. Its sparse-strips siblings give a WebGL2 path and a CPU path that draw the same scenes with the same semantics, so a server thumbnail matches the canvas. Writing our own GPU vector renderer is Figma-scale work that vello already did.
+**The text `DisplayList` fits inside:** a text frame's display list becomes glyph runs, rectangles, and decorations, transformed by the frame. The GPU and CPU backends shape runs with `parley` and the bundled font the canvas measures with (Atkinson Hyperlegible), so a frame wraps and draws identically in the browser, in a PNG made on the server, and in SVG.
+
+**What vello does not do yet:** layer and background blurs (skipped), and shadows on non-rectangular shapes (drawn as a blurred rounded rectangle of the node's box). Outside strokes are drawn double width behind the fill, which is exact for opaque fills.
+
+**Why vello:** it is pure Rust on wgpu, so one renderer covers WebGPU in wasm and native GPU APIs on every platform, and `vello_cpu` draws the same scenes with the same semantics, so a server thumbnail matches the canvas. Writing our own GPU vector renderer is Figma-scale work that vello already did.
+
+**In the browser:** `canvist_canvas_wasm` puts the canvas on a `<canvas>`. vello renders into a storage texture and a blit copies it to the canvas's surface, because browsers do not offer storage binding on canvas textures. It finds a WebGPU device before touching the canvas: once a canvas has a WebGPU context it can never have a 2D one, and the CPU fallback draws through `putImageData`. A hidden text box holds focus while a text frame is open, so IMEs, dictation, and autocorrect deliver text the way they do to any text field. `@canvist/canvas` wraps it in a typed `mountCanvas` with a pluggable transport; its demo syncs tabs over a `BroadcastChannel`.
 
 ## Decision C7: a headless interaction toolkit
 
@@ -198,7 +203,8 @@ Everything a design tool's interaction needs is geometry and state in Rust:
 
 | Metric                                             | Budget                   | Today         |
 | -------------------------------------------------- | ------------------------ | ------------- |
-| Pan/zoom frame (paint list + encode), 10k nodes    | < 8 ms (120 fps capable) | (renderer)    |
+| Pan/zoom frame (walk + encode), 10k nodes          | < 8 ms (120 fps capable) | 0.96 ms       |
+| CPU fallback frame at 1080p, 10k nodes             | < 33 ms                  | 4.1 ms        |
 | Selection hit test, 100k nodes                     | < 1 ms                   | 0.27 µs       |
 | Drag-transform step (steps + index update), 1 node | < 0.5 ms                 | 1.3 µs        |
 | Apply a remote property change                     | < 50 µs                  | 3.4 µs        |
@@ -209,8 +215,10 @@ Everything a design tool's interaction needs is geometry and state in Rust:
 | Export / load 10k nodes as JSON                    | < 50 ms / < 50 ms        | 29 ms / 17 ms |
 | Build the scene index from scratch, 100k nodes     | < 100 ms                 | 75 ms         |
 | Marquee select over 10k nodes                      | < 2 ms                   | 0.57 ms       |
+| Browser frame on WebGPU, 2k-node demo, p95         | < 8 ms                   | 1.0 ms        |
+| Browser frame on the CPU fallback, 2k nodes, p95   | < 33 ms                  | 21 ms         |
 
-Each is a release-mode test in its crate's `tests/perf_budgets.rs`. The web demo adds a Playwright test that records frame times during a scripted pan and drag.
+Each model, index, and paint metric is a release-mode test in its crate's `tests/perf_budgets.rs`. The browser rows come from the `@canvist/canvas` Playwright test, which records the main-thread time of every frame painted during a scripted pan and drag at 1280 by 720 (headless Chromium on an Apple M-series laptop; CI runs without a GPU, so its WebGPU run falls back to the CPU and is reported as such).
 
 ## What changes in existing crates
 
@@ -218,11 +226,14 @@ All additive:
 
 - **`canvist_collab`** gains a `scene` feature with `SceneBinding`. To bind a text frame's `Y.Array` inside the scene's Yjs document, the block binding's internals split into a mirror that works on whatever array its owner passes in, and the document-level parts (update outbox, undo manager, reorder buffer). `Binding`'s public API does not change. `CollabError` gains two variants behind the feature.
 - **`canvist_headless`** gains a `scene` feature.
-- **`canvist_editor`, `canvist_model`, `canvist_layout`:** no changes.
+- **`canvist_editor`** gains `Editor::into_state`, so a host that lent a document to an editor (a text frame) can take it back.
+- **`canvist_model`, `canvist_layout`:** no changes.
 
 ## Recorded tradeoffs
 
 - **Scene documents keep deleted content.** yrs 0.28 frees a deleted nested type even while the undo manager still points at content inside it: it only keeps what this peer's tracked transactions deleted. Undoing after a collaborator deletes a node then reads freed memory (a property test found it as a segfault). Scene documents therefore turn off yrs garbage collection, so deleted nodes stay as tombstones with their content. Documents grow with their editing history, as Yjs documents with `gc: false` do. The fix belongs upstream; once yrs keeps undo-referenced content alive, scenes can collect garbage again. A direct probe of the document `Binding`, which keeps collection on, did not reproduce it.
+- **Peers seed the demo independently.** Every tab of the web demo builds the same scene JSON under one reserved client id, so all tabs start from the same shared state and sync with a state-vector handshake, with no leader election. This needs the binding to give each property the same yrs item id on every peer, so it writes a new node's props one at a time in key order rather than through a hash map. Encoded bytes can still differ, because yrs writes an object value's keys in hash order; item ids, which are what merging compares, do not.
+- **The browser module is large.** The wasm build carries vello, wgpu, parley, yrs, and the text editor: 5.6 MB, 2.0 MB gzipped. Splitting the CPU fallback and the text editor into lazily loaded modules is the obvious next step if load time matters.
 - **A text frame's array is looked up in every transaction.** Holding a reference to a nested yrs type across transactions can outlive the type, so the scene binding stores item ids and resolves arrays when it needs them.
 
 ## Rejected alternatives

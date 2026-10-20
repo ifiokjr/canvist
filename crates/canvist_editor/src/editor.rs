@@ -289,6 +289,13 @@ impl Editor {
 		&self.state
 	}
 
+	/// Take the editor apart, returning its state. Hosts that lend a
+	/// document to an editor (a canvas text frame) take it back this way.
+	#[must_use]
+	pub fn into_state(self) -> EditorState {
+		self.state
+	}
+
 	/// The schema.
 	#[must_use]
 	pub fn schema(&self) -> &Arc<Schema> {

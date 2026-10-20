@@ -1,0 +1,134 @@
+{
+	"type": "canvist-scene",
+	"version": 1,
+	"nodes": [
+		{
+			"type": "page",
+			"props": {
+				"name": "Demo",
+				"fills": [{ "type": "solid", "color": "#f6f3ec" }]
+			},
+			"children": [
+				{
+					"type": "text",
+					"props": {
+						"name": "Title",
+						"size": [560, 0],
+						"transform": [1, 0, 0, 1, 80, 60]
+					},
+					"text": {
+						"type": "doc",
+						"content": [{
+							"type": "paragraph",
+							"content": [{
+								"type": "text",
+								"text": "Double-click me to edit. Open this page in a second tab and draw."
+							}]
+						}]
+					}
+				},
+				{
+					"type": "frame",
+					"props": {
+						"name": "Card",
+						"size": [380, 260],
+						"transform": [1, 0, 0, 1, 80, 160],
+						"radius": [16, 16, 16, 16],
+						"fills": [{ "type": "solid", "color": "#ffffff" }],
+						"effects": [
+							{
+								"type": "drop-shadow",
+								"color": "#17141f2e",
+								"offset": [0, 12],
+								"blur": 24
+							}
+						]
+					},
+					"children": [
+						{
+							"type": "rectangle",
+							"props": {
+								"name": "Gradient",
+								"size": [150, 200],
+								"transform": [1, 0, 0, 1, 30, 30],
+								"radius": [12, 12, 12, 12],
+								"fills": [{
+									"type": "linear",
+									"from": [0, 0],
+									"to": [1, 1],
+									"stops": [
+										{ "offset": 0, "color": "#3b2cf5" },
+										{ "offset": 1, "color": "#2ec4a0" }
+									]
+								}]
+							}
+						},
+						{
+							"type": "ellipse",
+							"props": {
+								"name": "Coral",
+								"size": [140, 140],
+								"transform": [1, 0, 0, 1, 200, 30],
+								"fills": [{ "type": "solid", "color": "#ff6f61" }]
+							}
+						}
+					]
+				},
+				{
+					"type": "polygon",
+					"props": {
+						"name": "Star",
+						"size": [170, 170],
+						"transform": [0.98007, 0.19867, -0.19867, 0.98007, 560, 190],
+						"shape": { "type": "polygon", "points": 5, "ratio": 0.5 },
+						"fills": [{ "type": "solid", "color": "#ffc83d" }]
+					}
+				},
+				{
+					"type": "path",
+					"props": {
+						"name": "Squiggle",
+						"size": [280, 120],
+						"transform": [1, 0, 0, 1, 520, 420],
+						"shape": {
+							"type": "path",
+							"d": "M0,60 C50,-20 90,140 140,60 C190,-20 230,140 280,60"
+						},
+						"strokes": [{ "type": "solid", "color": "#17141f" }],
+						"stroke": { "width": 10 }
+					}
+				},
+				{
+					"type": "image",
+					"props": {
+						"name": "Sunset",
+						"size": [240, 300],
+						"transform": [1, 0, 0, 1, 860, 160],
+						"radius": [20, 20, 20, 20],
+						"fills": [
+							{ "type": "image", "asset": "demo:sunset", "fit": "fill" }
+						]
+					}
+				},
+				{
+					"type": "rectangle",
+					"props": {
+						"name": "Mint",
+						"size": [180, 180],
+						"transform": [1, 0, 0, 1, 80, 470],
+						"radius": [24, 24, 24, 24],
+						"fills": [{ "type": "solid", "color": "#2ec4a0" }],
+						"effects": [
+							{
+								"type": "drop-shadow",
+								"color": "#17141f2e",
+								"offset": [0, 12],
+								"blur": 24
+							}
+						]
+					}
+				}
+			]
+		}
+	]
+}

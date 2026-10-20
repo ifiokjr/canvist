@@ -1,0 +1,39 @@
+[package]
+name = "canvist_canvas_wasm"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = false
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "The canvist canvas in the browser: WebGPU rendering with a Canvas2D fallback, text frames on the real text editor, and collaboration"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+canvist_canvas = { workspace = true, features = ["editor"] }
+canvist_collab = { workspace = true, features = ["scene"] }
+canvist_editor = { workspace = true }
+canvist_extensions = { workspace = true, features = ["starter-kit"] }
+canvist_layout = { workspace = true, features = ["parley"] }
+canvist_model = { workspace = true }
+canvist_paint = { workspace = true, features = ["cpu", "gpu"] }
+canvist_scene = { workspace = true }
+js-sys = { workspace = true, features = ["std"] }
+kurbo = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+vello = { version = "^0.11", default-features = false, features = ["wgpu"] }
+wasm-bindgen = { workspace = true, features = ["std"] }
+wasm-bindgen-futures = { workspace = true, features = ["std"] }
+web-sys = { workspace = true, features = ["std", "CanvasRenderingContext2d", "HtmlCanvasElement", "ImageData", "console"] }
+wgpu = { version = "^30", default-features = false, features = ["std", "wgsl", "webgpu"] }
+
+[lints]
+workspace = true

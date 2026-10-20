@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>canvist canvas</title>
+    <style>
+      :root {
+        --paper: #f6f3ec;
+        --ink: #17141f;
+        --muted: #6d6878;
+        --blue: #3b2cf5;
+        --panel: rgb(255 255 255 / 0.92);
+        --line: rgb(23 20 31 / 0.12);
+        color-scheme: light;
+        font-family:
+          ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+      }
+      #canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        outline: none;
+      }
+      .panel {
+        position: fixed;
+        background: var(--panel);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgb(23 20 31 / 0.12);
+      }
+      #status {
+        top: max(16px, env(safe-area-inset-top));
+        left: max(16px, env(safe-area-inset-left));
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        padding: 8px 14px;
+        font-size: 13px;
+      }
+      #status strong {
+        letter-spacing: 0.02em;
+      }
+      #status span {
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
+      #status a {
+        color: var(--blue);
+        text-decoration: none;
+        font-weight: 600;
+      }
+      #tools {
+        bottom: max(18px, env(safe-area-inset-bottom));
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 4px;
+        padding: 6px;
+      }
+      #tools button {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--ink);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+      }
+      #tools button:hover {
+        background: rgb(23 20 31 / 0.06);
+      }
+      #tools button[aria-pressed="true"] {
+        background: var(--blue);
+        color: white;
+      }
+      #tools button:focus-visible {
+        outline: 2px solid var(--blue);
+        outline-offset: 2px;
+      }
+      #tools kbd {
+        position: absolute;
+        right: 3px;
+        bottom: 1px;
+        font: 600 9px/1 ui-monospace, monospace;
+        opacity: 0.55;
+      }
+      #tools svg {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" aria-label="Design canvas"></canvas>
+    <div id="status" class="panel" role="status">
+      <strong>canvist canvas</strong>
+      <span id="backend">starting…</span>
+      <span id="zoom"></span>
+      <span id="fps"></span>
+      <a href="./" target="_blank" rel="noopener">Open another tab ↗</a>
+    </div>
+    <nav id="tools" class="panel" aria-label="Tools"></nav>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

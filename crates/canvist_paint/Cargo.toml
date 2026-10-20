@@ -1,0 +1,48 @@
+[package]
+name = "canvist_paint"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_paint"
+edition.workspace = true
+homepage.workspace = true
+include = ["src/**/*.rs", "fonts/*", "Cargo.toml", "readme.md", "license"]
+keywords = ["canvas", "vello", "renderer", "svg", "webgpu"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "Rendering for the canvist canvas: a culled, level-of-detail scene walker over vello (GPU), vello_cpu (PNG), and SVG backends"
+
+[features]
+default = []
+# PNG export and the Canvas2D fallback, rasterised on the CPU by vello_cpu.
+cpu = ["dep:vello_cpu"]
+# GPU rendering with vello on wgpu. Hosts enable the wgpu backends they
+# need (`webgpu` in browsers, the defaults natively).
+gpu = ["dep:vello", "vello/wgpu"]
+
+[dependencies]
+canvist_canvas = { workspace = true }
+canvist_layout = { workspace = true }
+canvist_scene = { workspace = true }
+kurbo = { workspace = true, features = ["std"] }
+parley = { version = "^0.12", default-features = false, features = ["std"] }
+peniko = { version = "^0.6", default-features = false, features = ["std"] }
+rustc-hash = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+vello = { version = "^0.11", default-features = false, optional = true }
+vello_cpu = { version = "^0.3", default-features = false, features = ["std", "png", "text", "u8_pipeline"], optional = true }
+
+[dev-dependencies]
+canvist_layout = { workspace = true, features = ["parley"] }
+canvist_model = { workspace = true }
+divan = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "paint"
+harness = false
+
+[lints]
+workspace = true

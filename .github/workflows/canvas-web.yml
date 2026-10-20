@@ -1,0 +1,92 @@
+name: "canvas-web"
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - main
+  # Every pull request, including stacked ones whose base is another
+  # feature branch, that touches what the canvas demo is built from.
+  pull_request:
+    paths:
+      - ".github/workflows/canvas-web.yml"
+      - "Cargo.lock"
+      - "crates/canvist_canvas/**"
+      - "crates/canvist_canvas_wasm/**"
+      - "crates/canvist_collab/**"
+      - "crates/canvist_editor/**"
+      - "crates/canvist_extensions/**"
+      - "crates/canvist_layout/**"
+      - "crates/canvist_model/**"
+      - "crates/canvist_paint/**"
+      - "crates/canvist_scene/**"
+      - "packages/canvist-canvas/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+defaults:
+  run:
+    working-directory: packages/canvist-canvas
+
+jobs:
+  demo:
+    timeout-minutes: 40
+    runs-on: ubuntu-latest
+    env:
+      # Shared runners are slower and noisier than a developer machine, and
+      # have no GPU: the WebGPU run falls back to the CPU and says so.
+      CANVIST_PERF_SLACK: "3"
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: install deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: clippy for the browser target
+        working-directory: .
+        run: cargo clippy -p canvist_canvas_wasm --target wasm32-unknown-unknown -- -D warnings
+
+      - name: build wasm and the demo bundle
+        run: deno task build
+
+      - name: type check and lint
+        run: |
+          deno task check
+          deno lint src demo tests
+
+      # `deno run npm:playwright install` hangs on CI runners; npx installs
+      # the same browser build into the cache the deno tests use.
+      - name: install chromium
+        timeout-minutes: 10
+        run: npx --yes playwright@1.58 install --with-deps chromium
+
+      - name: frame times and two-tab collaboration
+        run: deno task test | tee "$RUNNER_TEMP/canvas-test.log"
+
+      - name: frame times summary
+        if: always()
+        run: |
+          {
+            echo "### Canvas frame times (ms, main thread)"
+            echo '```'
+            grep CANVAS_PERF "$RUNNER_TEMP/canvas-test.log" || echo "no measurements"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

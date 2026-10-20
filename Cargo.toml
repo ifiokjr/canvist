@@ -2,6 +2,7 @@
 members = [
 	"crates/canvist",
 	"crates/canvist_canvas",
+	"crates/canvist_canvas_wasm",
 	"crates/canvist_collab",
 	"crates/canvist_core",
 	"crates/canvist_editor",
@@ -11,6 +12,7 @@ members = [
 	"crates/canvist_headless_wasm",
 	"crates/canvist_layout",
 	"crates/canvist_model",
+	"crates/canvist_paint",
 	"crates/canvist_render",
 	"crates/canvist_scene",
 	"crates/canvist_test",
@@ -25,6 +27,7 @@ default-members = [
 	"crates/canvist",
 	"crates/canvist_collab",
 	"crates/canvist_canvas",
+	"crates/canvist_canvas_wasm",
 	"crates/canvist_core",
 	"crates/canvist_editor",
 	"crates/canvist_extensions",
@@ -32,6 +35,7 @@ default-members = [
 	"crates/canvist_headless",
 	"crates/canvist_headless_wasm",
 	"crates/canvist_model",
+	"crates/canvist_paint",
 	"crates/canvist_layout",
 	"crates/canvist_render",
 	"crates/canvist_scene",
@@ -106,6 +110,7 @@ canvist_ffi = { path = "./crates/canvist_ffi", version = "0.1.0" }
 canvist_headless = { path = "./crates/canvist_headless", version = "0.1.0" }
 canvist_layout = { path = "./crates/canvist_layout", version = "0.1.0" }
 canvist_model = { path = "./crates/canvist_model", version = "0.1.0" }
+canvist_paint = { path = "./crates/canvist_paint", version = "0.1.0" }
 canvist_render = { path = "./crates/canvist_render", version = "0.1.0" }
 canvist_scene = { path = "./crates/canvist_scene", version = "0.1.0" }
 canvist_wasm = { path = "./crates/canvist_wasm", version = "0.1.0" }

@@ -68,6 +68,16 @@ pub enum OverlayItem {
 		/// What it is.
 		kind: PointKind,
 	},
+	/// The text caret of an open text session.
+	Caret {
+		/// Its outline.
+		path: BezPath,
+	},
+	/// A selected range of text in an open text session.
+	TextHighlight {
+		/// Its outline.
+		path: BezPath,
+	},
 	/// A small text label, such as a size readout.
 	Label {
 		/// Its anchor point.
