@@ -141,6 +141,9 @@ path = "crates/canvist_headless"
 [package.canvist_scene]
 path = "crates/canvist_scene"
 
+[package.canvist_canvas]
+path = "crates/canvist_canvas"
+
 # Binding crates. They are versioned with the SDK so the bindings they back
 # report the right version, but they are never published on their own:
 # `canvist_ffi` ships inside the Swift and Android artifacts and
@@ -228,6 +231,7 @@ packages = [
 	"@canvist/web",
 	"canvist_v1",
 	"canvist-dart",
+	"canvist_canvas",
 	"canvist_collab",
 	"canvist_core",
 	"canvist_editor",

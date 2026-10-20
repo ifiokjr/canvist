@@ -199,16 +199,16 @@ Everything a design tool's interaction needs is geometry and state in Rust:
 | Metric                                             | Budget                   | Today         |
 | -------------------------------------------------- | ------------------------ | ------------- |
 | Pan/zoom frame (paint list + encode), 10k nodes    | < 8 ms (120 fps capable) | (renderer)    |
-| Selection hit test, 100k nodes                     | < 1 ms                   | (canvas)      |
-| Drag-transform step (steps + index update), 1 node | < 0.5 ms                 | (canvas)      |
+| Selection hit test, 100k nodes                     | < 1 ms                   | 0.27 µs       |
+| Drag-transform step (steps + index update), 1 node | < 0.5 ms                 | 1.3 µs        |
 | Apply a remote property change                     | < 50 µs                  | 3.4 µs        |
 | Encode a local property change, 10k nodes          | < 50 µs                  | 2.1 µs        |
 | Set one property (model), 100k nodes               | < 2 µs                   | 0.15 µs       |
 | Reorder a layer in its frame (model), 100k nodes   | < 2 µs                   | 0.61 µs       |
 | Insert 10k nodes in one transaction                | < 20 ms                  | 7.1 ms        |
 | Export / load 10k nodes as JSON                    | < 50 ms / < 50 ms        | 29 ms / 17 ms |
-| Build the scene index from scratch, 100k nodes     | < 100 ms                 | (canvas)      |
-| Marquee select over 10k nodes                      | < 2 ms                   | (canvas)      |
+| Build the scene index from scratch, 100k nodes     | < 100 ms                 | 75 ms         |
+| Marquee select over 10k nodes                      | < 2 ms                   | 0.57 ms       |
 
 Each is a release-mode test in its crate's `tests/perf_budgets.rs`. The web demo adds a Playwright test that records frame times during a scripted pan and drag.
 
