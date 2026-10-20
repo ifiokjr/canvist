@@ -1,7 +1,8 @@
 //! The GPU renderer draws what the CPU renderer draws: the same frame,
 //! rendered offscreen with vello on wgpu and with `vello_cpu`, compared
-//! pixel by pixel. Machines without a GPU adapter (most CI runners) skip
-//! it with a message.
+//! pixel by pixel. Machines without a hardware GPU skip it with a message:
+//! most CI runners have none, and the software adapters some offer (WARP on
+//! Windows, lavapipe on Linux) crash compiling vello's compute shaders.
 
 #![cfg(feature = "winit")]
 
@@ -37,7 +38,7 @@ const DIFFERENT_SHARE: f64 = 0.002;
 #[test]
 fn the_gpu_paints_what_the_cpu_paints() {
 	let Some(gpu) = render_on_gpu() else {
-		eprintln!("skipped: no GPU adapter");
+		eprintln!("skipped: no hardware GPU adapter");
 
 		return;
 	};
@@ -79,7 +80,7 @@ fn driver() -> Driver {
 }
 
 /// The frame rendered offscreen by vello, as RGBA8 rows, or `None` when
-/// this machine has no adapter.
+/// this machine has no hardware adapter.
 fn render_on_gpu() -> Option<Vec<u8>> {
 	let driver = driver();
 	let (width, height) = driver.editor.pixel_size();
@@ -93,6 +94,11 @@ fn render_on_gpu() -> Option<Vec<u8>> {
 	let mut context = RenderContext::new();
 	let id = pollster::block_on(context.device(None))?;
 	let handle = &context.devices[id];
+
+	if handle.adapter().get_info().device_type == wgpu::DeviceType::Cpu {
+		return None;
+	}
+
 	let (device, queue) = (&handle.device, &handle.queue);
 	let mut renderer = Renderer::new(
 		device,
