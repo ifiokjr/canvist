@@ -184,8 +184,9 @@ jobs:
 
       # Readiness reads the release record: every package must be publishable,
       # with its registry's trusted publishing set up. The Dart packages are
-      # monochange `external` (the `pub` job publishes them), so they report
-      # `unsupported` and are left out.
+      # monochange `external` (the `pub` job publishes them once crates.io has
+      # the crates they build from), so they report `unsupported` and are left
+      # out.
       - name: check publish readiness
         run: |
           set -euo pipefail
@@ -375,13 +376,15 @@ jobs:
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_SIGNING_KEY_PASSWORD }}
         run: ./gradlew :canvist:publishAndReleaseToMavenCentral --no-configuration-cache
 
-  # pub.dev. monochange marks both Dart packages `external` until they can be
-  # published: the build hook's Rust crate still resolves through the Cargo
-  # workspace, which a pub.dev archive cannot include, and the package needs
-  # its own LICENSE. Set `CANVIST_PUBLISH_PUB_DEV` to `true` once that lands.
+  # pub.dev, after crates.io: the `canvist` archive's build hook compiles
+  # its Rust crate from the crates.io release it pins, so that release must
+  # exist first. monochange marks both Dart packages `external` and this job
+  # publishes them. `dart.yml` proves on every pull request that both archives
+  # validate and that `canvist` builds outside the workspace. Turn the job on
+  # by setting the `CANVIST_PUBLISH_PUB_DEV` repository variable to `true`.
   pub:
     name: pub.dev
-    needs: plan
+    needs: [plan, packages]
     if: needs.plan.outputs.sdk == 'true' && vars.CANVIST_PUBLISH_PUB_DEV == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
