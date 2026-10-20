@@ -48,14 +48,23 @@ test("an engine offers exactly its extensions' commands and queries", async () =
 	]);
 });
 
-test("the generated descriptors match what Rust reports", async () => {
+test("the generated descriptors match what Rust reports, less descriptions", async () => {
 	using engine = await createEngine();
 	const byName = (list: readonly { name: string }[]) =>
 		[...list].sort((a, b) => a.name.localeCompare(b.name));
+	// Descriptions are comments in the generated file, not data.
+	const withoutDocs = (value: unknown): { name: string }[] =>
+		JSON.parse(
+			JSON.stringify(value, (key, item) => key === "doc" ? undefined : item),
+		);
+	const metadata = engine.metadata();
 
+	assert.ok(
+		metadata.some((extension) => (extension.commands[0]?.doc ?? "") !== ""),
+	);
 	assert.deepEqual(
-		byName(engine.metadata() as { name: string }[]),
-		byName(JSON.parse(JSON.stringify(engine.extensions))),
+		byName(withoutDocs(metadata)),
+		byName(withoutDocs(engine.extensions)),
 	);
 	assert.equal(engine.extensions.length, starterKit.length + 4);
 });

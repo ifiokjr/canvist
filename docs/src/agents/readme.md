@@ -148,11 +148,11 @@ function schema(type: ValueSpec): Record<string, unknown> {
 	}
 }
 
-// One tool per command the engine registered.
-const tools = engine.extensions.flatMap((extension) =>
+// One tool per command the engine registered. `metadata()` carries the descriptions.
+const tools = engine.metadata().flatMap((extension) =>
 	extension.commands.map((command) => ({
 		name: command.name,
-		description: command.doc,
+		description: command.doc ?? command.name,
 		input_schema: {
 			type: "object",
 			properties: Object.fromEntries(
