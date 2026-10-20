@@ -302,6 +302,7 @@ in
         monostyle check examples/desktop --fail-under 90
         monostyle check crates/canvist_ffi --fail-under 90
         monostyle check platforms/apple --fail-under 90
+        monostyle check platforms/android --fail-under 90
         monostyle check packages/canvist-web --fail-under 90
         monostyle check packages/canvist-react --fail-under 90
         monostyle check packages/canvist-vue --fail-under 90

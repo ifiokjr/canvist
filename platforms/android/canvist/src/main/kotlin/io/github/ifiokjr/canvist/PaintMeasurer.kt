@@ -47,7 +47,17 @@ class PaintMeasurer(density: Float) : PlatformMeasurer {
          */
         fun advances(text: String, paint: TextPaint?, density: Float, out: MutableList<Float>) {
             val units = FloatArray(text.length)
-            paint?.getTextRunAdvances(text.toCharArray(), 0, text.length, 0, text.length, isRtl(text), units, 0)
+            paint?.getTextRunAdvances(
+                /* chars = */ text.toCharArray(),
+                /* index = */ 0,
+                /* count = */ text.length,
+                /* contextIndex = */ 0,
+                /* contextCount = */ text.length,
+                /* isRtl = */ isRtl(text),
+                /* advances = */ units,
+                /* advancesIndex = */ 0,
+            )
+
             var index = 0
 
             while (index < text.length) {
@@ -117,7 +127,8 @@ internal class FontTable(density: Float) {
 
     private fun paint(face: FontFace) = TextPaint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
         typeface = typeface(face)
-        textSize = face.size * density
+        // Not `density` alone: inside `apply` that is `TextPaint.density`.
+        textSize = face.size * this@FontTable.density
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) hinting = Paint.HINTING_OFF
     }
