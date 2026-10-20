@@ -434,7 +434,7 @@ fn attrs(name: &str, args: &Json) -> Result<Attrs, HeadlessError> {
 				.map(|value| (key.as_str(), value))
 				.ok_or_else(|| {
 					invalid(&format!(
-						"`{key}` must be a string, number, boolean, null, or array"
+						"`{key}` must be a string, number, boolean, null, array, or object"
 					))
 				})
 		})
@@ -455,6 +455,12 @@ fn value_of(json: &Json) -> Option<Value> {
 		Json::Array(values) => {
 			Value::from(values.iter().map(value_of).collect::<Option<Vec<_>>>()?)
 		}
-		Json::Object(_) => return None,
+		Json::Object(fields) => {
+			let attrs = fields
+				.iter()
+				.map(|(key, value)| Some((key.as_str(), value_of(value)?)))
+				.collect::<Option<Attrs>>()?;
+			Value::from(attrs)
+		}
 	})
 }

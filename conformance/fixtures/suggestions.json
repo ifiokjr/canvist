@@ -1,0 +1,110 @@
+{
+	"description": "Suggestions and the atoms they insert: mentions, hashtags, and emoji.",
+	"cases": [
+		{
+			"name": "suggests a mention while typing and inserts it with a space",
+			"requires": ["extensions"],
+			"extensions": ["mention"],
+			"steps": [
+				{ "op": "typeText", "text": "Hi @ad" },
+				{ "op": "query", "query": "mentionSuggestion", "expect": { "char": "@", "query": "ad" } },
+				{ "op": "run", "command": "insertMention", "args": { "id": "7", "label": "Ada" }, "applied": true },
+				{ "op": "query", "query": "mentionSuggestion", "expect": null },
+				{ "op": "typeText", "text": "x" }
+			],
+			"expect": {
+				"text": "Hi @Ada x",
+				"html": "<p>Hi <span data-type=\"mention\" data-id=\"7\" data-label=\"Ada\" data-mention-suggestion-char=\"@\">@Ada</span> x</p>"
+			}
+		},
+		{
+			"name": "Escape dismisses a suggestion and Backspace reopens a mention",
+			"requires": ["extensions"],
+			"extensions": ["mention"],
+			"steps": [
+				{ "op": "typeText", "text": "@ad" },
+				{ "op": "press", "key": "Escape" },
+				{ "op": "query", "query": "mentionSuggestion", "expect": null },
+				{ "op": "run", "command": "dismissMentionSuggestion", "applied": false },
+				{ "op": "typeText", "text": " @g" },
+				{ "op": "run", "command": "insertMention", "args": { "id": "3", "label": "Grace" }, "applied": true },
+				{ "op": "press", "key": "Backspace" },
+				{ "op": "press", "key": "Backspace" },
+				{ "op": "query", "query": "mentionSuggestion", "expect": { "char": "@", "query": "" } }
+			],
+			"expect": { "text": "@ad @" }
+		},
+		{
+			"name": "reads TipTap mentions from JSON and HTML",
+			"requires": ["extensions"],
+			"extensions": ["mention"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [{ "type": "paragraph", "content": [{ "type": "mention", "attrs": { "id": "1", "label": "Linus" } }] }]
+				}
+			},
+			"expect": { "text": "@Linus", "markdown": "@Linus" }
+		},
+		{
+			"name": "turns shortcodes into emoji and searches the table",
+			"requires": ["extensions"],
+			"extensions": ["emoji"],
+			"steps": [
+				{ "op": "typeText", "text": "ship it :rocket: :nope: :tad" },
+				{ "op": "query", "query": "emojiSuggestion", "expect": { "char": ":", "query": "tad" } },
+				{ "op": "query", "query": "searchEmoji", "args": { "query": "tad", "limit": 1 }, "expect": [{ "name": "tada", "emoji": "🎉" }] },
+				{ "op": "run", "command": "setEmoji", "args": { "name": "tada" }, "applied": true },
+				{ "op": "run", "command": "setEmoji", "args": { "name": "not-an-emoji" }, "applied": false }
+			],
+			"expect": {
+				"text": "ship it 🚀 :nope: 🎉 ",
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "ship it " },
+								{ "type": "emoji", "attrs": { "emoji": "🚀", "name": "rocket" } },
+								{ "type": "text", "text": " :nope: " },
+								{ "type": "emoji", "attrs": { "emoji": "🎉", "name": "tada" } },
+								{ "type": "text", "text": " " }
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "marks hashtags as they are typed and lists them",
+			"requires": ["extensions"],
+			"extensions": ["hashtag"],
+			"steps": [
+				{ "op": "typeText", "text": "#rust and #wasm. #ca" },
+				{ "op": "query", "query": "hashtagSuggestion", "expect": { "char": "#", "query": "ca" } },
+				{ "op": "run", "command": "insertHashtag", "args": { "tag": "canvas" }, "applied": true },
+				{ "op": "query", "query": "hashtags", "expect": ["canvas", "rust", "wasm"] }
+			],
+			"expect": {
+				"html": "<p><span data-type=\"hashtag\" data-tag=\"rust\">#rust</span> and <span data-type=\"hashtag\" data-tag=\"wasm\">#wasm</span>. <span data-type=\"hashtag\" data-tag=\"canvas\">#canvas</span> </p>"
+			}
+		},
+		{
+			"name": "keeps atoms and hashtags through Yjs",
+			"requires": ["collab", "extensions"],
+			"extensions": ["mention", "emoji", "hashtag"],
+			"steps": [
+				{ "op": "share", "clientId": 5 },
+				{ "op": "typeText", "text": "@a" },
+				{ "op": "run", "command": "insertMention", "args": { "id": "1", "label": "Ann" }, "applied": true },
+				{ "op": "typeText", "text": ":heart: #team " },
+				{ "op": "rejoin", "clientId": 6 }
+			],
+			"expect": {
+				"html": "<p><span data-type=\"mention\" data-id=\"1\" data-label=\"Ann\" data-mention-suggestion-char=\"@\">@Ann</span> <span data-type=\"emoji\" data-name=\"heart\" data-emoji=\"❤️\">❤️</span> <span data-type=\"hashtag\" data-tag=\"team\">#team</span> </p>"
+			}
+		}
+	]
+}

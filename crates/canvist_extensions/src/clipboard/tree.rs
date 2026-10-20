@@ -13,21 +13,48 @@ use canvist_model::MarkSet;
 use canvist_model::MarkTypeId;
 use canvist_model::Schema;
 use canvist_model::TreeContent;
+use canvist_model::Value;
 
 /// The name of the embed that breaks a line.
 pub(super) const HARD_BREAK: &str = "hardBreak";
 
-/// Text with hard breaks as line breaks and other embeds dropped.
+/// Text with hard breaks as line breaks, mentions and emoji as the text
+/// they show, and other embeds dropped.
 pub(super) fn plain_text(schema: &Schema, text: &InlineText) -> String {
 	text.runs()
 		.map(|run| {
 			match run.embed {
-				Some(embed) if schema.embed(embed.kind).name.as_ref() == HARD_BREAK => "\n",
-				Some(_) => "",
-				None => run.text,
+				Some(embed) => embed_text(schema, embed),
+				None => run.text.to_owned(),
 			}
 		})
 		.collect()
+}
+
+/// The text an embed stands for: a line break, a mention's trigger and
+/// label, an emoji, or nothing.
+pub(super) fn embed_text(schema: &Schema, embed: &Embed) -> String {
+	let text = |key: &str| embed.attrs.get(key).and_then(Value::as_str);
+
+	match schema.embed(embed.kind).name.as_ref() {
+		HARD_BREAK => "\n".to_owned(),
+		"mention" if cfg!(feature = "mention") => {
+			let trigger = text("mentionSuggestionChar").unwrap_or("@");
+			let label = text("label").or_else(|| text("id")).unwrap_or_default();
+			format!("{trigger}{label}")
+		}
+		"emoji" => {
+			text("emoji").map_or_else(
+				|| {
+					text("name")
+						.map(|name| format!(":{name}:"))
+						.unwrap_or_default()
+				},
+				str::to_owned,
+			)
+		}
+		_ => String::new(),
+	}
 }
 
 /// Creates blocks for a parser, resolving TipTap names against the schema
@@ -113,6 +140,19 @@ impl<'s> Builder<'s> {
 			.filter(|(key, _)| declared.get(key).is_some())
 			.map(|(key, value)| (key, value.clone()))
 			.collect()
+	}
+
+	/// An embed of type `name` carrying `marks`, if the schema has one,
+	/// keeping only the attributes the type declares.
+	pub(super) fn embed(&self, name: &str, attrs: &Attrs, marks: MarkSet) -> Option<InlineText> {
+		let kind = self.schema.embed_type(name)?;
+		let declared = &self.schema.embed(kind).attrs;
+		let attrs = attrs
+			.iter()
+			.filter(|(key, _)| declared.get(key).is_some())
+			.map(|(key, value)| (key, value.clone()))
+			.collect();
+		Some(InlineText::embed(Embed { kind, attrs }, marks))
 	}
 
 	/// A hard break carrying `marks`, if the schema has one.

@@ -14,7 +14,9 @@ export type ValueSpec =
 	| { readonly type: "int"; readonly min?: number; readonly max?: number }
 	| { readonly type: "float" }
 	| { readonly type: "string"; readonly enum?: readonly string[] }
-	| { readonly type: "nullable"; readonly of: ValueSpec };
+	| { readonly type: "nullable"; readonly of: ValueSpec }
+	| { readonly type: "list"; readonly of: ValueSpec }
+	| { readonly type: "record"; readonly fields: readonly FieldSpec[] };
 
 /** A named, typed value. A `default` makes an argument optional. */
 export interface FieldSpec {
@@ -88,6 +90,12 @@ export type ValueOf<S> = S extends { readonly type: "bool" } ? boolean
 	: S extends { readonly type: "string" } ? string
 	: S extends { readonly type: "nullable"; readonly of: infer Inner }
 		? ValueOf<Inner> | null
+	: S extends { readonly type: "list"; readonly of: infer Inner }
+		? readonly ValueOf<Inner>[]
+	: S extends {
+		readonly type: "record";
+		readonly fields: infer Fields extends readonly FieldSpec[];
+	} ? ArgsOf<Fields>
 	: never;
 
 type Simplify<T> = { [Key in keyof T]: T[Key] } & {};

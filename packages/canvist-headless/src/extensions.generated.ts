@@ -59,6 +59,109 @@ export const textStyle = {
 	"queries": []
 } as const satisfies ExtensionDescriptor;
 
+/** The `mention` extension. */
+export const mention = {
+	"commands": [
+		{
+			"args": [
+				{
+					"doc": "What the mention points at.",
+					"name": "id",
+					"type": {
+						"type": "string"
+					}
+				},
+				{
+					"default": null,
+					"doc": "The text shown after the trigger character.",
+					"name": "label",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"doc": "Replace the mention suggestion, or insert at the caret, with a mention and a space.",
+			"name": "insertMention"
+		},
+		{
+			"args": [],
+			"doc": "Stop suggesting mentions until another trigger character is typed.",
+			"name": "dismissMentionSuggestion"
+		}
+	],
+	"name": "mention",
+	"nodes": [
+		{
+			"attrs": [
+				{
+					"default": null,
+					"doc": "What the mention points at, such as a user id.",
+					"name": "id",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				},
+				{
+					"default": null,
+					"doc": "The text shown after the trigger character.",
+					"name": "label",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				},
+				{
+					"default": "@",
+					"doc": "The character that started the mention.",
+					"name": "mentionSuggestionChar",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"kind": "embed",
+			"name": "mention"
+		}
+	],
+	"queries": [
+		{
+			"args": [],
+			"doc": "The trigger character and the query typed after it, while a mention is suggested.",
+			"name": "mentionSuggestion",
+			"returns": {
+				"of": {
+					"fields": [
+						{
+							"doc": "The trigger character.",
+							"name": "char",
+							"type": {
+								"type": "string"
+							}
+						},
+						{
+							"doc": "The text typed after it.",
+							"name": "query",
+							"type": {
+								"type": "string"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
 /** The `doc` extension. */
 export const doc = {
 	"commands": [],
@@ -1427,6 +1530,217 @@ export const placeholder = {
 	]
 } as const satisfies ExtensionDescriptor;
 
+/** The `hashtag` extension. */
+export const hashtag = {
+	"commands": [
+		{
+			"args": [
+				{
+					"doc": "The tag, with or without `#`.",
+					"name": "tag",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"doc": "Replace the hashtag suggestion, or insert at the caret, with `#tag` and a space.",
+			"name": "insertHashtag"
+		},
+		{
+			"args": [],
+			"doc": "Stop suggesting hashtags until another `#` is typed.",
+			"name": "dismissHashtagSuggestion"
+		}
+	],
+	"name": "hashtag",
+	"nodes": [
+		{
+			"attrs": [
+				{
+					"default": null,
+					"doc": "The tag, without `#`.",
+					"name": "tag",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"kind": "mark",
+			"name": "hashtag"
+		}
+	],
+	"queries": [
+		{
+			"args": [],
+			"doc": "The trigger character and the query typed after it, while a hashtag is suggested.",
+			"name": "hashtagSuggestion",
+			"returns": {
+				"of": {
+					"fields": [
+						{
+							"doc": "The trigger character.",
+							"name": "char",
+							"type": {
+								"type": "string"
+							}
+						},
+						{
+							"doc": "The text typed after it.",
+							"name": "query",
+							"type": {
+								"type": "string"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "nullable"
+			}
+		},
+		{
+			"args": [],
+			"doc": "Every tag in the document, sorted, without `#`.",
+			"name": "hashtags",
+			"returns": {
+				"of": {
+					"type": "string"
+				},
+				"type": "list"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `emoji` extension. */
+export const emoji = {
+	"commands": [
+		{
+			"args": [
+				{
+					"doc": "The shortcode, such as `smile`.",
+					"name": "name",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"doc": "Replace the emoji suggestion, or insert at the caret, with the emoji for a shortcode.",
+			"name": "setEmoji"
+		},
+		{
+			"args": [],
+			"doc": "Stop suggesting emoji until another `:` is typed.",
+			"name": "dismissEmojiSuggestion"
+		}
+	],
+	"name": "emoji",
+	"nodes": [
+		{
+			"attrs": [
+				{
+					"default": null,
+					"doc": "The shortcode, such as `smile`.",
+					"name": "name",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				},
+				{
+					"default": null,
+					"doc": "The emoji itself, so it draws without the table.",
+					"name": "emoji",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"kind": "embed",
+			"name": "emoji"
+		}
+	],
+	"queries": [
+		{
+			"args": [],
+			"doc": "The trigger character and the query typed after it, while an emoji is suggested.",
+			"name": "emojiSuggestion",
+			"returns": {
+				"of": {
+					"fields": [
+						{
+							"doc": "The trigger character.",
+							"name": "char",
+							"type": {
+								"type": "string"
+							}
+						},
+						{
+							"doc": "The text typed after it.",
+							"name": "query",
+							"type": {
+								"type": "string"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "nullable"
+			}
+		},
+		{
+			"args": [
+				{
+					"doc": "What to look for, such as `smi`.",
+					"name": "query",
+					"type": {
+						"type": "string"
+					}
+				},
+				{
+					"default": 10,
+					"doc": "The most matches to return.",
+					"name": "limit",
+					"type": {
+						"type": "int"
+					}
+				}
+			],
+			"doc": "Emoji whose shortcode contains the query, those starting with it first.",
+			"name": "searchEmoji",
+			"returns": {
+				"of": {
+					"fields": [
+						{
+							"doc": "The shortcode.",
+							"name": "name",
+							"type": {
+								"type": "string"
+							}
+						},
+						{
+							"doc": "The emoji.",
+							"name": "emoji",
+							"type": {
+								"type": "string"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "list"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
 /** The `typography` extension. */
 export const typography = {
 	"commands": [],
@@ -1450,4 +1764,4 @@ export const core = [undoInputRule, paragraph, doc, baseKeymap] as const;
 export const starterKit = [trailingNode, heading, blockquote, codeBlock, hardBreak, horizontalRule, bulletList, orderedList, listItem, taskList, bold, italic, underline, strike, code, link, history] as const;
 
 /** Every optional extension canvist ships, the StarterKit's included. */
-export const allExtensions = [textStyle, trailingNode, heading, blockquote, codeBlock, hardBreak, horizontalRule, bulletList, orderedList, listItem, taskList, bold, italic, underline, strike, code, link, history, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, typography] as const;
+export const allExtensions = [textStyle, mention, trailingNode, heading, blockquote, codeBlock, hardBreak, horizontalRule, bulletList, orderedList, listItem, taskList, bold, italic, underline, strike, code, link, history, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, typography] as const;

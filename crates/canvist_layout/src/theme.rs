@@ -494,7 +494,34 @@ pub enum EmbedStyle {
 		prefix: Arc<str>,
 		/// The label's style, on top of the surrounding text.
 		patch: TextPatch,
+		/// An attribute drawn as `:value:` when `attr` is missing, such as
+		/// an emoji's shortcode when only its name is known.
+		fallback: Option<Arc<str>>,
 	},
+}
+
+impl EmbedStyle {
+	/// The text a label embed with `attrs` draws, or `None` for other
+	/// styles.
+	#[must_use]
+	pub fn label_text(&self, attrs: &canvist_model::Attrs) -> Option<String> {
+		let Self::Label {
+			attr,
+			prefix,
+			fallback,
+			..
+		} = self
+		else {
+			return None;
+		};
+		let text = |key: &str| attrs.get(key).and_then(Value::as_str);
+
+		Some(match (text(attr), fallback.as_deref().and_then(text)) {
+			(Some(value), _) => format!("{prefix}{value}"),
+			(None, Some(fallback)) => format!(":{fallback}:"),
+			(None, None) => prefix.to_string(),
+		})
+	}
 }
 
 /// Styles one embed type.

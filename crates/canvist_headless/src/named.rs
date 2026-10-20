@@ -59,7 +59,7 @@ const STARTER_KIT: [&str; 17] = [
 
 /// Extensions beyond the StarterKit, compiled with the `full` feature.
 #[cfg(feature = "full")]
-const EXTRA: [&str; 13] = [
+const EXTRA: [&str; 16] = [
 	"subscript",
 	"superscript",
 	"highlight",
@@ -73,6 +73,9 @@ const EXTRA: [&str; 13] = [
 	"typography",
 	"characterCount",
 	"placeholder",
+	"mention",
+	"hashtag",
+	"emoji",
 ];
 
 #[cfg(not(feature = "full"))]
@@ -215,10 +218,13 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 	use canvist_extensions::BackgroundColor;
 	use canvist_extensions::CharacterCount;
 	use canvist_extensions::Color;
+	use canvist_extensions::Emoji;
 	use canvist_extensions::FontFamily;
 	use canvist_extensions::FontSize;
+	use canvist_extensions::Hashtag;
 	use canvist_extensions::Highlight;
 	use canvist_extensions::LineHeight;
+	use canvist_extensions::Mention;
 	use canvist_extensions::Placeholder;
 	use canvist_extensions::Subscript;
 	use canvist_extensions::Superscript;
@@ -265,6 +271,15 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 		}
 		"placeholder" => {
 			builder.add(Placeholder::default());
+		}
+		"mention" => {
+			builder.add(Mention::default());
+		}
+		"hashtag" => {
+			builder.add(Hashtag);
+		}
+		"emoji" => {
+			builder.add(Emoji);
 		}
 		_ => unreachable!("`Extensions::parse` admits only known names"),
 	}

@@ -248,6 +248,8 @@ enum Role {
 	Leaf(&'static str),
 	/// A line break.
 	Break,
+	/// An inline atom, such as a mention, whose text is read but not kept.
+	Atom(&'static str, Attrs),
 	/// Inline formatting: zero or more marks until the tag closes.
 	Marks(Vec<(&'static str, Attrs)>),
 	/// A block boundary with no type of its own, such as `<div>`.
@@ -325,8 +327,27 @@ fn role(name: &str, attrs: &[(String, String)], parent: Option<&'static str>) ->
 		"li" => Role::Container("listItem", Attrs::new()),
 		"hr" => Role::Leaf("horizontalRule"),
 		"br" => Role::Break,
+		"span" if data_type == Some("mention") => Role::Atom("mention", atom_attrs(attrs)),
+		"span" if data_type == Some("emoji") => Role::Atom("emoji", atom_attrs(attrs)),
 		_ => inline_role(name, attrs),
 	}
+}
+
+/// The `data-` attributes TipTap writes on inline atoms, and the attributes
+/// they hold.
+const ATOM_ATTRIBUTES: [(&str, &str); 5] = [
+	("data-id", "id"),
+	("data-label", "label"),
+	("data-mention-suggestion-char", "mentionSuggestionChar"),
+	("data-name", "name"),
+	("data-emoji", "emoji"),
+];
+
+fn atom_attrs(attrs: &[(String, String)]) -> Attrs {
+	ATOM_ATTRIBUTES
+		.iter()
+		.filter_map(|(data, key)| Some((*key, attr(attrs, data)?)))
+		.collect()
 }
 
 fn inline_role(name: &str, attrs: &[(String, String)]) -> Role {
@@ -357,6 +378,11 @@ fn inline_role(name: &str, attrs: &[(String, String)]) -> Role {
 	if name == "a" {
 		let href = attr(attrs, "href").unwrap_or_default();
 		marks.push(("link", Attrs::new().with("href", href)));
+	}
+
+	if cfg!(feature = "hashtag") && attr(attrs, "data-type") == Some("hashtag") {
+		let tag = attr(attrs, "data-tag").map_or(Value::Null, Value::from);
+		marks.push(("hashtag", Attrs::new().with("tag", tag)));
 	}
 
 	let css = attr(attrs, "style").unwrap_or_default();
@@ -487,6 +513,15 @@ struct OpenText {
 	space: Option<MarkSet>,
 }
 
+/// An inline atom being read, such as a mention: the text inside its tag
+/// is what it shows, not document text.
+struct OpenAtom {
+	tag: String,
+	name: &'static str,
+	attrs: Attrs,
+	text: String,
+}
+
 /// Builds block trees from tokens.
 struct Reader<'s> {
 	build: Builder<'s>,
@@ -494,6 +529,7 @@ struct Reader<'s> {
 	text: Option<OpenText>,
 	/// Open inline tags and the marks each applies.
 	marks: Vec<(String, Vec<Mark>)>,
+	atom: Option<OpenAtom>,
 }
 
 impl<'s> Reader<'s> {
@@ -510,6 +546,7 @@ impl<'s> Reader<'s> {
 			frames: vec![root],
 			text: None,
 			marks: Vec::new(),
+			atom: None,
 		}
 	}
 
@@ -556,6 +593,14 @@ impl<'s> Reader<'s> {
 				self.children().extend(leaf);
 			}
 			Role::Break => self.line_break(),
+			Role::Atom(name, attrs) => {
+				self.atom = Some(OpenAtom {
+					tag,
+					name,
+					attrs,
+					text: String::new(),
+				});
+			}
 			Role::Marks(marks) => self.open_marks(tag, marks, attrs),
 			Role::Boundary => self.end_text(),
 			Role::Inline => {}
@@ -592,6 +637,12 @@ impl<'s> Reader<'s> {
 	}
 
 	fn close(&mut self, tag: &str) {
+		if self.atom.as_ref().is_some_and(|atom| atom.tag == tag) {
+			self.finish_atom();
+
+			return;
+		}
+
 		let closes_text = self
 			.text
 			.as_ref()
@@ -668,6 +719,12 @@ impl<'s> Reader<'s> {
 	/// to one space, and a space waits until more text follows, so blocks
 	/// never start or end with one. Code keeps its text as is.
 	fn push_text(&mut self, raw: &str) {
+		if let Some(atom) = self.atom.as_mut() {
+			atom.text.push_str(raw);
+
+			return;
+		}
+
 		if self.in_code() {
 			let marks = self.marks();
 			self.ensure_text()
@@ -700,6 +757,44 @@ impl<'s> Reader<'s> {
 		text.inline
 			.append(InlineText::plain(&words.join(" "), marks.clone()));
 		text.space = trailing.then_some(marks);
+	}
+
+	/// Add the atom just closed: as an embed, with what its text shows
+	/// filling in a missing label or emoji, or as that text when the schema
+	/// has no such embed.
+	fn finish_atom(&mut self) {
+		let Some(atom) = self.atom.take() else {
+			return;
+		};
+		let shown = atom.text.trim();
+		let mut attrs = atom.attrs;
+
+		match atom.name {
+			"emoji"
+				if cfg!(feature = "emoji") && attrs.get("emoji").is_none() && !shown.is_empty() =>
+			{
+				attrs.set("emoji", shown);
+			}
+			"mention" if cfg!(feature = "mention") && attrs.get("label").is_none() => {
+				let label: String = shown.chars().skip(1).collect();
+				attrs.set("label", label);
+			}
+			_ => {}
+		}
+
+		let marks = self.marks();
+		let Some(embed) = self.build.embed(atom.name, &attrs, marks) else {
+			self.push_text(&atom.text);
+
+			return;
+		};
+		let text = self.ensure_text();
+
+		if let Some(space) = text.space.take().filter(|_| !text.inline.is_empty()) {
+			text.inline.append(InlineText::plain(" ", space));
+		}
+
+		text.inline.append(embed);
 	}
 
 	fn line_break(&mut self) {

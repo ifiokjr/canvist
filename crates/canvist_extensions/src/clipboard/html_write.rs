@@ -3,6 +3,7 @@
 use canvist_editor::Slice;
 use canvist_model::Attrs;
 use canvist_model::BlockTree;
+use canvist_model::Embed;
 use canvist_model::InlineText;
 use canvist_model::Mark;
 use canvist_model::Schema;
@@ -157,6 +158,14 @@ fn mark_tags(schema: &Schema, mark: &Mark) -> (String, &'static str) {
 		"superscript" => ("<sup>".to_owned(), "</sup>"),
 		"highlight" => (highlight_tag(&mark.attrs), "</mark>"),
 		"textStyle" => (text_style_tag(&mark.attrs), "</span>"),
+		"hashtag" if cfg!(feature = "hashtag") => {
+			let tag = mark.attrs.get("tag").and_then(Value::as_str);
+			let data = tag.map(|tag| format!(" data-tag=\"{}\"", escape(tag)));
+			(
+				format!("<span data-type=\"hashtag\"{}>", data.unwrap_or_default()),
+				"</span>",
+			)
+		}
 		other => (format!("<span data-mark=\"{}\">", escape(other)), "</span>"),
 	}
 }
@@ -220,11 +229,7 @@ fn write_inline(schema: &Schema, text: &InlineText, html: &mut String) {
 				html.push_str("<br>");
 			}
 
-			Some(embed) => {
-				html.push_str("<span data-type=\"");
-				html.push_str(&escape(&schema.embed(embed.kind).name));
-				html.push_str("\"></span>");
-			}
+			Some(embed) => write_embed(schema, embed, html),
 			None => html.push_str(&escape(run.text)),
 		}
 
@@ -232,6 +237,38 @@ fn write_inline(schema: &Schema, text: &InlineText, html: &mut String) {
 			html.push_str(close);
 		}
 	}
+}
+
+/// The `data-` attributes TipTap writes for each embed attribute.
+const EMBED_ATTRIBUTES: [(&str, &str); 5] = [
+	("id", "data-id"),
+	("label", "data-label"),
+	("mentionSuggestionChar", "data-mention-suggestion-char"),
+	("name", "data-name"),
+	("emoji", "data-emoji"),
+];
+
+/// An inline embed as TipTap writes it, a `<span data-type>` with its
+/// attributes as `data-` attributes and its text inside, such as
+/// `<span data-type="mention" data-id="7" data-label="Ada">@Ada</span>`.
+fn write_embed(schema: &Schema, embed: &Embed, html: &mut String) {
+	html.push_str("<span data-type=\"");
+	html.push_str(&escape(&schema.embed(embed.kind).name));
+	html.push('"');
+
+	for (attr, data) in EMBED_ATTRIBUTES {
+		if let Some(value) = embed.attrs.get(attr).and_then(Value::as_str) {
+			html.push(' ');
+			html.push_str(data);
+			html.push_str("=\"");
+			html.push_str(&escape(value));
+			html.push('"');
+		}
+	}
+
+	html.push('>');
+	html.push_str(&escape(&super::tree::embed_text(schema, embed)));
+	html.push_str("</span>");
 }
 
 /// Escape text for HTML content and attribute values.
