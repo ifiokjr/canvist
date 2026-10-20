@@ -77,7 +77,7 @@ final class EditorTests: XCTestCase {
         let editor = try editor("# Big\n\nsmall")
         let frame = try editor.frame()
         let runs = (frame.items ?? []).compactMap { item -> (String, UInt32)? in
-            guard case .text(let text, let font, _, _, _, _, _, _) = item else { return nil }
+            guard case .text(let text, let font, _, _, _, _, _, _, _) = item else { return nil }
             return (text, font)
         }
 
