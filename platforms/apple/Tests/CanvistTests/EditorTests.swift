@@ -44,7 +44,6 @@ final class EditorTests: XCTestCase {
         let editor = try editor("text")
 
         XCTAssertThrowsError(try editor.run(command: kit.heading.toggleHeading(level: 9))) { error in
-
             guard case CanvistError.Failed(let code, _) = error else {
                 return XCTFail("unexpected \(error)")
             }
@@ -88,7 +87,9 @@ final class EditorTests: XCTestCase {
 
     func testMeasuredAdvancesAddUpToTheLineWidth() {
         let font = CTFontCreateUIFontForLanguage(.system, 17, nil)!
-        let samples = ["Typography office", "naïve café", "👩🏽‍💻 ok", "مرحبا بالعالم", "漢字かな"]
+        let samples = [
+            "Typography office", "naïve café", "👩🏽‍💻 ok", "مرحبا بالعالم", "漢字かな",
+        ]
 
         for text in samples {
             var advances: [Float] = []
