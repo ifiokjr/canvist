@@ -2,8 +2,6 @@
 
 In this guide you learn how the browser editor receives typing, input methods, the clipboard, and drops, how to switch input paths when a browser misbehaves, and how screen readers see a canvas.
 
-**Status: preview.** `@canvist/web` is new. Its API may still change before 1.0.
-
 ## How text arrives
 
 The editor paints on a canvas, which can't hold text. It receives text through one of two paths:

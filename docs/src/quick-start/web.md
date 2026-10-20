@@ -2,7 +2,7 @@
 
 In this guide you put a live canvist editor on a web page with `@canvist/web`, add a toolbar that follows the selection, and set up a bundler. It takes about five minutes.
 
-**Status: preview.** `@canvist/web` works in Chromium, Firefox, and Safari, and its API may still change before 1.0. Using React or Vue? See [React](./react.md) and [Vue](./vue.md).
+**Status: available.** `@canvist/web` works in Chromium, Firefox, and Safari, and its tests run in all three on every change: pixel parity with server-rendered HTML, editing and input methods, accessibility, collaboration, and a 350 KB bundle budget. Using React or Vue? See [React](./react.md) and [Vue](./vue.md).
 
 ## 1. Install
 
