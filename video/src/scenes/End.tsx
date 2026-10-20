@@ -134,7 +134,7 @@ export function End({ footage, stage }: SceneProps) {
 					</svg>
 				)}
 				<TypedText
-					text="github.com/ifiokjr/canvist"
+					text="github.com/canvist/canvist"
 					start={104}
 					rate={50}
 					size={wide ? 30 : 28}

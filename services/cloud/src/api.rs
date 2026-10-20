@@ -150,7 +150,7 @@ async fn index() -> Json<JsonValue> {
 	Json(json!({
 		"service": "canvist-cloud",
 		"version": env!("CARGO_PKG_VERSION"),
-		"docs": "https://github.com/ifiokjr/canvist/blob/main/docs/src/cloud/api.md",
+		"docs": "https://github.com/canvist/canvist/blob/main/docs/src/cloud/api.md",
 	}))
 }
 

@@ -28,7 +28,7 @@ function render(path: string, children: RootContent[]): RootContent[] {
 Deno.test("a readme's centred header (logo, links, badges) is dropped on the site", () => {
 	const children = render("crates/canvist_model/readme.md", [
 		raw(
-			`<p align="center">\n  <a href="https://github.com/ifiokjr/canvist"><picture></picture></a>\n</p>`,
+			`<p align="center">\n  <a href="https://github.com/canvist/canvist"><picture></picture></a>\n</p>`,
 		),
 		text("\n"),
 		raw(

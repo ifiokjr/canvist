@@ -9,7 +9,7 @@ In this guide you load a document, edit it with typed commands, and export it, a
 You need Rust 1.95 or newer.
 
 ```sh
-cargo add canvist_headless --git https://github.com/ifiokjr/canvist
+cargo add canvist_headless --git https://github.com/canvist/canvist
 ```
 
 The default build includes the StarterKit (paragraphs, headings, lists, tasks, quotes, code blocks, bold, italic, underline, strike, code, links, and undo). Two optional features add more:
@@ -20,7 +20,7 @@ The default build includes the StarterKit (paragraphs, headings, lists, tasks, q
 | `ssr`    | Server-side rendering to HTML and SVG                                 |
 
 ```sh
-cargo add canvist_headless --git https://github.com/ifiokjr/canvist --features collab,ssr
+cargo add canvist_headless --git https://github.com/canvist/canvist --features collab,ssr
 ```
 
 ## 2. Load, edit, and export a document

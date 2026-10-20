@@ -18,7 +18,7 @@ deno add jsr:@canvist/headless     # Deno
 Until then, build the package once and install the tarball. You need Node 22 or newer, Rust, and [wasm-pack](https://rustwasm.github.io/wasm-pack/):
 
 ```sh
-git clone https://github.com/ifiokjr/canvist
+git clone https://github.com/canvist/canvist
 cd canvist/packages/canvist-headless
 npm ci && npm run build:wasm && npm pack
 cd /path/to/your/app

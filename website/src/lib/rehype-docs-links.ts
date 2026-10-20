@@ -7,7 +7,7 @@ export const DOCS_SOURCE = fileURLToPath(
 	new URL("../../../docs/src/", import.meta.url),
 );
 const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const REPO_BLOB = "https://github.com/ifiokjr/canvist/blob/main/";
+const REPO_BLOB = "https://github.com/canvist/canvist/blob/main/";
 
 /** Crate and package readmes, which `/docs` renders under "Rust crates" and "Packages". */
 const README = /^(crates|packages)\/([^/]+)(?:\/readme\.md)?\/?$/i;

@@ -313,7 +313,7 @@ mode = "builtin"
 registry = "crates_io"
 
 [ecosystems.cargo.publish.trusted_publishing]
-repository = "ifiokjr/canvist"
+repository = "canvist/canvist"
 workflow = "publish.yml"
 environment = "publisher"
 
@@ -326,7 +326,7 @@ mode = "builtin"
 registry = "npm"
 
 [ecosystems.npm.publish.trusted_publishing]
-repository = "ifiokjr/canvist"
+repository = "canvist/canvist"
 workflow = "publish.yml"
 environment = "publisher"
 
@@ -345,7 +345,7 @@ mode = "external"
 registry = "pub_dev"
 
 [ecosystems.dart.publish.trusted_publishing]
-repository = "ifiokjr/canvist"
+repository = "canvist/canvist"
 workflow = "publish.yml"
 environment = "publisher"
 
@@ -358,13 +358,13 @@ mode = "external"
 registry = "pub_dev"
 
 [ecosystems.flutter.publish.trusted_publishing]
-repository = "ifiokjr/canvist"
+repository = "canvist/canvist"
 workflow = "publish.yml"
 environment = "publisher"
 
 [source]
 provider = "github"
-owner = "ifiokjr"
+owner = "canvist"
 repo = "canvist"
 
 [source.releases]

@@ -2,7 +2,7 @@
 
 This guide is for AI coding agents, and the people who work with them. You'll learn the shortest correct path to add canvist to a project on each platform, why canvist's typed API turns an agent's usual mistakes into compile errors, and how to let an AI in your app edit documents safely. It ends with a checklist and the pitfalls agents hit most.
 
-Machine-readable versions of these docs live at [`/llms.txt`](/llms.txt) (an index) and [`/llms-full.txt`](/llms-full.txt) (every page in one file). The [`canvist` agent skill](https://github.com/ifiokjr/canvist/tree/main/skills/canvist) packages this guide for agents that load skills.
+Machine-readable versions of these docs live at [`/llms.txt`](/llms.txt) (an index) and [`/llms-full.txt`](/llms-full.txt) (every page in one file). The [`canvist` agent skill](https://github.com/canvist/canvist/tree/main/skills/canvist) packages this guide for agents that load skills.
 
 ## 1. Check what exists before you write code
 
@@ -10,7 +10,7 @@ canvist hasn't had its first release, and several platforms are still coming. Do
 
 | Target                                                | Install                                                                                                | Exists today? |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------- |
-| Rust                                                  | `cargo add canvist_headless --git https://github.com/ifiokjr/canvist`                                  | Yes           |
+| Rust                                                  | `cargo add canvist_headless --git https://github.com/canvist/canvist`                                  | Yes           |
 | Node, Deno, Bun, Workers                              | Build `packages/canvist-headless` and install the tarball ([how](../quick-start/server-typescript.md)) | Yes           |
 | Dart                                                  | Git dependency on `platforms/dart` ([how](../quick-start/server-dart.md))                              | Yes           |
 | Flutter                                               | Git dependency on `platforms/flutter`: engine only, no editor widget yet                               | Engine only   |
@@ -220,4 +220,4 @@ Give the model the document as Markdown or JSON, and the positions it needs, so 
 
 ## Where the skill's evaluations will live
 
-The `canvist` skill in [`skills/canvist`](https://github.com/ifiokjr/canvist/tree/main/skills/canvist) will get an evaluation suite in `skills/canvist/evals/`: real integration tasks that score whether an agent's code compiles, uses only registered extensions, and passes the task's tests.
+The `canvist` skill in [`skills/canvist`](https://github.com/canvist/canvist/tree/main/skills/canvist) will get an evaluation suite in `skills/canvist/evals/`: real integration tasks that score whether an agent's code compiles, uses only registered extensions, and passes the task's tests.

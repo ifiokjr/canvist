@@ -56,7 +56,7 @@ env:
 jobs:
   plan:
     name: plan
-    if: github.repository_owner == 'ifiokjr'
+    if: github.repository_owner == 'canvist'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:

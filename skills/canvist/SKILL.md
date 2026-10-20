@@ -7,7 +7,7 @@ description: Integrate canvist, the plugin-based rich-text editor with a Rust co
 
 canvist is a rich-text editor you compose from extensions (bold, headings, lists, tasks, links, …). One Rust core runs everywhere; each platform gets a thin binding. Its APIs are typed by the extensions you register, so calling an unregistered extension is a compile error. Lean on that: it is how you avoid the most common editor-integration bugs.
 
-Full docs for agents: `/llms-full.txt` on the docs site, or `docs/src` in https://github.com/ifiokjr/canvist. The human-readable version of this skill is `docs/src/agents/readme.md`.
+Full docs for agents: `/llms-full.txt` on the docs site, or `docs/src` in https://github.com/canvist/canvist. The human-readable version of this skill is `docs/src/agents/readme.md`.
 
 ## 1. Check the platform exists
 
@@ -15,11 +15,11 @@ canvist has not had its first release. Nothing is on crates.io, npm, JSR, or pub
 
 | Target                   | Package             | Install                                                                                                     |
 | ------------------------ | ------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Rust                     | `canvist_headless`  | `cargo add canvist_headless --git https://github.com/ifiokjr/canvist`                                       |
+| Rust                     | `canvist_headless`  | `cargo add canvist_headless --git https://github.com/canvist/canvist`                                       |
 | Node, Deno, Bun, Workers | `@canvist/headless` | Clone, then in `packages/canvist-headless`: `npm ci && npm run build:wasm && npm pack`; install the tarball |
-| Dart                     | `canvist`           | pubspec git dependency: `url: https://github.com/ifiokjr/canvist`, `path: platforms/dart`                   |
+| Dart                     | `canvist`           | pubspec git dependency: `url: https://github.com/canvist/canvist`, `path: platforms/dart`                   |
 | Flutter                  | `canvist_flutter`   | pubspec git dependency with `path: platforms/flutter`. Engine only: no editor widget yet                    |
-| Browser editor           | preview only        | `import { createEditor } from "https://esm.sh/gh/ifiokjr/canvist@main/packages/canvist/src/mod.ts"`         |
+| Browser editor           | preview only        | `import { createEditor } from "https://esm.sh/gh/canvist/canvist@main/packages/canvist/src/mod.ts"`         |
 
 These **do not exist yet**: `@canvist/core`, `@canvist/react`, `@canvist/vue`, `@canvist/ssr`, `@canvist/react-native`, `@canvist/lynx`, a native iOS or Android `CanvistView`, `canvist_desktop`. If asked for one, say it is coming soon and offer the closest working path (Flutter for mobile, `@canvist/headless` on the server, the browser preview for a demo).
 

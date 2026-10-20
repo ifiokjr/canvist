@@ -76,7 +76,7 @@ Deno.test("a developer change type is rejected even when labelled as the user st
 Deno.test("a title without a version and date fails the build", () => {
 	const release = fixture();
 	release.title =
-		"app [0.1.1](https://github.com/ifiokjr/canvist/releases/tag/app/v0.1.1)";
+		"app [0.1.1](https://github.com/canvist/canvist/releases/tag/app/v0.1.1)";
 	assertThrows(
 		() => parseRelease(release, "0.1.1.json"),
 		ChangelogError,

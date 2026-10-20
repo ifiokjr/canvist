@@ -88,7 +88,7 @@ export function llmsIndex(pages: readonly LlmsPage[], site: URL): string {
 		`- [Every page in one file](${
 			absolute("/llms-full.txt", site)
 		}): the full docs as markdown`,
-		"- [Source and examples](https://github.com/ifiokjr/canvist): the repository",
+		"- [Source and examples](https://github.com/canvist/canvist): the repository",
 		"",
 	);
 	return lines.join("\n");

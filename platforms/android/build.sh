@@ -29,7 +29,7 @@ cargo ndk \
 	--output-dir "$module/jniLibs" \
 	build --locked --release --package canvist_ffi --lib
 
-rm -rf "$module/kotlin/io/github/ifiokjr/canvist/canvist_ffi.kt"
+rm -rf "$module/kotlin/io/github/canvist/canvist/canvist_ffi.kt"
 cargo run --locked --quiet --package canvist_ffi --features bindgen --bin uniffi-bindgen -- \
 	generate \
 	--library "$module/jniLibs/arm64-v8a/libcanvist_ffi.so" \

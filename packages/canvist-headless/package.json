@@ -3,6 +3,16 @@
 	"version": "0.1.0",
 	"description": "canvist's document model and editing engine with no DOM: ProseMirror JSON, HTML, and Markdown conversion, typed commands, and Yjs collaboration for Node, Deno, Bun, and Workers.",
 	"license": "Unlicense",
+	"homepage": "https://github.com/canvist/canvist/tree/main/packages/canvist-headless#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/canvist/canvist.git",
+		"directory": "packages/canvist-headless"
+	},
+	"bugs": {
+		"url": "https://github.com/canvist/canvist/issues",
+		"email": "support@canvist.dev"
+	},
 	"type": "module",
 	"exports": {
 		".": {

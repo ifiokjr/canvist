@@ -316,4 +316,4 @@ These extensions are planned, in roughly this order. Each will follow the same p
 - **Editor helpers:** placeholder, character count, find and replace, table of contents, and drag handles.
 - **Comments, version history, and tracked changes.**
 
-To see where each one stands, watch [the releases](https://github.com/ifiokjr/canvist/releases).
+To see where each one stands, watch [the releases](https://github.com/canvist/canvist/releases).

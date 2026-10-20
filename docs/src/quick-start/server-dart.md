@@ -14,7 +14,7 @@ Add canvist to `pubspec.yaml`:
 dependencies:
   canvist:
     git:
-      url: https://github.com/ifiokjr/canvist
+      url: https://github.com/canvist/canvist
       path: platforms/dart
 ```
 

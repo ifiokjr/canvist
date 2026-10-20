@@ -20,4 +20,4 @@ Each extension's commands and queries are also listed, with their arguments, in 
 ## Changelog
 
 - **[The changelog](/changelog)** on the website lists the changes that affect you, in plain language.
-- **[GitHub releases](https://github.com/ifiokjr/canvist/releases)** list every package's changes in each release, and [`changelog.md`](https://github.com/ifiokjr/canvist/blob/main/changelog.md) collects them in one file.
+- **[GitHub releases](https://github.com/canvist/canvist/releases)** list every package's changes in each release, and [`changelog.md`](https://github.com/canvist/canvist/blob/main/changelog.md) collects them in one file.
