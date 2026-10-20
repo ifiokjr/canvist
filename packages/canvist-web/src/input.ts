@@ -117,7 +117,9 @@ export class Input {
 
 		if (EditContextApi === undefined) {
 			this.#textarea = createTextarea(host.element.ownerDocument);
-			host.element.append(this.#textarea);
+			// Right after the canvas, where EditContext's text field is, so
+			// screen readers meet the field before the document's mirror.
+			host.canvas.after(this.#textarea);
 			this.#target = this.#textarea;
 			this.#listenToTextarea(this.#textarea);
 		} else {
