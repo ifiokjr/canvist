@@ -17,7 +17,7 @@ export default defineConfig({
 		{ name: "webkit", use: { ...devices["Desktop Safari"] } },
 	].filter((project) => browsers.includes(project.name)),
 	webServer: {
-		command: "npx vite",
+		command: "node server.ts",
 		url: "http://localhost:5180/",
 		reuseExistingServer: !onContinuousIntegration,
 	},

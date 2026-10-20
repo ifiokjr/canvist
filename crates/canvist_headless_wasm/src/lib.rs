@@ -23,6 +23,8 @@ use wasm_bindgen::prelude::*;
 
 #[cfg(feature = "scene")]
 mod scene;
+#[cfg(feature = "ssr")]
+mod ssr;
 
 type Result<T> = std::result::Result<T, JsValue>;
 

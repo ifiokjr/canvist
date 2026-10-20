@@ -10,6 +10,7 @@ import type {
 	CommandName,
 	CommandParams,
 	Commands,
+	Content,
 	DocJson,
 	Extensions,
 	Format,
@@ -21,6 +22,7 @@ import type {
 	Range,
 	Registered,
 	StarterKit,
+	ThemeOptions,
 } from "@canvist/headless";
 import { core, starterKit } from "@canvist/headless/extensions";
 import { WebEditor } from "../wasm/canvist_web.js";
@@ -44,27 +46,6 @@ const BORDER_SNAP_TOLERANCE = 1 / 128;
 /** Which line-breaking rules layout follows: Blink's tailoring, or ICU's defaults (Firefox and WebKit). */
 export type LineBreaks = "chromium" | "icu";
 
-/** The StarterKit theme's options. Server rendering must use the same ones. */
-export interface ThemeOptions {
-	/** Light or dark colours. Default `"light"`. */
-	readonly scheme?: "light" | "dark";
-	/** The CSS `font-family` list for body text and headings. */
-	readonly bodyFamily?: string;
-	/** The CSS `font-family` list for code. */
-	readonly codeFamily?: string;
-	/** The body font size in pixels. Default 16. */
-	readonly size?: number;
-	/** The body line height as a multiple of the font size. Default 1.5. */
-	readonly lineHeight?: number;
-	/** CSS `letter-spacing` of body text, in pixels. Default 0. */
-	readonly letterSpacing?: number;
-}
-
-/** A document to start with: text in a format, or ProseMirror JSON. */
-export type Content<E extends Extensions> =
-	| { readonly format: Format; readonly input: string }
-	| DocJson<Registered<E>>;
-
 /** Options for {@link createEditor}. */
 export interface EditorOptions<E extends Extensions, P extends Plugins> {
 	/** The extensions, TipTap's StarterKit by default. */
@@ -73,6 +54,7 @@ export interface EditorOptions<E extends Extensions, P extends Plugins> {
 	readonly plugins?: P;
 	/** The initial document. */
 	readonly content?: Content<E>;
+	/** The theme. Server rendering must use the same one. */
 	readonly theme?: ThemeOptions;
 	/** Line-breaking tailoring; detected from the browser by default. */
 	readonly breaks?: LineBreaks;

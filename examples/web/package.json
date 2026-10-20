@@ -2,15 +2,15 @@
 	"name": "canvist-web-examples",
 	"private": true,
 	"type": "module",
-	"description": "The canvist editor in a plain page, React, Vue, and a server-rendered page that hydrates without moving.",
+	"description": "The canvist editor in a plain page, React, Vue, and server-rendered pages (plain and React) that hydrate without moving.",
 	"scripts": {
-		"ssr": "cd ../.. && cargo run -p canvist_headless --features ssr,starter-kit --example ssr_page -- examples/web/ssr.template.html examples/web/public/fonts/inter-variable.ttf examples/web/ssr.html",
-		"dev": "vite",
+		"dev": "node server.ts",
 		"build": "vite build",
 		"check:types": "tsc --noEmit",
 		"test": "playwright test"
 	},
 	"dependencies": {
+		"@canvist/headless": "file:../../packages/canvist-headless",
 		"@canvist/react": "file:../../packages/canvist-react",
 		"@canvist/vue": "file:../../packages/canvist-vue",
 		"@canvist/web": "file:../../packages/canvist-web",

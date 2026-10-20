@@ -73,8 +73,9 @@ jobs:
   # Pixel parity between the canvas editor and the server-rendered HTML it
   # hydrates from, in every engine on both desktop platforms. Each run
   # uploads a side-by-side report (canvas | DOM | difference).
-  # The examples in `examples/web`: a plain page, React, Vue, and a page
-  # rendered by canvist's Rust renderer that the editor hydrates.
+  # The examples in `examples/web`: a plain page, React, Vue, and two pages
+  # that `server.ts` renders with `@canvist/headless/ssr` on each request
+  # (one plain, one React) and the editor hydrates.
   examples:
     timeout-minutes: 30
     runs-on: ubuntu-latest
@@ -121,10 +122,6 @@ jobs:
           for package in canvist-react canvist-vue; do
             (cd "packages/$package" && npm ci && npx tsc --noEmit && npm run build)
           done
-
-      - name: render the server-rendered example
-        working-directory: examples/web
-        run: npm run ssr
 
       - name: install dependencies
         working-directory: examples/web

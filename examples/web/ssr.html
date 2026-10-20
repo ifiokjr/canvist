@@ -8,14 +8,14 @@
 		<link rel="preload" href="/fonts/inter-variable.ttf" as="font" type="font/ttf" crossorigin>
 		<style>
 			@font-face { font-family: "Inter"; src: url("/fonts/inter-variable.ttf"); font-weight: 100 900; font-display: block; }
-			/* canvist's stylesheet, from the server renderer */
+			/* canvist's stylesheet, rendered by `server.ts` on each request */
 			<!-- canvist:css -->
 		</style>
 	</head>
 	<body>
 		<main>
 			<h1>Server-rendered</h1>
-			<!-- `.editor` is 640 px wide, the width the server laid the document out at. -->
+			<!-- `.editor` is 640 px wide, the width `server.ts` lays the document out at. -->
 			<div id="editor" class="editor" style="width: 640px"><!-- canvist:html --></div>
 			<p id="after">This paragraph sits under the editor. It must not move when the editor hydrates.</p>
 		</main>

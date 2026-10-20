@@ -58,6 +58,7 @@ doc.commands.setHeading({ level: 7 }); // type error
 
 - **Positions:** `{ path, offset }`, where `path` walks the block tree and `offset` counts UTF-16 code units, like JavaScript strings. Errors are `CanvistError`s with the same stable `code`s as the Rust and Dart packages.
 - **Collaboration:** a document can be a Yjs peer and a y-websocket-compatible server endpoint (`share`, `syncStart`, `receiveSync`). [`examples/server`](./examples/server) serves `POST /convert` and a `/sync/:room` WebSocket in a few lines.
+- **Server-side rendering:** `@canvist/headless/ssr` renders a document as HTML and CSS laid out exactly as `@canvist/web` paints it, so the live editor hydrates from it without moving a pixel, and as SVG for previews. It's a separate WebAssembly module too. See [Server-side rendering](../../docs/src/quick-start/ssr.md).
 - **Canvas scenes:** `@canvist/headless/scene` loads canvist canvas scenes and exports SVG and PNG, for thumbnails, social cards, and designs an agent writes. It's a separate WebAssembly module, so the document entry point stays small.
 - **Workers:** runtimes without a file system pass the module they imported: `createEngine(undefined, { wasm })`.
 
@@ -68,7 +69,7 @@ A typed command costs about 0.7 µs in Node and a collaborator's keystroke about
 
 ```sh
 npm ci
-npm run build:wasm      # the document module into wasm/, the scene module into wasm-scene/
+npm run build:wasm      # the document, scene, and rendering modules into wasm/, wasm-scene/, and wasm-ssr/
 npm test                # conformance and API tests in Node
 deno task test          # the same, plus the server example, in Deno
 npm run check:types     # tsc --noEmit, including the type-level tests

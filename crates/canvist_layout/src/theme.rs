@@ -16,6 +16,8 @@ use crate::Color;
 use crate::FontSpec;
 use crate::Insets;
 
+#[cfg(feature = "json")]
+mod json;
 mod starter_kit;
 
 pub use starter_kit::ColorScheme;

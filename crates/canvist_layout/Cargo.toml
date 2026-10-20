@@ -20,6 +20,7 @@ canvist_model = { workspace = true }
 icu_segmenter = { version = "^2.3", default-features = false, features = ["compiled_data"] }
 parley = { version = "^0.12", default-features = false, features = ["std"], optional = true }
 rustc-hash = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"], optional = true }
 thiserror = { workspace = true }
 unicode-bidi = { version = "^0.3", default-features = false, features = ["hardcoded-data", "std"] }
 unicode-segmentation = { workspace = true }
@@ -37,6 +38,9 @@ harness = false
 [features]
 default = []
 editor = ["dep:canvist_editor"]
+# `StarterKitOptions::from_json`: theme options as `@canvist/web` and
+# `@canvist/headless/ssr` pass them.
+json = ["dep:serde_json"]
 parley = ["dep:parley"]
 
 [lints]

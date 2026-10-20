@@ -1,7 +1,7 @@
 {
 	"name": "@canvist/headless",
 	"version": "0.1.0",
-	"description": "canvist's document model and editing engine with no DOM: ProseMirror JSON, HTML, and Markdown conversion, typed commands, and Yjs collaboration for Node, Deno, Bun, and Workers.",
+	"description": "canvist's document model and editing engine with no DOM: ProseMirror JSON, HTML, and Markdown conversion, typed commands, Yjs collaboration, and server-side rendering for Node, Deno, Bun, and Workers.",
 	"license": "Unlicense",
 	"homepage": "https://github.com/canvist/canvist/tree/main/packages/canvist-headless#readme",
 	"repository": {
@@ -27,8 +27,13 @@
 			"types": "./dist/scene.d.ts",
 			"default": "./dist/scene.js"
 		},
+		"./ssr": {
+			"types": "./dist/ssr.d.ts",
+			"default": "./dist/ssr.js"
+		},
 		"./wasm/canvist_headless_wasm_bg.wasm": "./wasm/canvist_headless_wasm_bg.wasm",
-		"./wasm-scene/canvist_headless_scene_bg.wasm": "./wasm-scene/canvist_headless_scene_bg.wasm"
+		"./wasm-scene/canvist_headless_scene_bg.wasm": "./wasm-scene/canvist_headless_scene_bg.wasm",
+		"./wasm-ssr/canvist_headless_ssr_bg.wasm": "./wasm-ssr/canvist_headless_ssr_bg.wasm"
 	},
 	"files": [
 		"dist",
@@ -37,15 +42,19 @@
 		"wasm/*.wasm",
 		"wasm-scene/*.js",
 		"wasm-scene/*.d.ts",
-		"wasm-scene/*.wasm"
+		"wasm-scene/*.wasm",
+		"wasm-ssr/*.js",
+		"wasm-ssr/*.d.ts",
+		"wasm-ssr/*.wasm"
 	],
 	"engines": {
 		"node": ">=22"
 	},
 	"scripts": {
-		"build:wasm": "npm run build:wasm:document && npm run build:wasm:scene",
+		"build:wasm": "npm run build:wasm:document && npm run build:wasm:scene && npm run build:wasm:ssr",
 		"build:wasm:document": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm --no-pack && rm packages/canvist-headless/wasm/.gitignore",
 		"build:wasm:scene": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm-scene --out-name canvist_headless_scene --no-pack -- --features scene && rm packages/canvist-headless/wasm-scene/.gitignore",
+		"build:wasm:ssr": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm-ssr --out-name canvist_headless_ssr --no-pack -- --features ssr && rm packages/canvist-headless/wasm-ssr/.gitignore",
 		"generate": "node scripts/generate.ts",
 		"check:generated": "node scripts/generate.ts --check",
 		"check:types": "tsc --noEmit",

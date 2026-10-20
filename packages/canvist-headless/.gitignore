@@ -4,3 +4,5 @@ dist/
 wasm/
 # Built by `npm run build:wasm:scene`.
 wasm-scene/
+# Built by `npm run build:wasm:ssr`.
+wasm-ssr/

@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use canvist_headless::canvist_editor::Platform;
 use canvist_layout::BreakOverride;
-use canvist_layout::ColorScheme;
 use canvist_layout::StarterKitOptions;
 use canvist_layout::Theme;
 use serde_json::Value as Json;
@@ -56,7 +55,7 @@ pub(crate) struct Options {
 /// ```
 pub(crate) fn parse(json: &Json) -> Result<Options, String> {
 	let theme = json.get("theme").unwrap_or(&Json::Null);
-	let starter = starter_kit(theme)?;
+	let starter = StarterKitOptions::from_json(theme)?;
 	let breaks = breaks(json)?;
 
 	Ok(Options {
@@ -66,51 +65,6 @@ pub(crate) fn parse(json: &Json) -> Result<Options, String> {
 		overscan: number(json, "overscan")?.unwrap_or(0.0),
 		platform: platform(json)?,
 	})
-}
-
-/// The starter kit theme with every option `theme` sets applied on top of
-/// the defaults.
-fn starter_kit(theme: &Json) -> Result<StarterKitOptions, String> {
-	let mut starter = StarterKitOptions::default();
-
-	if let Some(scheme) = scheme(theme)? {
-		starter.scheme = scheme;
-	}
-
-	if let Some(family) = string(theme, "bodyFamily")? {
-		starter.body_family = Arc::from(family);
-	}
-
-	if let Some(family) = string(theme, "codeFamily")? {
-		starter.code_family = Arc::from(family);
-	}
-
-	if let Some(size) = number(theme, "size")? {
-		starter.size = positive("theme.size", size)?;
-	}
-
-	if let Some(line_height) = number(theme, "lineHeight")? {
-		starter.line_height = positive("theme.lineHeight", line_height)?;
-	}
-
-	if let Some(spacing) = number(theme, "letterSpacing")? {
-		starter.letter_spacing = spacing;
-	}
-
-	Ok(starter)
-}
-
-fn scheme(theme: &Json) -> Result<Option<ColorScheme>, String> {
-	match string(theme, "scheme")? {
-		None => Ok(None),
-		Some("light") => Ok(Some(ColorScheme::Light)),
-		Some("dark") => Ok(Some(ColorScheme::Dark)),
-		Some(other) => {
-			Err(format!(
-				"theme.scheme must be \"light\" or \"dark\", not {other:?}"
-			))
-		}
-	}
 }
 
 fn breaks(json: &Json) -> Result<Breaks, String> {
@@ -150,14 +104,6 @@ fn number(json: &Json, key: &str) -> Result<Option<f32>, String> {
 		None | Some(Json::Null) => Ok(None),
 		Some(Json::Number(value)) => Ok(value.as_f64().map(|value| value as f32)),
 		Some(_) => Err(format!("{key} must be a number")),
-	}
-}
-
-fn positive(name: &str, value: f32) -> Result<f32, String> {
-	if value.is_finite() && value > 0.0 {
-		Ok(value)
-	} else {
-		Err(format!("{name} must be a positive number"))
 	}
 }
 

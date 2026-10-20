@@ -21,8 +21,9 @@ starter-kit = ["canvist_extensions/starter-kit"]
 # Act as a Yjs peer: load from Yjs state, merge updates, and serve y-sync.
 collab = ["dep:canvist_collab", "canvist_collab/sync"]
 # Render server-side HTML and SVG through canvist_layout, measuring text with
-# parley and the bundled Atkinson Hyperlegible font.
-ssr = ["dep:canvist_layout", "canvist_layout/parley"]
+# parley and the bundled Atkinson Hyperlegible font. Themes can be read from
+# the JSON options `@canvist/web` takes.
+ssr = ["dep:canvist_layout", "canvist_layout/parley", "canvist_layout/json"]
 # Load, edit, and export canvas scenes (shapes, frames, images, vector
 # paths, and text frames) as SVG and PNG. With `collab`, scenes are Yjs peers.
 scene = [
@@ -63,10 +64,6 @@ required-features = ["starter-kit"]
 [[example]]
 name = "transform"
 required-features = ["starter-kit"]
-
-[[example]]
-name = "ssr_page"
-required-features = ["ssr", "starter-kit"]
 
 [[example]]
 name = "merge_updates"

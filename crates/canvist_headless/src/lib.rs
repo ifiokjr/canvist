@@ -111,6 +111,8 @@ pub use canvist_collab;
 pub use canvist_editor;
 #[cfg(feature = "starter-kit")]
 pub use canvist_extensions;
+#[cfg(feature = "ssr")]
+pub use canvist_layout;
 pub use canvist_model;
 #[cfg(feature = "scene")]
 pub use canvist_scene;

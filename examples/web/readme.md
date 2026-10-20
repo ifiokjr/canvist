@@ -20,19 +20,21 @@
 
 # canvist web examples
 
-One Vite project with four pages:
+One Vite project with five pages:
 
-| Page           | Shows                                                                                           |
-| -------------- | ----------------------------------------------------------------------------------------------- |
-| `vanilla.html` | `createEditor` and a toolbar kept in step with `subscribe`, no framework                        |
-| `react.html`   | `@canvist/react`: `useCanvistEditor` and `useEditorState`, in Strict Mode                       |
-| `vue.html`     | `@canvist/vue`: `useCanvistEditor` and `useEditorState` in a single-file component              |
-| `ssr.html`     | HTML from canvist's Rust renderer, laid out with Inter, that the editor hydrates without moving |
+| Page             | Shows                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------- |
+| `vanilla.html`   | `createEditor` and a toolbar kept in step with `subscribe`, no framework                                 |
+| `react.html`     | `@canvist/react`: `useCanvistEditor` and `useEditorState`, in Strict Mode                                |
+| `vue.html`       | `@canvist/vue`: `useCanvistEditor` and `useEditorState` in a single-file component                       |
+| `ssr.html`       | HTML from `@canvist/headless/ssr`, rendered on each request, that the editor hydrates without moving     |
+| `ssr-react.html` | A React tree rendered on the server with `renderToString` and hydrated with `hydrateRoot`, as in Next.js |
+
+`server.ts` runs Vite in middleware mode and renders the two server-rendered pages on every request, the way Next.js and Nuxt do. The theme, width, and document they share are in `src/ssr-content.ts`.
 
 ```sh
 npm install
-npm run ssr     # renders ssr.html from ssr.template.html (needs Rust)
-npm run dev     # http://localhost:5180
+npm run dev     # node server.ts, on http://localhost:5180
 npm test        # Playwright, in Chromium, Firefox, and WebKit
 ```
 
