@@ -1,0 +1,33 @@
+[package]
+name = "canvist_scene"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist_scene"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["canvas", "design-tool", "scene-graph", "vector", "crdt"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "Scene model for the canvist canvas: a node tree of frames, shapes, paths, and text frames with invertible, CRDT-shaped steps"
+
+[dependencies]
+canvist_model = { workspace = true }
+kurbo = { workspace = true, features = ["std"] }
+rustc-hash = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+divan = { workspace = true }
+proptest = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "scene"
+harness = false
+
+[lints]
+workspace = true
