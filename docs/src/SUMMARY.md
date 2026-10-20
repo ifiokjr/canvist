@@ -62,5 +62,6 @@
 # Reference
 
 - [API docs and changelog](./reference/readme.md)
+- [Browser API](./reference/web-api.md)
 - [Errors](./reference/errors.md)
 - [Contributing](./reference/contributing.md)

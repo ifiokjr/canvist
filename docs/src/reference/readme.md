@@ -15,7 +15,7 @@ Every public type, function, and command is documented in its package. The regis
 | `@canvist/headless`  | TypeScript | [jsr.io/@canvist/headless](https://jsr.io/@canvist/headless) and [npm](https://www.npmjs.com/package/@canvist/headless) | `deno doc packages/canvist-headless/src/mod.ts`       |
 | `canvist`            | Dart       | pub.dev, later                                                                                                          | `dart doc platforms/dart`                             |
 
-Each extension's commands and queries are also listed, with their arguments, in the [extension catalogue](../extensions/readme.md).
+Each extension's commands and queries are also listed, with their arguments, in the [extension catalogue](../extensions/readme.md). The browser packages' options and methods are on one page: [Browser API](./web-api.md).
 
 ## Changelog
 
