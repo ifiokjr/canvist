@@ -180,6 +180,7 @@ async function checkTypeScript(
 	await Deno.mkdir(dir, { recursive: true });
 	const headless = join(ROOT, "packages/canvist-headless");
 	const web = join(ROOT, "packages/canvist-web");
+	const canvas = join(ROOT, "packages/canvist-canvas");
 	await Deno.writeTextFile(
 		join(dir, "deno.json"),
 		JSON.stringify({
@@ -189,6 +190,8 @@ async function checkTypeScript(
 					`${headless}/src/extensions.generated.ts`,
 				"@canvist/headless/full": `${headless}/src/full.ts`,
 				"@canvist/headless/ssr": `${headless}/src/ssr.ts`,
+				"@canvist/headless/scene": `${headless}/src/scene.ts`,
+				"@canvist/canvas": `${canvas}/src/mod.ts`,
 				"@canvist/web": `${web}/src/mod.ts`,
 				"@canvist/web/fonts": `${web}/src/fonts.ts`,
 				"@canvist/web/menus": `${web}/src/menus.ts`,

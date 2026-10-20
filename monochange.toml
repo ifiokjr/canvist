@@ -163,8 +163,8 @@ path = "crates/canvist_desktop"
 # Waits for the owner's placeholder publish, which trusted publishing needs.
 publish = { enabled = false }
 
-# The canvas in the browser. It ships inside the `@canvist/canvas` demo and is
-# never published on its own.
+# The canvas in the browser. It ships inside `@canvist/canvas` and is never
+# published on its own.
 [package.canvist_canvas_wasm]
 path = "crates/canvist_canvas_wasm"
 publish = { enabled = false }
@@ -233,6 +233,16 @@ type = "npm"
 path = "packages/canvist-vue"
 type = "npm"
 
+# The design canvas for the browser, over `canvist_canvas_wasm`. It is built
+# and its tarball checked like the other npm packages, but npm only allows
+# trusted publishing once a package exists: publish it when the name has
+# been bootstrapped (`mc step placeholder-publish --package @canvist/canvas`)
+# and its trusted publisher set up on npmjs.com.
+[package."@canvist/canvas"]
+path = "packages/canvist-canvas"
+type = "npm"
+publish = { enabled = false }
+
 # Dart packages. `mode = "external"` leaves publishing them to the `pub` job
 # in `publish.yml`, which runs after crates.io has the crates the `canvist`
 # build hook compiles (its Rust crate pins them through `canvist_headless`'s
@@ -251,6 +261,7 @@ publish = { enabled = true, mode = "external" }
 
 [group.sdk]
 packages = [
+	"@canvist/canvas",
 	"@canvist/headless",
 	"@canvist/react",
 	"@canvist/vue",

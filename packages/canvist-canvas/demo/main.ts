@@ -2,8 +2,9 @@
  * The canvas demo: every kind of node, a text frame on the real canvist
  * editor, and multiplayer between tabs of this browser.
  *
- * Query parameters: `?cpu` draws on the CPU even where WebGPU exists, and
- * `?stress=2000` adds that many rectangles for measuring frame times.
+ * Query parameters: `?cpu` draws on the CPU even where WebGPU exists,
+ * `?stress=2000` adds that many rectangles for measuring frame times, and
+ * `?scene=` starts from that scene JSON instead of the demo scene.
  */
 import "./globals.ts";
 import {
@@ -57,7 +58,9 @@ function showTool(handle: CanvasHandle): void {
 	zoom!.textContent = `${Math.round(handle.app.zoom() * 100)}%`;
 }
 
+const scene = params.get("scene");
 const handle = await mountCanvas(canvas, {
+	...(scene === null ? { demo: true } : { scene: JSON.parse(scene) }),
 	transport: new BroadcastTransport(params.get("room") ?? "demo"),
 	preferGpu: !params.has("cpu"),
 	wasmUrl: new URL("../wasm/canvist_canvas_wasm_bg.wasm", import.meta.url),

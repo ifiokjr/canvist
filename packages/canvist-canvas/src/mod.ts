@@ -3,6 +3,7 @@
  *
  * `mountCanvas` puts the canvas on a `<canvas>` element: vello on WebGPU
  * where the browser has it, `vello_cpu` and Canvas2D everywhere else. It
+ * starts from a scene you pass as scene JSON (one empty page by default),
  * feeds DOM events to the canvas, paints on animation frames, and hands
  * every collaboration update to a {@link Transport}.
  *
@@ -12,16 +13,20 @@
  *
  * const canvas = document.querySelector("canvas")!;
  * const handle = await mountCanvas(canvas, {
+ * 	scene: { type: "canvist-scene", version: 1, nodes: [{ type: "page" }] },
  * 	transport: new BroadcastTransport("my-room"),
  * });
  * handle.setTool("rectangle");
+ * const saved = handle.toJson();
  * ```
  *
  * @module
  */
+import type { SceneJson } from "@canvist/headless/scene";
 import init, { CanvasApp } from "../wasm/canvist_canvas_wasm.js";
 
 export { CanvasApp };
+export type { SceneJson } from "@canvist/headless/scene";
 export { BroadcastTransport } from "./broadcast.ts";
 export type { SyncMessage, Transport } from "./transport.ts";
 import type { SyncMessage, Transport } from "./transport.ts";
@@ -32,8 +37,14 @@ const SHIFT = 1;
 const ALT = 2;
 /** The primary bit: Cmd on Apple platforms, Ctrl elsewhere. */
 const PRIMARY = 4;
-/** The demo's seed client id, which peers must not use. */
+/** The client id starting scenes are built under, which peers must not use. */
 const SEED_CLIENT = 1;
+/** One empty page: the scene a canvas starts from by default. */
+const EMPTY_SCENE: SceneJson = {
+	type: "canvist-scene",
+	version: 1,
+	nodes: [{ type: "page" }],
+};
 /** Frame timings kept for {@link CanvasHandle.frameTimes}. */
 const FRAME_HISTORY = 600;
 
@@ -51,6 +62,17 @@ const TOOL_KEYS: Readonly<Record<string, string>> = {
 
 /** How to mount the canvas. */
 export interface MountOptions {
+	/**
+	 * The scene to start from, as scene JSON (nested or flat), such as one
+	 * saved from {@link CanvasHandle.toJson}. Defaults to one empty page.
+	 *
+	 * Peers that start from the same JSON start from the same shared state,
+	 * so give every peer in a room the same scene and they merge without
+	 * duplicating anything.
+	 */
+	scene?: SceneJson;
+	/** Start from canvist's demo scene instead of `scene`. */
+	demo?: boolean;
 	/** Where collaboration updates go and come from. Omit to edit alone. */
 	transport?: Transport;
 	/** Use WebGPU when the browser has it. Defaults to `true`. */
@@ -89,13 +111,19 @@ export interface CanvasHandle {
 	frameTimes(): readonly FrameTime[];
 	/** Forget recorded frame timings. */
 	resetFrameTimes(): void;
+	/** The scene as scene JSON, to store or to start another canvas from. */
+	toJson(): SceneJson;
+	/** The whole shared scene as one v1 Yjs update, to store or to send a joining peer. */
+	encodeState(): Uint8Array;
+	/** Merge a v1 Yjs update, such as stored state; returns whether the scene changed. */
+	applyUpdate(update: Uint8Array): boolean;
 	/** Paint on the next animation frame. */
 	requestFrame(): void;
 	/** Stop listening and painting. */
 	destroy(): void;
 }
 
-/** A random client id other than the demo's seed id. */
+/** A random client id other than the seed id. */
 function randomClient(): number {
 	const [value = 0] = crypto.getRandomValues(new Uint32Array(1));
 
@@ -127,6 +155,9 @@ export async function mountCanvas(
 		canvas,
 		client,
 		options.preferGpu ?? true,
+		options.demo === true
+			? undefined
+			: JSON.stringify(options.scene ?? EMPTY_SCENE),
 	);
 
 	if (options.stress) app.add_stress(options.stress);
@@ -145,12 +176,21 @@ class Mounted implements CanvasHandle {
 	readonly #resize: ResizeObserver;
 	readonly #text = hiddenTextBox();
 
+	readonly canvas: HTMLCanvasElement;
+	readonly app: CanvasApp;
+	readonly client: number;
+	readonly options: MountOptions;
+
 	constructor(
-		readonly canvas: HTMLCanvasElement,
-		readonly app: CanvasApp,
-		readonly client: number,
-		readonly options: MountOptions,
+		canvas: HTMLCanvasElement,
+		app: CanvasApp,
+		client: number,
+		options: MountOptions,
 	) {
+		this.canvas = canvas;
+		this.app = app;
+		this.client = client;
+		this.options = options;
 		this.backend = app.backend();
 		this.tools = app.tools();
 		canvas.tabIndex = 0;
@@ -186,6 +226,25 @@ class Mounted implements CanvasHandle {
 
 	resetFrameTimes(): void {
 		this.#times = [];
+	}
+
+	toJson(): SceneJson {
+		return JSON.parse(this.app.scene_json());
+	}
+
+	encodeState(): Uint8Array {
+		return this.app.encode_state();
+	}
+
+	applyUpdate(update: Uint8Array): boolean {
+		const changed = this.app.apply_update(update);
+
+		if (changed) {
+			this.requestFrame();
+			this.options.onChange?.(this);
+		}
+
+		return changed;
 	}
 
 	requestFrame(): void {
@@ -278,9 +337,7 @@ class Mounted implements CanvasHandle {
 
 	/** Apply a collaborator's update, repainting if anything changed. */
 	#integrate(update: Uint8Array): void {
-		if (!this.app.apply_update(update)) return;
-		this.requestFrame();
-		this.options.onChange?.(this);
+		this.applyUpdate(update);
 	}
 
 	#listen(): void {

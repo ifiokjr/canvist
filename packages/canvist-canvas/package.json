@@ -1,0 +1,43 @@
+{
+	"name": "@canvist/canvas",
+	"version": "0.1.1",
+	"description": "canvist's design canvas for the browser: shapes, frames, images, vector paths, and text frames on the real canvist editor, rendered by vello on WebGPU with a CPU fallback, and collaborative.",
+	"license": "Unlicense",
+	"homepage": "https://github.com/canvist/canvist/tree/main/packages/canvist-canvas#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/canvist/canvist.git",
+		"directory": "packages/canvist-canvas"
+	},
+	"bugs": {
+		"url": "https://github.com/canvist/canvist/issues",
+		"email": "support@canvist.dev"
+	},
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/mod.d.ts",
+			"default": "./dist/mod.js"
+		},
+		"./wasm/canvist_canvas_wasm_bg.wasm": "./wasm/canvist_canvas_wasm_bg.wasm"
+	},
+	"files": [
+		"dist",
+		"wasm/*.js",
+		"wasm/*.d.ts",
+		"wasm/*.wasm"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"build:wasm": "cd ../.. && wasm-pack build crates/canvist_canvas_wasm --target web --release --out-dir ../../packages/canvist-canvas/wasm --no-pack && rm packages/canvist-canvas/wasm/.gitignore",
+		"check:types": "tsc --noEmit",
+		"build": "tsc -p tsconfig.build.json",
+		"prepack": "npm run build"
+	},
+	"dependencies": {
+		"@canvist/headless": "file:../canvist-headless"
+	},
+	"devDependencies": {
+		"typescript": "^7.0.2"
+	}
+}

@@ -147,11 +147,46 @@ fn every_peer_starts_from_the_same_shared_state() -> TestResult {
 }
 
 #[test]
-fn the_demo_client_id_is_reserved() {
+fn the_seed_client_id_is_reserved() {
+	let seed = canvist_canvas_wasm::demo::SEED_CLIENT;
+
+	assert!(matches!(App::new(seed), Err(AppError::ReservedClient(_))));
 	assert!(matches!(
-		App::new(canvist_canvas_wasm::demo::SEED_CLIENT),
+		App::with_scene(
+			seed,
+			&serde_json::json!({ "type": "canvist-scene", "version": 1, "nodes": [] })
+		),
 		Err(AppError::ReservedClient(_))
 	));
+}
+
+#[test]
+fn peers_given_the_same_scene_share_its_state() -> TestResult {
+	let scene = serde_json::json!({
+		"type": "canvist-scene",
+		"version": 1,
+		"nodes": [{
+			"type": "page",
+			"children": [{
+				"type": "rectangle",
+				"props": { "name": "Card", "size": [120, 80], "fills": [{ "type": "solid", "color": "#3b2cf5" }] },
+			}],
+		}],
+	});
+	let mut ada = App::with_scene(2, &scene)?;
+	let grace = App::with_scene(3, &scene)?;
+
+	assert_eq!(ada.encode_state(), grace.encode_state());
+	assert!(scene_json(&ada).contains("Card"));
+	// Merging a peer that started from the same scene changes nothing.
+	assert!(!ada.apply_update(&grace.encode_state())?);
+	assert_eq!(scene_json(&ada), scene_json(&grace));
+	Ok(())
+}
+
+#[test]
+fn a_scene_that_is_not_scene_json_is_an_error() {
+	assert!(App::with_scene(2, &serde_json::json!({ "type": "doc" })).is_err());
 }
 
 #[test]

@@ -75,6 +75,13 @@ jobs:
           npm ci
           npm run build:wasm
 
+      # The canvas samples type-check against @canvist/canvas's sources.
+      - name: build @canvist/canvas's wasm
+        working-directory: packages/canvist-canvas
+        run: |
+          npm ci
+          npm run build:wasm
+
       - name: check the samples
         run: deno run --allow-read --allow-write --allow-run --allow-env --allow-net docs/check-snippets.ts ts
 

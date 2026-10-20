@@ -12,6 +12,7 @@
   - [Web](./quick-start/web.md)
   - [React](./quick-start/react.md)
   - [Vue](./quick-start/vue.md)
+  - [Design canvas](./quick-start/canvas.md)
   - [iOS](./quick-start/ios.md)
   - [Android](./quick-start/android.md)
   - [Desktop](./quick-start/desktop.md)
