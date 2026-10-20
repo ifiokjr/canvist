@@ -16,6 +16,10 @@ ignore = [
 	# `ttf-parser` is unmaintained; it only enters through `fontdue` in the v1 `canvist_render`
 	# crate, which the v2 roadmap deletes (M9).
 	{ id = "RUSTSEC-2026-0192", reason = "transitive via fontdue in the v1 renderer slated for removal" },
+	# `basic-toml` is unmaintained; it enters through `askama`, the template engine of
+	# `uniffi_bindgen` (both already at their latest), which only generates the Swift and
+	# Kotlin bindings at build time.
+	{ id = "RUSTSEC-2026-0374", reason = "transitive via askama in uniffi_bindgen, build-time only, no upstream alternative yet" },
 ]
 
 [licenses]
