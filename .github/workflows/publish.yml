@@ -231,7 +231,15 @@ jobs:
           # Trusted publishing refuses a long-lived npm token.
           unset NODE_AUTH_TOKEN
           args=(step publish-packages --all --output "$RUNNER_TEMP/publish-result.json" --format json)
-          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          else
+            # monochange checks the job runs in the `publisher` environment the
+            # registries trust. Actions does not expose the environment name,
+            # and the job's `environment:` is an expression monochange cannot
+            # evaluate from the workflow file, so name it here.
+            export MONOCHANGE_TRUSTED_PUBLISHING_ENVIRONMENT=publisher
+          fi
           mc --log-level=info "${args[@]}" | tee "$RUNNER_TEMP/publish-packages.json"
         shell: devenv shell -- bash -e {0}
 
