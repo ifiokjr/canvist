@@ -1,5 +1,5 @@
-//! Markdown inline syntax: emphasis, strikethrough, code spans, links,
-//! escapes, and hard breaks.
+//! Markdown inline syntax: emphasis, strikethrough, highlights, code spans,
+//! links, `<sub>` and `<sup>`, escapes, and hard breaks.
 
 use canvist_model::Attrs;
 use canvist_model::InlineText;
@@ -30,13 +30,17 @@ struct InlineParser<'b, 's> {
 }
 
 /// Emphasis delimiters, longest first, with the mark each one applies.
-const DELIMITERS: [(&str, &str); 5] = [
+const DELIMITERS: [(&str, &str); 6] = [
 	("**", "bold"),
 	("__", "bold"),
 	("~~", "strike"),
+	("==", "highlight"),
 	("*", "italic"),
 	("_", "italic"),
 ];
+
+/// Inline HTML elements read as marks, with the mark each one applies.
+const TAGS: [(&str, &str); 2] = [("sub", "subscript"), ("sup", "superscript")];
 
 impl InlineParser<'_, '_> {
 	fn flush(&mut self) {
@@ -58,8 +62,9 @@ impl InlineParser<'_, '_> {
 				'\\' => self.escape(rest),
 				'\n' => Some(self.newline()),
 				'`' => self.code_span(rest),
-				'*' | '_' | '~' => self.emphasis(rest, source),
+				'*' | '_' | '~' | '=' => self.emphasis(rest, source),
 				'[' => self.link(rest),
+				'<' => self.tag(rest),
 				_ => None,
 			};
 
@@ -129,16 +134,19 @@ impl InlineParser<'_, '_> {
 			.and_then(|inner| inner.strip_suffix(' '))
 			.filter(|inner| !inner.trim().is_empty())
 			.unwrap_or(content);
-		self.with_mark("code", Attrs::new(), |parser| {
+		self.with_mark("code", &Attrs::new(), |parser| {
 			parser.buffer.push_str(content);
 		});
 		Some(close + ticks)
 	}
 
 	fn emphasis(&mut self, rest: &str, source: &str) -> Option<usize> {
-		let (delimiter, mark) = DELIMITERS
-			.iter()
-			.find(|(delimiter, _)| rest.starts_with(delimiter))?;
+		// `==` only counts with the highlight extension compiled in. Other
+		// delimiters always do, and their marks are dropped when the schema
+		// lacks them, so unknown formatting becomes plain text.
+		let (delimiter, mark) = DELIMITERS.iter().find(|(delimiter, mark)| {
+			rest.starts_with(delimiter) && (cfg!(feature = "highlight") || *mark != "highlight")
+		})?;
 		let before = source[..source.len() - rest.len()].chars().next_back();
 		let inner = &rest[delimiter.len()..];
 		let opens = inner
@@ -152,7 +160,7 @@ impl InlineParser<'_, '_> {
 		}
 
 		let close = closing(inner, delimiter)?;
-		self.with_mark(mark, Attrs::new(), |parser| parser.parse(&inner[..close]));
+		self.with_mark(mark, &Attrs::new(), |parser| parser.parse(&inner[..close]));
 		Some(delimiter.len() + close + delimiter.len())
 	}
 
@@ -164,13 +172,26 @@ impl InlineParser<'_, '_> {
 		let href = target[..href_end].trim();
 		let label = &rest[1..label_end];
 		let attrs = Attrs::new().with("href", href);
-		self.with_mark("link", attrs, |parser| parser.parse(label));
+		self.with_mark("link", &attrs, |parser| parser.parse(label));
 
 		Some(label_end + 2 + href_end + 1)
 	}
 
+	/// An inline `<sub>` or `<sup>` element and its content.
+	fn tag(&mut self, rest: &str) -> Option<usize> {
+		let (name, mark) = TAGS.iter().find(|(name, _)| {
+			rest[1..].starts_with(name) && rest[1 + name.len()..].starts_with('>')
+		})?;
+		let open = name.len() + 2;
+		let close = format!("</{name}>");
+		let end = rest[open..].find(&close)? + open;
+		self.with_mark(mark, &Attrs::new(), |parser| parser.parse(&rest[open..end]));
+
+		Some(end + close.len())
+	}
+
 	/// Run `body` with mark `name` applied, if the schema has it.
-	fn with_mark(&mut self, name: &str, attrs: Attrs, body: impl FnOnce(&mut Self)) {
+	fn with_mark(&mut self, name: &str, attrs: &Attrs, body: impl FnOnce(&mut Self)) {
 		self.flush();
 		let mark = self.build.mark(name, attrs);
 		let pushed = mark.is_some();

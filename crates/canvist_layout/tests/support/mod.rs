@@ -25,8 +25,8 @@ use canvist_model::MarkSpec;
 use canvist_model::Schema;
 use serde_json::Value as Json;
 
-/// The schema of TipTap's `StarterKit`, plus task lists, images, highlights, and
-/// mentions, using TipTap's type names.
+/// The schema of TipTap's `StarterKit`, plus task lists, images, highlights, scripts, text
+/// styles, and mentions, using TipTap's type names.
 pub fn schema() -> Arc<Schema> {
 	let schema = Schema::builder()
 		.block(BlockSpec::text("paragraph"))
@@ -56,6 +56,9 @@ pub fn schema() -> Arc<Schema> {
 		.mark(MarkSpec::new("code"))
 		.mark(MarkSpec::new("link").inclusive(false))
 		.mark(MarkSpec::new("highlight"))
+		.mark(MarkSpec::new("subscript"))
+		.mark(MarkSpec::new("superscript"))
+		.mark(MarkSpec::new("textStyle"))
 		.embed(EmbedSpec::new("hardBreak"))
 		.embed(EmbedSpec::new("mention"))
 		.embed(EmbedSpec::new("inlineImage"))

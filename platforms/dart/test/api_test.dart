@@ -50,6 +50,31 @@ void main() {
     expect(names, {'doc', 'paragraph', 'baseKeymap', 'undoInputRule', 'bold'});
   });
 
+  test('extensions beyond the StarterKit have typed handles', () async {
+    final builder = EngineBuilder();
+    final sub = builder.add(Extensions.subscript);
+    final highlight = builder.add(Extensions.highlight);
+    builder.add(Extensions.textStyle);
+    final color = builder.add(Extensions.color);
+    final engine = await builder.build();
+    final doc = engine.parse(Format.text, 'H2O')
+      ..select(const Position([0], 1), const Position([0], 2));
+
+    expect(doc.run(sub.toggleSubscript()), isTrue);
+    expect(doc.query(sub.isSubscript()), isTrue);
+
+    doc
+      ..selectAll()
+      ..run(highlight.setHighlight(color: '#fef08a'))
+      ..run(color.setColor(color: '#e8590c'));
+    expect(doc.query(highlight.highlightColor()), '#fef08a');
+    expect(doc.query(color.color()), '#e8590c');
+
+    doc.run(color.unsetColor());
+    expect(doc.query(color.color()), isNull);
+    expect(doc.export(Format.markdown), '==H<sub>2</sub>O==');
+  });
+
   test('a handle from one engine is refused by another', () async {
     final (:engine, kit: _) = await Engine.starterKit();
     final other = EngineBuilder();
@@ -64,7 +89,9 @@ void main() {
     final names = engine.metadata
         .map((e) => (e! as Map<String, Object?>)['name'])
         .toSet();
-    final registered = {for (final extension in Extensions.all) extension.name};
+    final registered = {
+      for (final extension in Extensions.starterKit) extension.name,
+    };
 
     expect(
       names.difference({'doc', 'paragraph', 'baseKeymap', 'undoInputRule'}),

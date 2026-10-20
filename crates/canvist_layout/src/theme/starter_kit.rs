@@ -146,6 +146,12 @@ const CODE_BLOCK_SIZE: f32 = 0.8 * REM;
 const CODE_BLOCK_PADDING: f32 = 0.75 * REM;
 /// The font size of inline code, relative to the surrounding text.
 const INLINE_CODE_SCALE: f32 = 0.85;
+/// The font size of subscripts and superscripts, relative to the text.
+const SCRIPT_SCALE: f32 = 0.75;
+/// How far a subscript's baseline drops, in ems of its own size.
+const SUBSCRIPT_SHIFT: f32 = -0.25;
+/// How far a superscript's baseline rises, in ems of its own size.
+const SUPERSCRIPT_SHIFT: f32 = 0.5;
 /// The default height of an image block.
 const IMAGE_HEIGHT: f32 = 12.5 * REM;
 
@@ -271,6 +277,7 @@ fn base_style(options: &StarterKitOptions, palette: &Palette) -> TextStyle {
 		background: None,
 		decorations: Decorations::default(),
 		letter_spacing: options.letter_spacing,
+		baseline_shift: 0.0,
 	}
 }
 
@@ -387,7 +394,7 @@ fn nested_list_rules() -> Vec<BlockRule> {
 }
 
 fn mark_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<MarkRule> {
-	vec![
+	let mut rules = vec![
 		MarkRule::new("bold", "strong", TextPatch::new().weight(BOLD)),
 		MarkRule::new("italic", "em", TextPatch::new().italic(true)),
 		MarkRule::new("underline", "u", TextPatch::new().underline(true)),
@@ -413,9 +420,32 @@ fn mark_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<MarkRule> {
 		.bind(AttrBinding::Background(Arc::from("color"))),
 		MarkRule::new("textStyle", "span", TextPatch::new())
 			.bind(AttrBinding::Color(Arc::from("color")))
+			.bind(AttrBinding::Background(Arc::from("backgroundColor")))
 			.bind(AttrBinding::FontFamily(Arc::from("fontFamily")))
-			.bind(AttrBinding::FontSize(Arc::from("fontSize"))),
-	]
+			.bind(AttrBinding::FontSize(Arc::from("fontSize")))
+			.bind(AttrBinding::LineHeight(Arc::from("lineHeight"))),
+	];
+
+	if cfg!(feature = "theme-extensions") {
+		rules.extend([
+			MarkRule::new(
+				"subscript",
+				"sub",
+				TextPatch::new()
+					.size(FontSize::Em(SCRIPT_SCALE))
+					.baseline_shift(SUBSCRIPT_SHIFT),
+			),
+			MarkRule::new(
+				"superscript",
+				"sup",
+				TextPatch::new()
+					.size(FontSize::Em(SCRIPT_SCALE))
+					.baseline_shift(SUPERSCRIPT_SHIFT),
+			),
+		]);
+	}
+
+	rules
 }
 
 fn embed_rules(palette: &Palette) -> Vec<EmbedRule> {

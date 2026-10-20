@@ -10,11 +10,12 @@ import { readdirSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import {
+	allExtensions,
 	createEngine,
 	type Doc,
 	type Engine,
 	isCanvistError,
-	type StarterKit,
+	starterKit,
 } from "../src/mod.ts";
 import type {
 	CommandName,
@@ -28,53 +29,83 @@ type Json = null | boolean | number | string | readonly Json[] | {
 	readonly [key: string]: Json;
 };
 type Fields = { readonly [key: string]: Json };
-type Kit = Registered<StarterKit>;
-type KitDoc = Doc<StarterKit>;
+/**
+ * Cases are typed as if every extension were registered: a fixture only
+ * names commands its case registers, and Rust rejects any other name.
+ */
+type Every = typeof allExtensions;
+type Kit = Registered<Every>;
+type KitDoc = Doc<Every>;
 
 const FIXTURES = new URL("../../../conformance/fixtures/", import.meta.url);
 /** The optional features this binding has. */
-const FEATURES = ["collab"];
+const FEATURES = ["collab", "extensions"];
 
-const engine: Engine<StarterKit> = await createEngine();
+/** The StarterKit plus the `extensions` a case lists, by name. */
+async function caseEngine(names: readonly string[]): Promise<Engine<Every>> {
+	const extra = allExtensions.filter((extension) =>
+		names.includes(extension.name)
+	);
+	const engine = await createEngine([...starterKit, ...extra]);
 
-for (
-	const file of readdirSync(FIXTURES).filter((name) => name.endsWith(".json"))
-		.sort()
-) {
+	return engine as unknown as Engine<Every>;
+}
+
+const files = readdirSync(FIXTURES).filter((name) => name.endsWith(".json"))
+	.sort();
+const fixtures = files.map((file) => {
 	const fixture = JSON.parse(readFileSync(new URL(file, FIXTURES), "utf8")) as {
 		cases: Fields[];
 	};
 
-	for (const testCase of fixture.cases) {
+	return { file, cases: fixture.cases };
+});
+const extensionLists = (cases: readonly Fields[]) =>
+	cases.map((testCase) => (testCase.extensions ?? []) as string[]);
+
+/** Engines by the extension list they were created with, all created before
+ * any test runs, so registering tests never awaits. */
+const engines = new Map<string, Engine<Every>>();
+
+for (const names of fixtures.flatMap(({ cases }) => extensionLists(cases))) {
+	if (!engines.has(names.join(","))) {
+		engines.set(names.join(","), await caseEngine(names));
+	}
+}
+
+for (const { file, cases } of fixtures) {
+	for (const testCase of cases) {
 		const requires = (testCase.requires ?? []) as string[];
 		const skip = !requires.every((feature) => FEATURES.includes(feature));
+		const names = (testCase.extensions ?? []) as string[];
+		const engine = engines.get(names.join(",")) as Engine<Every>;
 		test(
 			`${file}: ${String(testCase.name)}`,
 			{ skip },
-			() => runCase(testCase),
+			() => runCase(engine, testCase),
 		);
 	}
 }
 
-function runCase(testCase: Fields): void {
+function runCase(engine: Engine<Every>, testCase: Fields): void {
 	const input = (testCase.input ?? {}) as Fields;
 
 	if (typeof input.error === "string") {
-		expectError(() => load(input), input.error);
+		expectError(() => load(engine, input), input.error);
 
 		return;
 	}
 
-	let doc = load(input);
+	let doc = load(engine, input);
 
 	for (const step of (testCase.steps ?? []) as Fields[]) {
-		doc = runStep(doc, step);
+		doc = runStep(engine, doc, step);
 	}
 
 	check(doc, (testCase.expect ?? {}) as Fields);
 }
 
-function load(input: Fields): KitDoc {
+function load(engine: Engine<Every>, input: Fields): KitDoc {
 	switch (input.format) {
 		case undefined:
 			return engine.create();
@@ -88,7 +119,7 @@ function load(input: Fields): KitDoc {
 }
 
 /** Run a step, returning the document later steps use. */
-function runStep(doc: KitDoc, step: Fields): KitDoc {
+function runStep(engine: Engine<Every>, doc: KitDoc, step: Fields): KitDoc {
 	if (typeof step.error === "string") {
 		const before = doc.export("json");
 		expectError(() => apply(doc, step), step.error);
@@ -163,7 +194,7 @@ const OPERATIONS: Record<string, Operation> = {
 	run: (doc, step) => doc.run(command(step), args(step) as never),
 	can: (doc, step) => doc.canRun(command(step), args(step) as never),
 	query: (doc, step) => {
-		assert.equal(args(step), undefined, "StarterKit queries take no arguments");
+		assert.equal(args(step), undefined, "fixture queries take no arguments");
 
 		return doc.ask(String(step.query) as QueryName<Kit>) as Json;
 	},

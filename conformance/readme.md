@@ -39,10 +39,11 @@ Each file in `fixtures/` holds one topic:
 }
 ```
 
-- `requires` lists optional features the case needs. Today the only one is `collab`. A runner without the feature skips the case and reports it as skipped, never as passed.
+- `requires` lists optional features the case needs: `collab`, or `extensions` for a case that uses extensions beyond the StarterKit. A runner without the feature skips the case and reports it as skipped, never as passed.
+- `extensions` names extensions to register on top of the StarterKit, such as `["highlight", "textStyle", "color"]`. The names are the extension names in the metadata. Without it, a case runs on the StarterKit alone.
 - `input` is optional; without it the case starts from an empty document (one empty paragraph). `format` is `json`, `html`, `markdown`, `text`, or `yjs`. JSON `content` is a ProseMirror document object rather than a string. Yjs `content` is a base64 v1 update joined as the yrs client `clientId`.
 - `input.error` instead of `expect` means loading must fail with that [error code](#error-codes).
-- Every case uses the StarterKit with block-id client 1.
+- Every case uses the StarterKit, plus any `extensions` it lists, with block-id client 1.
 
 ## Documents and positions
 

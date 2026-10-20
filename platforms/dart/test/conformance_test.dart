@@ -14,13 +14,35 @@ typedef Fields = Map<String, Object?>;
 final _fixtures = Directory('../../conformance/fixtures');
 
 /// The optional features this binding has.
-const _features = {'collab'};
+const _features = {'collab', 'extensions'};
 
-late Engine engine;
+/// Engines by the extension list a case adds to the StarterKit.
+final _engines = <String, Engine>{};
+
+/// The StarterKit plus the `extensions` [testCase] lists, by name.
+Future<Engine> _engineFor(Fields testCase) async {
+  final names = (testCase['extensions'] as List<Object?>? ?? const [])
+      .cast<String>();
+  final key = names.join(',');
+  final cached = _engines[key];
+
+  if (cached != null) {
+    return cached;
+  }
+
+  final builder = EngineBuilder();
+
+  for (final extension in [
+    ...Extensions.starterKit,
+    ...Extensions.all.where((e) => names.contains(e.name)),
+  ]) {
+    builder.add(extension);
+  }
+
+  return _engines[key] = await builder.build();
+}
 
 void main() {
-  setUpAll(() async => engine = (await Engine.starterKit()).engine);
-
   final files =
       _fixtures
           .listSync()
@@ -39,32 +61,36 @@ void main() {
       final skip = requires.every(_features.contains)
           ? null
           : 'needs $requires';
-      test('$name: ${testCase['name']}', () => _runCase(testCase), skip: skip);
+      test(
+        '$name: ${testCase['name']}',
+        () async => _runCase(await _engineFor(testCase), testCase),
+        skip: skip,
+      );
     }
   }
 }
 
-void _runCase(Fields testCase) {
+void _runCase(Engine engine, Fields testCase) {
   final input = testCase['input'] as Fields? ?? const {};
   final error = input['error'];
 
   if (error is String) {
-    _expectError(() => _load(input), error);
+    _expectError(() => _load(engine, input), error);
 
     return;
   }
 
-  var doc = _load(input);
+  var doc = _load(engine, input);
 
   for (final step
       in (testCase['steps'] as List<Object?>? ?? const []).cast<Fields>()) {
-    doc = _runStep(doc, step);
+    doc = _runStep(engine, doc, step);
   }
 
   _check(doc, testCase['expect'] as Fields? ?? const {});
 }
 
-Doc _load(Fields input) => switch (input['format']) {
+Doc _load(Engine engine, Fields input) => switch (input['format']) {
   null => engine.create(),
   'json' => engine.fromJson(input['content']! as Fields),
   'yjs' => engine.fromYjs(
@@ -79,7 +105,7 @@ Doc _load(Fields input) => switch (input['format']) {
 };
 
 /// Run a step, returning the document later steps use.
-Doc _runStep(Doc doc, Fields step) {
+Doc _runStep(Engine engine, Doc doc, Fields step) {
   final error = step['error'];
 
   if (error is String) {

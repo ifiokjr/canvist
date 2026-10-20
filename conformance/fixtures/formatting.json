@@ -1,0 +1,177 @@
+{
+	"description": "Formatting beyond the StarterKit: subscript, superscript, highlight, and the text style kit, through commands, keys, typing, the formats, and Yjs.",
+	"cases": [
+		{
+			"name": "toggles subscript and superscript, which exclude each other",
+			"requires": ["extensions"],
+			"extensions": ["subscript", "superscript"],
+			"input": { "format": "text", "content": "H2O x2" },
+			"steps": [
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 1 },
+					"head": { "path": [0], "offset": 2 }
+				},
+				{ "op": "run", "command": "toggleSubscript", "applied": true },
+				{ "op": "query", "query": "isSubscript", "expect": true },
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 5 },
+					"head": { "path": [0], "offset": 6 }
+				},
+				{ "op": "press", "key": "Mod-." },
+				{ "op": "query", "query": "isSuperscript", "expect": true },
+				{ "op": "run", "command": "setSubscript", "applied": true },
+				{ "op": "query", "query": "isSuperscript", "expect": false }
+			],
+			"expect": {
+				"html": "<p>H<sub>2</sub>O x<sub>2</sub></p>",
+				"markdown": "H<sub>2</sub>O x<sub>2</sub>"
+			}
+		},
+		{
+			"name": "reads scripts from Markdown's inline tags",
+			"requires": ["extensions"],
+			"extensions": ["subscript", "superscript"],
+			"input": { "format": "markdown", "content": "E=mc<sup>2</sup> and H<sub>2</sub>O" },
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "E=mc" },
+								{ "type": "text", "text": "2", "marks": [{ "type": "superscript" }] },
+								{ "type": "text", "text": " and H" },
+								{ "type": "text", "text": "2", "marks": [{ "type": "subscript" }] },
+								{ "type": "text", "text": "O" }
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "highlights text typed between double equals signs",
+			"requires": ["extensions"],
+			"extensions": ["highlight"],
+			"steps": [{ "op": "typeText", "text": "Read ==this== first" }],
+			"expect": {
+				"html": "<p>Read <mark>this</mark> first</p>",
+				"markdown": "Read ==this== first"
+			}
+		},
+		{
+			"name": "highlights in a colour, recolours, and toggles the same colour off",
+			"requires": ["extensions"],
+			"extensions": ["highlight"],
+			"input": { "format": "text", "content": "word" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setHighlight", "args": { "color": "#fef08a" }, "applied": true },
+				{ "op": "query", "query": "highlightColor", "expect": "#fef08a" },
+				{
+					"op": "expect",
+					"html": "<p><mark data-color=\"#fef08a\" style=\"background-color: #fef08a; color: inherit\">word</mark></p>"
+				},
+				{ "op": "run", "command": "toggleHighlight", "args": { "color": "#fbcfe8" }, "applied": true },
+				{ "op": "query", "query": "highlightColor", "expect": "#fbcfe8" },
+				{ "op": "run", "command": "toggleHighlight", "args": { "color": "#fbcfe8" }, "applied": true },
+				{ "op": "query", "query": "isHighlight", "expect": false },
+				{ "op": "run", "command": "setHighlight", "args": { "color": 7 }, "error": "invalidArgs" }
+			],
+			"expect": { "html": "<p>word</p>" }
+		},
+		{
+			"name": "sets and clears text style attributes independently",
+			"requires": ["extensions"],
+			"extensions": ["textStyle", "color", "fontSize"],
+			"input": { "format": "text", "content": "Warm" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setColor", "args": { "color": "#e8590c" }, "applied": true },
+				{ "op": "run", "command": "setFontSize", "args": { "fontSize": "20px" }, "applied": true },
+				{ "op": "query", "query": "color", "expect": "#e8590c" },
+				{
+					"op": "expect",
+					"html": "<p><span style=\"color: #e8590c; font-size: 20px\">Warm</span></p>"
+				},
+				{ "op": "run", "command": "unsetColor", "applied": true },
+				{ "op": "query", "query": "color", "expect": null },
+				{ "op": "query", "query": "fontSize", "expect": "20px" },
+				{ "op": "run", "command": "setColor", "error": "invalidArgs" },
+				{ "op": "run", "command": "unsetFontSize", "applied": true }
+			],
+			"expect": { "html": "<p>Warm</p>" }
+		},
+		{
+			"name": "reads text styles and highlights from pasted HTML",
+			"requires": ["extensions"],
+			"extensions": ["highlight", "textStyle", "color", "backgroundColor", "fontFamily", "fontSize", "lineHeight"],
+			"input": {
+				"format": "html",
+				"content": "<p><mark data-color=\"#ffc078\">hot</mark> <span style=\"color: #1c7ed6; font-family: Georgia; line-height: 2; background-color: transparent\">cool</span></p>"
+			},
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "hot", "marks": [{ "type": "highlight", "attrs": { "color": "#ffc078" } }] },
+								{ "type": "text", "text": " " },
+								{
+									"type": "text",
+									"text": "cool",
+									"marks": [
+										{
+											"type": "textStyle",
+											"attrs": {
+												"color": "#1c7ed6",
+												"fontFamily": "Georgia",
+												"lineHeight": "2"
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "keeps text style attributes through Yjs",
+			"requires": ["collab", "extensions"],
+			"extensions": ["highlight", "textStyle", "color"],
+			"input": { "format": "markdown", "content": "a ==b== c" },
+			"steps": [
+				{ "op": "share", "clientId": 7 },
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setColor", "args": { "color": "#2f9e44" }, "applied": true },
+				{ "op": "rejoin", "clientId": 8 }
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "a ", "marks": [{ "type": "textStyle", "attrs": { "color": "#2f9e44" } }] },
+								{
+									"type": "text",
+									"text": "b",
+									"marks": [{ "type": "textStyle", "attrs": { "color": "#2f9e44" } }, { "type": "highlight" }]
+								},
+								{ "type": "text", "text": " c", "marks": [{ "type": "textStyle", "attrs": { "color": "#2f9e44" } }] }
+							]
+						}
+					]
+				}
+			}
+		}
+	]
+}

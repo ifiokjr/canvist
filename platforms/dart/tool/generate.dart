@@ -1,7 +1,8 @@
 /// Generates `lib/src/extensions.g.dart`: a typed handle class per
-/// extension, from the StarterKit metadata `canvist_extensions` snapshots in
+/// extension, from the extension metadata `canvist_extensions` snapshots in
 /// its tests. The Rust commands check their arguments against the same
-/// metadata, so the Dart signatures cannot drift from them.
+/// metadata, so the Dart signatures cannot drift from them. The StarterKit
+/// snapshot says which extensions make up [Engine.starterKit].
 ///
 /// ```sh
 /// dart run tool/generate.dart          # write the file
@@ -12,9 +13,11 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-final _snapshot = File(
-  '../../crates/canvist_extensions/tests/snapshots/api__starter_kit_metadata.snap',
+const _snapshots = '../../crates/canvist_extensions/tests/snapshots';
+final _everySnapshot = File(
+  '$_snapshots/extensions_api__extension_metadata.snap',
 );
+final _starterKitSnapshot = File('$_snapshots/api__starter_kit_metadata.snap');
 final _output = File('lib/src/extensions.g.dart');
 
 /// Extensions every engine registers; only paragraphs have commands.
@@ -23,13 +26,12 @@ const _core = {'doc', 'paragraph', 'baseKeymap', 'undoInputRule'};
 typedef _Json = Map<String, Object?>;
 
 Future<void> main(List<String> arguments) async {
-  final body = (await _snapshot.readAsString()).replaceFirst(
-    RegExp(r'^---\n[\s\S]*?\n---\n'),
-    '',
-  );
-  final extensions = (jsonDecode(body) as List<Object?>).cast<_Json>()
+  final extensions = await _read(_everySnapshot)
     ..sort((a, b) => _name(a).compareTo(_name(b)));
-  final generated = await _format(_render(extensions));
+  final starterKit = {
+    for (final e in await _read(_starterKitSnapshot)) _name(e),
+  };
+  final generated = await _format(_render(extensions, starterKit));
 
   if (!arguments.contains('--check')) {
     await _output.writeAsString(generated);
@@ -42,6 +44,16 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
+/// The extensions in an insta snapshot: its JSON body after the header.
+Future<List<_Json>> _read(File snapshot) async {
+  final body = (await snapshot.readAsString()).replaceFirst(
+    RegExp(r'^---\n[\s\S]*?\n---\n'),
+    '',
+  );
+
+  return (jsonDecode(body) as List<Object?>).cast<_Json>();
+}
+
 String _name(_Json extension) => extension['name']! as String;
 
 String _pascal(String name) => name[0].toUpperCase() + name.substring(1);
@@ -49,8 +61,11 @@ String _pascal(String name) => name[0].toUpperCase() + name.substring(1);
 List<_Json> _list(_Json json, String key) =>
     (json[key]! as List<Object?>).cast<_Json>();
 
-String _render(List<_Json> extensions) {
+String _render(List<_Json> extensions, Set<String> starterKitNames) {
   final optional = extensions.where((e) => !_core.contains(_name(e))).toList();
+  final starterKit = optional
+      .where((e) => starterKitNames.contains(_name(e)))
+      .toList();
   final withHandles = extensions.where(
     (e) => !_core.contains(_name(e)) || _name(e) == 'paragraph',
   );
@@ -84,7 +99,7 @@ String _render(List<_Json> extensions) {
   }
 
   out
-    ..writeln('/// Every StarterKit extension, to pass to [EngineBuilder.add].')
+    ..writeln('/// Every extension, to pass to [EngineBuilder.add].')
     ..writeln('abstract final class Extensions {');
 
   for (final extension in optional) {
@@ -96,6 +111,11 @@ String _render(List<_Json> extensions) {
   }
 
   out
+    ..writeln()
+    ..writeln("  /// TipTap's StarterKit, which [Engine.starterKit] registers.")
+    ..writeln('  static const starterKit = <Extension<ExtensionHandle>>[')
+    ..writeln(starterKit.map((e) => '    ${_name(e)},').join('\n'))
+    ..writeln('  ];')
     ..writeln()
     ..writeln('  /// Every extension above.')
     ..writeln('  static const all = <Extension<ExtensionHandle>>[')
@@ -110,7 +130,7 @@ String _render(List<_Json> extensions) {
     ..writeln('  StarterKitHandles._(EngineBuilder builder)')
     ..write('    : paragraph = builder.paragraph');
 
-  for (final extension in optional) {
+  for (final extension in starterKit) {
     out.write(
       ',\n      ${_name(extension)} = builder.add(Extensions.${_name(extension)})',
     );
@@ -122,7 +142,7 @@ String _render(List<_Json> extensions) {
     ..writeln('  /// Paragraphs.')
     ..writeln('  final ParagraphHandle paragraph;');
 
-  for (final extension in optional) {
+  for (final extension in starterKit) {
     out
       ..writeln('  /// `${_name(extension)}`.')
       ..writeln(

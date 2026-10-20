@@ -82,8 +82,17 @@ fn assert_within(name: &str, measured: Duration, budget: Duration) {
 fn editor_over(
 	paragraphs: impl FnOnce(&canvist_model::Schema) -> Vec<InlineText>,
 ) -> (Editor, StarterKitHandles) {
+	editor_with(|_| {}, paragraphs)
+}
+
+/// [`editor_over`] with `extras` registered after the StarterKit.
+fn editor_with(
+	extras: impl FnOnce(&mut canvist_editor::EditorBuilder),
+	paragraphs: impl FnOnce(&canvist_model::Schema) -> Vec<InlineText>,
+) -> (Editor, StarterKitHandles) {
 	let mut builder = Editor::builder();
 	let kit = StarterKit::add_all(&mut builder);
+	extras(&mut builder);
 	let mut editor = builder
 		.build_with(|schema, client| {
 			let paragraph = schema.default_text_block();
@@ -329,5 +338,96 @@ fn can_checks_for_a_toolbar_in_a_100k_block_document() {
 		"can() for wrapping @100k root blocks",
 		per_can_check(&structural),
 		Duration::from_micros(200),
+	);
+}
+
+/// Every extension beyond the StarterKit.
+#[cfg(feature = "full")]
+fn every_extension(builder: &mut canvist_editor::EditorBuilder) {
+	builder.add(canvist_extensions::Subscript);
+	builder.add(canvist_extensions::Superscript);
+	builder.add(canvist_extensions::Highlight::default());
+	builder.add(canvist_extensions::TextStyle);
+	builder.add(canvist_extensions::Color);
+	builder.add(canvist_extensions::BackgroundColor);
+	builder.add(canvist_extensions::FontFamily);
+	builder.add(canvist_extensions::FontSize);
+	builder.add(canvist_extensions::LineHeight);
+}
+
+/// 100,000 paragraphs in an editor with every extension.
+#[cfg(feature = "full")]
+fn large_full_editor() -> Editor {
+	editor_with(every_extension, |_| {
+		(0..LARGE_DOC)
+			.map(|_| InlineText::plain(PARAGRAPH, MarkSet::empty()))
+			.collect()
+	})
+	.0
+}
+
+/// One paragraph of 2,000 runs alternating highlights and coloured,
+/// resized text styles, in an editor with every extension.
+#[cfg(feature = "full")]
+fn heavy_styles() -> Editor {
+	use canvist_model::Attrs;
+	use canvist_model::Mark;
+
+	editor_with(every_extension, |schema| {
+		let style = schema.mark_type("textStyle").expect("textStyle");
+		let highlight = schema.mark_type("highlight").expect("highlight");
+		let styled = Attrs::new()
+			.with("color", "#e8590c")
+			.with("fontSize", "18px");
+		let marks = [
+			MarkSet::from_marks([Mark::with_attrs(style, styled)]),
+			MarkSet::from_marks([Mark::new(highlight)]),
+		];
+		let mut text = InlineText::new();
+
+		for index in 0..2_000 {
+			text.append(InlineText::plain("styled ", marks[index % 2].clone()));
+		}
+
+		vec![text]
+	})
+	.0
+}
+
+#[test]
+#[cfg(feature = "full")]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+fn typing_with_every_extension_in_a_100k_block_document() {
+	let letter = per_keystroke_in(large_full_editor(), 1_000, type_and_delete("a"));
+	let equals = per_keystroke_in(large_full_editor(), 1_000, type_and_delete("="));
+	let space = per_keystroke_in(large_full_editor(), 1_000, type_and_delete(" "));
+
+	assert_within(
+		"editor keystroke with every extension @100k blocks",
+		letter,
+		Duration::from_micros(5),
+	);
+	assert_within(
+		"editor `=` (highlight rule) with every extension @100k blocks",
+		equals,
+		Duration::from_micros(5),
+	);
+	assert_within(
+		"editor space with every extension @100k blocks",
+		space,
+		Duration::from_micros(5),
+	);
+}
+
+#[test]
+#[cfg(feature = "full")]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+fn typing_among_styled_runs() {
+	let measured = per_keystroke_in(heavy_styles(), 1_000, type_and_delete("a"));
+
+	assert_within(
+		"editor keystroke among 2,000 text style and highlight runs",
+		measured,
+		Duration::from_micros(5),
 	);
 }

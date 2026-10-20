@@ -23,7 +23,7 @@ default = []
 scene = ["canvist_headless/scene"]
 
 [dependencies]
-canvist_headless = { workspace = true, features = ["collab", "starter-kit"] }
+canvist_headless = { workspace = true, features = ["collab", "full"] }
 js-sys = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 wasm-bindgen = { workspace = true, features = ["std"] }

@@ -12,9 +12,10 @@ use canvist_model::Value;
 
 use super::tree::HARD_BREAK;
 
-/// Serialize a slice to Markdown. Underline has no Markdown form, so
-/// underlined text is written plain; unknown blocks are written as their
-/// content.
+/// Serialize a slice to Markdown. Highlights use `==`, and subscripts and
+/// superscripts the inline `<sub>` and `<sup>` tags GitHub renders.
+/// Underline and text styles have no Markdown form, so their text is
+/// written plain; unknown blocks are written as their content.
 #[must_use]
 pub fn to_markdown(schema: &Schema, slice: &Slice) -> String {
 	blocks(schema, slice.blocks(), "\n\n")
@@ -230,12 +231,24 @@ fn escape_line_start(text: &str) -> String {
 	format!("{}\\{}", &text[..marker_end], &text[marker_end..])
 }
 
-/// Escape characters with inline meaning.
+/// The inline HTML tags the Markdown reader understands, which literal text
+/// must not spell out.
+const INLINE_TAGS: [&str; 4] = ["<sub>", "</sub>", "<sup>", "</sup>"];
+
+/// Escape characters with inline meaning: emphasis and code delimiters,
+/// brackets, `==` (highlight), and `<` when it would open a tag the reader
+/// understands.
 fn escape(text: &str) -> String {
 	let mut escaped = String::with_capacity(text.len());
 
-	for character in text.chars() {
-		if matches!(character, '\\' | '*' | '_' | '`' | '[' | ']' | '~') {
+	for (index, character) in text.char_indices() {
+		let rest = &text[index..];
+		let delimiter = matches!(character, '\\' | '*' | '_' | '`' | '[' | ']' | '~');
+		let highlight = cfg!(feature = "highlight") && rest.starts_with("==");
+		let tag = cfg!(any(feature = "subscript", feature = "superscript"))
+			&& INLINE_TAGS.iter().any(|tag| rest.starts_with(tag));
+
+		if delimiter || highlight || tag {
 			escaped.push('\\');
 		}
 
@@ -255,6 +268,13 @@ fn delimiters(schema: &Schema, mark: &Mark) -> Option<(String, String)> {
 		"italic" => pair("*"),
 		"strike" => pair("~~"),
 		"code" => pair("`"),
+		"highlight" if cfg!(feature = "highlight") => pair("=="),
+		"subscript" if cfg!(feature = "subscript") => {
+			Some(("<sub>".to_owned(), "</sub>".to_owned()))
+		}
+		"superscript" if cfg!(feature = "superscript") => {
+			Some(("<sup>".to_owned(), "</sup>".to_owned()))
+		}
 		"link" => {
 			let href = mark
 				.attrs

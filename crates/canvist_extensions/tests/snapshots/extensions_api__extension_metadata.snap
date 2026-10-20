@@ -1,0 +1,1175 @@
+---
+source: crates/canvist_extensions/tests/extensions_api.rs
+expression: editor.metadata_json()
+---
+[
+  {
+    "commands": [],
+    "name": "undoInputRule",
+    "nodes": [],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Turn the selected text blocks into paragraphs.",
+        "name": "setParagraph"
+      }
+    ],
+    "name": "paragraph",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "block",
+        "name": "paragraph"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether every selected text block is a paragraph.",
+        "name": "isParagraph",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Remove text styles whose attributes are all unset.",
+        "name": "removeEmptyTextStyle"
+      }
+    ],
+    "name": "textStyle",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "mark",
+        "name": "textStyle"
+      }
+    ],
+    "queries": []
+  },
+  {
+    "commands": [],
+    "name": "doc",
+    "nodes": [],
+    "queries": []
+  },
+  {
+    "commands": [],
+    "name": "trailingNode",
+    "nodes": [],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The heading level.",
+            "name": "level",
+            "type": {
+              "max": 6,
+              "min": 1,
+              "type": "int"
+            }
+          }
+        ],
+        "doc": "Make the selected text blocks headings of a level, or paragraphs if they already are.",
+        "name": "toggleHeading"
+      },
+      {
+        "args": [
+          {
+            "doc": "The heading level.",
+            "name": "level",
+            "type": {
+              "max": 6,
+              "min": 1,
+              "type": "int"
+            }
+          }
+        ],
+        "doc": "Make the selected text blocks headings of a level.",
+        "name": "setHeading"
+      }
+    ],
+    "name": "heading",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": 1,
+            "doc": "The heading level.",
+            "name": "level",
+            "type": {
+              "max": 6,
+              "min": 1,
+              "type": "int"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "heading"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The level every selected text block shares, or null if they are not all headings of one level.",
+        "name": "headingLevel",
+        "returns": {
+          "of": {
+            "max": 6,
+            "min": 1,
+            "type": "int"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Wrap the selected blocks in a quote, or lift them out of one.",
+        "name": "toggleBlockquote"
+      }
+    ],
+    "name": "blockquote",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "block",
+        "name": "blockquote"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the selection is inside a quote.",
+        "name": "isBlockquote",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "default": null,
+            "doc": "The code's language, such as `rust`.",
+            "name": "language",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "doc": "Make the selected text blocks code, or paragraphs if they already are code.",
+        "name": "toggleCodeBlock"
+      },
+      {
+        "args": [
+          {
+            "default": null,
+            "doc": "The code's language, such as `rust`.",
+            "name": "language",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "doc": "Make the selected text blocks code in a language.",
+        "name": "setCodeBlock"
+      }
+    ],
+    "name": "codeBlock",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The code's language, such as `rust`.",
+            "name": "language",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "codeBlock"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the selection is in a code block.",
+        "name": "isCodeBlock",
+        "returns": {
+          "type": "bool"
+        }
+      },
+      {
+        "args": [],
+        "doc": "The language of the code block holding the selection, or null.",
+        "name": "codeBlockLanguage",
+        "returns": {
+          "of": {
+            "type": "string"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Insert a line break at the selection.",
+        "name": "setHardBreak"
+      }
+    ],
+    "name": "hardBreak",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "embed",
+        "name": "hardBreak"
+      }
+    ],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Insert a horizontal rule at the selection.",
+        "name": "setHorizontalRule"
+      }
+    ],
+    "name": "horizontalRule",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "block",
+        "name": "horizontalRule"
+      }
+    ],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Wrap the selection in a bullet list, convert another list into one, or lift it out.",
+        "name": "toggleBulletList"
+      }
+    ],
+    "name": "bulletList",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "block",
+        "name": "bulletList"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the selection is inside a bullet list.",
+        "name": "isBulletList",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Wrap the selection in an ordered list, convert another list into one, or lift it out.",
+        "name": "toggleOrderedList"
+      },
+      {
+        "args": [
+          {
+            "doc": "The number of the first item.",
+            "name": "start",
+            "type": {
+              "type": "int"
+            }
+          }
+        ],
+        "doc": "Number the ordered list around the selection from a start number.",
+        "name": "setOrderedListStart"
+      }
+    ],
+    "name": "orderedList",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": 1,
+            "doc": "The number of the first item.",
+            "name": "start",
+            "type": {
+              "type": "int"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "orderedList"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the selection is inside an ordered list.",
+        "name": "isOrderedList",
+        "returns": {
+          "type": "bool"
+        }
+      },
+      {
+        "args": [],
+        "doc": "The start number of the ordered list around the selection, or null.",
+        "name": "orderedListStart",
+        "returns": {
+          "of": {
+            "type": "int"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Split the item at the caret.",
+        "name": "splitListItem"
+      },
+      {
+        "args": [],
+        "doc": "Nest the selected items in the item before them.",
+        "name": "sinkListItem"
+      },
+      {
+        "args": [],
+        "doc": "Lift the selected items one level.",
+        "name": "liftListItem"
+      }
+    ],
+    "name": "listItem",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "block",
+        "name": "listItem"
+      }
+    ],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Wrap the selection in a task list, convert another list into one, or lift it out.",
+        "name": "toggleTaskList"
+      },
+      {
+        "args": [],
+        "doc": "Check or uncheck the task at the caret.",
+        "name": "toggleTask"
+      },
+      {
+        "args": [
+          {
+            "doc": "Whether the task is done.",
+            "name": "checked",
+            "type": {
+              "type": "bool"
+            }
+          }
+        ],
+        "doc": "Check or uncheck the task at the caret.",
+        "name": "setTaskChecked"
+      },
+      {
+        "args": [],
+        "doc": "Split the item at the caret.",
+        "name": "splitTaskItem"
+      },
+      {
+        "args": [],
+        "doc": "Nest the selected items in the item before them.",
+        "name": "sinkTaskItem"
+      },
+      {
+        "args": [],
+        "doc": "Lift the selected items one level.",
+        "name": "liftTaskItem"
+      }
+    ],
+    "name": "taskList",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "block",
+        "name": "taskList"
+      },
+      {
+        "attrs": [
+          {
+            "default": false,
+            "doc": "Whether the task is done.",
+            "name": "checked",
+            "type": {
+              "type": "bool"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "taskItem"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the selection is inside a task list.",
+        "name": "isTaskList",
+        "returns": {
+          "type": "bool"
+        }
+      },
+      {
+        "args": [],
+        "doc": "Whether the task around the selection is checked, or null outside tasks.",
+        "name": "isTaskChecked",
+        "returns": {
+          "of": {
+            "type": "bool"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Add the mark to the selection, or remove it if every selected character has it.",
+        "name": "toggleBold"
+      },
+      {
+        "args": [],
+        "doc": "Add the mark to the selection.",
+        "name": "setBold"
+      },
+      {
+        "args": [],
+        "doc": "Remove the mark from the selection.",
+        "name": "unsetBold"
+      }
+    ],
+    "name": "bold",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "mark",
+        "name": "bold"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the mark is active at the selection.",
+        "name": "isBold",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Add the mark to the selection, or remove it if every selected character has it.",
+        "name": "toggleItalic"
+      },
+      {
+        "args": [],
+        "doc": "Add the mark to the selection.",
+        "name": "setItalic"
+      },
+      {
+        "args": [],
+        "doc": "Remove the mark from the selection.",
+        "name": "unsetItalic"
+      }
+    ],
+    "name": "italic",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "mark",
+        "name": "italic"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the mark is active at the selection.",
+        "name": "isItalic",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Add the mark to the selection, or remove it if every selected character has it.",
+        "name": "toggleUnderline"
+      },
+      {
+        "args": [],
+        "doc": "Add the mark to the selection.",
+        "name": "setUnderline"
+      },
+      {
+        "args": [],
+        "doc": "Remove the mark from the selection.",
+        "name": "unsetUnderline"
+      }
+    ],
+    "name": "underline",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "mark",
+        "name": "underline"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the mark is active at the selection.",
+        "name": "isUnderline",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Add the mark to the selection, or remove it if every selected character has it.",
+        "name": "toggleStrike"
+      },
+      {
+        "args": [],
+        "doc": "Add the mark to the selection.",
+        "name": "setStrike"
+      },
+      {
+        "args": [],
+        "doc": "Remove the mark from the selection.",
+        "name": "unsetStrike"
+      }
+    ],
+    "name": "strike",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "mark",
+        "name": "strike"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the mark is active at the selection.",
+        "name": "isStrike",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Add the mark to the selection, or remove it if every selected character has it.",
+        "name": "toggleCode"
+      },
+      {
+        "args": [],
+        "doc": "Add the mark to the selection.",
+        "name": "setCode"
+      },
+      {
+        "args": [],
+        "doc": "Remove the mark from the selection.",
+        "name": "unsetCode"
+      }
+    ],
+    "name": "code",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "mark",
+        "name": "code"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the mark is active at the selection.",
+        "name": "isCode",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The link target.",
+            "name": "href",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Link the selection to a URL, or update the link it already has.",
+        "name": "setLink"
+      },
+      {
+        "args": [],
+        "doc": "Remove links from the selection.",
+        "name": "unsetLink"
+      }
+    ],
+    "name": "link",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The link target.",
+            "name": "href",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "kind": "mark",
+        "name": "link"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The href of the link at the selection, or null.",
+        "name": "linkHref",
+        "returns": {
+          "of": {
+            "type": "string"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Undo the last group of changes.",
+        "name": "undo"
+      },
+      {
+        "args": [],
+        "doc": "Redo the last undone group.",
+        "name": "redo"
+      }
+    ],
+    "name": "history",
+    "nodes": [],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Add the mark to the selection, or remove it if every selected character has it.",
+        "name": "toggleSubscript"
+      },
+      {
+        "args": [],
+        "doc": "Add the mark to the selection.",
+        "name": "setSubscript"
+      },
+      {
+        "args": [],
+        "doc": "Remove the mark from the selection.",
+        "name": "unsetSubscript"
+      }
+    ],
+    "name": "subscript",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "mark",
+        "name": "subscript"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the mark is active at the selection.",
+        "name": "isSubscript",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Add the mark to the selection, or remove it if every selected character has it.",
+        "name": "toggleSuperscript"
+      },
+      {
+        "args": [],
+        "doc": "Add the mark to the selection.",
+        "name": "setSuperscript"
+      },
+      {
+        "args": [],
+        "doc": "Remove the mark from the selection.",
+        "name": "unsetSuperscript"
+      }
+    ],
+    "name": "superscript",
+    "nodes": [
+      {
+        "attrs": [],
+        "kind": "mark",
+        "name": "superscript"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the mark is active at the selection.",
+        "name": "isSuperscript",
+        "returns": {
+          "type": "bool"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "default": null,
+            "doc": "The highlight colour, such as `#fef08a`, or null for the theme's colour.",
+            "name": "color",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "doc": "Highlight the selection, in a colour or the theme's.",
+        "name": "setHighlight"
+      },
+      {
+        "args": [
+          {
+            "default": null,
+            "doc": "The highlight colour, such as `#fef08a`, or null for the theme's colour.",
+            "name": "color",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "doc": "Remove the selection's highlight in a colour, or highlight it in that colour.",
+        "name": "toggleHighlight"
+      },
+      {
+        "args": [],
+        "doc": "Remove highlights from the selection.",
+        "name": "unsetHighlight"
+      }
+    ],
+    "name": "highlight",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The highlight colour, such as `#fef08a`, or null for the theme's colour.",
+            "name": "color",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "kind": "mark",
+        "name": "highlight"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the selection is highlighted.",
+        "name": "isHighlight",
+        "returns": {
+          "type": "bool"
+        }
+      },
+      {
+        "args": [],
+        "doc": "The colour every selected character is highlighted in, or null.",
+        "name": "highlightColor",
+        "returns": {
+          "of": {
+            "type": "string"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The text colour, any CSS colour such as `#958df1`.",
+            "name": "color",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Set the style on the selection, keeping its other styles.",
+        "name": "setColor"
+      },
+      {
+        "args": [],
+        "doc": "Clear the style from the selection.",
+        "name": "unsetColor"
+      }
+    ],
+    "name": "color",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The text colour, any CSS colour such as `#958df1`.",
+            "name": "color",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "kind": "mark",
+        "name": "textStyle"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The value every selected character shares, or null.",
+        "name": "color",
+        "returns": {
+          "of": {
+            "type": "string"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The background colour behind the text, any CSS colour.",
+            "name": "backgroundColor",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Set the style on the selection, keeping its other styles.",
+        "name": "setBackgroundColor"
+      },
+      {
+        "args": [],
+        "doc": "Clear the style from the selection.",
+        "name": "unsetBackgroundColor"
+      }
+    ],
+    "name": "backgroundColor",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The background colour behind the text, any CSS colour.",
+            "name": "backgroundColor",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "kind": "mark",
+        "name": "textStyle"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The value every selected character shares, or null.",
+        "name": "backgroundColor",
+        "returns": {
+          "of": {
+            "type": "string"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The CSS font family list, such as `Inter, sans-serif`.",
+            "name": "fontFamily",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Set the style on the selection, keeping its other styles.",
+        "name": "setFontFamily"
+      },
+      {
+        "args": [],
+        "doc": "Clear the style from the selection.",
+        "name": "unsetFontFamily"
+      }
+    ],
+    "name": "fontFamily",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The CSS font family list, such as `Inter, sans-serif`.",
+            "name": "fontFamily",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "kind": "mark",
+        "name": "textStyle"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The value every selected character shares, or null.",
+        "name": "fontFamily",
+        "returns": {
+          "of": {
+            "type": "string"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The font size, such as `18px`.",
+            "name": "fontSize",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Set the style on the selection, keeping its other styles.",
+        "name": "setFontSize"
+      },
+      {
+        "args": [],
+        "doc": "Clear the style from the selection.",
+        "name": "unsetFontSize"
+      }
+    ],
+    "name": "fontSize",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The font size, such as `18px`.",
+            "name": "fontSize",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "kind": "mark",
+        "name": "textStyle"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The value every selected character shares, or null.",
+        "name": "fontSize",
+        "returns": {
+          "of": {
+            "type": "string"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The line height as a multiple of the font size, such as `1.5`.",
+            "name": "lineHeight",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Set the style on the selection, keeping its other styles.",
+        "name": "setLineHeight"
+      },
+      {
+        "args": [],
+        "doc": "Clear the style from the selection.",
+        "name": "unsetLineHeight"
+      }
+    ],
+    "name": "lineHeight",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The line height as a multiple of the font size, such as `1.5`.",
+            "name": "lineHeight",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "kind": "mark",
+        "name": "textStyle"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The value every selected character shares, or null.",
+        "name": "lineHeight",
+        "returns": {
+          "of": {
+            "type": "string"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [],
+    "name": "baseKeymap",
+    "nodes": [],
+    "queries": []
+  }
+]

@@ -96,6 +96,7 @@ pub fn wet_caret(em: f32) -> Arc<Theme> {
 		background: None,
 		decorations: Decorations::default(),
 		letter_spacing: 0.0,
+		baseline_shift: 0.0,
 	};
 	let builder = Theme::builder(base)
 		.chrome(Chrome {

@@ -198,9 +198,12 @@ in
       exec = ''
         set -e
         cargo nextest run --workspace --exclude canvist_wasm --exclude canvist_test
-        # The conformance fixtures for collaboration and the SSR renderer only
-        # run with canvist_headless's optional features.
+        # The conformance fixtures for collaboration, the SSR renderer, and the
+        # extensions beyond the StarterKit only run with canvist_headless's
+        # optional features.
         cargo nextest run -p canvist_headless --all-features
+        # Every extension, and the metadata snapshot the bindings generate from.
+        cargo nextest run -p canvist_extensions --all-features
         # Scene collaboration lives behind canvist_collab's `scene` feature.
         cargo nextest run -p canvist_collab --features scene
         # Painting backends are opt-in features.
@@ -222,7 +225,7 @@ in
     "test:perf" = {
       exec = ''
         set -e
-        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --features canvist_headless/collab,canvist_headless/scene,canvist_collab/scene,canvist_paint/cpu,canvist_paint/gpu --test perf_budgets -- --ignored --test-threads=1 --nocapture
+        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --features canvist_headless/collab,canvist_headless/scene,canvist_collab/scene,canvist_extensions/full,canvist_paint/cpu,canvist_paint/gpu --test perf_budgets -- --ignored --test-threads=1 --nocapture
       '';
       description = "Fail when a hot path exceeds its performance budget (release mode; CANVIST_PERF_SLACK scales budgets).";
       binary = "bash";

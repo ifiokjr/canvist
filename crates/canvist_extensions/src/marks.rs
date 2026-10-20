@@ -1,4 +1,5 @@
-//! Formatting marks: bold, italic, underline, strike, and inline code.
+//! Formatting marks: bold, italic, underline, strike, inline code,
+//! subscript, and superscript.
 //!
 //! Each mark is described by a [`MarkDef`]: its name, its toggle command
 //! and keys, and its Markdown-style input and paste rules. The extensions
@@ -216,6 +217,34 @@ static CODE: MarkDef = MarkDef {
 	paste: &[r"(?:^|\s)`([^`\s](?:[^`]*[^`\s])?)`"],
 };
 
+#[cfg(any(test, feature = "subscript"))]
+static SUBSCRIPT: MarkDef = MarkDef {
+	name: "subscript",
+	names: [
+		"toggleSubscript",
+		"setSubscript",
+		"unsetSubscript",
+		"isSubscript",
+	],
+	keys: &["Mod-,"],
+	input: &[],
+	paste: &[],
+};
+
+#[cfg(any(test, feature = "superscript"))]
+static SUPERSCRIPT: MarkDef = MarkDef {
+	name: "superscript",
+	names: [
+		"toggleSuperscript",
+		"setSuperscript",
+		"unsetSuperscript",
+		"isSuperscript",
+	],
+	keys: &["Mod-."],
+	input: &[],
+	paste: &[],
+};
+
 /// Implements [`Extension`] and [`TypedExtension`] for a mark type by
 /// delegating to its [`MarkDef`]; only the schema spec differs per type.
 macro_rules! delegate_to_def {
@@ -355,6 +384,40 @@ impl Extension for Code {
 #[cfg(feature = "code")]
 delegate_to_def!(Code, CODE);
 
+/// Subscript text: `Mod-,`. Subscript and superscript exclude each other.
+#[cfg(feature = "subscript")]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Subscript;
+
+#[cfg(feature = "subscript")]
+impl Extension for Subscript {
+	delegate_to_def!(SUBSCRIPT);
+
+	fn schema(&self, schema: SchemaBuilder) -> SchemaBuilder {
+		schema.mark(MarkSpec::new("subscript").excludes_registered(&["superscript"]))
+	}
+}
+
+#[cfg(feature = "subscript")]
+delegate_to_def!(Subscript, SUBSCRIPT);
+
+/// Superscript text: `Mod-.`. Subscript and superscript exclude each other.
+#[cfg(feature = "superscript")]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Superscript;
+
+#[cfg(feature = "superscript")]
+impl Extension for Superscript {
+	delegate_to_def!(SUPERSCRIPT);
+
+	fn schema(&self, schema: SchemaBuilder) -> SchemaBuilder {
+		schema.mark(MarkSpec::new("superscript").excludes_registered(&["subscript"]))
+	}
+}
+
+#[cfg(feature = "superscript")]
+delegate_to_def!(Superscript, SUPERSCRIPT);
+
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -368,10 +431,20 @@ mod tests {
 			.mark(MarkSpec::new("underline"))
 			.mark(MarkSpec::new("strike"))
 			.mark(MarkSpec::new("code"))
+			.mark(MarkSpec::new("subscript"))
+			.mark(MarkSpec::new("superscript"))
 			.build()
 			.expect("valid schema");
 
-		for def in [&BOLD, &ITALIC, &UNDERLINE, &STRIKE, &CODE] {
+		for def in [
+			&BOLD,
+			&ITALIC,
+			&UNDERLINE,
+			&STRIKE,
+			&CODE,
+			&SUBSCRIPT,
+			&SUPERSCRIPT,
+		] {
 			assert!(def.input_rules(&schema).is_ok(), "{}", def.name);
 			assert!(def.paste_rules(&schema).is_ok(), "{}", def.name);
 		}

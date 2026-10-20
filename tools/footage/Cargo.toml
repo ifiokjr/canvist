@@ -13,7 +13,7 @@ description = "Renders the launch video's footage with the real canvist model, e
 canvist_collab = { workspace = true }
 canvist_editor = { workspace = true }
 canvist_extensions = { workspace = true, features = ["starter-kit"] }
-canvist_layout = { workspace = true, features = ["parley"] }
+canvist_layout = { workspace = true, features = ["parley", "theme-extensions"] }
 canvist_model = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
 

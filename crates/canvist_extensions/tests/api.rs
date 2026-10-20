@@ -9,7 +9,6 @@ use canvist_editor::Command;
 use canvist_editor::Editor;
 use canvist_editor::EditorError;
 use canvist_editor::Env;
-use canvist_editor::NodeKind;
 use canvist_extensions::HeadingLevel;
 use canvist_extensions::StarterKit;
 use canvist_extensions::StarterKitHandles;
@@ -40,52 +39,7 @@ fn typed_with(script: &str) -> (Typist, StarterKitHandles) {
 #[test]
 fn metadata_matches_the_schema() {
 	let (editor, _) = typed();
-	let schema = editor.schema();
-
-	for extension in editor.metadata() {
-		for node in &extension.nodes {
-			let defaults = match node.kind {
-				NodeKind::Block => {
-					let kind = schema.block_type(node.name).expect("declared blocks exist");
-					schema.block(kind).attrs.clone()
-				}
-				NodeKind::Mark => {
-					let kind = schema.mark_type(node.name).expect("declared marks exist");
-					schema.mark(kind).attrs.clone()
-				}
-				NodeKind::Embed => {
-					let kind = schema.embed_type(node.name).expect("declared embeds exist");
-					schema.embed(kind).attrs.clone()
-				}
-			};
-
-			let declared: Vec<&str> = node.attrs.iter().map(|attr| attr.name).collect();
-			let actual: Vec<&str> = defaults.iter().map(|(key, _)| key).collect();
-			assert_eq!(
-				actual.len(),
-				declared.len(),
-				"{} declares every attribute",
-				node.name
-			);
-
-			for attr in &node.attrs {
-				let default = defaults.get(attr.name).expect("declared attributes exist");
-				assert_eq!(
-					attr.default.as_ref(),
-					Some(default),
-					"{}.{}",
-					node.name,
-					attr.name
-				);
-				assert!(
-					attr.ty.accepts(default),
-					"{}.{} default has its type",
-					node.name,
-					attr.name
-				);
-			}
-		}
-	}
+	support::assert_metadata_matches_schema(&editor);
 }
 
 #[test]

@@ -151,3 +151,85 @@ fn tabs_advance_to_stops() {
 
 	insta::assert_snapshot!(layout(&doc, 600.0).dump());
 }
+
+/// The runs of a one-paragraph document, keyed by their text.
+fn runs(content: &serde_json::Value) -> Vec<(String, f32, f32)> {
+	let doc = doc(json!([{ "type": "paragraph", "content": content }]));
+	let layout = layout(&doc, 600.0);
+	let list = layout.display_list(&DisplayOptions::viewport(0.0, layout.height()));
+
+	list.items
+		.iter()
+		.filter_map(|item| {
+			match item {
+				canvist_layout::DisplayItem::Text(run) => {
+					let size = list.fonts[run.font.index()].size;
+					Some((run.text().to_owned(), run.baseline, size))
+				}
+				_ => None,
+			}
+		})
+		.collect()
+}
+
+#[test]
+fn scripts_shrink_and_shift_the_baseline() {
+	let runs = runs(&json!([
+		{ "type": "text", "text": "H" },
+		{ "type": "text", "text": "2", "marks": [{ "type": "subscript" }] },
+		{ "type": "text", "text": "O" },
+		{ "type": "text", "text": "n", "marks": [{ "type": "superscript" }] }
+	]));
+	let [(_, base, body), (_, low, low_size), _, (_, high, high_size)] = runs.as_slice() else {
+		panic!("four runs: {runs:?}");
+	};
+	let line = layout(
+		&doc(json!([{ "type": "paragraph", "content": [{ "type": "text", "text": "x" }] }])),
+		600.0,
+	);
+	let scripted = layout(
+		&doc(json!([{ "type": "paragraph", "content": [
+		{ "type": "text", "text": "x" },
+		{ "type": "text", "text": "n", "marks": [{ "type": "superscript" }] }
+	] }])),
+		600.0,
+	);
+
+	assert!(
+		scripted.height() >= line.height(),
+		"a raised inline box can grow its line"
+	);
+
+	assert_eq!(*low_size, body * 0.75);
+	assert_eq!(*high_size, body * 0.75);
+	assert_eq!(low - base, 0.25 * low_size, "subscripts drop a quarter em");
+	assert_eq!(base - high, 0.5 * high_size, "superscripts rise half an em");
+}
+
+#[test]
+fn text_style_attributes_set_colour_size_and_line_height() {
+	let doc = doc(json!([{ "type": "paragraph", "content": [
+		{ "type": "text", "text": "big", "marks": [{ "type": "textStyle", "attrs": {
+			"color": "#ff0000", "fontSize": "32px", "lineHeight": "2", "backgroundColor": "#00ff00"
+		} }] }
+	] }]));
+	let layout = layout(&doc, 600.0);
+	let list = layout.display_list(&DisplayOptions::viewport(0.0, layout.height()));
+	let html = to_html(
+		&doc,
+		&Arc::new(Theme::starter_kit()),
+		&HtmlOptions::new(600.0),
+	);
+
+	assert_eq!(layout.height(), 64.0, "32 px at line height 2");
+	assert!(list.items.iter().any(|item| {
+		matches!(item, canvist_layout::DisplayItem::Text(run) if run.color.to_string() == "#ff0000")
+	}));
+	assert!(
+		html.html.contains(
+			"style=\"color:#ff0000;background-color:#00ff00;font-size:32px;line-height:2;\""
+		),
+		"{}",
+		html.html
+	);
+}

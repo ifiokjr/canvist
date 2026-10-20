@@ -12,7 +12,7 @@ license.workspace = true
 readme = "readme.md"
 repository.workspace = true
 rust-version.workspace = true
-description = "The canvist StarterKit: paragraphs, headings, lists, quotes, code, marks, links, history, and more, each behind its own Cargo feature"
+description = "canvist extensions: the TipTap StarterKit and Remirror and TipTap extensions beyond it, each behind its own Cargo feature"
 
 [features]
 default = ["starter-kit"]
@@ -35,22 +35,48 @@ starter-kit = [
 	"trailing-node",
 	"underline",
 ]
+# Every extension in the crate.
+full = [
+	"starter-kit",
+	"highlight",
+	"subscript",
+	"superscript",
+	"text-style-kit",
+]
+# TipTap's TextStyleKit: the `textStyle` mark and every attribute on it.
+text-style-kit = [
+	"background-color",
+	"color",
+	"font-family",
+	"font-size",
+	"line-height",
+	"text-style",
+]
+background-color = ["text-style"]
 blockquote = []
 bold = []
 bullet-list = ["list-item"]
 clipboard = []
 code = []
 code-block = []
+color = ["text-style"]
+font-family = ["text-style"]
+font-size = ["text-style"]
 hard-break = []
 heading = []
+highlight = []
 history = []
 horizontal-rule = []
 italic = []
+line-height = ["text-style"]
 link = []
 list-item = []
 ordered-list = ["list-item"]
 strike = []
+subscript = []
+superscript = []
 task-list = []
+text-style = []
 trailing-node = []
 underline = []
 
@@ -67,6 +93,11 @@ serde_json = { workspace = true, features = ["std"] }
 [[bench]]
 name = "keystroke"
 harness = false
+
+[[bench]]
+name = "extensions"
+harness = false
+required-features = ["full"]
 
 [lints]
 workspace = true

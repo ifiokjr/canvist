@@ -70,3 +70,55 @@ pub(crate) fn mark_active(state: &EditorState, name: &str) -> bool {
 		.mark_type(name)
 		.is_some_and(|kind| canvist_editor::commands::is_mark_active(state, kind))
 }
+
+/// Attribute `key` of mark `name` where every selected character (or the
+/// caret's active marks) carries the mark with that one value, so a query
+/// never reports the first run's colour for a mixed selection.
+#[cfg(any(feature = "highlight", feature = "text-style"))]
+pub(crate) fn shared_mark_attr(state: &EditorState, name: &str, key: &str) -> Option<Value> {
+	let kind = state.schema().mark_type(name)?;
+
+	if !canvist_editor::commands::is_mark_active(state, kind) {
+		return None;
+	}
+
+	let ranges = position::selected_text(state.doc(), state.selection());
+	let mut values = ranges
+		.iter()
+		.filter(|(_, range)| !range.is_empty())
+		.flat_map(|(block, range)| run_attrs(state, *block, range.clone(), kind, key));
+
+	let Some(first) = values.next() else {
+		let marks = canvist_editor::commands::active_marks(state);
+		return marks.get(kind)?.attrs.get(key).cloned();
+	};
+
+	values.all(|value| value == first).then_some(first)
+}
+
+/// The value of `key` on mark `kind` in each run of `range` of `block`.
+#[cfg(any(feature = "highlight", feature = "text-style"))]
+fn run_attrs(
+	state: &EditorState,
+	block: BlockId,
+	range: std::ops::Range<u32>,
+	kind: MarkTypeId,
+	key: &str,
+) -> Vec<Value> {
+	let Some(runs) = state
+		.doc()
+		.inline(block)
+		.and_then(|text| text.mark_runs(range).ok())
+	else {
+		return Vec::new();
+	};
+
+	runs.iter()
+		.map(|(_, marks)| {
+			marks
+				.get(kind)
+				.and_then(|mark| mark.attrs.get(key).cloned())
+				.unwrap_or_default()
+		})
+		.collect()
+}

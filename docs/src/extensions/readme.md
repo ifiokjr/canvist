@@ -2,7 +2,7 @@
 
 Use this page to find the extensions you need: what each one does, how to add it, and the commands, queries, keys, and typing shortcuts it brings.
 
-Every extension below ships today in Rust, TypeScript, and Dart. Names match TipTap's, so documents move between TipTap and canvist as JSON without conversion.
+Every extension below ships today in Rust, TypeScript, and Dart. Names match TipTap's, so documents move between TipTap and canvist as JSON without conversion. To compare canvist with TipTap and Remirror extension by extension, see [parity](./parity.md).
 
 ## How to add an extension
 
@@ -13,6 +13,8 @@ Every extension below ships today in Rust, TypeScript, and Dart. Names match Tip
 | Dart       | `EngineBuilder()..add(Extensions.bold)` | `Engine.starterKit()`    |
 
 In TypeScript, import each extension by name from `@canvist/headless`. In Rust, import it from `canvist_extensions` (re-exported as `canvist_headless::canvist_extensions`). `Mod` means Cmd on Apple platforms and Ctrl elsewhere.
+
+Extensions beyond the StarterKit, from [subscript](#subscript-and-superscript) on, each sit behind a Cargo feature of their own, and `full` turns them all on. The TypeScript and Dart packages include every one. The browser editor, `@canvist/web`, includes the StarterKit only for now, to keep its download small.
 
 In the **Typing** columns, block shortcuts such as `##`, `-`, and `[ ]` fire when you type a space after them at the start of a line. Mark shortcuts such as `**text**` fire when you type the closing characters.
 
@@ -131,6 +133,85 @@ console.log(doc.export("markdown"));
 ```
 
 In Rust, `Link { autolink: false, link_on_paste: false }` turns off automatic linking.
+
+### Subscript and superscript
+
+Text below or above the baseline, smaller than the text around it. Subscript adds the `subscript` mark and superscript the `superscript` mark. The two exclude each other. Markdown has no syntax for them, so Markdown export writes the `<sub>` and `<sup>` tags GitHub renders, and Markdown import reads them back.
+
+| Commands                                                  | Queries         | Keys    |
+| --------------------------------------------------------- | --------------- | ------- |
+| `toggleSubscript`, `setSubscript`, `unsetSubscript`       | `isSubscript`   | `Mod-,` |
+| `toggleSuperscript`, `setSuperscript`, `unsetSuperscript` | `isSuperscript` | `Mod-.` |
+
+```ts
+import { createEngine, subscript, superscript } from "@canvist/headless";
+
+const doc = (await createEngine([subscript, superscript])).parse(
+	"text",
+	"H2O and E=mc2",
+);
+doc.select({ path: [0], offset: 1 }, { path: [0], offset: 2 });
+doc.commands.toggleSubscript();
+doc.select({ path: [0], offset: 12 }, { path: [0], offset: 13 });
+doc.commands.toggleSuperscript();
+console.log(doc.export("html"));
+// <p>H<sub>2</sub>O and E=mc<sup>2</sup></p>
+```
+
+### Highlight
+
+Text marked like a highlighter pen. Adds the `highlight` mark with a `color` attribute; a highlight without a colour uses the theme's. In Rust, `Highlight { multicolor: false }` drops the attribute so every highlight uses the theme's colour, as TipTap does by default.
+
+| Commands                                                                    | Queries                         | Keys          | Typing     |
+| --------------------------------------------------------------------------- | ------------------------------- | ------------- | ---------- |
+| `toggleHighlight({ color? })`, `setHighlight({ color? })`, `unsetHighlight` | `isHighlight`, `highlightColor` | `Mod-Shift-h` | `==text==` |
+
+`toggleHighlight` with a colour recolours text highlighted in another colour and removes a highlight in the same colour.
+
+```ts
+import { createEngine, highlight } from "@canvist/headless";
+
+const doc = (await createEngine([highlight])).create();
+doc.typeText("Read ==this== first");
+console.log(doc.export("html"));
+// <p>Read <mark>this</mark> first</p>
+doc.selectAll();
+doc.commands.setHighlight({ color: "#fef08a" });
+console.log(doc.query.highlightColor());
+// #fef08a
+```
+
+### Text style
+
+Inline styles, as in TipTap's TextStyleKit. Text style adds the `textStyle` mark, a `<span style>`, and the other five extensions each add one attribute to it, so text can have a colour and a size at once. Clearing the last attribute removes the mark. Register text style with at least one of them. Markdown has no styles, so Markdown export writes the text plain.
+
+| Extension         | Attribute         | Commands                                                          | Query             |
+| ----------------- | ----------------- | ----------------------------------------------------------------- | ----------------- |
+| `textStyle`       | none              | `removeEmptyTextStyle`                                            |                   |
+| `color`           | `color`           | `setColor({ color })`, `unsetColor`                               | `color`           |
+| `backgroundColor` | `backgroundColor` | `setBackgroundColor({ backgroundColor })`, `unsetBackgroundColor` | `backgroundColor` |
+| `fontFamily`      | `fontFamily`      | `setFontFamily({ fontFamily })`, `unsetFontFamily`                | `fontFamily`      |
+| `fontSize`        | `fontSize`        | `setFontSize({ fontSize })`, `unsetFontSize`                      | `fontSize`        |
+| `lineHeight`      | `lineHeight`      | `setLineHeight({ lineHeight })`, `unsetLineHeight`                | `lineHeight`      |
+
+Values are CSS strings such as `#e8590c`, `Georgia, serif`, `20px`, and `1.5`. Each query returns the value every selected character shares, or `null`. The canvas draws `#rrggbb` colours, pixel sizes, and unitless line heights, and keeps other values in the document as they are.
+
+```ts
+import { color, createEngine, fontSize, textStyle } from "@canvist/headless";
+
+const doc = (await createEngine([textStyle, color, fontSize])).parse(
+	"text",
+	"Warm",
+);
+doc.selectAll();
+doc.commands.setColor({ color: "#e8590c" });
+doc.commands.setFontSize({ fontSize: "20px" });
+console.log(doc.export("html"));
+// <p><span style="color: #e8590c; font-size: 20px">Warm</span></p>
+doc.commands.unsetColor();
+console.log(doc.query.fontSize());
+// 20px
+```
 
 ## Blocks
 
@@ -309,11 +390,10 @@ Keeps an empty paragraph at the end of the document, so there's always somewhere
 
 These extensions are planned, in roughly this order. Each will follow the same pattern: typed commands, queries, and TipTap-compatible JSON.
 
-- **Tables:** merged cells, column resizing, and cell selection.
-- **Images,** with resizing, plus video, audio, and file attachments.
-- **Mentions, emoji, and slash commands,** on one shared suggestion system.
-- **Text style:** highlight, colour, font family and size, subscript, superscript, and text alignment.
-- **Editor helpers:** placeholder, character count, find and replace, table of contents, and drag handles.
-- **Comments, version history, and tracked changes.**
+- **Text alignment, typography, character count, and placeholders.**
+- **Mentions, hashtags, and emoji,** on one shared suggestion system.
+- **Images, details, callouts, and math,** plus video, audio, and file attachments.
+- **Tables:** merged cells, header rows and columns, and cell navigation.
+- **Find and replace, table of contents, comments, and drag handles.**
 
-To see where each one stands, watch [the releases](https://github.com/canvist/canvist/releases).
+[Parity with TipTap and Remirror](./parity.md) lists every extension in both, with what canvist ships, plans, or leaves to the host.

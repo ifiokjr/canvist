@@ -68,6 +68,10 @@ pub struct TextStyle {
 	/// Extra space after every grapheme cluster, in pixels, like CSS
 	/// `letter-spacing`.
 	pub letter_spacing: f32,
+	/// How far the text's baseline sits above the line's, in pixels, like
+	/// CSS `vertical-align` with a length. Superscripts are positive and
+	/// subscripts negative.
+	pub baseline_shift: f32,
 }
 
 impl TextStyle {
@@ -105,6 +109,10 @@ pub struct TextPatch {
 	pub decoration_color: Option<Color>,
 	/// Letter spacing in pixels.
 	pub letter_spacing: Option<f32>,
+	/// Raise the baseline by this many ems of the patched font size, like
+	/// CSS `vertical-align: 0.5em`. Negative lowers it. Shifts add up, as
+	/// nested inline boxes do in CSS.
+	pub baseline_shift: Option<f32>,
 }
 
 impl TextPatch {
@@ -191,6 +199,14 @@ impl TextPatch {
 		self
 	}
 
+	/// Raise the baseline by `em` of the patched font size; negative lowers
+	/// it.
+	#[must_use]
+	pub fn baseline_shift(mut self, em: f32) -> Self {
+		self.baseline_shift = Some(em);
+		self
+	}
+
 	/// Apply this patch on top of `style`.
 	pub fn apply(&self, style: &mut TextStyle) {
 		if let Some(family) = &self.family {
@@ -218,6 +234,10 @@ impl TextPatch {
 
 		if self.decoration_color.is_some() {
 			style.decorations.color = self.decoration_color;
+		}
+
+		if let Some(em) = self.baseline_shift {
+			style.baseline_shift += em * style.font.size;
 		}
 	}
 }
@@ -412,6 +432,9 @@ pub enum AttrBinding {
 	FontFamily(Arc<str>),
 	/// A numeric attribute sets the font size in pixels.
 	FontSize(Arc<str>),
+	/// A unitless number, such as `1.5` or `"1.5"`, sets the line height as a
+	/// multiple of the font size.
+	LineHeight(Arc<str>),
 }
 
 /// Styles one mark type.
