@@ -191,6 +191,7 @@ async function checkTypeScript(
 				"@canvist/web": `${web}/src/mod.ts`,
 				"@canvist/web/fonts": `${web}/src/fonts.ts`,
 				"@canvist/web/menus": `${web}/src/menus.ts`,
+				"@canvist/web/collab": `${web}/src/collab.ts`,
 				// Workers import the module through their bundler; it is a WebAssembly.Module.
 				"@canvist/headless/wasm/canvist_headless_wasm_bg.wasm":
 					"./worker-wasm.ts",

@@ -123,6 +123,8 @@ pub use canvist_scene;
 pub use collab::SyncReply;
 #[cfg(feature = "collab")]
 pub use collab::Validation;
+#[cfg(feature = "collab")]
+pub use collab::join_message;
 pub use doc::Doc;
 pub use engine::Engine;
 pub use error::ErrorCode;

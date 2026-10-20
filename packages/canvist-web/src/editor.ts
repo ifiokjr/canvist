@@ -186,6 +186,16 @@ export async function createEditor<
 	return new Editor(element, options);
 }
 
+/**
+ * Makes an editor's WebAssembly half. `@canvist/web/collab` passes one that
+ * makes a build with collaboration.
+ *
+ * @internal
+ */
+export type WebEditorFactory = (
+	...args: ConstructorParameters<typeof WebEditor>
+) => WebEditor;
+
 /** A canvas editor. Create one with {@link createEditor}. */
 export class Editor<E extends Extensions, P extends Plugins = []> {
 	/** Run a registered command; returns whether it applied. */
@@ -225,7 +235,11 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	#editable = true;
 
 	/** @internal Use {@link createEditor}, which loads the WebAssembly module first. */
-	constructor(element: HTMLElement, options: EditorOptions<E, P>) {
+	constructor(
+		element: HTMLElement,
+		options: EditorOptions<E, P>,
+		create: WebEditorFactory = (...args) => new WebEditor(...args),
+	) {
 		const extensions = (options.extensions ?? starterKit) as E;
 		this.#extensions = [...core, ...extensions];
 		this.#element = element;
@@ -236,7 +250,7 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		this.#prepareDom();
 		this.#width = contentWidth(element);
 
-		this.#wasm = new WebEditor(
+		this.#wasm = create(
 			this.#canvas,
 			this.#measurer,
 			extensions.map((extension) => extension.name),
@@ -577,6 +591,16 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	/** The CSS `font` of every font the layout has used. */
 	fonts(): string[] {
 		return this.#wasm.fonts();
+	}
+
+	/**
+	 * The document changed outside this editor's own calls, as a
+	 * collaborator's change does: repaint, and tell subscribers.
+	 *
+	 * @internal Called by `@canvist/web/collab`.
+	 */
+	documentChanged(): void {
+		this.#edited();
 	}
 
 	/** Lay out and paint now instead of on the next animation frame. */

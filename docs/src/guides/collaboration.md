@@ -1,8 +1,40 @@
 # Collaboration
 
-In this guide you make documents collaborative: share a document, merge edits from several people in any order, run a sync server that standard Yjs clients connect to, and use canvist Cloud instead of running one.
+In this guide you make documents collaborative: put live editors in a room, share a document, merge edits from several people in any order, run a sync server that standard Yjs clients connect to, and use canvist Cloud instead of running one.
 
 canvist documents are [Yjs](https://yjs.dev) documents underneath. Every edit becomes a Yjs update, and every Yjs update becomes an edit, so canvist works with y-websocket, Hocuspocus, and the rest of the Yjs ecosystem.
+
+## Put editors in a room
+
+`@canvist/web/collab` connects a browser editor to any y-websocket server: y-websocket's own, the server below, or [canvist Cloud Sync](../cloud/sync.md). The editor is the Yjs peer itself, so there's no `Y.Doc` to keep in step, and you don't need the `yjs` package:
+
+```ts no_run
+import { connect, createEditor } from "@canvist/web/collab";
+
+const element = document.querySelector<HTMLElement>("#editor");
+
+if (element !== null) {
+	const editor = await createEditor(element, {
+		placeholder: "Write together…",
+	});
+	const connection = connect(editor, {
+		url: "wss://sync.example.com",
+		room: "team-notes",
+		params: { token: "…" },
+	});
+
+	connection.subscribe(() => console.log(connection.status, connection.synced));
+	await connection.whenSynced();
+}
+```
+
+- **`createEditor` from `@canvist/web/collab`** takes the same options as `@canvist/web`'s, and loads a second WebAssembly module with Yjs inside (about 140 KB more, gzipped). Editors that don't collaborate never download it.
+- **The room's document replaces the editor's** once it arrives. An empty room gets one empty paragraph.
+- **Undo is per person.** `Mod-z`, `editor.undo()`, and the `undo` command revert only this peer's changes, grouped by word as when typing alone.
+- **It reconnects** with backoff when the connection drops, and catches up both ways. `connection.disconnect()` closes it for good. Call `connect` again to resume.
+- **JavaScript Yjs peers in the room see the same document.** Read it with `engine.fromYjs(Y.encodeStateAsUpdate(ydoc), clientId)` from `@canvist/headless`.
+
+The tests in `packages/canvist-web/tests/browser/collab.spec.ts` run two editors and a JavaScript `WebsocketProvider` peer against y-websocket's server in Chromium, Firefox, and WebKit. Presence (other people's carets) is coming soon.
 
 ## Share a document and merge edits
 
@@ -108,7 +140,7 @@ const provider = new WebsocketProvider(
 provider.on("sync", (synced: boolean) => console.log("synced:", synced));
 ```
 
-canvist's editors connect the same way when they ship, and sync a live editor instead of a bare `Y.Doc`.
+canvist's browser editor joins the same rooms with [`@canvist/web/collab`](#put-editors-in-a-room), as a live editor instead of a bare `Y.Doc`.
 
 ## Check what clients send
 

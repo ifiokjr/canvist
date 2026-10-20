@@ -19,6 +19,8 @@
 //! A frame is cheap when little changed: layout relays out only the blocks
 //! a commit touched, the display list covers only the viewport, and the
 //! painter repaints only the rectangles that differ from the last frame.
+#[cfg(feature = "collab")]
+mod collab;
 mod error;
 mod geometry;
 mod input;
@@ -37,6 +39,7 @@ use canvist_headless::canvist_editor::CommandResult;
 use canvist_headless::canvist_editor::Editor;
 use canvist_headless::canvist_editor::Env;
 use canvist_headless::canvist_editor::Update;
+use canvist_headless::canvist_model::Commit;
 use canvist_headless::canvist_model::Selection;
 use canvist_layout::Caret;
 use canvist_layout::DisplayList;
@@ -130,6 +133,10 @@ pub struct WebEditor {
 	caret_on: bool,
 	/// The pointer drag selecting text, while the pointer is pressed.
 	drag: Option<input::Drag>,
+	/// The yrs client id this editor joins a shared document as, until the
+	/// server's state arrives.
+	#[cfg(feature = "collab")]
+	joining: Option<u32>,
 }
 
 #[wasm_bindgen]
@@ -176,6 +183,8 @@ impl WebEditor {
 			focused: false,
 			caret_on: true,
 			drag: None,
+			#[cfg(feature = "collab")]
+			joining: None,
 		})
 	}
 
@@ -183,18 +192,8 @@ impl WebEditor {
 	/// `markdown`, or `text`).
 	pub fn load(&mut self, format: &str, input: &str) -> JsResult<()> {
 		let format: Format = format.parse().map_err(headless)?;
-		self.doc = self.engine.parse(format, input).map_err(headless)?;
-		// Keep what the host told the old layout about the screen.
-		let LayoutOptions {
-			width,
-			border_scale,
-			..
-		} = *self.layout.options();
-		let mut options = layout_options(&self.options, width);
-		options.border_scale = border_scale;
-		self.layout = DocumentLayout::new(self.doc.document(), self.options.theme.clone(), options);
-		self.painted = None;
-		self.full_repaint = true;
+		let doc = self.engine.parse(format, input).map_err(headless)?;
+		self.replace(doc);
 
 		Ok(())
 	}
@@ -398,6 +397,12 @@ impl WebEditor {
 	pub fn run(&mut self, name: &str, args: &str) -> JsResult<bool> {
 		let args = parse_args(args)?;
 		let command = self.doc.command_named(name, &args).map_err(headless)?;
+
+		#[cfg(feature = "collab")]
+		if let Some(redo) = self.doc.shared_history_command(name) {
+			return self.history(redo);
+		}
+
 		self.edit(|editor, env| editor.run(&command, env))
 	}
 
@@ -459,14 +464,15 @@ impl WebEditor {
 		self.edit(|editor, env| editor.insert_text(text, env))
 	}
 
-	/// Undo the last change.
+	/// Undo the last change. A shared document undoes only this editor's
+	/// own changes.
 	pub fn undo(&mut self) -> JsResult<bool> {
-		self.edit(Editor::undo)
+		self.history(false)
 	}
 
 	/// Redo the last undone change.
 	pub fn redo(&mut self) -> JsResult<bool> {
-		self.edit(Editor::redo)
+		self.history(true)
 	}
 
 	/// The caret's rectangle in document coordinates as `[x, y, width,
@@ -562,6 +568,44 @@ impl WebEditor {
 }
 
 impl WebEditor {
+	/// Swap in `doc`, laid out from scratch on the next frame.
+	fn replace(&mut self, doc: Doc) {
+		self.doc = doc;
+		// Keep what the host told the old layout about the screen.
+		let LayoutOptions {
+			width,
+			border_scale,
+			..
+		} = *self.layout.options();
+		let mut options = layout_options(&self.options, width);
+		options.border_scale = border_scale;
+		self.layout = DocumentLayout::new(self.doc.document(), self.options.theme.clone(), options);
+		self.painted = None;
+		self.full_repaint = true;
+	}
+
+	/// Undo or redo one step through the document's history, which is the
+	/// shared one for a shared document.
+	fn history(&mut self, redo: bool) -> JsResult<bool> {
+		let update = self.doc.history_step(redo).map_err(headless)?;
+
+		Ok(update.is_some_and(|update| {
+			self.lay_out(&update.commit);
+			update.doc_changed() || update.selection_changed()
+		}))
+	}
+
+	/// Let layout account for `commit`.
+	fn lay_out(&mut self, commit: &Commit) {
+		let damage = self.layout.apply(self.doc.document(), commit);
+
+		if damage.from_y.is_some() {
+			self.full_repaint = true;
+		}
+
+		self.caret_on = true;
+	}
+
 	/// Make a change through the editor with the wall clock and this
 	/// layout's line navigator, then let layout account for it.
 	fn edit(
@@ -599,13 +643,7 @@ impl WebEditor {
 			return Ok(None);
 		};
 
-		let damage = self.layout.apply(self.doc.document(), &update.commit);
-
-		if damage.from_y.is_some() {
-			self.full_repaint = true;
-		}
-
-		self.caret_on = true;
+		self.lay_out(&update.commit);
 		Ok(Some(update))
 	}
 
