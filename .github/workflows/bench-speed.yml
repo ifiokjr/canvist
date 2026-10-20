@@ -89,6 +89,7 @@ jobs:
           base="$RUNNER_TEMP/base"
           git worktree add --detach "$base" "${{ steps.revs.outputs.base }}"
           # One target directory: the base reuses every compiled dependency.
+          mkdir -p target
           ln -s "$PWD/target" "$base/target"
           node tools/bench/speed.ts build --root "$base" --suites "${{ steps.plan.outputs.suites }}" --out "$BINS"
 

@@ -149,6 +149,7 @@ jobs:
           base="$RUNNER_TEMP/base"
           groups="${{ steps.plan.outputs.groups }}"
           git worktree add --detach "$base" "${{ steps.revs.outputs.base }}"
+          mkdir -p target
           ln -s "$PWD/target" "$base/target"
           node tools/bench/size.ts build --root "$base" --groups "$groups"
           node tools/bench/size.ts measure --root "$base" --groups "$groups" --out "$BASE_SIZES"
