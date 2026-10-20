@@ -15,24 +15,37 @@ rust-version.workspace = true
 description = "Yjs collaboration for canvist documents: a step-to-yrs binding, the y-sync protocol, awareness, and shared undo"
 
 [features]
+# Scene collaboration: `SceneBinding` for `canvist_scene` scenes.
+scene = ["dep:canvist_scene"]
 # Make `Binding` and `SyncSession` `Send + Sync` (yrs's `sync` feature),
 # for servers that move documents between threads.
 sync = ["yrs/sync"]
 
 [dependencies]
 canvist_model = { workspace = true }
+canvist_scene = { workspace = true, optional = true }
 rustc-hash = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 yrs = { workspace = true }
 
 [dev-dependencies]
+canvist_scene = { workspace = true }
 divan = { workspace = true }
+kurbo = { workspace = true, features = ["std"] }
 proptest = { workspace = true, features = ["std"] }
 
 [[bench]]
 name = "collab"
 harness = false
+
+[[test]]
+name = "scene"
+required-features = ["scene"]
+
+[[test]]
+name = "scene_convergence"
+required-features = ["scene"]
 
 [lints]
 workspace = true

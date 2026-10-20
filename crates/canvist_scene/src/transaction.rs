@@ -129,6 +129,31 @@ impl<'scene> Transaction<'scene> {
 		};
 		self.scene.return_text(node, doc)?;
 		let (value, commit) = outcome.map_err(|source| SceneError::Text { node, source })?;
+		self.record_text(node, commit);
+		Ok(value)
+	}
+
+	/// Let `change` edit a text frame's document directly. It must return the
+	/// commit of exactly the steps it applied, and leave the document
+	/// unchanged when it fails. Each step becomes a [`Step::Text`]. A
+	/// collaboration binding uses this to integrate a peer's text changes,
+	/// as `Editor::apply_external` does for the text editor.
+	pub fn text_external<E: From<SceneError>>(
+		&mut self,
+		node: NodeId,
+		change: impl FnOnce(&mut canvist_model::Document) -> Result<canvist_model::Commit, E>,
+	) -> Result<(), E> {
+		let mut doc = self.scene.lend_text(node)?;
+		let outcome = change(&mut doc);
+		self.scene.return_text(node, doc)?;
+		self.record_text(node, outcome?);
+		Ok(())
+	}
+
+	fn record_text(&mut self, node: NodeId, commit: canvist_model::Commit) {
+		if commit.is_empty() {
+			return;
+		}
 
 		for (step, inverse) in commit.steps.into_iter().zip(commit.inverses) {
 			self.steps.push(Step::Text { node, step });
@@ -139,7 +164,6 @@ impl<'scene> Transaction<'scene> {
 		}
 
 		self.touched.insert(node);
-		Ok(value)
 	}
 
 	/// Undo every step and release the scene.

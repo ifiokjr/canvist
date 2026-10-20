@@ -429,7 +429,9 @@ name = "canvist_collab"
 version = "0.1.0"
 dependencies = [
  "canvist_model",
+ "canvist_scene",
  "divan",
+ "kurbo",
  "proptest",
  "rustc-hash",
  "serde_json",

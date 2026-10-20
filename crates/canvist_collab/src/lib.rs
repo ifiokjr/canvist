@@ -151,10 +151,13 @@ mod error;
 mod history;
 pub mod keys;
 mod local;
+mod mirror;
 mod presence;
 mod registry;
 mod remote;
 mod reorder;
+#[cfg(feature = "scene")]
+pub mod scene;
 mod snapshot;
 mod sync;
 
@@ -171,6 +174,12 @@ pub use presence::Collaborator;
 pub use presence::Presence;
 pub use presence::User;
 pub use reorder::Reorder;
+#[cfg(feature = "scene")]
+pub use scene::LentDocument;
+#[cfg(feature = "scene")]
+pub use scene::LentText;
+#[cfg(feature = "scene")]
+pub use scene::SceneBinding;
 pub use sync::Framing;
 pub use sync::Received;
 pub use sync::SyncSession;

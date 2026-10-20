@@ -2,14 +2,10 @@
 
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::PoisonError;
 
-use canvist_model::BlockId;
 use canvist_model::Commit;
 use canvist_model::Document;
 use canvist_model::Schema;
-use canvist_model::Step;
-use yrs::Array;
 use yrs::ArrayRef;
 use yrs::DeepObservable;
 use yrs::Doc;
@@ -28,29 +24,18 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 
 use crate::CollabError;
-use crate::claims::Owners;
 use crate::keys;
-use crate::local::Local;
-use crate::local::position_of;
-use crate::registry::Registration;
+use crate::mirror::LOCAL;
+use crate::mirror::Mirror;
+use crate::mirror::OBSERVER;
+use crate::mirror::REMOTE;
+use crate::mirror::UNTRACKED;
+use crate::mirror::is_local;
+use crate::mirror::lock;
+use crate::mirror::record_events;
 use crate::registry::Registry;
-use crate::remote::Remote;
 use crate::remote::Repair;
-use crate::remote::record;
-use crate::remote::record::Record;
 use crate::reorder::Reorder;
-use crate::tree;
-use crate::tree::Parent;
-use crate::tree::Reader;
-
-/// Transactions created by [`Binding::apply_local`] with undo tracking.
-const LOCAL: &str = "canvist:local";
-/// Local transactions undo ignores: untracked edits and duplicate repairs.
-const UNTRACKED: &str = "canvist:untracked";
-/// Transactions that integrate updates from other peers.
-const REMOTE: &str = "canvist:remote";
-/// The key of the binding's own yrs observers.
-const OBSERVER: &str = "canvist:binding";
 
 /// How a local commit enters the shared undo history.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -89,9 +74,7 @@ pub enum Encoding {
 pub struct Binding {
 	doc: Doc,
 	root: ArrayRef,
-	schema: Arc<Schema>,
-	registry: Registry,
-	inbox: Arc<Mutex<Vec<Record>>>,
+	mirror: Mirror,
 	outbox: Arc<Mutex<Vec<Vec<u8>>>>,
 	undo: UndoManager,
 	reorder: Reorder,
@@ -101,7 +84,7 @@ impl std::fmt::Debug for Binding {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.debug_struct("Binding")
 			.field("client_id", &self.doc.client_id())
-			.field("registry", &self.registry)
+			.field("mirror", &self.mirror)
 			.finish_non_exhaustive()
 	}
 }
@@ -115,24 +98,17 @@ impl Binding {
 	/// A binding over an empty shared document with the given yrs client id,
 	/// which must be unique among peers and never reused with lost state.
 	pub fn with_client_id(schema: Arc<Schema>, client_id: u64) -> Result<Self, CollabError> {
-		let options = Options {
-			offset_kind: OffsetKind::Utf16,
-			cleanup_formatting: false,
-			..Options::with_client_id(ClientID::new(client_id))
-		};
-		let doc = Doc::with_options(options);
+		let doc = shared_doc(client_id, true);
 		let root = doc.get_or_insert_array(keys::ROOT);
-		let inbox = Arc::new(Mutex::new(Vec::new()));
-		let outbox = Arc::new(Mutex::new(Vec::new()));
-		observe(&doc, &root, &schema, &inbox, &outbox)?;
+		let outbox = observe_updates(&doc)?;
 		let undo = undo_manager(&doc, &root);
+		let mirror = Mirror::new(schema);
+		observe_root(&root, &mirror);
 
 		Ok(Self {
-			doc,
+			mirror,
 			root,
-			schema,
-			registry: Registry::default(),
-			inbox,
+			doc,
 			outbox,
 			undo,
 			reorder: Reorder::default(),
@@ -141,7 +117,7 @@ impl Binding {
 
 	/// The schema documents of this binding use.
 	pub fn schema(&self) -> &Arc<Schema> {
-		&self.schema
+		self.mirror.schema()
 	}
 
 	/// The underlying yrs document, for awareness and custom transports.
@@ -154,57 +130,15 @@ impl Binding {
 	/// this; peers that join call [`Binding::document`] after syncing.
 	pub fn seed(&mut self, doc: &Document) -> Result<(), CollabError> {
 		let mut txn = self.doc.transact_mut_with(UNTRACKED);
-
-		if self.root.len(&txn) > 0 {
-			return Err(CollabError::NotEmpty);
-		}
-
-		let mut registration = Registration::default();
-
-		// Inserting at the front never walks the array, so writing the blocks
-		// last to first keeps seeding linear in the document's size.
-		for &block in doc.children(None).iter().rev() {
-			let tree = doc.tree(block).ok_or(CollabError::NotShared(block))?;
-			tree::write(
-				&mut txn,
-				&self.schema,
-				(&self.root, 0, None),
-				&tree,
-				&mut registration,
-			)?;
-		}
-
-		self.registry = Registry::default();
-		self.registry.register(registration);
-		Ok(())
+		self.mirror.seed(&mut txn, &self.root, doc)
 	}
 
 	/// Build a document from the shared state, making it the tracked document.
 	/// `client` seeds block id allocation as in [`Document::new`].
 	pub fn document(&mut self, client: u32) -> Result<Document, CollabError> {
-		self.inbox().clear();
-		let mut doc = Document::empty(self.schema.clone(), client);
 		let txn = self.doc.transact();
-		let mut owners = Owners::default();
-		owners.scan_array(&self.root, None, &txn, &self.schema);
-		let mut registration = Registration::default();
-		let mut reader = Reader {
-			txn: &txn,
-			schema: &self.schema,
-			claims: &mut owners,
-		};
-		let blocks = reader.children(&self.root, Parent::ROOT, &mut registration);
-
+		let (doc, repairs) = self.mirror.document(&txn, &self.root, client)?;
 		drop(txn);
-
-		doc.apply_steps([Step::InsertBlocks {
-			parent: None,
-			index: 0,
-			blocks,
-		}])?;
-		let repairs = repairs_of(&registration);
-		self.registry = Registry::default();
-		self.registry.register(registration);
 		self.repair(&repairs);
 		Ok(doc)
 	}
@@ -234,57 +168,16 @@ impl Binding {
 			Track::Merge => LOCAL,
 			Track::Untracked => UNTRACKED,
 		};
-		let retyped = self.translate_local(doc, commit, origin)?;
+		let mut txn = self.doc.transact_mut_with(origin);
+		let retyped = self.mirror.translate(&mut txn, &self.root, doc, commit)?;
+		drop(txn);
 
 		if retyped.is_empty() {
 			return Ok(doc.transaction().commit());
 		}
 
-		self.reveal(doc, &retyped)
-	}
-
-	/// Translate `commit` in one yrs transaction tagged `origin`, returning
-	/// the containers it retyped while they held hidden children.
-	fn translate_local(
-		&mut self,
-		doc: &Document,
-		commit: &Commit,
-		origin: &str,
-	) -> Result<Vec<BlockId>, CollabError> {
-		let structural = commit
-			.steps
-			.iter()
-			.filter(|step| is_structural(step))
-			.count();
-		let mut txn = self.doc.transact_mut_with(origin);
-		let mut local = Local {
-			txn: &mut txn,
-			root: &self.root,
-			schema: &self.schema,
-			registry: &mut self.registry,
-			doc,
-			single_structural: structural <= 1,
-			settled: crate::local::settled(&commit.steps),
-			retyped: Vec::new(),
-		};
-
-		for (step, inverse) in commit.steps.iter().zip(&commit.inverses) {
-			local.step(step, inverse)?;
-		}
-
-		Ok(local.retyped)
-	}
-
-	/// Show hidden children that the new types of `retyped` allow.
-	fn reveal(&mut self, doc: &mut Document, retyped: &[BlockId]) -> Result<Commit, CollabError> {
 		let txn = self.doc.transact();
-		let remote = Remote::new(
-			doc.transaction(),
-			&txn,
-			(&self.root, &self.schema),
-			&mut self.registry,
-		);
-		let (follow_up, repairs) = remote.reveal(retyped)?;
+		let (follow_up, repairs) = self.mirror.reveal(&txn, &self.root, doc, &retyped)?;
 		drop(txn);
 		self.repair(&repairs);
 		Ok(follow_up)
@@ -305,32 +198,13 @@ impl Binding {
 		update: &[u8],
 		encoding: Encoding,
 	) -> Result<Commit, CollabError> {
-		let update = match encoding {
-			Encoding::V1 => Update::decode_v1(update)?,
-			Encoding::V2 => Update::decode_v2(update)?,
-		};
+		self.reorder.hold(decode_update(update, encoding)?);
 
-		self.reorder.hold(update);
-
-		if !self.integrate()? {
+		if !integrate_ready(&self.doc, &mut self.reorder)? {
 			return Ok(doc.transaction().commit());
 		}
 
 		self.mirror(doc)
-	}
-
-	/// Integrate every held update whose dependencies are present, in one
-	/// yrs transaction, returning whether any was.
-	fn integrate(&mut self) -> Result<bool, CollabError> {
-		let mut txn = self.doc.transact_mut_with(REMOTE);
-		let mut integrated = false;
-
-		while let Some(update) = self.reorder.take_next(&txn.state_vector()) {
-			txn.apply_update(update)?;
-			integrated = true;
-		}
-
-		Ok(integrated)
 	}
 
 	/// Whether updates are waiting for earlier updates that have not arrived.
@@ -349,20 +223,13 @@ impl Binding {
 	/// A server checks this after merging updates to find peers writing
 	/// content its schema does not know.
 	pub fn rejected_blocks(&self) -> u32 {
-		self.registry.unmirrored_total()
+		self.mirror.rejected_blocks()
 	}
 
 	/// Translate the recorded yrs events into one model commit.
 	pub(crate) fn mirror(&mut self, doc: &mut Document) -> Result<Commit, CollabError> {
-		let records = std::mem::take(&mut *self.inbox());
 		let txn = self.doc.transact();
-		let remote = Remote::new(
-			doc.transaction(),
-			&txn,
-			(&self.root, &self.schema),
-			&mut self.registry,
-		);
-		let (commit, repairs) = remote.apply(records)?;
+		let (commit, repairs) = self.mirror.mirror(&txn, &self.root, doc)?;
 		drop(txn);
 		self.repair(&repairs);
 		Ok(commit)
@@ -375,26 +242,7 @@ impl Binding {
 		}
 
 		let mut txn = self.doc.transact_mut_with(UNTRACKED);
-
-		for repair in repairs {
-			let array = match repair.parent {
-				None => Some(self.root.clone()),
-				Some(parent) => {
-					self.registry
-						.block(parent)
-						.and_then(|found| crate::local::map_ref(&txn, &found.map))
-						.and_then(|map| tree::children_of(&map, &txn))
-				}
-			};
-
-			if let Some(array) = array
-				&& let Some(index) = position_of(&array, &txn, &repair.map)
-			{
-				array.remove(&mut txn, index);
-			}
-
-			self.registry.remove_hidden(&repair.map);
-		}
+		self.mirror.repair(&mut txn, &self.root, repairs);
 	}
 
 	/// The state vector of the shared document, v1 encoded, for the first
@@ -419,23 +267,12 @@ impl Binding {
 		state_vector: &StateVector,
 		encoding: Encoding,
 	) -> Vec<u8> {
-		let txn = self.doc.transact();
-
-		match encoding {
-			Encoding::V1 => txn.encode_state_as_update_v1(state_vector),
-			Encoding::V2 => txn.encode_state_as_update_v2(state_vector),
-		}
+		encode_diff(&self.doc, state_vector, encoding)
 	}
 
 	/// The whole shared document as one update.
 	pub fn encode_state(&self, encoding: Encoding) -> Vec<u8> {
-		let txn = self.doc.transact();
-		let empty = StateVector::default();
-
-		match encoding {
-			Encoding::V1 => txn.encode_state_as_update_v1(&empty),
-			Encoding::V2 => txn.encode_state_as_update_v2(&empty),
-		}
+		encode_diff(&self.doc, &StateVector::default(), encoding)
 	}
 
 	/// Drain the v1 updates this peer produced (local commits, undo, redo,
@@ -473,11 +310,7 @@ impl Binding {
 	}
 
 	pub(crate) fn registry(&self) -> &Registry {
-		&self.registry
-	}
-
-	fn inbox(&self) -> std::sync::MutexGuard<'_, Vec<Record>> {
-		lock(&self.inbox)
+		self.mirror.registry()
 	}
 }
 
@@ -491,46 +324,47 @@ impl Drop for Binding {
 	}
 }
 
-/// Subscribe the inbox to remote changes and the outbox to local updates.
-fn observe(
-	doc: &Doc,
-	root: &ArrayRef,
-	schema: &Arc<Schema>,
-	inbox: &Arc<Mutex<Vec<Record>>>,
-	outbox: &Arc<Mutex<Vec<Vec<u8>>>>,
-) -> Result<(), CollabError> {
-	let schema = schema.clone();
-	let inbox = inbox.clone();
+/// Record remote changes inside the root array into the mirror's inbox.
+fn observe_root(root: &ArrayRef, mirror: &Mirror) {
+	let schema = mirror.schema().clone();
+	let inbox = mirror.inbox();
 	root.observe_deep(
 		OBSERVER,
 		move |txn: &TransactionMut<'_>, events: &Events<'_>| {
-			if is_local(txn) {
-				return;
+			if !is_local(txn) {
+				record_events(txn, events.iter(), &schema, None, &inbox);
 			}
-
-			let records = events
-				.iter()
-				.filter_map(|event| record::record(txn, event, &schema));
-			lock(&inbox).extend(records);
 		},
 	);
+}
 
-	let outbox = outbox.clone();
+/// A yrs document with the options every canvist binding uses. `gc` lets
+/// yrs free deleted content.
+pub(crate) fn shared_doc(client_id: u64, gc: bool) -> Doc {
+	let options = Options {
+		offset_kind: OffsetKind::Utf16,
+		cleanup_formatting: false,
+		skip_gc: !gc,
+		..Options::with_client_id(ClientID::new(client_id))
+	};
+	Doc::with_options(options)
+}
+
+/// Collect every update this peer produces, except integrated remote ones.
+pub(crate) fn observe_updates(doc: &Doc) -> Result<Arc<Mutex<Vec<Vec<u8>>>>, CollabError> {
+	let outbox = Arc::new(Mutex::new(Vec::new()));
+	let sink = outbox.clone();
 	doc.observe_update_v1(OBSERVER, move |txn, event| {
 		if txn.origin() != Some(&Origin::from(REMOTE)) {
-			lock(&outbox).push(event.update.clone());
+			lock(&sink).push(event.update.clone());
 		}
 	})
-	.map_err(|_| CollabError::Busy)
+	.map_err(|_| CollabError::Busy)?;
+	Ok(outbox)
 }
 
-/// Whether `txn` was made by this binding from local commits.
-fn is_local(txn: &TransactionMut<'_>) -> bool {
-	txn.origin()
-		.is_some_and(|origin| *origin == Origin::from(LOCAL) || *origin == Origin::from(UNTRACKED))
-}
-
-fn undo_manager(doc: &Doc, root: &ArrayRef) -> UndoManager {
+/// An undo manager over `scope` that tracks only local commits.
+pub(crate) fn undo_manager<S: AsRef<yrs::branch::Branch>>(doc: &Doc, scope: &S) -> UndoManager {
 	let options = yrs::undo::Options {
 		// Steps group until `Track::Step` resets the manager, so time plays
 		// no part: the clock is constant and the timeout never expires.
@@ -542,19 +376,40 @@ fn undo_manager(doc: &Doc, root: &ArrayRef) -> UndoManager {
 		init_redo_stack: Vec::new(),
 	};
 	let mut undo = UndoManager::with_options(options);
-	undo.expand_scope(doc, root);
+	undo.expand_scope(doc, scope);
 	undo
 }
 
-fn is_structural(step: &Step) -> bool {
-	matches!(
-		step,
-		Step::Split { .. }
-			| Step::Join { .. }
-			| Step::InsertBlocks { .. }
-			| Step::RemoveBlocks { .. }
-			| Step::MoveBlocks { .. }
-	)
+pub(crate) fn decode_update(update: &[u8], encoding: Encoding) -> Result<Update, CollabError> {
+	Ok(match encoding {
+		Encoding::V1 => Update::decode_v1(update)?,
+		Encoding::V2 => Update::decode_v2(update)?,
+	})
+}
+
+/// Integrate every held update whose dependencies are present, in one yrs
+/// transaction. Returns whether any were.
+pub(crate) fn integrate_ready(doc: &Doc, reorder: &mut Reorder) -> Result<bool, CollabError> {
+	let mut txn = doc.transact_mut_with(REMOTE);
+	let mut integrated = false;
+
+	// One at a time against what the transaction has integrated so far, so
+	// an update yrs keeps pending cannot let a later one overtake it.
+	while let Some(update) = reorder.take_next(&txn.state_vector()) {
+		txn.apply_update(update)?;
+		integrated = true;
+	}
+
+	Ok(integrated)
+}
+
+pub(crate) fn encode_diff(doc: &Doc, state_vector: &StateVector, encoding: Encoding) -> Vec<u8> {
+	let txn = doc.transact();
+
+	match encoding {
+		Encoding::V1 => txn.encode_state_as_update_v1(state_vector),
+		Encoding::V2 => txn.encode_state_as_update_v2(state_vector),
+	}
 }
 
 /// Concatenate two commits made one after the other on `doc`.
@@ -570,19 +425,4 @@ pub(crate) fn compose(mut first: Commit, second: Commit, doc: &Document) -> Comm
 
 	first.version = second.version;
 	first
-}
-
-fn repairs_of(registration: &Registration) -> Vec<Repair> {
-	registration
-		.losers
-		.iter()
-		.map(|&(map, parent)| Repair { parent, map })
-		.collect()
-}
-
-/// Lock a mutex shared with a yrs observer. A panic inside an observer
-/// leaves the data intact (it is only ever appended to), so poisoning is
-/// ignored.
-fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-	mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }

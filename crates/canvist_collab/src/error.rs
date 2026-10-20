@@ -57,4 +57,12 @@ pub enum CollabError {
 	/// A message type this session does not understand.
 	#[error("unsupported message type {0}")]
 	UnsupportedMessage(u8),
+	/// A scene node has no counterpart in the shared document.
+	#[cfg(feature = "scene")]
+	#[error("node {0} is not in the shared scene")]
+	SceneNode(canvist_scene::NodeId),
+	/// A translated scene step was rejected by the scene.
+	#[cfg(feature = "scene")]
+	#[error(transparent)]
+	Scene(#[from] canvist_scene::SceneError),
 }
