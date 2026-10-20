@@ -592,3 +592,71 @@ fn metadata_lists_the_registered_commands() {
 		canvist_ffi::extension_metadata(vec!["nope".to_owned()]).expect_err("unknown extension");
 	assert_eq!(error.code(), "config");
 }
+
+#[test]
+fn copy_cut_and_paste_carry_html_and_text() -> Result {
+	let editor = editor("Hello **bold** world");
+	assert_eq!(editor.copy()?, None, "nothing is selected");
+
+	editor.select(6, 10)?;
+	let copied = editor.copy()?.expect("a selection");
+	assert_eq!(copied.text, "bold");
+	assert!(
+		copied.html.contains("<strong>bold</strong>"),
+		"{}",
+		copied.html
+	);
+
+	let cut = editor.cut()?.expect("a selection");
+	assert_eq!(cut, copied);
+	assert_eq!(editor.plain_text(), "Hello  world");
+
+	editor.paste_html(&copied.html)?;
+	assert_eq!(editor.export(DocFormat::Markdown), "Hello **bold** world");
+
+	editor.select(0, 0)?;
+	editor.paste_text("one\ntwo ")?;
+	assert_eq!(editor.plain_text(), "one\ntwo Hello bold world");
+
+	editor.paste_markdown("*it* ")?;
+	assert!(editor.export(DocFormat::Markdown).contains("*it*"));
+	Ok(())
+}
+
+#[test]
+fn tapping_a_checkbox_toggles_its_task() -> Result {
+	let editor = editor("- [ ] first\n- [x] second\n\nafter");
+	editor.select(17, 17)?;
+	let frame = editor.frame()?;
+	let boxes: Vec<_> = frame
+		.items
+		.unwrap_or_default()
+		.into_iter()
+		.filter_map(|item| {
+			match item {
+				DisplayItem::Checkbox { bounds, checked } => Some((bounds, checked)),
+				_ => None,
+			}
+		})
+		.collect();
+	assert_eq!(boxes.len(), 2);
+
+	let (first, checked) = boxes[0];
+	assert!(!checked);
+	assert!(editor.toggle_task_at(first.x + 1.0, first.y + 1.0)?);
+	assert!(
+		editor
+			.export(DocFormat::Markdown)
+			.starts_with("- [x] first")
+	);
+	assert_eq!(caret(&editor), 17, "the selection stays put");
+
+	let (_, below) = boxes[1];
+	assert!(below);
+	let paragraph = editor.caret_rect(17).expect("laid out");
+	assert!(
+		!editor.toggle_task_at(0.0, paragraph.y + 1.0)?,
+		"not a task"
+	);
+	Ok(())
+}

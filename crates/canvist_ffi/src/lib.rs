@@ -46,6 +46,7 @@
 //! # Ok::<(), canvist_ffi::CanvistError>(())
 //! ```
 mod access;
+mod clipboard;
 mod collab;
 mod display;
 mod editor;
@@ -58,6 +59,7 @@ pub mod testing;
 mod text;
 mod types;
 
+pub use clipboard::ClipboardContent;
 pub use display::DisplayItem;
 pub use display::FillKind;
 pub use display::Frame;
