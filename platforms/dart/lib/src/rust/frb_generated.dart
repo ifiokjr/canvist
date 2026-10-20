@@ -4,6 +4,7 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/canvist.dart';
+import 'api/view.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -67,7 +68,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => 152214499;
+  int get rustContentHash => 961535426;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -155,6 +156,11 @@ abstract class RustLibApi extends BaseApi {
     required CanvistDoc that,
   });
 
+  ViewDisplay crateApiCanvistCanvistDocServerDisplay({
+    required CanvistDoc that,
+    required double width,
+  });
+
   void crateApiCanvistCanvistDocShare({
     required CanvistDoc that,
     required int clientId,
@@ -170,6 +176,16 @@ abstract class RustLibApi extends BaseApi {
     required CanvistDoc that,
   });
 
+  DocHtml crateApiCanvistCanvistDocToHtml({
+    required CanvistDoc that,
+    required double width,
+  });
+
+  String crateApiCanvistCanvistDocToSvg({
+    required CanvistDoc that,
+    required double width,
+  });
+
   bool crateApiCanvistCanvistDocTypeText({
     required CanvistDoc that,
     required String text,
@@ -178,6 +194,12 @@ abstract class RustLibApi extends BaseApi {
   bool crateApiCanvistCanvistDocUndo({required CanvistDoc that});
 
   DocValidation crateApiCanvistCanvistDocValidate({required CanvistDoc that});
+
+  CanvistView crateApiCanvistCanvistDocView({
+    required CanvistDoc that,
+    required BigInt measurer,
+    required ViewOptions options,
+  });
 
   CanvistDoc crateApiCanvistCanvistEngineCreate({required CanvistEngine that});
 
@@ -192,6 +214,7 @@ abstract class RustLibApi extends BaseApi {
   CanvistEngine crateApiCanvistCanvistEngineNew({
     required List<String> extensions,
     required int client,
+    required DocPlatform platform,
   });
 
   CanvistDoc crateApiCanvistCanvistEngineParse({
@@ -204,6 +227,152 @@ abstract class RustLibApi extends BaseApi {
     required CanvistEngine that,
     required String snapshot,
   });
+
+  bool crateApiViewCanvistViewCancelComposition({required CanvistView that});
+
+  ViewRect? crateApiViewCanvistViewCaretRect({required CanvistView that});
+
+  bool crateApiViewCanvistViewCommitComposition({
+    required CanvistView that,
+    required String text,
+  });
+
+  ViewRect? crateApiViewCanvistViewCompositionBounds({
+    required CanvistView that,
+  });
+
+  ViewClipboard? crateApiViewCanvistViewCopySelection({
+    required CanvistView that,
+  });
+
+  ViewClipboard? crateApiViewCanvistViewCutSelection({
+    required CanvistView that,
+  });
+
+  ViewEditState? crateApiViewCanvistViewEditState({required CanvistView that});
+
+  void crateApiViewCanvistViewForgetMeasurements({required CanvistView that});
+
+  ViewFrame crateApiViewCanvistViewFrame({
+    required CanvistView that,
+    required double top,
+    required double height,
+  });
+
+  bool crateApiViewCanvistViewInsertText({
+    required CanvistView that,
+    required String text,
+  });
+
+  bool crateApiViewCanvistViewIsInSelection({
+    required CanvistView that,
+    required double x,
+    required double y,
+  });
+
+  bool crateApiViewCanvistViewKeyDown({
+    required CanvistView that,
+    required String key,
+    required bool shift,
+    required bool ctrl,
+    required bool alt,
+    required bool meta,
+  });
+
+  bool crateApiViewCanvistViewMoveSelectionEnd({
+    required CanvistView that,
+    required bool start,
+    required double x,
+    required double y,
+  });
+
+  bool crateApiViewCanvistViewPasteHtml({
+    required CanvistView that,
+    required String html,
+  });
+
+  bool crateApiViewCanvistViewPasteText({
+    required CanvistView that,
+    required String text,
+  });
+
+  bool crateApiViewCanvistViewPointerDown({
+    required CanvistView that,
+    required double x,
+    required double y,
+    required bool extend,
+    required int clicks,
+  });
+
+  bool crateApiViewCanvistViewPointerMove({
+    required CanvistView that,
+    required double x,
+    required double y,
+  });
+
+  void crateApiViewCanvistViewPointerUp({required CanvistView that});
+
+  bool crateApiViewCanvistViewRedo({required CanvistView that});
+
+  bool crateApiViewCanvistViewReplaceText({
+    required CanvistView that,
+    required int start,
+    required int end,
+    required String text,
+  });
+
+  bool crateApiViewCanvistViewRun({
+    required CanvistView that,
+    required String name,
+    required String args,
+  });
+
+  bool crateApiViewCanvistViewSelectInBlock({
+    required CanvistView that,
+    required int anchor,
+    required int head,
+  });
+
+  bool crateApiViewCanvistViewSelectPlain({
+    required CanvistView that,
+    required int anchor,
+    required int head,
+  });
+
+  ViewRect? crateApiViewCanvistViewSelectionBounds({required CanvistView that});
+
+  ViewSelectionEnds? crateApiViewCanvistViewSelectionEnds({
+    required CanvistView that,
+  });
+
+  ViewSemantics crateApiViewCanvistViewSemantics({required CanvistView that});
+
+  void crateApiViewCanvistViewSetCaretOn({
+    required CanvistView that,
+    required bool on_,
+  });
+
+  bool crateApiViewCanvistViewSetComposition({
+    required CanvistView that,
+    required String text,
+  });
+
+  void crateApiViewCanvistViewSetFocused({
+    required CanvistView that,
+    required bool focused,
+  });
+
+  void crateApiViewCanvistViewSetOptions({
+    required CanvistView that,
+    required ViewOptions options,
+  });
+
+  void crateApiViewCanvistViewSetWidth({
+    required CanvistView that,
+    required double width,
+  });
+
+  bool crateApiViewCanvistViewUndo({required CanvistView that});
 
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_CanvistDoc;
@@ -221,6 +390,14 @@ abstract class RustLibApi extends BaseApi {
 
   CrossPlatformFinalizerArg
   get rust_arc_decrement_strong_count_CanvistEnginePtr;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_CanvistView;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_CanvistView;
+
+  CrossPlatformFinalizerArg get rust_arc_decrement_strong_count_CanvistViewPtr;
 }
 
 class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
@@ -780,6 +957,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  ViewDisplay crateApiCanvistCanvistDocServerDisplay({
+    required CanvistDoc that,
+    required double width,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
+            that,
+            serializer,
+          );
+          sse_encode_f_32(width, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_view_display,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiCanvistCanvistDocServerDisplayConstMeta,
+        argValues: [that, width],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvistCanvistDocServerDisplayConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistDoc_server_display",
+        argNames: ["that", "width"],
+      );
+
+  @override
   void crateApiCanvistCanvistDocShare({
     required CanvistDoc that,
     required int clientId,
@@ -793,7 +1003,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_u_32(clientId, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 18)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_unit,
@@ -822,7 +1032,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 19)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -848,7 +1058,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 20)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -877,7 +1087,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 21)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_prim_u_8_strict,
@@ -908,7 +1118,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 22)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_list_list_prim_u_8_strict,
@@ -928,6 +1138,72 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  DocHtml crateApiCanvistCanvistDocToHtml({
+    required CanvistDoc that,
+    required double width,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
+            that,
+            serializer,
+          );
+          sse_encode_f_32(width, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_doc_html,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiCanvistCanvistDocToHtmlConstMeta,
+        argValues: [that, width],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvistCanvistDocToHtmlConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistDoc_to_html",
+        argNames: ["that", "width"],
+      );
+
+  @override
+  String crateApiCanvistCanvistDocToSvg({
+    required CanvistDoc that,
+    required double width,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
+            that,
+            serializer,
+          );
+          sse_encode_f_32(width, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiCanvistCanvistDocToSvgConstMeta,
+        argValues: [that, width],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvistCanvistDocToSvgConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistDoc_to_svg",
+        argNames: ["that", "width"],
+      );
+
+  @override
   bool crateApiCanvistCanvistDocTypeText({
     required CanvistDoc that,
     required String text,
@@ -941,7 +1217,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_String(text, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 23)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -970,7 +1246,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 24)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 27)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_bool,
@@ -996,7 +1272,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 25)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_doc_validation,
@@ -1013,6 +1289,42 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "CanvistDoc_validate", argNames: ["that"]);
 
   @override
+  CanvistView crateApiCanvistCanvistDocView({
+    required CanvistDoc that,
+    required BigInt measurer,
+    required ViewOptions options,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
+            that,
+            serializer,
+          );
+          sse_encode_usize(measurer, serializer);
+          sse_encode_box_autoadd_view_options(options, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData:
+              sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiCanvistCanvistDocViewConstMeta,
+        argValues: [that, measurer, options],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiCanvistCanvistDocViewConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistDoc_view",
+        argNames: ["that", "measurer", "options"],
+      );
+
+  @override
   CanvistDoc crateApiCanvistCanvistEngineCreate({required CanvistEngine that}) {
     return handler.executeSync(
       SyncTask(
@@ -1022,7 +1334,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 26)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1058,7 +1370,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_list_prim_u_8_loose(state, serializer);
           sse_encode_u_32(clientId, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 27)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1088,7 +1400,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             that,
             serializer,
           );
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 28)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 32)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -1111,6 +1423,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   CanvistEngine crateApiCanvistCanvistEngineNew({
     required List<String> extensions,
     required int client,
+    required DocPlatform platform,
   }) {
     return handler.executeSync(
       SyncTask(
@@ -1118,7 +1431,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_list_String(extensions, serializer);
           sse_encode_u_32(client, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 29)!;
+          sse_encode_doc_platform(platform, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 33)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1126,7 +1440,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_canvist_failure,
         ),
         constMeta: kCrateApiCanvistCanvistEngineNewConstMeta,
-        argValues: [extensions, client],
+        argValues: [extensions, client, platform],
         apiImpl: this,
       ),
     );
@@ -1135,7 +1449,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiCanvistCanvistEngineNewConstMeta =>
       const TaskConstMeta(
         debugName: "CanvistEngine_new",
-        argNames: ["extensions", "client"],
+        argNames: ["extensions", "client", "platform"],
       );
 
   @override
@@ -1154,7 +1468,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
           sse_encode_doc_format(format, serializer);
           sse_encode_String(input, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 30)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 34)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1188,7 +1502,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             serializer,
           );
           sse_encode_String(snapshot, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 31)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 35)!;
         },
         codec: SseCodec(
           decodeSuccessData:
@@ -1208,6 +1522,1047 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         argNames: ["that", "snapshot"],
       );
 
+  @override
+  bool crateApiViewCanvistViewCancelComposition({required CanvistView that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 36)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewCancelCompositionConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewCancelCompositionConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_cancel_composition",
+        argNames: ["that"],
+      );
+
+  @override
+  ViewRect? crateApiViewCanvistViewCaretRect({required CanvistView that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 37)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_view_rect,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewCaretRectConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewCaretRectConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_caret_rect",
+        argNames: ["that"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewCommitComposition({
+    required CanvistView that,
+    required String text,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_String(text, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 38)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewCommitCompositionConstMeta,
+        argValues: [that, text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewCommitCompositionConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_commit_composition",
+        argNames: ["that", "text"],
+      );
+
+  @override
+  ViewRect? crateApiViewCanvistViewCompositionBounds({
+    required CanvistView that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 39)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_view_rect,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewCompositionBoundsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewCompositionBoundsConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_composition_bounds",
+        argNames: ["that"],
+      );
+
+  @override
+  ViewClipboard? crateApiViewCanvistViewCopySelection({
+    required CanvistView that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 40)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_view_clipboard,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewCopySelectionConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewCopySelectionConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_copy_selection",
+        argNames: ["that"],
+      );
+
+  @override
+  ViewClipboard? crateApiViewCanvistViewCutSelection({
+    required CanvistView that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 41)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_view_clipboard,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewCutSelectionConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewCutSelectionConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_cut_selection",
+        argNames: ["that"],
+      );
+
+  @override
+  ViewEditState? crateApiViewCanvistViewEditState({required CanvistView that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 42)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_view_edit_state,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewEditStateConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewEditStateConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_edit_state",
+        argNames: ["that"],
+      );
+
+  @override
+  void crateApiViewCanvistViewForgetMeasurements({required CanvistView that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 43)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewForgetMeasurementsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewForgetMeasurementsConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_forget_measurements",
+        argNames: ["that"],
+      );
+
+  @override
+  ViewFrame crateApiViewCanvistViewFrame({
+    required CanvistView that,
+    required double top,
+    required double height,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_f_32(top, serializer);
+          sse_encode_f_32(height, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 44)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_view_frame,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewFrameConstMeta,
+        argValues: [that, top, height],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewFrameConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_frame",
+        argNames: ["that", "top", "height"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewInsertText({
+    required CanvistView that,
+    required String text,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_String(text, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 45)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewInsertTextConstMeta,
+        argValues: [that, text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewInsertTextConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_insert_text",
+        argNames: ["that", "text"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewIsInSelection({
+    required CanvistView that,
+    required double x,
+    required double y,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_f_32(x, serializer);
+          sse_encode_f_32(y, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 46)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewIsInSelectionConstMeta,
+        argValues: [that, x, y],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewIsInSelectionConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_is_in_selection",
+        argNames: ["that", "x", "y"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewKeyDown({
+    required CanvistView that,
+    required String key,
+    required bool shift,
+    required bool ctrl,
+    required bool alt,
+    required bool meta,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_String(key, serializer);
+          sse_encode_bool(shift, serializer);
+          sse_encode_bool(ctrl, serializer);
+          sse_encode_bool(alt, serializer);
+          sse_encode_bool(meta, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 47)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewKeyDownConstMeta,
+        argValues: [that, key, shift, ctrl, alt, meta],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewKeyDownConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_key_down",
+        argNames: ["that", "key", "shift", "ctrl", "alt", "meta"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewMoveSelectionEnd({
+    required CanvistView that,
+    required bool start,
+    required double x,
+    required double y,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_bool(start, serializer);
+          sse_encode_f_32(x, serializer);
+          sse_encode_f_32(y, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 48)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewMoveSelectionEndConstMeta,
+        argValues: [that, start, x, y],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewMoveSelectionEndConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_move_selection_end",
+        argNames: ["that", "start", "x", "y"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewPasteHtml({
+    required CanvistView that,
+    required String html,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_String(html, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 49)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewPasteHtmlConstMeta,
+        argValues: [that, html],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewPasteHtmlConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_paste_html",
+        argNames: ["that", "html"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewPasteText({
+    required CanvistView that,
+    required String text,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_String(text, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 50)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewPasteTextConstMeta,
+        argValues: [that, text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewPasteTextConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_paste_text",
+        argNames: ["that", "text"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewPointerDown({
+    required CanvistView that,
+    required double x,
+    required double y,
+    required bool extend,
+    required int clicks,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_f_32(x, serializer);
+          sse_encode_f_32(y, serializer);
+          sse_encode_bool(extend, serializer);
+          sse_encode_u_32(clicks, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 51)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewPointerDownConstMeta,
+        argValues: [that, x, y, extend, clicks],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewPointerDownConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_pointer_down",
+        argNames: ["that", "x", "y", "extend", "clicks"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewPointerMove({
+    required CanvistView that,
+    required double x,
+    required double y,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_f_32(x, serializer);
+          sse_encode_f_32(y, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 52)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewPointerMoveConstMeta,
+        argValues: [that, x, y],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewPointerMoveConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_pointer_move",
+        argNames: ["that", "x", "y"],
+      );
+
+  @override
+  void crateApiViewCanvistViewPointerUp({required CanvistView that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 53)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewPointerUpConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewPointerUpConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_pointer_up",
+        argNames: ["that"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewRedo({required CanvistView that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 54)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewRedoConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewRedoConstMeta =>
+      const TaskConstMeta(debugName: "CanvistView_redo", argNames: ["that"]);
+
+  @override
+  bool crateApiViewCanvistViewReplaceText({
+    required CanvistView that,
+    required int start,
+    required int end,
+    required String text,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_u_32(start, serializer);
+          sse_encode_u_32(end, serializer);
+          sse_encode_String(text, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 55)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewReplaceTextConstMeta,
+        argValues: [that, start, end, text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewReplaceTextConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_replace_text",
+        argNames: ["that", "start", "end", "text"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewRun({
+    required CanvistView that,
+    required String name,
+    required String args,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_String(name, serializer);
+          sse_encode_String(args, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 56)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewRunConstMeta,
+        argValues: [that, name, args],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewRunConstMeta => const TaskConstMeta(
+    debugName: "CanvistView_run",
+    argNames: ["that", "name", "args"],
+  );
+
+  @override
+  bool crateApiViewCanvistViewSelectInBlock({
+    required CanvistView that,
+    required int anchor,
+    required int head,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_u_32(anchor, serializer);
+          sse_encode_u_32(head, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 57)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewSelectInBlockConstMeta,
+        argValues: [that, anchor, head],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSelectInBlockConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_select_in_block",
+        argNames: ["that", "anchor", "head"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewSelectPlain({
+    required CanvistView that,
+    required int anchor,
+    required int head,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_u_32(anchor, serializer);
+          sse_encode_u_32(head, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 58)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewSelectPlainConstMeta,
+        argValues: [that, anchor, head],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSelectPlainConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_select_plain",
+        argNames: ["that", "anchor", "head"],
+      );
+
+  @override
+  ViewRect? crateApiViewCanvistViewSelectionBounds({
+    required CanvistView that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 59)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_view_rect,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewSelectionBoundsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSelectionBoundsConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_selection_bounds",
+        argNames: ["that"],
+      );
+
+  @override
+  ViewSelectionEnds? crateApiViewCanvistViewSelectionEnds({
+    required CanvistView that,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 60)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_opt_box_autoadd_view_selection_ends,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewSelectionEndsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSelectionEndsConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_selection_ends",
+        argNames: ["that"],
+      );
+
+  @override
+  ViewSemantics crateApiViewCanvistViewSemantics({required CanvistView that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 61)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_view_semantics,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewSemanticsConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSemanticsConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_semantics",
+        argNames: ["that"],
+      );
+
+  @override
+  void crateApiViewCanvistViewSetCaretOn({
+    required CanvistView that,
+    required bool on_,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_bool(on_, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 62)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewSetCaretOnConstMeta,
+        argValues: [that, on_],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSetCaretOnConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_set_caret_on",
+        argNames: ["that", "on_"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewSetComposition({
+    required CanvistView that,
+    required String text,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_String(text, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 63)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewSetCompositionConstMeta,
+        argValues: [that, text],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSetCompositionConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_set_composition",
+        argNames: ["that", "text"],
+      );
+
+  @override
+  void crateApiViewCanvistViewSetFocused({
+    required CanvistView that,
+    required bool focused,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_bool(focused, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 64)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewSetFocusedConstMeta,
+        argValues: [that, focused],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSetFocusedConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_set_focused",
+        argNames: ["that", "focused"],
+      );
+
+  @override
+  void crateApiViewCanvistViewSetOptions({
+    required CanvistView that,
+    required ViewOptions options,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_box_autoadd_view_options(options, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 65)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewSetOptionsConstMeta,
+        argValues: [that, options],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSetOptionsConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_set_options",
+        argNames: ["that", "options"],
+      );
+
+  @override
+  void crateApiViewCanvistViewSetWidth({
+    required CanvistView that,
+    required double width,
+  }) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          sse_encode_f_32(width, serializer);
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 66)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiViewCanvistViewSetWidthConstMeta,
+        argValues: [that, width],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewSetWidthConstMeta =>
+      const TaskConstMeta(
+        debugName: "CanvistView_set_width",
+        argNames: ["that", "width"],
+      );
+
+  @override
+  bool crateApiViewCanvistViewUndo({required CanvistView that}) {
+    return handler.executeSync(
+      SyncTask(
+        callFfi: () {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+            that,
+            serializer,
+          );
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 67)!;
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: sse_decode_canvist_failure,
+        ),
+        constMeta: kCrateApiViewCanvistViewUndoConstMeta,
+        argValues: [that],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiViewCanvistViewUndoConstMeta =>
+      const TaskConstMeta(debugName: "CanvistView_undo", argNames: ["that"]);
+
   RustArcIncrementStrongCountFnType
   get rust_arc_increment_strong_count_CanvistDoc => wire
       .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc;
@@ -1223,6 +2578,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   RustArcDecrementStrongCountFnType
   get rust_arc_decrement_strong_count_CanvistEngine => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine;
+
+  RustArcIncrementStrongCountFnType
+  get rust_arc_increment_strong_count_CanvistView => wire
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView;
+
+  RustArcDecrementStrongCountFnType
+  get rust_arc_decrement_strong_count_CanvistView => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView;
 
   @protected
   CanvistDoc
@@ -1240,6 +2603,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return CanvistEngineImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  CanvistView
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return CanvistViewImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -1261,6 +2633,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CanvistView
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return CanvistViewImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
   CanvistDoc
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     dynamic raw,
@@ -1276,6 +2657,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return CanvistEngineImpl.frbInternalDcoDecode(raw as List<dynamic>);
+  }
+
+  @protected
+  CanvistView
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return CanvistViewImpl.frbInternalDcoDecode(raw as List<dynamic>);
   }
 
   @protected
@@ -1297,6 +2687,54 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double dco_decode_box_autoadd_f_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
+  }
+
+  @protected
+  ViewClipboard dco_decode_box_autoadd_view_clipboard(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_view_clipboard(raw);
+  }
+
+  @protected
+  ViewDisplay dco_decode_box_autoadd_view_display(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_view_display(raw);
+  }
+
+  @protected
+  ViewEditState dco_decode_box_autoadd_view_edit_state(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_view_edit_state(raw);
+  }
+
+  @protected
+  ViewOptions dco_decode_box_autoadd_view_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_view_options(raw);
+  }
+
+  @protected
+  ViewRect dco_decode_box_autoadd_view_rect(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_view_rect(raw);
+  }
+
+  @protected
+  ViewSelectionEnds dco_decode_box_autoadd_view_selection_ends(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_view_selection_ends(raw);
+  }
+
+  @protected
   CanvistFailure dco_decode_canvist_failure(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -1312,6 +2750,24 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   DocFormat dco_decode_doc_format(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return DocFormat.values[raw as int];
+  }
+
+  @protected
+  DocHtml dco_decode_doc_html(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return DocHtml(
+      html: dco_decode_String(arr[0]),
+      css: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  DocPlatform dco_decode_doc_platform(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return DocPlatform.values[raw as int];
   }
 
   @protected
@@ -1349,6 +2805,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       rejectedBlocks: dco_decode_u_32(arr[0]),
       waiting: dco_decode_bool(arr[1]),
     );
+  }
+
+  @protected
+  double dco_decode_f_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
   }
 
   @protected
@@ -1394,9 +2856,77 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<ViewFont> dco_decode_list_view_font(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_view_font).toList();
+  }
+
+  @protected
+  List<ViewItem> dco_decode_list_view_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return (raw as List<dynamic>).map(dco_decode_view_item).toList();
+  }
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_String(raw);
+  }
+
+  @protected
+  double? dco_decode_opt_box_autoadd_f_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_f_32(raw);
+  }
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_32(raw);
+  }
+
+  @protected
+  ViewClipboard? dco_decode_opt_box_autoadd_view_clipboard(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_view_clipboard(raw);
+  }
+
+  @protected
+  ViewDisplay? dco_decode_opt_box_autoadd_view_display(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_view_display(raw);
+  }
+
+  @protected
+  ViewEditState? dco_decode_opt_box_autoadd_view_edit_state(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_view_edit_state(raw);
+  }
+
+  @protected
+  ViewRect? dco_decode_opt_box_autoadd_view_rect(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_view_rect(raw);
+  }
+
+  @protected
+  ViewSelectionEnds? dco_decode_opt_box_autoadd_view_selection_ends(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_view_selection_ends(raw);
+  }
+
+  @protected
   List<DocPosition>? dco_decode_opt_list_doc_position(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_list_doc_position(raw);
+  }
+
+  @protected
+  int dco_decode_u_16(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -1424,6 +2954,160 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ViewClipboard dco_decode_view_clipboard(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ViewClipboard(
+      html: dco_decode_String(arr[0]),
+      text: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
+  ViewDisplay dco_decode_view_display(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return ViewDisplay(
+      fonts: dco_decode_list_view_font(arr[0]),
+      items: dco_decode_list_view_item(arr[1]),
+      background: dco_decode_u_32(arr[2]),
+    );
+  }
+
+  @protected
+  ViewEditState dco_decode_view_edit_state(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return ViewEditState(
+      text: dco_decode_String(arr[0]),
+      anchor: dco_decode_u_32(arr[1]),
+      head: dco_decode_u_32(arr[2]),
+      composingStart: dco_decode_opt_box_autoadd_u_32(arr[3]),
+      composingEnd: dco_decode_opt_box_autoadd_u_32(arr[4]),
+    );
+  }
+
+  @protected
+  ViewFont dco_decode_view_font(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ViewFont(
+      family: dco_decode_String(arr[0]),
+      size: dco_decode_f_32(arr[1]),
+      weight: dco_decode_u_16(arr[2]),
+      italic: dco_decode_bool(arr[3]),
+    );
+  }
+
+  @protected
+  ViewFrame dco_decode_view_frame(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 5)
+      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    return ViewFrame(
+      height: dco_decode_f_32(arr[0]),
+      shift: dco_decode_f_32(arr[1]),
+      laidOut: dco_decode_u_32(arr[2]),
+      measured: dco_decode_u_32(arr[3]),
+      display: dco_decode_opt_box_autoadd_view_display(arr[4]),
+    );
+  }
+
+  @protected
+  ViewItem dco_decode_view_item(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 13)
+      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
+    return ViewItem(
+      kind: dco_decode_view_item_kind(arr[0]),
+      x: dco_decode_f_32(arr[1]),
+      y: dco_decode_f_32(arr[2]),
+      width: dco_decode_f_32(arr[3]),
+      height: dco_decode_f_32(arr[4]),
+      color: dco_decode_u_32(arr[5]),
+      radius: dco_decode_f_32(arr[6]),
+      text: dco_decode_String(arr[7]),
+      font: dco_decode_u_32(arr[8]),
+      baseline: dco_decode_f_32(arr[9]),
+      letterSpacing: dco_decode_f_32(arr[10]),
+      rtl: dco_decode_bool(arr[11]),
+      checked: dco_decode_bool(arr[12]),
+    );
+  }
+
+  @protected
+  ViewItemKind dco_decode_view_item_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return ViewItemKind.values[raw as int];
+  }
+
+  @protected
+  ViewOptions dco_decode_view_options(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return ViewOptions(
+      dark: dco_decode_bool(arr[0]),
+      bodyFamily: dco_decode_opt_String(arr[1]),
+      codeFamily: dco_decode_opt_String(arr[2]),
+      size: dco_decode_opt_box_autoadd_f_32(arr[3]),
+      lineHeight: dco_decode_opt_box_autoadd_f_32(arr[4]),
+      overscan: dco_decode_f_32(arr[5]),
+    );
+  }
+
+  @protected
+  ViewRect dco_decode_view_rect(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return ViewRect(
+      x: dco_decode_f_32(arr[0]),
+      y: dco_decode_f_32(arr[1]),
+      width: dco_decode_f_32(arr[2]),
+      height: dco_decode_f_32(arr[3]),
+    );
+  }
+
+  @protected
+  ViewSelectionEnds dco_decode_view_selection_ends(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return ViewSelectionEnds(
+      start: dco_decode_view_rect(arr[0]),
+      end: dco_decode_view_rect(arr[1]),
+      collapsed: dco_decode_bool(arr[2]),
+    );
+  }
+
+  @protected
+  ViewSemantics dco_decode_view_semantics(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return ViewSemantics(
+      text: dco_decode_String(arr[0]),
+      anchor: dco_decode_u_32(arr[1]),
+      head: dco_decode_u_32(arr[2]),
+    );
+  }
+
+  @protected
   CanvistDoc
   sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     SseDeserializer deserializer,
@@ -1442,6 +3126,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return CanvistEngineImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  CanvistView
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return CanvistViewImpl.frbInternalSseDecode(
       sse_decode_usize(deserializer),
       sse_decode_i_32(deserializer),
     );
@@ -1472,6 +3168,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  CanvistView
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return CanvistViewImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
   CanvistDoc
   sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     SseDeserializer deserializer,
@@ -1490,6 +3198,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return CanvistEngineImpl.frbInternalSseDecode(
+      sse_decode_usize(deserializer),
+      sse_decode_i_32(deserializer),
+    );
+  }
+
+  @protected
+  CanvistView
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return CanvistViewImpl.frbInternalSseDecode(
       sse_decode_usize(deserializer),
       sse_decode_i_32(deserializer),
     );
@@ -1517,6 +3237,64 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double sse_decode_box_autoadd_f_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_f_32(deserializer));
+  }
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_32(deserializer));
+  }
+
+  @protected
+  ViewClipboard sse_decode_box_autoadd_view_clipboard(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_view_clipboard(deserializer));
+  }
+
+  @protected
+  ViewDisplay sse_decode_box_autoadd_view_display(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_view_display(deserializer));
+  }
+
+  @protected
+  ViewEditState sse_decode_box_autoadd_view_edit_state(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_view_edit_state(deserializer));
+  }
+
+  @protected
+  ViewOptions sse_decode_box_autoadd_view_options(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_view_options(deserializer));
+  }
+
+  @protected
+  ViewRect sse_decode_box_autoadd_view_rect(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_view_rect(deserializer));
+  }
+
+  @protected
+  ViewSelectionEnds sse_decode_box_autoadd_view_selection_ends(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_view_selection_ends(deserializer));
+  }
+
+  @protected
   CanvistFailure sse_decode_canvist_failure(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_code = sse_decode_String(deserializer);
@@ -1529,6 +3307,21 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var inner = sse_decode_i_32(deserializer);
     return DocFormat.values[inner];
+  }
+
+  @protected
+  DocHtml sse_decode_doc_html(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_html = sse_decode_String(deserializer);
+    var var_css = sse_decode_String(deserializer);
+    return DocHtml(html: var_html, css: var_css);
+  }
+
+  @protected
+  DocPlatform sse_decode_doc_platform(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return DocPlatform.values[inner];
   }
 
   @protected
@@ -1561,6 +3354,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       rejectedBlocks: var_rejectedBlocks,
       waiting: var_waiting,
     );
+  }
+
+  @protected
+  double sse_decode_f_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat32();
   }
 
   @protected
@@ -1629,6 +3428,126 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  List<ViewFont> sse_decode_list_view_font(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ViewFont>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_view_font(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  List<ViewItem> sse_decode_list_view_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var len_ = sse_decode_i_32(deserializer);
+    var ans_ = <ViewItem>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_view_item(deserializer));
+    }
+    return ans_;
+  }
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_String(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  double? sse_decode_opt_box_autoadd_f_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_f_32(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_32(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ViewClipboard? sse_decode_opt_box_autoadd_view_clipboard(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_view_clipboard(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ViewDisplay? sse_decode_opt_box_autoadd_view_display(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_view_display(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ViewEditState? sse_decode_opt_box_autoadd_view_edit_state(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_view_edit_state(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ViewRect? sse_decode_opt_box_autoadd_view_rect(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_view_rect(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  ViewSelectionEnds? sse_decode_opt_box_autoadd_view_selection_ends(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_view_selection_ends(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   List<DocPosition>? sse_decode_opt_list_doc_position(
     SseDeserializer deserializer,
   ) {
@@ -1639,6 +3558,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     } else {
       return null;
     }
+  }
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint16();
   }
 
   @protected
@@ -1665,6 +3590,169 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ViewClipboard sse_decode_view_clipboard(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_html = sse_decode_String(deserializer);
+    var var_text = sse_decode_String(deserializer);
+    return ViewClipboard(html: var_html, text: var_text);
+  }
+
+  @protected
+  ViewDisplay sse_decode_view_display(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_fonts = sse_decode_list_view_font(deserializer);
+    var var_items = sse_decode_list_view_item(deserializer);
+    var var_background = sse_decode_u_32(deserializer);
+    return ViewDisplay(
+      fonts: var_fonts,
+      items: var_items,
+      background: var_background,
+    );
+  }
+
+  @protected
+  ViewEditState sse_decode_view_edit_state(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_text = sse_decode_String(deserializer);
+    var var_anchor = sse_decode_u_32(deserializer);
+    var var_head = sse_decode_u_32(deserializer);
+    var var_composingStart = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_composingEnd = sse_decode_opt_box_autoadd_u_32(deserializer);
+    return ViewEditState(
+      text: var_text,
+      anchor: var_anchor,
+      head: var_head,
+      composingStart: var_composingStart,
+      composingEnd: var_composingEnd,
+    );
+  }
+
+  @protected
+  ViewFont sse_decode_view_font(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_family = sse_decode_String(deserializer);
+    var var_size = sse_decode_f_32(deserializer);
+    var var_weight = sse_decode_u_16(deserializer);
+    var var_italic = sse_decode_bool(deserializer);
+    return ViewFont(
+      family: var_family,
+      size: var_size,
+      weight: var_weight,
+      italic: var_italic,
+    );
+  }
+
+  @protected
+  ViewFrame sse_decode_view_frame(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_height = sse_decode_f_32(deserializer);
+    var var_shift = sse_decode_f_32(deserializer);
+    var var_laidOut = sse_decode_u_32(deserializer);
+    var var_measured = sse_decode_u_32(deserializer);
+    var var_display = sse_decode_opt_box_autoadd_view_display(deserializer);
+    return ViewFrame(
+      height: var_height,
+      shift: var_shift,
+      laidOut: var_laidOut,
+      measured: var_measured,
+      display: var_display,
+    );
+  }
+
+  @protected
+  ViewItem sse_decode_view_item(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_view_item_kind(deserializer);
+    var var_x = sse_decode_f_32(deserializer);
+    var var_y = sse_decode_f_32(deserializer);
+    var var_width = sse_decode_f_32(deserializer);
+    var var_height = sse_decode_f_32(deserializer);
+    var var_color = sse_decode_u_32(deserializer);
+    var var_radius = sse_decode_f_32(deserializer);
+    var var_text = sse_decode_String(deserializer);
+    var var_font = sse_decode_u_32(deserializer);
+    var var_baseline = sse_decode_f_32(deserializer);
+    var var_letterSpacing = sse_decode_f_32(deserializer);
+    var var_rtl = sse_decode_bool(deserializer);
+    var var_checked = sse_decode_bool(deserializer);
+    return ViewItem(
+      kind: var_kind,
+      x: var_x,
+      y: var_y,
+      width: var_width,
+      height: var_height,
+      color: var_color,
+      radius: var_radius,
+      text: var_text,
+      font: var_font,
+      baseline: var_baseline,
+      letterSpacing: var_letterSpacing,
+      rtl: var_rtl,
+      checked: var_checked,
+    );
+  }
+
+  @protected
+  ViewItemKind sse_decode_view_item_kind(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return ViewItemKind.values[inner];
+  }
+
+  @protected
+  ViewOptions sse_decode_view_options(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_dark = sse_decode_bool(deserializer);
+    var var_bodyFamily = sse_decode_opt_String(deserializer);
+    var var_codeFamily = sse_decode_opt_String(deserializer);
+    var var_size = sse_decode_opt_box_autoadd_f_32(deserializer);
+    var var_lineHeight = sse_decode_opt_box_autoadd_f_32(deserializer);
+    var var_overscan = sse_decode_f_32(deserializer);
+    return ViewOptions(
+      dark: var_dark,
+      bodyFamily: var_bodyFamily,
+      codeFamily: var_codeFamily,
+      size: var_size,
+      lineHeight: var_lineHeight,
+      overscan: var_overscan,
+    );
+  }
+
+  @protected
+  ViewRect sse_decode_view_rect(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_x = sse_decode_f_32(deserializer);
+    var var_y = sse_decode_f_32(deserializer);
+    var var_width = sse_decode_f_32(deserializer);
+    var var_height = sse_decode_f_32(deserializer);
+    return ViewRect(x: var_x, y: var_y, width: var_width, height: var_height);
+  }
+
+  @protected
+  ViewSelectionEnds sse_decode_view_selection_ends(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_start = sse_decode_view_rect(deserializer);
+    var var_end = sse_decode_view_rect(deserializer);
+    var var_collapsed = sse_decode_bool(deserializer);
+    return ViewSelectionEnds(
+      start: var_start,
+      end: var_end,
+      collapsed: var_collapsed,
+    );
+  }
+
+  @protected
+  ViewSemantics sse_decode_view_semantics(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_text = sse_decode_String(deserializer);
+    var var_anchor = sse_decode_u_32(deserializer);
+    var var_head = sse_decode_u_32(deserializer);
+    return ViewSemantics(text: var_text, anchor: var_anchor, head: var_head);
+  }
+
+  @protected
   void
   sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     CanvistDoc self,
@@ -1686,6 +3774,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
       (self as CanvistEngineImpl).frbInternalSseEncode(move: true),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    CanvistView self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as CanvistViewImpl).frbInternalSseEncode(move: true),
       serializer,
     );
   }
@@ -1718,6 +3819,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    CanvistView self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as CanvistViewImpl).frbInternalSseEncode(move: false),
+      serializer,
+    );
+  }
+
+  @protected
+  void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     CanvistDoc self,
     SseSerializer serializer,
@@ -1738,6 +3852,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_usize(
       (self as CanvistEngineImpl).frbInternalSseEncode(move: null),
+      serializer,
+    );
+  }
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    CanvistView self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_usize(
+      (self as CanvistViewImpl).frbInternalSseEncode(move: null),
       serializer,
     );
   }
@@ -1764,6 +3891,72 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_f_32(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_32(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_view_clipboard(
+    ViewClipboard self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_view_clipboard(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_view_display(
+    ViewDisplay self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_view_display(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_view_edit_state(
+    ViewEditState self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_view_edit_state(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_view_options(
+    ViewOptions self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_view_options(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_view_rect(
+    ViewRect self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_view_rect(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_view_selection_ends(
+    ViewSelectionEnds self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_view_selection_ends(self, serializer);
+  }
+
+  @protected
   void sse_encode_canvist_failure(
     CanvistFailure self,
     SseSerializer serializer,
@@ -1775,6 +3968,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   @protected
   void sse_encode_doc_format(DocFormat self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_doc_html(DocHtml self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.html, serializer);
+    sse_encode_String(self.css, serializer);
+  }
+
+  @protected
+  void sse_encode_doc_platform(DocPlatform self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.index, serializer);
   }
@@ -1799,6 +4005,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_32(self.rejectedBlocks, serializer);
     sse_encode_bool(self.waiting, serializer);
+  }
+
+  @protected
+  void sse_encode_f_32(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat32(self);
   }
 
   @protected
@@ -1873,6 +4085,125 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_view_font(
+    List<ViewFont> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_view_font(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_list_view_item(
+    List<ViewItem> self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    for (final item in self) {
+      sse_encode_view_item(item, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_String(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_32(double? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_f_32(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_32(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_clipboard(
+    ViewClipboard? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_view_clipboard(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_display(
+    ViewDisplay? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_view_display(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_edit_state(
+    ViewEditState? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_view_edit_state(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_rect(
+    ViewRect? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_view_rect(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_selection_ends(
+    ViewSelectionEnds? self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_view_selection_ends(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_list_doc_position(
     List<DocPosition>? self,
     SseSerializer serializer,
@@ -1883,6 +4214,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     if (self != null) {
       sse_encode_list_doc_position(self, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putUint16(self);
   }
 
   @protected
@@ -1906,6 +4243,116 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_usize(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putBigUint64(self);
+  }
+
+  @protected
+  void sse_encode_view_clipboard(ViewClipboard self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.html, serializer);
+    sse_encode_String(self.text, serializer);
+  }
+
+  @protected
+  void sse_encode_view_display(ViewDisplay self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_list_view_font(self.fonts, serializer);
+    sse_encode_list_view_item(self.items, serializer);
+    sse_encode_u_32(self.background, serializer);
+  }
+
+  @protected
+  void sse_encode_view_edit_state(
+    ViewEditState self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.text, serializer);
+    sse_encode_u_32(self.anchor, serializer);
+    sse_encode_u_32(self.head, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.composingStart, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.composingEnd, serializer);
+  }
+
+  @protected
+  void sse_encode_view_font(ViewFont self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.family, serializer);
+    sse_encode_f_32(self.size, serializer);
+    sse_encode_u_16(self.weight, serializer);
+    sse_encode_bool(self.italic, serializer);
+  }
+
+  @protected
+  void sse_encode_view_frame(ViewFrame self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_32(self.height, serializer);
+    sse_encode_f_32(self.shift, serializer);
+    sse_encode_u_32(self.laidOut, serializer);
+    sse_encode_u_32(self.measured, serializer);
+    sse_encode_opt_box_autoadd_view_display(self.display, serializer);
+  }
+
+  @protected
+  void sse_encode_view_item(ViewItem self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_view_item_kind(self.kind, serializer);
+    sse_encode_f_32(self.x, serializer);
+    sse_encode_f_32(self.y, serializer);
+    sse_encode_f_32(self.width, serializer);
+    sse_encode_f_32(self.height, serializer);
+    sse_encode_u_32(self.color, serializer);
+    sse_encode_f_32(self.radius, serializer);
+    sse_encode_String(self.text, serializer);
+    sse_encode_u_32(self.font, serializer);
+    sse_encode_f_32(self.baseline, serializer);
+    sse_encode_f_32(self.letterSpacing, serializer);
+    sse_encode_bool(self.rtl, serializer);
+    sse_encode_bool(self.checked, serializer);
+  }
+
+  @protected
+  void sse_encode_view_item_kind(ViewItemKind self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_view_options(ViewOptions self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_bool(self.dark, serializer);
+    sse_encode_opt_String(self.bodyFamily, serializer);
+    sse_encode_opt_String(self.codeFamily, serializer);
+    sse_encode_opt_box_autoadd_f_32(self.size, serializer);
+    sse_encode_opt_box_autoadd_f_32(self.lineHeight, serializer);
+    sse_encode_f_32(self.overscan, serializer);
+  }
+
+  @protected
+  void sse_encode_view_rect(ViewRect self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_32(self.x, serializer);
+    sse_encode_f_32(self.y, serializer);
+    sse_encode_f_32(self.width, serializer);
+    sse_encode_f_32(self.height, serializer);
+  }
+
+  @protected
+  void sse_encode_view_selection_ends(
+    ViewSelectionEnds self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_view_rect(self.start, serializer);
+    sse_encode_view_rect(self.end, serializer);
+    sse_encode_bool(self.collapsed, serializer);
+  }
+
+  @protected
+  void sse_encode_view_semantics(ViewSemantics self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.text, serializer);
+    sse_encode_u_32(self.anchor, serializer);
+    sse_encode_u_32(self.head, serializer);
   }
 }
 
@@ -2009,6 +4456,11 @@ class CanvistDocImpl extends RustOpaque implements CanvistDoc {
   List<DocPosition>? selection() =>
       RustLib.instance.api.crateApiCanvistCanvistDocSelection(that: this);
 
+  /// The display list [`CanvistDoc::to_svg`] paints, for hosts that check
+  /// their own rendering against server rendering.
+  ViewDisplay serverDisplay({required double width}) => RustLib.instance.api
+      .crateApiCanvistCanvistDocServerDisplay(that: this, width: width);
+
   /// Start sharing the document as yrs client `client_id`.
   void share({required int clientId}) => RustLib.instance.api
       .crateApiCanvistCanvistDocShare(that: this, clientId: clientId);
@@ -2029,6 +4481,16 @@ class CanvistDocImpl extends RustOpaque implements CanvistDoc {
   List<Uint8List> takeUpdates() =>
       RustLib.instance.api.crateApiCanvistCanvistDocTakeUpdates(that: this);
 
+  /// HTML and CSS that lay the document out `width` pixels wide as the
+  /// editor does, for server rendering.
+  DocHtml toHtml({required double width}) => RustLib.instance.api
+      .crateApiCanvistCanvistDocToHtml(that: this, width: width);
+
+  /// The whole document as an SVG image `width` pixels wide, measured
+  /// with the bundled Atkinson Hyperlegible font.
+  String toSvg({required double width}) => RustLib.instance.api
+      .crateApiCanvistCanvistDocToSvg(that: this, width: width);
+
   /// Type `text` one character at a time, running input rules.
   bool typeText({required String text}) => RustLib.instance.api
       .crateApiCanvistCanvistDocTypeText(that: this, text: text);
@@ -2039,6 +4501,18 @@ class CanvistDocImpl extends RustOpaque implements CanvistDoc {
   /// Check the shared state against the schema.
   DocValidation validate() =>
       RustLib.instance.api.crateApiCanvistCanvistDocValidate(that: this);
+
+  /// A view laying the document out for a host to paint and edit,
+  /// measuring text through the Dart function at address `measurer`: a
+  /// `NativeCallable.isolateLocal` with the C signature
+  /// `void measure(const MeasureRequest*)`, which must stay open while the
+  /// view lives. The `canvist` package's `EditorView` is the only caller.
+  CanvistView view({required BigInt measurer, required ViewOptions options}) =>
+      RustLib.instance.api.crateApiCanvistCanvistDocView(
+        that: this,
+        measurer: measurer,
+        options: options,
+      );
 }
 
 @sealed
@@ -2087,4 +4561,221 @@ class CanvistEngineImpl extends RustOpaque implements CanvistEngine {
   /// Recreate a document from snapshot JSON.
   CanvistDoc restore({required String snapshot}) => RustLib.instance.api
       .crateApiCanvistCanvistEngineRestore(that: this, snapshot: snapshot);
+}
+
+@sealed
+class CanvistViewImpl extends RustOpaque implements CanvistView {
+  // Not to be used by end users
+  CanvistViewImpl.frbInternalDcoDecode(List<dynamic> wire)
+    : super.frbInternalDcoDecode(wire, _kStaticData);
+
+  // Not to be used by end users
+  CanvistViewImpl.frbInternalSseDecode(BigInt ptr, int externalSizeOnNative)
+    : super.frbInternalSseDecode(ptr, externalSizeOnNative, _kStaticData);
+
+  static final _kStaticData = RustArcStaticData(
+    rustArcIncrementStrongCount:
+        RustLib.instance.api.rust_arc_increment_strong_count_CanvistView,
+    rustArcDecrementStrongCount:
+        RustLib.instance.api.rust_arc_decrement_strong_count_CanvistView,
+    rustArcDecrementStrongCountPtr:
+        RustLib.instance.api.rust_arc_decrement_strong_count_CanvistViewPtr,
+  );
+
+  /// Remove the preedit and end the composition.
+  bool cancelComposition() =>
+      RustLib.instance.api.crateApiViewCanvistViewCancelComposition(that: this);
+
+  /// The caret's rectangle, or `None` when the selection is not a caret
+  /// or the caret's block is not laid out.
+  ViewRect? caretRect() =>
+      RustLib.instance.api.crateApiViewCanvistViewCaretRect(that: this);
+
+  /// Commit the composition as `text`.
+  bool commitComposition({required String text}) => RustLib.instance.api
+      .crateApiViewCanvistViewCommitComposition(that: this, text: text);
+
+  /// The smallest rectangle around the IME composition.
+  ViewRect? compositionBounds() =>
+      RustLib.instance.api.crateApiViewCanvistViewCompositionBounds(that: this);
+
+  /// The selection as HTML and plain text, or `None` when nothing is
+  /// selected.
+  ViewClipboard? copySelection() =>
+      RustLib.instance.api.crateApiViewCanvistViewCopySelection(that: this);
+
+  /// Cut the selection, returning it as [`CanvistView::copy_selection`]
+  /// does.
+  ViewClipboard? cutSelection() =>
+      RustLib.instance.api.crateApiViewCanvistViewCutSelection(that: this);
+
+  /// The text block an input method edits, or `None` when the head is not
+  /// in a text block.
+  ViewEditState? editState() =>
+      RustLib.instance.api.crateApiViewCanvistViewEditState(that: this);
+
+  /// Forget every measurement, as when fonts load or the text scale
+  /// changes: blocks lay out again as they come into view.
+  void forgetMeasurements() => RustLib.instance.api
+      .crateApiViewCanvistViewForgetMeasurements(that: this);
+
+  /// Lay out the viewport from `top` down `height` logical pixels and say
+  /// what to paint.
+  ViewFrame frame({required double top, required double height}) => RustLib
+      .instance
+      .api
+      .crateApiViewCanvistViewFrame(that: this, top: top, height: height);
+
+  /// Replace the selection with `text` as typing does: input rules apply.
+  bool insertText({required String text}) => RustLib.instance.api
+      .crateApiViewCanvistViewInsertText(that: this, text: text);
+
+  /// Whether `(x, y)` is inside a non-empty selection.
+  bool isInSelection({required double x, required double y}) => RustLib
+      .instance
+      .api
+      .crateApiViewCanvistViewIsInSelection(that: this, x: x, y: y);
+
+  /// Run the key binding for `key`, a DOM `KeyboardEvent.key` name such as
+  /// `Enter`, `ArrowLeft`, or `b`. Returns whether a binding applied; when
+  /// none did, the host lets the platform handle the key.
+  bool keyDown({
+    required String key,
+    required bool shift,
+    required bool ctrl,
+    required bool alt,
+    required bool meta,
+  }) => RustLib.instance.api.crateApiViewCanvistViewKeyDown(
+    that: this,
+    key: key,
+    shift: shift,
+    ctrl: ctrl,
+    alt: alt,
+    meta: meta,
+  );
+
+  /// Move one end of the selection to `(x, y)`, keeping the other: the
+  /// start when `start` is true, otherwise the end. Selection handles drag
+  /// this way.
+  bool moveSelectionEnd({
+    required bool start,
+    required double x,
+    required double y,
+  }) => RustLib.instance.api.crateApiViewCanvistViewMoveSelectionEnd(
+    that: this,
+    start: start,
+    x: x,
+    y: y,
+  );
+
+  /// Paste HTML over the selection.
+  bool pasteHtml({required String html}) => RustLib.instance.api
+      .crateApiViewCanvistViewPasteHtml(that: this, html: html);
+
+  /// Paste plain text over the selection; paste rules apply.
+  bool pasteText({required String text}) => RustLib.instance.api
+      .crateApiViewCanvistViewPasteText(that: this, text: text);
+
+  /// Press the pointer at document coordinates `(x, y)`. One click places
+  /// the caret, or extends the selection with `extend`; two select a word
+  /// and three the whole text block, and dragging afterwards extends by
+  /// that unit.
+  bool pointerDown({
+    required double x,
+    required double y,
+    required bool extend,
+    required int clicks,
+  }) => RustLib.instance.api.crateApiViewCanvistViewPointerDown(
+    that: this,
+    x: x,
+    y: y,
+    extend: extend,
+    clicks: clicks,
+  );
+
+  /// Move a pressed pointer to `(x, y)`, extending the selection from the
+  /// press.
+  bool pointerMove({required double x, required double y}) => RustLib
+      .instance
+      .api
+      .crateApiViewCanvistViewPointerMove(that: this, x: x, y: y);
+
+  /// Release the pointer.
+  void pointerUp() =>
+      RustLib.instance.api.crateApiViewCanvistViewPointerUp(that: this);
+
+  /// Redo the last undone change.
+  bool redo() => RustLib.instance.api.crateApiViewCanvistViewRedo(that: this);
+
+  /// Replace UTF-16 range `start..end` of the head's text block with
+  /// `text`, as an input method does. A replacement at a caret is typing,
+  /// so input rules apply.
+  bool replaceText({
+    required int start,
+    required int end,
+    required String text,
+  }) => RustLib.instance.api.crateApiViewCanvistViewReplaceText(
+    that: this,
+    start: start,
+    end: end,
+    text: text,
+  );
+
+  /// Run the command an extension registered as `name`, with JSON `args`.
+  bool run({required String name, required String args}) => RustLib.instance.api
+      .crateApiViewCanvistViewRun(that: this, name: name, args: args);
+
+  /// Select UTF-16 range `anchor..head` of the head's text block.
+  bool selectInBlock({required int anchor, required int head}) =>
+      RustLib.instance.api.crateApiViewCanvistViewSelectInBlock(
+        that: this,
+        anchor: anchor,
+        head: head,
+      );
+
+  /// Select `anchor..head`, given in UTF-16 code units of
+  /// [`ViewSemantics::text`], as assistive technology does.
+  bool selectPlain({required int anchor, required int head}) =>
+      RustLib.instance.api.crateApiViewCanvistViewSelectPlain(
+        that: this,
+        anchor: anchor,
+        head: head,
+      );
+
+  /// The smallest rectangle around the selection.
+  ViewRect? selectionBounds() =>
+      RustLib.instance.api.crateApiViewCanvistViewSelectionBounds(that: this);
+
+  /// Where the selection's ends are, or `None` for a block selection or
+  /// ends outside the laid-out area.
+  ViewSelectionEnds? selectionEnds() =>
+      RustLib.instance.api.crateApiViewCanvistViewSelectionEnds(that: this);
+
+  /// The document's plain text and selection, for accessibility.
+  ViewSemantics semantics() =>
+      RustLib.instance.api.crateApiViewCanvistViewSemantics(that: this);
+
+  /// Blink the caret.
+  void setCaretOn({required bool on_}) => RustLib.instance.api
+      .crateApiViewCanvistViewSetCaretOn(that: this, on_: on_);
+
+  /// Show `text` as IME preedit text, replacing the selection or the
+  /// previous preedit.
+  bool setComposition({required String text}) => RustLib.instance.api
+      .crateApiViewCanvistViewSetComposition(that: this, text: text);
+
+  /// Show the caret while the host has focus.
+  void setFocused({required bool focused}) => RustLib.instance.api
+      .crateApiViewCanvistViewSetFocused(that: this, focused: focused);
+
+  /// Change the theme. Measurements are kept.
+  void setOptions({required ViewOptions options}) => RustLib.instance.api
+      .crateApiViewCanvistViewSetOptions(that: this, options: options);
+
+  /// Lay the document out `width` logical pixels wide.
+  void setWidth({required double width}) => RustLib.instance.api
+      .crateApiViewCanvistViewSetWidth(that: this, width: width);
+
+  /// Undo the last change.
+  bool undo() => RustLib.instance.api.crateApiViewCanvistViewUndo(that: this);
 }

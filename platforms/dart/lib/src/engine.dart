@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:typed_data';
 
 import 'load.dart';
 import 'rust/api/canvist.dart';
+import 'rust/api/view.dart';
 
 part 'extensions.g.dart';
+part 'view.dart';
 
 /// A format documents are read from and written to.
 enum Format {
@@ -23,6 +26,20 @@ enum Format {
   const Format(this._bridge);
 
   final DocFormat _bridge;
+}
+
+/// Which platform's key bindings an engine follows: what `Mod` in a binding
+/// such as `Mod-b` means.
+enum KeyPlatform {
+  /// macOS, iOS, and iPadOS: `Mod` is Cmd.
+  apple(DocPlatform.apple),
+
+  /// Everything else: `Mod` is Ctrl.
+  other(DocPlatform.other);
+
+  const KeyPlatform(this._bridge);
+
+  final DocPlatform _bridge;
 }
 
 /// The stable name of each kind of failure, shared with Rust and
@@ -199,12 +216,23 @@ final class EngineBuilder {
   }
 
   /// Load canvist if needed and build the engine. Block ids are allocated
-  /// as [client], which collaborating peers must not share.
-  Future<Engine> build({int client = 1}) async {
+  /// as [client], which collaborating peers must not share. Key bindings
+  /// follow [platform]: editors pass [KeyPlatform.apple] on Apple devices,
+  /// so `Mod-b` is Cmd-B there.
+  Future<Engine> build({
+    int client = 1,
+    KeyPlatform platform = KeyPlatform.other,
+  }) async {
     await loadCanvist();
 
     return Engine._(
-      _guard(() => CanvistEngine(extensions: _names, client: client)),
+      _guard(
+        () => CanvistEngine(
+          extensions: _names,
+          client: client,
+          platform: platform._bridge,
+        ),
+      ),
       _registration,
     );
   }
@@ -220,11 +248,15 @@ final class Engine {
   /// An engine with TipTap's StarterKit and the handles for all of it.
   static Future<({Engine engine, StarterKitHandles kit})> starterKit({
     int client = 1,
+    KeyPlatform platform = KeyPlatform.other,
   }) async {
     final builder = EngineBuilder();
     final kit = StarterKitHandles._(builder);
 
-    return (engine: await builder.build(client: client), kit: kit);
+    return (
+      engine: await builder.build(client: client, platform: platform),
+      kit: kit,
+    );
   }
 
   /// What every registered extension adds, as Rust reports it.
@@ -412,6 +444,30 @@ final class Doc {
   /// This peer's changes since the last call, as y-sync messages for every
   /// connection.
   List<Uint8List> flushSync() => _guard(_bridge.flushSync);
+
+  /// HTML and the stylesheet that lays it out [width] pixels wide exactly
+  /// as the editor does, for server rendering.
+  ({String html, String css}) toHtml(double width) {
+    final html = _bridge.toHtml(width: width);
+
+    return (html: html.html, css: html.css);
+  }
+
+  /// The whole document as an SVG image [width] pixels wide, measured with
+  /// the bundled Atkinson Hyperlegible font.
+  String toSvg(double width) => _guard(() => _bridge.toSvg(width: width));
+
+  /// What [toSvg] paints, as a display list, for hosts that compare their
+  /// own rendering with server rendering.
+  ViewDisplay serverDisplay(double width) =>
+      _guard(() => _bridge.serverDisplay(width: width));
+
+  /// An interactive view of this document for a UI host, measuring text
+  /// with [measurer]. See [EditorView].
+  EditorView view(
+    TextMeasurer measurer, {
+    ViewOptions options = const ViewOptions(dark: false, overscan: 0),
+  }) => EditorView._(this, measurer, options);
 
   /// Release the document's memory now rather than when it is collected.
   void dispose() => _bridge.dispose();

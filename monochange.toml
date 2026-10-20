@@ -129,6 +129,11 @@ path = "crates/canvist_extensions"
 
 [package.canvist_layout]
 path = "crates/canvist_layout"
+# The `canvist` Dart package's Rust crate builds from crates.io outside this
+# workspace, so it pins the release it was generated against.
+versioned_files = [
+	{ path = "platforms/dart/rust/Cargo.toml", type = "cargo", fields = ["dependencies"], prefix = "=" },
+]
 
 [package.canvist_collab]
 path = "crates/canvist_collab"

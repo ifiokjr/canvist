@@ -23,3 +23,16 @@
 library;
 
 export 'src/engine.dart';
+export 'src/rust/api/view.dart'
+    show
+        ViewClipboard,
+        ViewDisplay,
+        ViewEditState,
+        ViewFont,
+        ViewFrame,
+        ViewItem,
+        ViewItemKind,
+        ViewOptions,
+        ViewRect,
+        ViewSelectionEnds,
+        ViewSemantics;

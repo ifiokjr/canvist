@@ -257,3 +257,63 @@ fn key_bindings_follow_the_engine_platform() -> Result<(), HeadlessError> {
 
 	Ok(())
 }
+
+#[test]
+fn recorded_commits_cover_every_change_a_layout_must_see() -> Result<(), HeadlessError> {
+	let engine = Engine::starter_kit();
+	let mut doc = engine.parse(Format::Markdown, "Hello")?;
+
+	doc.select_range(&Position::new([0], 5), &Position::new([0], 5))?;
+	doc.insert_text(" world")?;
+	assert!(doc.take_commits().is_empty(), "recording is off by default");
+
+	doc.record_commits();
+	doc.select_range(&Position::new([0], 0), &Position::new([0], 0))?;
+	assert!(
+		doc.take_commits().is_empty(),
+		"moving the selection commits nothing"
+	);
+
+	doc.insert_text("Oh, ")?;
+	doc.press("Enter")?;
+	let commits = doc.take_commits();
+	assert_eq!(commits.len(), 2);
+	assert!(commits[1].structural, "splitting a paragraph is structural");
+
+	doc.undo()?;
+	assert_eq!(doc.take_commits().len(), 1);
+	assert!(doc.take_commits().is_empty(), "taking drains the journal");
+
+	Ok(())
+}
+
+#[cfg(feature = "collab")]
+#[test]
+fn recorded_commits_include_collaborators_and_the_shared_history() -> Result<(), HeadlessError> {
+	let engine = Engine::starter_kit();
+	let mut alice = engine.parse(Format::Markdown, "Shared")?;
+	alice.share(1)?;
+	let mut bob = engine.from_yjs(&alice.encode_state()?, 2)?;
+	bob.record_commits();
+
+	alice.select_range(&Position::new([0], 6), &Position::new([0], 6))?;
+	alice.insert_text("!")?;
+
+	for update in alice.take_updates()? {
+		bob.apply_update(&update)?;
+	}
+
+	assert_eq!(bob.take_commits().len(), 1, "a remote update is a commit");
+
+	bob.select_range(&Position::new([0], 0), &Position::new([0], 0))?;
+	bob.insert_text(">")?;
+	assert!(!bob.take_commits().is_empty());
+	assert!(bob.undo()?);
+	assert_eq!(bob.export(Format::Text), "Shared!");
+	assert!(
+		!bob.take_commits().is_empty(),
+		"undo through the shared history is recorded"
+	);
+
+	Ok(())
+}

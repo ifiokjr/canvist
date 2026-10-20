@@ -116,10 +116,13 @@ impl Doc {
 	fn integrate(&mut self, update: &[u8]) -> Result<Update, HeadlessError> {
 		let mut env = self.env();
 		let binding = self.shared.as_mut().ok_or(HeadlessError::NotShared)?;
-		self.editor.apply_external(&mut env, |doc| {
+		let update = self.editor.apply_external(&mut env, |doc| {
 			let commit = binding.apply_update(doc, update, Encoding::V1)?;
 			with_block(commit, doc, binding)
-		})
+		})?;
+		self.record(&update);
+
+		Ok(update)
 	}
 
 	/// The whole shared state as one v1 update, to persist or to send to a
@@ -252,10 +255,11 @@ impl Doc {
 		}
 
 		let mut env = canvist_editor::Env::headless(std::time::Duration::ZERO);
-		self.editor.apply_external(&mut env, |doc| {
+		let follow_up = self.editor.apply_external(&mut env, |doc| {
 			let follow_up = binding.apply_local(doc, &update.commit, Track::Step)?;
 			with_block(follow_up, doc, binding)
 		})?;
+		self.record(&follow_up);
 		Ok(())
 	}
 
@@ -266,7 +270,7 @@ impl Doc {
 		let binding = self.shared.as_mut().ok_or(HeadlessError::NotShared)?;
 		let mut applied = false;
 
-		self.editor.apply_external(&mut env, |doc| {
+		let update = self.editor.apply_external(&mut env, |doc| {
 			let commit = if redo {
 				binding.redo(doc)?
 			} else {
@@ -276,6 +280,7 @@ impl Doc {
 			let commit = commit.unwrap_or_else(|| doc.transaction().commit());
 			with_block(commit, doc, binding)
 		})?;
+		self.record(&update);
 
 		Ok(applied)
 	}

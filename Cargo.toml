@@ -120,6 +120,7 @@ canvist_web = { path = "./crates/canvist_web", version = "0.1.0" }
 # by their crates.io version (see its manifest). Build them from this checkout.
 [patch.crates-io]
 canvist_headless = { path = "./crates/canvist_headless" }
+canvist_layout = { path = "./crates/canvist_layout" }
 
 [workspace.metadata.bin]
 cargo-insta = { version = "1.46.3" }

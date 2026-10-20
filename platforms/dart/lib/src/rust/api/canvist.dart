@@ -7,8 +7,10 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
+import 'view.dart';
+
 // These functions are ignored because they are not marked as `pub`: `json`, `lock`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `clone`, `clone`, `clone`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`, `from`, `from`, `from`, `from`, `from`
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistDoc>>
 abstract class CanvistDoc implements RustOpaqueInterface {
@@ -64,6 +66,10 @@ abstract class CanvistDoc implements RustOpaqueInterface {
   /// selection.
   List<DocPosition>? selection();
 
+  /// The display list [`CanvistDoc::to_svg`] paints, for hosts that check
+  /// their own rendering against server rendering.
+  ViewDisplay serverDisplay({required double width});
+
   /// Start sharing the document as yrs client `client_id`.
   void share({required int clientId});
 
@@ -79,6 +85,14 @@ abstract class CanvistDoc implements RustOpaqueInterface {
   /// Drain this peer's own v1 updates.
   List<Uint8List> takeUpdates();
 
+  /// HTML and CSS that lay the document out `width` pixels wide as the
+  /// editor does, for server rendering.
+  DocHtml toHtml({required double width});
+
+  /// The whole document as an SVG image `width` pixels wide, measured
+  /// with the bundled Atkinson Hyperlegible font.
+  String toSvg({required double width});
+
   /// Type `text` one character at a time, running input rules.
   bool typeText({required String text});
 
@@ -87,6 +101,13 @@ abstract class CanvistDoc implements RustOpaqueInterface {
 
   /// Check the shared state against the schema.
   DocValidation validate();
+
+  /// A view laying the document out for a host to paint and edit,
+  /// measuring text through the Dart function at address `measurer`: a
+  /// `NativeCallable.isolateLocal` with the C signature
+  /// `void measure(const MeasureRequest*)`, which must stay open while the
+  /// view lives. The `canvist` package's `EditorView` is the only caller.
+  CanvistView view({required BigInt measurer, required ViewOptions options});
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistEngine>>
@@ -105,9 +126,11 @@ abstract class CanvistEngine implements RustOpaqueInterface {
   factory CanvistEngine({
     required List<String> extensions,
     required int client,
+    required DocPlatform platform,
   }) => RustLib.instance.api.crateApiCanvistCanvistEngineNew(
     extensions: extensions,
     client: client,
+    platform: platform,
   );
 
   /// Read `input` as `format`.
@@ -153,6 +176,38 @@ enum DocFormat {
 
   /// Plain text.
   text,
+}
+
+/// HTML for a document, with the stylesheet that lays it out as the
+/// editor does.
+class DocHtml {
+  /// The document's HTML fragment.
+  final String html;
+
+  /// The stylesheet.
+  final String css;
+
+  const DocHtml({required this.html, required this.css});
+
+  @override
+  int get hashCode => html.hashCode ^ css.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is DocHtml &&
+          runtimeType == other.runtimeType &&
+          html == other.html &&
+          css == other.css;
+}
+
+/// Which platform's key bindings an engine follows.
+enum DocPlatform {
+  /// macOS, iOS, and iPadOS: `Mod` is Cmd.
+  apple,
+
+  /// Everything else: `Mod` is Ctrl.
+  other,
 }
 
 /// A point in a text block: child indexes from the root, and UTF-16 code

@@ -1,5 +1,7 @@
 //! Engines and documents for Dart.
 
+use std::cell::RefCell;
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 
@@ -8,9 +10,17 @@ use canvist_headless::Engine;
 use canvist_headless::Format;
 use canvist_headless::HeadlessError;
 use canvist_headless::Position;
+use canvist_headless::Renderer;
 use canvist_headless::Snapshot;
+use canvist_headless::canvist_editor::Platform;
 use flutter_rust_bridge::frb;
 use serde_json::Value as Json;
+
+use crate::api::view::CanvistView;
+use crate::api::view::ViewDisplay;
+use crate::api::view::ViewFont;
+use crate::api::view::ViewOptions;
+use crate::measure::HostMeasurer;
 
 /// A failure inside canvist. `code` is the stable
 /// [`ErrorCode`](canvist_headless::ErrorCode) name every binding shares.
@@ -102,6 +112,39 @@ pub struct DocValidation {
 	pub waiting: bool,
 }
 
+/// Which platform's key bindings an engine follows.
+#[derive(Clone, Copy, Debug)]
+pub enum DocPlatform {
+	/// macOS, iOS, and iPadOS: `Mod` is Cmd.
+	Apple,
+	/// Everything else: `Mod` is Ctrl.
+	Other,
+}
+
+impl From<DocPlatform> for Platform {
+	fn from(platform: DocPlatform) -> Self {
+		match platform {
+			DocPlatform::Apple => Self::Apple,
+			DocPlatform::Other => Self::Other,
+		}
+	}
+}
+
+/// HTML for a document, with the stylesheet that lays it out as the
+/// editor does.
+#[derive(Debug)]
+pub struct DocHtml {
+	/// The document's HTML fragment.
+	pub html: String,
+	/// The stylesheet.
+	pub css: String,
+}
+
+thread_local! {
+	/// Server rendering caches measurements, so each thread keeps one.
+	static RENDERER: RefCell<Renderer> = RefCell::new(Renderer::new());
+}
+
 fn json(text: &str) -> Result<Json> {
 	serde_json::from_str(text).map_err(|error| {
 		CanvistFailure::from(HeadlessError::InvalidArgs {
@@ -121,8 +164,10 @@ impl CanvistEngine {
 	/// An engine with the named StarterKit extensions, allocating block ids
 	/// as `client`.
 	#[frb(sync)]
-	pub fn new(extensions: Vec<String>, client: u32) -> Result<Self> {
-		let engine = Engine::named(&extensions)?.with_client(client);
+	pub fn new(extensions: Vec<String>, client: u32, platform: DocPlatform) -> Result<Self> {
+		let engine = Engine::named(&extensions)?
+			.with_client(client)
+			.with_platform(platform.into());
 		Ok(Self { engine })
 	}
 
@@ -163,14 +208,14 @@ impl CanvistEngine {
 #[frb(opaque)]
 pub struct CanvistDoc {
 	// The bridge shares opaque values between isolates, so they must be
-	// `Sync`; a `Doc` is only `Send`.
-	doc: Mutex<Doc>,
+	// `Sync`; a `Doc` is only `Send`. A view shares the document.
+	doc: Arc<Mutex<Doc>>,
 }
 
 impl From<Doc> for CanvistDoc {
 	fn from(doc: Doc) -> Self {
 		Self {
-			doc: Mutex::new(doc),
+			doc: Arc::new(Mutex::new(doc)),
 		}
 	}
 }
@@ -182,6 +227,72 @@ impl CanvistDoc {
 		self.doc
 			.lock()
 			.unwrap_or_else(std::sync::PoisonError::into_inner)
+	}
+
+	/// A view laying the document out for a host to paint and edit,
+	/// measuring text through the Dart function at address `measurer`: a
+	/// `NativeCallable.isolateLocal` with the C signature
+	/// `void measure(const MeasureRequest*)`, which must stay open while the
+	/// view lives. The `canvist` package's `EditorView` is the only caller.
+	#[frb(sync)]
+	pub fn view(&self, measurer: usize, options: ViewOptions) -> Result<CanvistView> {
+		#[allow(unsafe_code, reason = "the measurer comes from the Dart package")]
+		// SAFETY: the Dart `EditorView` passes the address of its own
+		// isolate-local callable and closes it only after disposing the view,
+		// and every view call runs synchronously on that isolate's thread.
+		let measurer = unsafe { HostMeasurer::new(measurer) }.ok_or_else(|| {
+			CanvistFailure::from(HeadlessError::InvalidArgs {
+				name: "view".to_owned(),
+				reason: "the measurer address is null".to_owned(),
+			})
+		})?;
+		Ok(CanvistView::new(self.doc.clone(), measurer, &options))
+	}
+
+	/// HTML and CSS that lay the document out `width` pixels wide as the
+	/// editor does, for server rendering.
+	#[frb(sync)]
+	pub fn to_html(&self, width: f32) -> DocHtml {
+		let doc = self.lock();
+		let html = RENDERER.with_borrow(|renderer| renderer.html(&doc, width));
+		DocHtml {
+			html: html.html,
+			css: html.css,
+		}
+	}
+
+	/// The whole document as an SVG image `width` pixels wide, measured
+	/// with the bundled Atkinson Hyperlegible font.
+	#[frb(sync)]
+	pub fn to_svg(&self, width: f32) -> Result<String> {
+		let doc = self.lock();
+		Ok(RENDERER.with_borrow_mut(|renderer| renderer.svg(&doc, width))?)
+	}
+
+	/// The display list [`CanvistDoc::to_svg`] paints, for hosts that check
+	/// their own rendering against server rendering.
+	#[frb(sync)]
+	pub fn server_display(&self, width: f32) -> Result<ViewDisplay> {
+		let doc = self.lock();
+		let list = RENDERER.with_borrow_mut(|renderer| renderer.display_list(&doc, width))?;
+		let theme = canvist_layout::Theme::starter_kit();
+
+		Ok(ViewDisplay {
+			fonts: list
+				.fonts
+				.iter()
+				.map(|font| {
+					ViewFont {
+						family: font.family.to_string(),
+						size: font.size,
+						weight: font.weight,
+						italic: font.italic,
+					}
+				})
+				.collect(),
+			items: list.items.iter().map(crate::api::view::item).collect(),
+			background: crate::api::view::argb(theme.chrome().background),
+		})
 	}
 
 	/// The document as `format`.
