@@ -395,7 +395,17 @@ impl CanvistView {
 	pub fn set_width(&self, width: f32) {
 		let (mut state, mut doc) = self.lock();
 		state.sync(&mut doc);
-		state.layout.set_width(doc.document(), width);
+
+		if state.layout.options().width > 0.0 {
+			state.layout.set_width(doc.document(), width);
+			return;
+		}
+
+		// A new width keeps every block's height as its estimate until the
+		// block is laid out again, and estimates made zero pixels wide put
+		// each character on its own line: start over at the first real width.
+		let options = LayoutOptions::new(width).overscan(state.layout.options().overscan);
+		state.layout = DocumentLayout::new(doc.document(), state.theme.clone(), options);
 	}
 
 	/// Change the theme. Measurements are kept.
@@ -1059,17 +1069,21 @@ fn selection_points(doc: &Doc) -> (Point, Point) {
 	match doc.selection() {
 		Selection::Text { anchor, head } => (anchor, head),
 		selection @ Selection::Blocks { .. } => {
-			let start = position::text_range(document, selection)
-				.map(|range| range.from)
-				.or_else(|| {
-					match position::start_selection(document) {
-						Selection::Text { head, .. } => Some(head),
-						Selection::Blocks { .. } => None,
-					}
-				});
-			let point = start.unwrap_or(Point::new(document.children(None)[0], 0));
+			let point = blocks_start(document, selection);
 			(point, point)
 		}
+	}
+}
+
+/// Where a block selection starts: its first text point, or the document's.
+fn blocks_start(document: &Document, selection: Selection) -> Point {
+	if let Some(range) = position::text_range(document, selection) {
+		return range.from;
+	}
+
+	match position::start_selection(document) {
+		Selection::Text { head, .. } => head,
+		Selection::Blocks { .. } => Point::new(document.children(None)[0], 0),
 	}
 }
 
