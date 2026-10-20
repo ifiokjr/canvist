@@ -103,6 +103,9 @@ pub enum DisplayItem {
 		/// Whether the run is right to left: draw it with the platform's
 		/// RTL direction, anchored at `x` on the left.
 		rtl: bool,
+		/// The line box the run sits in. Glyphs may reach a little outside
+		/// it (accents, descenders, italic overhangs).
+		bounds: Bounds,
 	},
 	/// A decoration line from `x` to `x + width`, centred on `y`.
 	Line {
@@ -217,6 +220,7 @@ fn text(run: &TextRun) -> DisplayItem {
 		color: run.color.into(),
 		letter_spacing: run.letter_spacing,
 		rtl: run.rtl,
+		bounds: run.bounds.into(),
 	}
 }
 
