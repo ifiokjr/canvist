@@ -7,6 +7,7 @@ The [canvist](https://github.com/ifiokjr/canvist) document model and editing eng
 - **Explicit selections:** no layout is needed. Select by model points, or by `Position`s (block path plus UTF-16 offset) that mean the same thing in Rust, TypeScript, and Dart.
 - **Collaboration** (`collab` feature): join from Yjs state, merge updates in any order, answer y-sync messages as a y-websocket server would, and check the merged state against the schema.
 - **Server rendering** (`ssr` feature): HTML and SVG laid out exactly as the canvas editor paints them, using `parley` and a bundled font.
+- **Canvas scenes** (`scene` feature): load canvas scenes of shapes, frames, images, vector paths, and text frames from JSON or Yjs state, run canvas commands and inspector edits, and export SVG and PNG with the renderer the canvas draws with. Loading a 10,000-node scene takes about 25 ms, exporting it as SVG about 23 ms, and a PNG thumbnail about 10 ms.
 - **Thread-safe:** an `Engine` is `Send + Sync`, and a `Doc` is `Send`.
 
 ```rust

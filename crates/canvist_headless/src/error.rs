@@ -66,6 +66,21 @@ pub enum HeadlessError {
 	#[cfg(feature = "ssr")]
 	#[error(transparent)]
 	Layout(#[from] canvist_layout::LayoutError),
+	/// A scene command, edit, or load failed. Its code depends on why: an
+	/// unknown command is `unknownName`, bad arguments `invalidArgs`,
+	/// unreadable JSON `parse`, a rejected edit `schema`, and failed text
+	/// layout `render`.
+	#[cfg(feature = "scene")]
+	#[error(transparent)]
+	Canvas(#[from] canvist_canvas::CanvasError),
+	/// The canvas extensions produced an invalid scene schema.
+	#[cfg(feature = "scene")]
+	#[error("invalid configuration: {0}")]
+	SceneConfig(#[from] canvist_scene::SceneSchemaError),
+	/// The CPU rasteriser could not draw a PNG, e.g. one too large for it.
+	#[cfg(feature = "scene")]
+	#[error(transparent)]
+	Paint(#[from] canvist_paint::CpuError),
 }
 
 /// A stable, language-neutral name for each kind of [`HeadlessError`].
@@ -148,6 +163,12 @@ impl HeadlessError {
 			Self::Collab(_) => ErrorCode::Collab,
 			#[cfg(feature = "ssr")]
 			Self::Layout(_) => ErrorCode::Render,
+			#[cfg(feature = "scene")]
+			Self::Canvas(error) => canvas_code(error),
+			#[cfg(feature = "scene")]
+			Self::SceneConfig(_) => ErrorCode::Config,
+			#[cfg(feature = "scene")]
+			Self::Paint(_) => ErrorCode::Render,
 		}
 	}
 
@@ -183,5 +204,20 @@ impl From<JsonError> for HeadlessError {
 impl From<StepError> for HeadlessError {
 	fn from(error: StepError) -> Self {
 		Self::Schema(error.to_string())
+	}
+}
+
+/// The code for a canvas failure, by its cause.
+#[cfg(feature = "scene")]
+fn canvas_code(error: &canvist_canvas::CanvasError) -> ErrorCode {
+	use canvist_canvas::CanvasError;
+	use canvist_scene::SceneError;
+
+	match error {
+		CanvasError::UnknownCommand(_) => ErrorCode::UnknownName,
+		CanvasError::UnknownField(_) | CanvasError::InvalidArgs(_) => ErrorCode::InvalidArgs,
+		CanvasError::Scene(SceneError::Json { .. }) => ErrorCode::Parse,
+		CanvasError::Scene(_) => ErrorCode::Schema,
+		CanvasError::Layout(_) => ErrorCode::Render,
 	}
 }

@@ -21,6 +21,9 @@ use serde_json::Value as Json;
 use serde_json::json;
 use wasm_bindgen::prelude::*;
 
+#[cfg(feature = "scene")]
+mod scene;
+
 type Result<T> = std::result::Result<T, JsValue>;
 
 /// A `CanvistError` carrying the error's stable code.
@@ -28,7 +31,7 @@ type Result<T> = std::result::Result<T, JsValue>;
 	clippy::needless_pass_by_value,
 	reason = "a `map_err` callback receives the error by value"
 )]
-fn error(error: HeadlessError) -> JsValue {
+pub(crate) fn error(error: HeadlessError) -> JsValue {
 	let js = js_sys::Error::new(&error.to_string());
 	js.set_name("CanvistError");
 	// Setting a property on a fresh `Error` object cannot fail.
@@ -43,7 +46,7 @@ fn invalid_json(reason: &serde_json::Error) -> JsValue {
 	})
 }
 
-fn parse_json(text: &str) -> Result<Json> {
+pub(crate) fn parse_json(text: &str) -> Result<Json> {
 	serde_json::from_str(text).map_err(|reason| invalid_json(&reason))
 }
 
@@ -55,7 +58,7 @@ fn format(name: &str) -> Result<Format> {
 	clippy::needless_pass_by_value,
 	reason = "a `map` callback receives the chunks by value"
 )]
-fn bytes(chunks: Vec<Vec<u8>>) -> Array {
+pub(crate) fn bytes(chunks: Vec<Vec<u8>>) -> Array {
 	chunks
 		.iter()
 		.map(|chunk| Uint8Array::from(chunk.as_slice()))

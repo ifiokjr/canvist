@@ -59,6 +59,34 @@ deno task server
 curl -X POST 'localhost:8787/convert?from=markdown&to=json' -d '# Hello **world**'
 ```
 
+## Canvas scenes
+
+`@canvist/headless/scene` loads canvist canvas scenes (pages, frames, shapes, images, vector paths, and text frames) and exports them as SVG and PNG with the renderer the canvas draws with. Use it for thumbnails, social cards, and agent-made designs. It is a separate WebAssembly module, 5.4 MB after `wasm-opt` (1.8 MB gzipped), so the document entry point stays small.
+
+```ts
+import { createSceneEngine } from "@canvist/headless/scene";
+
+const engine = await createSceneEngine();
+using doc = engine.fromJson({
+	type: "canvist-scene",
+	version: 1,
+	nodes: [{
+		type: "page",
+		children: [{
+			type: "rectangle",
+			props: { size: [120, 80], fills: [{ type: "solid", color: "#3b2cf5" }] },
+		}],
+	}],
+});
+
+// Commands act on the selection, and `insert` selects what it adds.
+doc.run("insert", { type: "ellipse", props: { size: [40, 40] } });
+doc.setField("x", 140);
+const png = doc.exportPng({ scale: 2, padding: 16 });
+```
+
+`SceneJson` types every node, property, paint, effect, and shape, so a scene an agent writes is checked before it runs. Scenes share and merge Yjs updates like documents: `share`, `encodeState`, `applyUpdate`, `takeUpdates`, and `engine.fromYjs`.
+
 ## Workers
 
 Runtimes without a file system pass the module they imported:
@@ -87,7 +115,7 @@ The WebAssembly module is 1,058 KB after `wasm-opt` and 433 KB gzipped (budget 1
 
 ```sh
 npm ci
-npm run build:wasm      # wasm-pack, into wasm/
+npm run build:wasm      # wasm-pack: the document module into wasm/, the scene module into wasm-scene/
 npm test                # conformance and API tests in Node
 deno task test          # the same, plus the server example, in Deno
 npm run check:types     # tsc --noEmit, including the type-level tests
