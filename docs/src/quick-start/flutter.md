@@ -2,7 +2,7 @@
 
 In this guide you add canvist's editor to a Flutter app, with a toolbar that formats the selection. It takes about five minutes.
 
-**Status: Available.** `CanvistEditor` is a rich-text editor painted from canvist's Rust layout and measured by Flutter's own text engine. It supports platform text input (IME composition, autocorrect, dictation), selection handles and a toolbar on touch devices, mouse and keyboard selection on desktop, undo and redo, scrolling, accessibility, and Yjs collaboration. It runs on iOS, Android, macOS, Linux, and Windows. Flutter web isn't supported yet; use [`@canvist/web`](./web.md) in the browser.
+**Status: Available.** `CanvistEditor` is a rich-text editor painted from canvist's Rust layout and measured by Flutter's own text engine. It supports platform text input (IME composition, autocorrect, dictation), selection handles and a toolbar on touch devices, mouse and keyboard selection on desktop, undo and redo, scrolling, accessibility, and Yjs collaboration. Every change is tested on iOS and Android devices, and on macOS and Linux hosts. Windows desktop builds use the same code but aren't tested yet. Flutter web isn't supported yet; use [`@canvist/web`](./web.md) in the browser.
 
 ## 1. Install
 

@@ -28,7 +28,7 @@ canvist's rich-text editor for Flutter. `CanvistEditor` paints a document laid o
 flutter pub add canvist_flutter
 ```
 
-You need Flutter 3.47 or newer and a [Rust toolchain](https://rustup.rs): a build hook compiles the Rust core for each platform you build. It runs on iOS, Android, macOS, Linux, and Windows; Flutter web isn't supported yet.
+You need Flutter 3.47 or newer and a [Rust toolchain](https://rustup.rs): a build hook compiles the Rust core for each platform you build. Every change is tested on iOS and Android devices, and on macOS and Linux hosts; Windows is untested, and Flutter web isn't supported yet.
 
 ```dart
 import 'package:canvist_flutter/canvist_flutter.dart';
