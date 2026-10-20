@@ -1,13 +1,13 @@
 name: canvist_flutter
 description: Flutter binding for canvist. The engine comes from the pure Dart `canvist` package, whose build hook compiles the Rust core; Flutter widgets belong here.
-version: 0.1.0
+version: 0.1.1
 
 environment:
   sdk: ^3.13.0
   flutter: ">=3.47.0"
 
 dependencies:
-  canvist: ^0.1.0
+  canvist: ^0.1.1
   flutter:
     sdk: flutter
 

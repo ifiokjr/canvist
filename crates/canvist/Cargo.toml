@@ -1,6 +1,6 @@
 [package]
 name = "canvist"
-version.workspace = true
+version = "0.1.1"
 authors.workspace = true
 categories.workspace = true
 documentation = "https://docs.rs/canvist"

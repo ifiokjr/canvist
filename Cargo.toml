@@ -47,7 +47,7 @@ default-members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
 categories = ["wasm", "accessibility", "multimedia", "text-processing", "text-editors"]
 edition = "2024"
@@ -100,21 +100,21 @@ web-sys = { default-features = false, version = "^0.3" }
 yrs = { default-features = false, version = "^0.28" }
 
 # Internal crates
-canvist = { path = "./crates/canvist", version = "0.1.0" }
-canvist_canvas = { path = "./crates/canvist_canvas", version = "0.1.0" }
-canvist_collab = { path = "./crates/canvist_collab", version = "0.1.0" }
-canvist_core = { path = "./crates/canvist_core", version = "0.1.0" }
-canvist_editor = { path = "./crates/canvist_editor", version = "0.1.0" }
-canvist_extensions = { path = "./crates/canvist_extensions", version = "0.1.0" }
-canvist_ffi = { path = "./crates/canvist_ffi", version = "0.1.0" }
-canvist_headless = { path = "./crates/canvist_headless", version = "0.1.0" }
-canvist_layout = { path = "./crates/canvist_layout", version = "0.1.0" }
-canvist_model = { path = "./crates/canvist_model", version = "0.1.0" }
-canvist_paint = { path = "./crates/canvist_paint", version = "0.1.0" }
-canvist_render = { path = "./crates/canvist_render", version = "0.1.0" }
-canvist_scene = { path = "./crates/canvist_scene", version = "0.1.0" }
-canvist_wasm = { path = "./crates/canvist_wasm", version = "0.1.0" }
-canvist_web = { path = "./crates/canvist_web", version = "0.1.0" }
+canvist = { path = "./crates/canvist", version = "0.1.1" }
+canvist_canvas = { path = "./crates/canvist_canvas", version = "0.1.1" }
+canvist_collab = { path = "./crates/canvist_collab", version = "0.1.1" }
+canvist_core = { path = "./crates/canvist_core", version = "0.1.1" }
+canvist_editor = { path = "./crates/canvist_editor", version = "0.1.1" }
+canvist_extensions = { path = "./crates/canvist_extensions", version = "0.1.1" }
+canvist_ffi = { path = "./crates/canvist_ffi", version = "0.1.1" }
+canvist_headless = { path = "./crates/canvist_headless", version = "0.1.1" }
+canvist_layout = { path = "./crates/canvist_layout", version = "0.1.1" }
+canvist_model = { path = "./crates/canvist_model", version = "0.1.1" }
+canvist_paint = { path = "./crates/canvist_paint", version = "0.1.1" }
+canvist_render = { path = "./crates/canvist_render", version = "0.1.1" }
+canvist_scene = { path = "./crates/canvist_scene", version = "0.1.1" }
+canvist_wasm = { path = "./crates/canvist_wasm", version = "0.1.1" }
+canvist_web = { path = "./crates/canvist_web", version = "0.1.1" }
 
 [workspace.metadata.bin]
 cargo-insta = { version = "1.46.3" }
