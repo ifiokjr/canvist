@@ -2,6 +2,8 @@
 "@canvist/headless": feat
 canvist_headless: feat
 canvist_layout: feat
+canvist_headless_wasm: feat
+canvist_web: refactor
 "@canvist/web": refactor
 ---
 
