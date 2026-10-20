@@ -17,7 +17,8 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  # Build and test canvist_desktop on every desktop platform. Input, IME, clipboard, selection, accessibility, collaboration,
+  # Build and test canvist_desktop and the example app on every desktop
+  # platform. Input, IME, clipboard, selection, accessibility, collaboration,
   # and screenshots are driven headlessly, so no display is needed; the
   # GPU-against-CPU test runs where the runner has an adapter and says it
   # skipped where it has none.
@@ -47,5 +48,8 @@ jobs:
       - name: test the editor core without the window host
         run: cargo test --locked -p canvist_desktop --no-default-features --lib --tests
 
+      - name: build the example app
+        run: cargo build --locked -p canvist_desktop_example
+
       - name: lint
-        run: cargo clippy --locked -p canvist_desktop --all-features --all-targets -- --deny warnings
+        run: cargo clippy --locked -p canvist_desktop -p canvist_desktop_example --all-features --all-targets -- --deny warnings

@@ -26,6 +26,7 @@ macro_rules! pages {
 pages! {
 	quick_start_server_rust => "quick-start/server-rust.md",
 	quick_start_ssr => "quick-start/ssr.md",
+	quick_start_desktop => "quick-start/desktop.md",
 	concepts_extensions => "concepts/extensions.md",
 	concepts_selections => "concepts/selections.md",
 	extensions_build_your_own_editor => "extensions/build-your-own-editor.md",

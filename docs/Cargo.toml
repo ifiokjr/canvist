@@ -11,6 +11,7 @@ rust-version.workspace = true
 description = "The canvist docs, with their Rust samples run as doc tests"
 
 [dev-dependencies]
+canvist_desktop = { workspace = true }
 canvist_editor = { workspace = true }
 canvist_headless = { path = "../crates/canvist_headless", features = ["collab", "ssr"] }
 canvist_layout = { workspace = true, features = ["theme-extensions"] }

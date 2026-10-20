@@ -20,6 +20,7 @@ members = [
 	"crates/canvist_wasm",
 	"crates/canvist_web",
 	"docs",
+	"examples/desktop",
 	"platforms/dart/rust",
 	"services/cloud",
 	"tools/footage",
