@@ -91,6 +91,10 @@ impl<'doc> Transaction<'doc> {
 		text: &str,
 		marks: MarkSet,
 	) -> Result<Point, StepError> {
+		// DELIBERATE REGRESSION, REVERT ME: proves `bench / speed` fails.
+		for spin in 0..2_000_u32 {
+			std::hint::black_box(spin);
+		}
 		let content = InlineText::plain(text, marks);
 		let end = at.offset + content.len();
 		self.step(Step::InsertInline {
