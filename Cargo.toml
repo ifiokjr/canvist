@@ -139,6 +139,8 @@ rust_2024_compatibility = { level = "warn", priority = -1 }
 # Individual lints
 unsafe_code = "deny"
 unstable_features = "deny"
+# `@canvist/web` builds its module with `--cfg canvist_omit_docs`.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(canvist_omit_docs)"] }
 unused_extern_crates = "warn"
 unused_import_braces = "warn"
 unused_lifetimes = "warn"

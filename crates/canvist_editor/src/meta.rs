@@ -119,6 +119,16 @@ pub struct Field {
 	pub doc: &'static str,
 }
 
+/// `text`, or `""` when built with `--cfg canvist_omit_docs`.
+///
+/// Descriptions are only read from metadata, which bindings generate their
+/// types from. A build that never reads metadata (the browser editor's
+/// WebAssembly module) drops them, and their bytes with them.
+#[must_use]
+pub(crate) const fn doc(text: &'static str) -> &'static str {
+	if cfg!(canvist_omit_docs) { "" } else { text }
+}
+
 impl Field {
 	/// A required argument.
 	#[must_use]
@@ -127,7 +137,7 @@ impl Field {
 			name,
 			ty,
 			default: None,
-			doc,
+			doc: self::doc(doc),
 		}
 	}
 
@@ -143,7 +153,7 @@ impl Field {
 			name,
 			ty,
 			default: Some(default.into()),
-			doc,
+			doc: self::doc(doc),
 		}
 	}
 

@@ -33,7 +33,7 @@
 	],
 	"sideEffects": false,
 	"scripts": {
-		"build:wasm": "cd ../.. && wasm-pack build crates/canvist_web --target web --profile wasm-web --no-opt --out-dir ../../packages/canvist-web/wasm --no-pack && rm packages/canvist-web/wasm/.gitignore && cd packages/canvist-web && node scripts/optimize-wasm.ts",
+		"build:wasm": "cd ../.. && RUSTFLAGS=\"--cfg canvist_omit_docs\" wasm-pack build crates/canvist_web --target web --profile wasm-web --no-opt --out-dir ../../packages/canvist-web/wasm --no-pack && rm packages/canvist-web/wasm/.gitignore && cd packages/canvist-web && node scripts/optimize-wasm.ts",
 		"check:types": "tsc --noEmit",
 		"test": "node --test tests/*.test.ts",
 		"test:browser": "playwright test",

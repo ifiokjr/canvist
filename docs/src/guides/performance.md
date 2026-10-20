@@ -43,13 +43,13 @@ Every number below has a budget, and a test fails the build when an operation go
 | Keystroke → paint on the web, p95 ⁴                | < 8 ms                                      | 0.5 / 2 / 2 ms       |
 | Typing burst: 1,000 key events on the web ⁴        | no crash, no dropped input, ≤ 2 frames late | 1,000 of 1,000       |
 | Open a 10k-paragraph document → first paint        | < 50 ms                                     | layout 0.6 ms        |
-| Web bundle (core + StarterKit), gzipped            | < 350 KB                                    | 349.8 KB ³           |
+| Web bundle (core + StarterKit), gzipped            | < 350 KB                                    | 349.1 KB ³           |
 
 ¹ Pressing Enter grows slowly with document size, about 10 ns per block, because every later line moves down one row. It stays well under a frame at 100,000 blocks.
 
 ² Structural edits, such as splitting or joining blocks, cost time in proportion to the number of blocks beside them, because Yjs walks the list of siblings. Budgets use 10,000 top-level blocks.
 
-³ Measured as an app ships it: a Vite build of a page that creates an editor, minified and gzipped (336 KB of WebAssembly, 14 KB of script). CI fails above the budget. The module is optimized without inlining, which gzips smaller even though it is larger raw. Line breaking's Unicode data is 13.6 KB of it, and browsers offer no line-break segmenter to use instead.
+³ Measured as an app ships it: a Vite build of a page that creates an editor, minified and gzipped (335 KB of WebAssembly, 14 KB of script). CI fails above the budget. The module is optimized without inlining, which gzips smaller even though it is larger raw. Line breaking's Unicode data is 13.6 KB of it, and browsers offer no line-break segmenter to use instead.
 
 ⁴ Chromium / Firefox / WebKit on an Apple silicon Mac, measured by `editor.inputLatency()` in canvist's Playwright tests: from each input event's timestamp until the change is painted on the canvas, in the same task. Firefox and WebKit round timestamps to 1 ms. In the burst, every key is painted in its own task, so none waits for a later frame; the 95th percentile is 0.4 / 3 / 1 ms. The browser's Event Timing API also counts the wait for the next frame, and reports only events that took 16 ms or more, so it can't resolve an 8 ms budget. The tests record its slow entries beside these numbers.
 
