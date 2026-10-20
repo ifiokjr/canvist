@@ -260,7 +260,11 @@
 			"metrics": [
 				"raw",
 				"gzip"
-			]
+			],
+			"budget": {
+				"raw": 600000,
+				"gzip": 240000
+			}
 		},
 		{
 			"name": "libcanvist_ffi.so, Android x86_64",
@@ -271,7 +275,11 @@
 			"metrics": [
 				"raw",
 				"gzip"
-			]
+			],
+			"budget": {
+				"raw": 575000,
+				"gzip": 235000
+			}
 		}
 	]
 }
