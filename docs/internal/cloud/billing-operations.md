@@ -104,9 +104,26 @@ Against staging, in test mode, with the code from the annual plans PR. The setup
 | The same clock, 1 Dec                                                  | Only the monthly overage lines; the annual item runs to 1 November 2027                                                                                                         |
 | `POST /v1/billing/plan` from Scale annual to Builder                   | Items swapped to `canvist_builder_annual` and the monthly Builder overage prices; still billed yearly to 1 November 2027, the unused Scale time credited                        |
 
-**Known gap: cancelling an annual plan in the Portal.** The Portal cancels at the end of the period with `cancel_at_period_end`, which on a mixed-interval subscription means the earliest item's period end: the end of the current month, not the paid year (checked: an annual subscription paid to 1 November 2027 was set to cancel on 1 January 2027), and the Portal configuration does not prorate. Until the server moves such cancellations to `cancel_at=max_period_end`, cancel annual subscriptions by hand.
-
 The 10,000 synthetic MADs were sent straight to Stripe, not through canvist, to see the overage without creating 10,000 documents. The Checkout page itself was not completed: entering the test card is left to a person.
+
+### Cancelling an annual plan, checked on 2026-10-20
+
+Against staging, in test mode, through the Customer Portal's own pages, with a Builder annual subscription (`sub_1USPHmCmi4vRJir3DkkefafM`) on a test clock (`clock_1USPHkCmi4vRJir37OMCYoiq`) at 1 December 2026: the annual fee paid to 1 November 2027, the overage items in their December period.
+
+| Check                                             | Result                                                                                                                                                           |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The Portal's cancel review page                   | "Available until the end of your billing period on 1 November 2027"                                                                                              |
+| Cancelling                                        | `cancel_at` set to 1 November 2027, `cancel_at_period_end` left false, no proration; the annual item still runs to 1 November 2027                               |
+| "Don't cancel subscription"                       | `cancel_at` cleared; the annual item still runs to 1 November 2027                                                                                               |
+| Cancelled again, the clock run to 1 November 2027 | An overage invoice each month and no second annual fee; the subscription ended at 00:00 UTC on 1 November 2027, and the project returned to `hobby` (`canceled`) |
+
+The Portal ends a mixed-interval subscription with its latest-ending item, so canvist needs nothing of its own for annual cancellations.
+
+**Cancelling by hand.** Don't cancel an annual subscription with `cancel_at_period_end=true`, through the API or the Dashboard. On a mixed-interval subscription it ends at the earliest item's period end, the next monthly overage cycle; Stripe cuts the annual item's period to match and, under its default `proration_behavior`, credits the unused annual fee (checked: a credit of $239.87 for a subscription paid to 1 November 2027 and cancelled to 1 January 2027). Setting `cancel_at` later does not take the credit back. Cancel with `cancel_at=max_period_end` and `proration_behavior=none` instead, which is what the Portal does:
+
+```sh
+stripe subscriptions update sub_… -d cancel_at=max_period_end -d proration_behavior=none
+```
 
 ## Setting it up
 
