@@ -21,10 +21,10 @@ use crate::text::utf16_offset;
 #[uniffi::export]
 impl Editor {
 	/// The text blocks with rows between `top` and `bottom`, in document
-	/// order. Lay the area out with a frame first; blocks not laid out yet
-	/// have estimated bounds.
+	/// order. Blocks outside the viewport that were never laid out have
+	/// estimated bounds.
 	pub fn blocks(&self, top: f32, bottom: f32) -> Vec<BlockInfo> {
-		let session = self.lock();
+		let session = self.laid_out(&[]);
 		let doc = session.doc.document();
 
 		session
@@ -44,7 +44,7 @@ impl Editor {
 	/// The visual lines of text between `top` and `bottom`, in document
 	/// order, for reading line by line.
 	pub fn lines(&self, top: f32, bottom: f32) -> Vec<LineInfo> {
-		let session = self.lock();
+		let session = self.laid_out(&[]);
 		let mut lines = Vec::new();
 
 		for block in session.layout.blocks_between(top, bottom) {

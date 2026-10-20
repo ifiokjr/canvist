@@ -85,18 +85,19 @@ impl Editor {
 
 	/// The caret's rectangle at `offset`.
 	pub fn caret_rect(&self, offset: u32) -> Option<Bounds> {
-		self.lock().caret_rect(offset)
+		self.laid_out(&[offset]).caret_rect(offset)
 	}
 
 	/// Rectangles covering `range`, one or more per line.
 	pub fn selection_rects(&self, range: OffsetRange) -> Vec<Bounds> {
-		self.lock().selection_rects(range)
+		self.laid_out(&[range.start, range.end])
+			.selection_rects(range)
 	}
 
 	/// The first line's rectangle of `range`, where input methods place
 	/// candidate windows; the caret's for an empty range.
 	pub fn first_rect(&self, range: OffsetRange) -> Option<Bounds> {
-		let session = self.lock();
+		let session = self.laid_out(&[range.start]);
 		session
 			.selection_rects(range)
 			.into_iter()
@@ -106,7 +107,7 @@ impl Editor {
 
 	/// The offset nearest to `(x, y)`.
 	pub fn offset_at(&self, x: f32, y: f32) -> Option<u32> {
-		self.lock().offset_at(x, y)
+		self.laid_out(&[]).offset_at(x, y)
 	}
 
 	/// The word, run of spaces, or punctuation at `offset`.
@@ -171,7 +172,7 @@ impl Editor {
 	/// The selection's bounding box, for anchoring a toolbar or menu, or
 	/// `None` for a caret.
 	pub fn selection_bounds(&self) -> Option<Bounds> {
-		let session = self.lock();
+		let session = self.laid_out(&[]);
 		let selection = session.doc.selection();
 
 		if matches!(selection, Selection::Text { anchor, head } if anchor == head) {
@@ -187,7 +188,7 @@ impl Editor {
 	/// Whether `(x, y)` is on the selected text, where a long press offers
 	/// the edit menu rather than selecting a word.
 	pub fn is_in_selection(&self, x: f32, y: f32) -> bool {
-		let session = self.lock();
+		let session = self.laid_out(&[]);
 		let selection = session.selection().range();
 
 		if selection.start == selection.end {

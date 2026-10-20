@@ -326,6 +326,14 @@ impl Editor {
 		self.session.lock().unwrap_or_else(PoisonError::into_inner)
 	}
 
+	/// The session, laid out for geometry around `offsets` and the selection
+	/// (see [`Session::lay_out`]).
+	pub(crate) fn laid_out(&self, offsets: &[u32]) -> MutexGuard<'_, Session> {
+		let mut session = self.lock();
+		session.lay_out(offsets);
+		session
+	}
+
 	/// Run `call` on the session, then tell observers what changed, after
 	/// releasing the lock so they can call back in.
 	pub(crate) fn change<T>(&self, call: impl FnOnce(&mut Session) -> Result<T>) -> Result<T> {

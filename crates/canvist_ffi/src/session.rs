@@ -444,6 +444,33 @@ impl Session {
 		Ok(changed)
 	}
 
+	/// Lay out the viewport, the selection's blocks, and the blocks holding
+	/// `offsets`, so geometry describes the document as it is now: an edit
+	/// leaves the blocks it touched unmeasured until the next frame, and
+	/// platforms ask for the caret straight after typing. A measurer that
+	/// breaks its contract fails the next frame instead.
+	pub(crate) fn lay_out(&mut self, offsets: &[u32]) {
+		let selection = self.selection();
+		let mut spans = vec![(self.top, self.top + self.height)];
+
+		for &offset in offsets.iter().chain([&selection.anchor, &selection.head]) {
+			let block = self
+				.point(offset)
+				.and_then(|point| self.layout.block_rect(point.block));
+			spans.extend(block.map(|rect| (rect.y, rect.y + rect.height)));
+		}
+
+		for (top, bottom) in spans {
+			let laid_out = self
+				.layout
+				.ensure(self.doc.document(), &mut self.measurer, top, bottom);
+
+			if laid_out.is_err() {
+				return;
+			}
+		}
+	}
+
 	/// The caret rectangle at `offset`. At the selection's head the caret
 	/// keeps its affinity, so it shows at the end of a soft-wrapped line
 	/// when it got there from that line.

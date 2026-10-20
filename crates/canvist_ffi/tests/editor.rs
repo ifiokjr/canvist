@@ -660,3 +660,19 @@ fn tapping_a_checkbox_toggles_its_task() -> Result {
 	);
 	Ok(())
 }
+
+#[test]
+fn geometry_describes_the_document_straight_after_an_edit() -> Result {
+	let editor = editor("hello");
+	editor.frame()?;
+	editor.select(5, 5)?;
+
+	editor.insert_text(" world")?;
+	let before_frame = editor.caret_rect(11).expect("a caret");
+	editor.frame()?;
+	let after_frame = editor.caret_rect(11).expect("a caret");
+
+	assert_eq!(before_frame, after_frame);
+	assert!(before_frame.x > 0.0, "not at the block's start");
+	Ok(())
+}
