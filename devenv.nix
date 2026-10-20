@@ -300,6 +300,7 @@ in
         monostyle check platforms/dart --fail-under 90
         monostyle check services/cloud --fail-under 90
         monostyle check tools/footage --fail-under 90
+        monostyle check tools/bench --fail-under 90
       '';
       description = "Require readability and complexity scores of at least 90 for the v2 crates.";
       binary = "bash";

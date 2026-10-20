@@ -36,3 +36,6 @@ packages/canvist/wasm/package.json
 .ant-colony/
 .ant-colony/
 **/tests/playwright/screenshots/
+
+# benchmark and bundle-size measurements (tools/bench)
+/.bench/
