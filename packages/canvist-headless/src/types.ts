@@ -10,6 +10,8 @@
  *
  * @module
  */
+import type { core, starterKit } from "./extensions.generated.ts";
+
 /** The type of an argument, attribute, or query result. */
 export type ValueSpec =
 	| { readonly type: "bool" }
@@ -223,6 +225,17 @@ export interface DocJson<E extends Extensions> {
 
 /** A format documents are read from and written to. */
 export type Format = "json" | "html" | "markdown" | "text";
+
+/** The extensions every engine has, plus the ones it was created with. */
+export type Registered<E extends Extensions> = readonly [...typeof core, ...E];
+
+/** The extensions of TipTap's StarterKit. */
+export type StarterKit = typeof starterKit;
+
+/** A document to start from: text in a format, or ProseMirror JSON. */
+export type Content<E extends Extensions> =
+	| { readonly format: Format; readonly input: string }
+	| DocJson<Registered<E>>;
 
 /**
  * The StarterKit theme's options. The browser editor (`@canvist/web`) and

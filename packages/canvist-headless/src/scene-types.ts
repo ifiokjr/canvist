@@ -9,8 +9,7 @@
  *
  * @module
  */
-import type { Registered, StarterKit } from "./engine.ts";
-import type { DocJson } from "./types.ts";
+import type { DocJson, Registered, StarterKit } from "./types.ts";
 
 /** A colour as `#rrggbb` or `#rrggbbaa`. */
 export type HexColor = `#${string}`;
