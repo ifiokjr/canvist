@@ -49,8 +49,17 @@ jobs:
           mc "${args[@]}"
         shell: devenv shell -- bash -e {0}
 
+      # Right after a release `.changeset` is empty, and `mc preview` fails
+      # with nothing to preview. A pull request that changes no package needs
+      # no changeset; the step above already requires one for each package
+      # that changes.
       - name: preview the release
-        run: mc preview --format md
+        run: |
+          if compgen -G ".changeset/*.md" > /dev/null; then
+            mc preview --format md
+          else
+            echo "No changesets, so there is no release to preview."
+          fi
         shell: devenv shell -- bash -e {0}
 
       - name: website changelog receives only user-facing notes
