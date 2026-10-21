@@ -19,7 +19,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart' show expect, lessThanOrEqualTo;
 import 'package:patrol/patrol.dart';
 
-const _width = 360.0;
+/// Narrower than any phone, so the editor never overflows the screen.
+const _width = 300.0;
 const _fonts = CanvistFonts.only('Atkinson Hyperlegible');
 
 /// The share of pixels that may differ, for antialiasing at fractional

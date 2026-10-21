@@ -62,18 +62,19 @@ export const textStyle = {
 /** The `mention` extension. */
 export const mention = {
 	"commands": [
+		/** Replace the mention suggestion, or insert at the caret, with a mention and a space. */
 		{
 			"args": [
+				/** What the mention points at. */
 				{
-					"doc": "What the mention points at.",
 					"name": "id",
 					"type": {
 						"type": "string"
 					}
 				},
+				/** The text shown after the trigger character. */
 				{
 					"default": null,
-					"doc": "The text shown after the trigger character.",
 					"name": "label",
 					"type": {
 						"of": {
@@ -83,12 +84,11 @@ export const mention = {
 					}
 				}
 			],
-			"doc": "Replace the mention suggestion, or insert at the caret, with a mention and a space.",
 			"name": "insertMention"
 		},
+		/** Stop suggesting mentions until another trigger character is typed. */
 		{
 			"args": [],
-			"doc": "Stop suggesting mentions until another trigger character is typed.",
 			"name": "dismissMentionSuggestion"
 		}
 	],
@@ -96,9 +96,9 @@ export const mention = {
 	"nodes": [
 		{
 			"attrs": [
+				/** What the mention points at, such as a user id. */
 				{
 					"default": null,
-					"doc": "What the mention points at, such as a user id.",
 					"name": "id",
 					"type": {
 						"of": {
@@ -107,9 +107,9 @@ export const mention = {
 						"type": "nullable"
 					}
 				},
+				/** The text shown after the trigger character. */
 				{
 					"default": null,
-					"doc": "The text shown after the trigger character.",
 					"name": "label",
 					"type": {
 						"of": {
@@ -118,9 +118,9 @@ export const mention = {
 						"type": "nullable"
 					}
 				},
+				/** The character that started the mention. */
 				{
 					"default": "@",
-					"doc": "The character that started the mention.",
 					"name": "mentionSuggestionChar",
 					"type": {
 						"type": "string"
@@ -132,22 +132,22 @@ export const mention = {
 		}
 	],
 	"queries": [
+		/** The trigger character and the query typed after it, while a mention is suggested. */
 		{
 			"args": [],
-			"doc": "The trigger character and the query typed after it, while a mention is suggested.",
 			"name": "mentionSuggestion",
 			"returns": {
 				"of": {
 					"fields": [
+						/** The trigger character. */
 						{
-							"doc": "The trigger character.",
 							"name": "char",
 							"type": {
 								"type": "string"
 							}
 						},
+						/** The text typed after it. */
 						{
-							"doc": "The text typed after it.",
 							"name": "query",
 							"type": {
 								"type": "string"
@@ -1533,22 +1533,22 @@ export const placeholder = {
 /** The `hashtag` extension. */
 export const hashtag = {
 	"commands": [
+		/** Replace the hashtag suggestion, or insert at the caret, with `#tag` and a space. */
 		{
 			"args": [
+				/** The tag, with or without `#`. */
 				{
-					"doc": "The tag, with or without `#`.",
 					"name": "tag",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Replace the hashtag suggestion, or insert at the caret, with `#tag` and a space.",
 			"name": "insertHashtag"
 		},
+		/** Stop suggesting hashtags until another `#` is typed. */
 		{
 			"args": [],
-			"doc": "Stop suggesting hashtags until another `#` is typed.",
 			"name": "dismissHashtagSuggestion"
 		}
 	],
@@ -1556,9 +1556,9 @@ export const hashtag = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The tag, without `#`. */
 				{
 					"default": null,
-					"doc": "The tag, without `#`.",
 					"name": "tag",
 					"type": {
 						"of": {
@@ -1573,22 +1573,22 @@ export const hashtag = {
 		}
 	],
 	"queries": [
+		/** The trigger character and the query typed after it, while a hashtag is suggested. */
 		{
 			"args": [],
-			"doc": "The trigger character and the query typed after it, while a hashtag is suggested.",
 			"name": "hashtagSuggestion",
 			"returns": {
 				"of": {
 					"fields": [
+						/** The trigger character. */
 						{
-							"doc": "The trigger character.",
 							"name": "char",
 							"type": {
 								"type": "string"
 							}
 						},
+						/** The text typed after it. */
 						{
-							"doc": "The text typed after it.",
 							"name": "query",
 							"type": {
 								"type": "string"
@@ -1600,9 +1600,9 @@ export const hashtag = {
 				"type": "nullable"
 			}
 		},
+		/** Every tag in the document, sorted, without `#`. */
 		{
 			"args": [],
-			"doc": "Every tag in the document, sorted, without `#`.",
 			"name": "hashtags",
 			"returns": {
 				"of": {
@@ -1617,22 +1617,22 @@ export const hashtag = {
 /** The `emoji` extension. */
 export const emoji = {
 	"commands": [
+		/** Replace the emoji suggestion, or insert at the caret, with the emoji for a shortcode. */
 		{
 			"args": [
+				/** The shortcode, such as `smile`. */
 				{
-					"doc": "The shortcode, such as `smile`.",
 					"name": "name",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Replace the emoji suggestion, or insert at the caret, with the emoji for a shortcode.",
 			"name": "setEmoji"
 		},
+		/** Stop suggesting emoji until another `:` is typed. */
 		{
 			"args": [],
-			"doc": "Stop suggesting emoji until another `:` is typed.",
 			"name": "dismissEmojiSuggestion"
 		}
 	],
@@ -1640,9 +1640,9 @@ export const emoji = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The shortcode, such as `smile`. */
 				{
 					"default": null,
-					"doc": "The shortcode, such as `smile`.",
 					"name": "name",
 					"type": {
 						"of": {
@@ -1651,9 +1651,9 @@ export const emoji = {
 						"type": "nullable"
 					}
 				},
+				/** The emoji itself, so it draws without the table. */
 				{
 					"default": null,
-					"doc": "The emoji itself, so it draws without the table.",
 					"name": "emoji",
 					"type": {
 						"of": {
@@ -1668,22 +1668,22 @@ export const emoji = {
 		}
 	],
 	"queries": [
+		/** The trigger character and the query typed after it, while an emoji is suggested. */
 		{
 			"args": [],
-			"doc": "The trigger character and the query typed after it, while an emoji is suggested.",
 			"name": "emojiSuggestion",
 			"returns": {
 				"of": {
 					"fields": [
+						/** The trigger character. */
 						{
-							"doc": "The trigger character.",
 							"name": "char",
 							"type": {
 								"type": "string"
 							}
 						},
+						/** The text typed after it. */
 						{
-							"doc": "The text typed after it.",
 							"name": "query",
 							"type": {
 								"type": "string"
@@ -1695,38 +1695,38 @@ export const emoji = {
 				"type": "nullable"
 			}
 		},
+		/** Emoji whose shortcode contains the query, those starting with it first. */
 		{
 			"args": [
+				/** What to look for, such as `smi`. */
 				{
-					"doc": "What to look for, such as `smi`.",
 					"name": "query",
 					"type": {
 						"type": "string"
 					}
 				},
+				/** The most matches to return. */
 				{
 					"default": 10,
-					"doc": "The most matches to return.",
 					"name": "limit",
 					"type": {
 						"type": "int"
 					}
 				}
 			],
-			"doc": "Emoji whose shortcode contains the query, those starting with it first.",
 			"name": "searchEmoji",
 			"returns": {
 				"of": {
 					"fields": [
+						/** The shortcode. */
 						{
-							"doc": "The shortcode.",
 							"name": "name",
 							"type": {
 								"type": "string"
 							}
 						},
+						/** The emoji. */
 						{
-							"doc": "The emoji.",
 							"name": "emoji",
 							"type": {
 								"type": "string"

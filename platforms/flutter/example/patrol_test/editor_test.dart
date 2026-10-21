@@ -90,10 +90,16 @@ Offset _onScreen(
   controller.select(at);
   final caret = controller.view.caretRect!;
   final editor = $.tester.getTopLeft($(Keys.editor).finder);
+
+  return _fraction(
+    $,
+    editor + Offset(_padding + caret.x, _padding + caret.y + caret.height / 2),
+  );
+}
+
+/// A logical [point] on screen as the 0–1 fractions native gestures take.
+Offset _fraction(PatrolIntegrationTester $, Offset point) {
   final screen = $.tester.view.physicalSize / $.tester.view.devicePixelRatio;
-  final point =
-      editor +
-      Offset(_padding + caret.x, _padding + caret.y + caret.height / 2);
 
   return Offset(point.dx / screen.width, point.dy / screen.height);
 }
@@ -196,10 +202,14 @@ Future<void> _scrolls(PatrolIntegrationTester $) async {
     $(Keys.editor).$(Scrollable).finder,
   );
 
-  // The editor is focused, so start above a phone's on-screen keyboard.
+  // The editor is focused, and the app shrinks it above the on-screen
+  // keyboard: swipe within what is left of it, whatever the screen's size.
+  await $.pump(_relay);
+  final editor = $.tester.getRect($(Keys.editor).finder);
+
   await $.platform.mobile.swipe(
-    from: const Offset(0.5, 0.55),
-    to: const Offset(0.5, 0.3),
+    from: _fraction($, editor.topCenter + Offset(0, editor.height * 0.8)),
+    to: _fraction($, editor.topCenter + Offset(0, editor.height * 0.2)),
   );
   await $.pumpAndSettle();
 
