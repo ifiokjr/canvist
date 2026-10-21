@@ -20,9 +20,10 @@ canvist hasn't had its first release, and several platforms are still coming. Do
 | Design canvas                  | `@canvist/canvas` ([how](../quick-start/canvas.md))                                                                      | Yes           |
 | Desktop: macOS, Windows, Linux | `canvist_desktop` ([how](../quick-start/desktop.md))                                                                     | Yes           |
 | iOS                            | `Canvist` Swift package: `CanvistView` ([how](../quick-start/ios.md))                                                    | Yes           |
-| Android, React Native, Lynx    | None                                                                                                                     | No            |
+| Android                        | `canvist-android`: `CanvistView` ([how](../quick-start/android.md))                                                      | Yes           |
+| React Native, Lynx             | None                                                                                                                     | No            |
 
-If the user asks for a platform marked "No", say so. Offer the closest working path, such as Flutter for mobile or `@canvist/headless` on the server, rather than inventing `@canvist/react-native` or an Android `CanvistView`.
+If the user asks for a platform marked "No", say so. Offer the closest working path, such as Flutter for mobile or `@canvist/headless` on the server, rather than inventing `@canvist/react-native`.
 
 ## 2. The minimal integration, per platform
 
@@ -221,7 +222,7 @@ Give the model the document as Markdown or JSON, and the positions it needs, so 
 
 ## 6. Common pitfalls
 
-- **Inventing packages.** `@canvist/core`, `@canvist/ssr`, an Android `CanvistView`, and `@canvist/react-native` don't exist yet. Check section 1.
+- **Inventing packages.** `@canvist/core`, `@canvist/ssr`, and `@canvist/react-native` don't exist yet. Check section 1.
 - **Byte offsets.** Offsets count UTF-16 code units in every language, including Rust. An emoji is two units. Convert with `text[..byte].encode_utf16().count()` in Rust.
 - **Flat positions in nested blocks.** Text inside a list item lives at `[list, item, 0]`, not `[list]`. Selecting a container fails with `invalidPosition`.
 - **Running commands without a selection.** Commands apply to the selection. A new document's selection is at its start, which is rarely what you want.

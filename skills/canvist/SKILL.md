@@ -24,7 +24,7 @@ canvist has not had its first release. Nothing is on crates.io, npm, JSR, or pub
 | Server-side rendering    | `@canvist/headless/ssr`          | Part of `@canvist/headless`: `createRenderer({ theme }).html(content, { width })`                                                                                                           |
 | Design canvas            | `@canvist/canvas`                | In `packages/canvist-canvas`: `npm ci && npm run build:wasm && npm pack`; `mountCanvas(canvas, { scene })`                                                                                  |
 
-These **do not exist yet**: `@canvist/core`, `@canvist/ssr` (server rendering is `@canvist/headless/ssr`), `@canvist/react-native`, `@canvist/lynx`, or a native Android `CanvistView` (iOS has one: the `Canvist` Swift package). If asked for one, say it is coming soon and offer the closest working path (Flutter for mobile, `@canvist/headless` on the server, `@canvist/web` in a browser).
+These **do not exist yet**: `@canvist/core`, `@canvist/ssr` (server rendering is `@canvist/headless/ssr`), `@canvist/react-native`, or `@canvist/lynx`. If asked for one, say it is coming soon and offer the closest working path (Flutter for mobile, `@canvist/headless` on the server, `@canvist/web` in a browser).
 
 ## 2. Integrate
 
