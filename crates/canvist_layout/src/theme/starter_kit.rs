@@ -152,8 +152,12 @@ const SCRIPT_SCALE: f32 = 0.75;
 const SUBSCRIPT_SHIFT: f32 = -0.25;
 /// How far a superscript's baseline rises, in ems of its own size.
 const SUPERSCRIPT_SHIFT: f32 = 0.5;
-/// The default height of an image block.
+/// The default height of an image block, and of a video without a height.
 const IMAGE_HEIGHT: f32 = 12.5 * REM;
+/// The height of an audio player.
+const AUDIO_HEIGHT: f32 = 3.5 * REM;
+/// The height of a file attachment card.
+const FILE_HEIGHT: f32 = 4.0 * REM;
 
 /// How one heading level looks. Sizes and spacing are in rem.
 struct HeadingStyle {
@@ -288,7 +292,22 @@ fn block_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<BlockRule>
 	rules.extend(container_rules(palette));
 	rules.extend(code_and_leaf_rules(options, palette));
 	rules.extend(nested_list_rules());
+
+	if cfg!(feature = "theme-extensions") {
+		rules.extend(media_rules());
+	}
+
 	rules
+}
+
+/// Host-drawn media blocks beyond the StarterKit's images.
+fn media_rules() -> [BlockRule; 4] {
+	[
+		media_rule("youtube", IMAGE_HEIGHT),
+		media_rule("twitch", IMAGE_HEIGHT),
+		media_rule("audio", AUDIO_HEIGHT),
+		media_rule("file", FILE_HEIGHT),
+	]
 }
 
 /// Paragraphs and headings.
@@ -376,6 +395,18 @@ fn code_and_leaf_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<Bl
 				.tag("div"),
 		),
 	]
+}
+
+/// A host-drawn media block: a slot `height` tall unless its `height`
+/// attribute says otherwise.
+fn media_rule(name: &str, height: f32) -> BlockRule {
+	BlockRule::new(
+		name,
+		BlockPatch::new()
+			.leaf(LeafStyle::Slot { height })
+			.space(REM, REM)
+			.tag("div"),
+	)
 }
 
 /// Lists nested in list items take item spacing instead of list spacing.

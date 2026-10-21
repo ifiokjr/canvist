@@ -18,7 +18,7 @@ use canvist_editor::EditorState;
 use canvist_editor::position;
 use canvist_model::BlockId;
 use canvist_model::BlockTypeId;
-#[cfg(any(feature = "emoji", feature = "mention"))]
+#[cfg(any(feature = "mention", feature = "emoji"))]
 use canvist_model::EmbedTypeId;
 use canvist_model::MarkTypeId;
 use canvist_model::Selection;
@@ -43,7 +43,7 @@ pub(crate) fn mark(
 }
 
 /// The embed type `name`, which extension `extension` needs.
-#[cfg(any(feature = "emoji", feature = "mention"))]
+#[cfg(any(feature = "mention", feature = "emoji"))]
 pub(crate) fn embed(
 	state: &EditorState,
 	extension: &'static str,

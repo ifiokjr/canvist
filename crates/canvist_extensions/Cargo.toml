@@ -6,7 +6,7 @@ categories.workspace = true
 documentation = "https://docs.rs/canvist_extensions"
 edition.workspace = true
 homepage.workspace = true
-# The emoji table and its licence are data the `emoji` feature compiles in.
+# The emoji table and its licence are data the `emoji-data` feature compiles in.
 include = [
 	"Cargo.toml",
 	"license",
@@ -42,13 +42,17 @@ starter-kit = [
 	"trailing-node",
 	"underline",
 ]
-# Every extension in the crate.
-full = [
+# Every extension in the crate, with the emoji table compiled in.
+full = ["extras", "emoji-data"]
+# Every extension in the crate; `emoji` without its table, which
+# `emoji::load` supplies at runtime.
+extras = [
 	"starter-kit",
 	"character-count",
 	"emoji",
 	"hashtag",
 	"highlight",
+	"media",
 	"mention",
 	"placeholder",
 	"subscript",
@@ -76,6 +80,8 @@ code = []
 code-block = []
 color = ["text-style"]
 emoji = []
+# The gemoji table, compiled in.
+emoji-data = ["emoji"]
 font-family = ["text-style"]
 font-size = ["text-style"]
 hard-break = []
@@ -88,6 +94,13 @@ italic = []
 line-height = ["text-style"]
 link = []
 list-item = []
+# Images, YouTube and Twitch videos, audio, and file attachments.
+media = ["audio", "file", "image", "twitch", "youtube"]
+audio = []
+file = []
+image = []
+twitch = []
+youtube = []
 mention = []
 ordered-list = ["list-item"]
 placeholder = []
@@ -104,13 +117,13 @@ underline = []
 [dependencies]
 canvist_editor = { workspace = true }
 canvist_model = { workspace = true }
+serde_json = { workspace = true, features = ["std"] }
 unicode-segmentation = { workspace = true, optional = true }
 
 [dev-dependencies]
 divan = { workspace = true }
 insta = { workspace = true, features = ["json"] }
 proptest = { workspace = true, features = ["std"] }
-serde_json = { workspace = true, features = ["std"] }
 
 [[bench]]
 name = "keystroke"

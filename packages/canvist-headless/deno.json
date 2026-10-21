@@ -5,6 +5,7 @@
 	"exports": {
 		".": "./src/mod.ts",
 		"./extensions": "./src/extensions.generated.ts",
+		"./full": "./src/full.ts",
 		"./scene": "./src/scene.ts",
 		"./ssr": "./src/ssr.ts"
 	},
@@ -14,6 +15,9 @@
 			"wasm/*.js",
 			"wasm/*.d.ts",
 			"wasm/*.wasm",
+			"wasm-full/*.js",
+			"wasm-full/*.d.ts",
+			"wasm-full/*.wasm",
 			"wasm-scene/*.js",
 			"wasm-scene/*.d.ts",
 			"wasm-scene/*.wasm",
@@ -22,7 +26,7 @@
 			"wasm-ssr/*.wasm",
 			"readme.md"
 		],
-		"exclude": ["!wasm/", "!wasm-scene/", "!wasm-ssr/"]
+		"exclude": ["!wasm/", "!wasm-full/", "!wasm-scene/", "!wasm-ssr/"]
 	},
 	"tasks": {
 		"test": "deno test --allow-read --allow-net --allow-env tests/ examples/",

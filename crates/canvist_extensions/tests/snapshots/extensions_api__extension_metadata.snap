@@ -1673,6 +1673,520 @@ expression: editor.metadata_json()
     ]
   },
   {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The image URL.",
+            "name": "src",
+            "type": {
+              "type": "string"
+            }
+          },
+          {
+            "default": null,
+            "doc": "Text describing the image, for screen readers.",
+            "name": "alt",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "A title shown on hover.",
+            "name": "title",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "The width in pixels.",
+            "name": "width",
+            "type": {
+              "of": {
+                "type": "float"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "The height in pixels.",
+            "name": "height",
+            "type": {
+              "of": {
+                "type": "float"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "doc": "Insert an image at the selection.",
+        "name": "setImage"
+      }
+    ],
+    "name": "image",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The image URL.",
+            "name": "src",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "Text describing the image, for screen readers.",
+            "name": "alt",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "A title shown on hover.",
+            "name": "title",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "The width in pixels.",
+            "name": "width",
+            "type": {
+              "of": {
+                "type": "float"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "The height in pixels.",
+            "name": "height",
+            "type": {
+              "of": {
+                "type": "float"
+              },
+              "type": "nullable"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "image"
+      }
+    ],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The video URL.",
+            "name": "src",
+            "type": {
+              "type": "string"
+            }
+          },
+          {
+            "default": 0,
+            "doc": "Where playback starts, in seconds.",
+            "name": "start",
+            "type": {
+              "type": "float"
+            }
+          },
+          {
+            "default": 640,
+            "doc": "The width in pixels.",
+            "name": "width",
+            "type": {
+              "type": "float"
+            }
+          },
+          {
+            "default": 480,
+            "doc": "The height in pixels.",
+            "name": "height",
+            "type": {
+              "type": "float"
+            }
+          }
+        ],
+        "doc": "Insert a YouTube video at the selection.",
+        "name": "setYoutubeVideo"
+      }
+    ],
+    "name": "youtube",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The video URL.",
+            "name": "src",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": 0,
+            "doc": "Where playback starts, in seconds.",
+            "name": "start",
+            "type": {
+              "type": "float"
+            }
+          },
+          {
+            "default": 640,
+            "doc": "The width in pixels.",
+            "name": "width",
+            "type": {
+              "type": "float"
+            }
+          },
+          {
+            "default": 480,
+            "doc": "The height in pixels.",
+            "name": "height",
+            "type": {
+              "type": "float"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "youtube"
+      }
+    ],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The video, clip, or channel URL.",
+            "name": "src",
+            "type": {
+              "type": "string"
+            }
+          },
+          {
+            "default": 640,
+            "doc": "The width in pixels.",
+            "name": "width",
+            "type": {
+              "type": "float"
+            }
+          },
+          {
+            "default": 480,
+            "doc": "The height in pixels.",
+            "name": "height",
+            "type": {
+              "type": "float"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Start playing straight away.",
+            "name": "autoplay",
+            "type": {
+              "type": "bool"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Start muted.",
+            "name": "muted",
+            "type": {
+              "type": "bool"
+            }
+          }
+        ],
+        "doc": "Insert a Twitch video, clip, or channel at the selection.",
+        "name": "setTwitchVideo"
+      }
+    ],
+    "name": "twitch",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The video, clip, or channel URL.",
+            "name": "src",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": 640,
+            "doc": "The width in pixels.",
+            "name": "width",
+            "type": {
+              "type": "float"
+            }
+          },
+          {
+            "default": 480,
+            "doc": "The height in pixels.",
+            "name": "height",
+            "type": {
+              "type": "float"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Start playing straight away.",
+            "name": "autoplay",
+            "type": {
+              "type": "bool"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Start muted.",
+            "name": "muted",
+            "type": {
+              "type": "bool"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "twitch"
+      }
+    ],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The audio URL.",
+            "name": "src",
+            "type": {
+              "type": "string"
+            }
+          },
+          {
+            "default": true,
+            "doc": "Show playback controls.",
+            "name": "controls",
+            "type": {
+              "type": "bool"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Start playing straight away.",
+            "name": "autoplay",
+            "type": {
+              "type": "bool"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Play again from the start when it ends.",
+            "name": "loop",
+            "type": {
+              "type": "bool"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Start muted.",
+            "name": "muted",
+            "type": {
+              "type": "bool"
+            }
+          }
+        ],
+        "doc": "Insert an audio player at the selection.",
+        "name": "setAudio"
+      }
+    ],
+    "name": "audio",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "The audio URL.",
+            "name": "src",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": true,
+            "doc": "Show playback controls.",
+            "name": "controls",
+            "type": {
+              "type": "bool"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Start playing straight away.",
+            "name": "autoplay",
+            "type": {
+              "type": "bool"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Play again from the start when it ends.",
+            "name": "loop",
+            "type": {
+              "type": "bool"
+            }
+          },
+          {
+            "default": false,
+            "doc": "Start muted.",
+            "name": "muted",
+            "type": {
+              "type": "bool"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "audio"
+      }
+    ],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "Where the file can be downloaded.",
+            "name": "url",
+            "type": {
+              "type": "string"
+            }
+          },
+          {
+            "default": null,
+            "doc": "The file's name, such as `report.pdf`.",
+            "name": "fileName",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "The file's media type, such as `application/pdf`.",
+            "name": "fileType",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": 0,
+            "doc": "The file's size in bytes.",
+            "name": "fileSize",
+            "type": {
+              "type": "float"
+            }
+          }
+        ],
+        "doc": "Insert a file attachment at the selection.",
+        "name": "insertFile"
+      }
+    ],
+    "name": "file",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": null,
+            "doc": "Where the file can be downloaded.",
+            "name": "url",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "The file's name, such as `report.pdf`.",
+            "name": "fileName",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": null,
+            "doc": "The file's media type, such as `application/pdf`.",
+            "name": "fileType",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "nullable"
+            }
+          },
+          {
+            "default": 0,
+            "doc": "The file's size in bytes.",
+            "name": "fileSize",
+            "type": {
+              "type": "float"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "file"
+      }
+    ],
+    "queries": []
+  },
+  {
     "commands": [],
     "name": "typography",
     "nodes": [],

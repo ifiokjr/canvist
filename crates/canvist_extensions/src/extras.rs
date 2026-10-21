@@ -39,5 +39,10 @@ pub fn extras() -> Vec<Arc<dyn Extension>> {
 		Arc::new(crate::Mention::default()),
 		Arc::new(crate::Hashtag),
 		Arc::new(crate::Emoji),
+		Arc::new(crate::Image),
+		Arc::new(crate::Youtube),
+		Arc::new(crate::Twitch),
+		Arc::new(crate::Audio),
+		Arc::new(crate::File),
 	]
 }

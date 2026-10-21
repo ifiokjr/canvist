@@ -1,11 +1,13 @@
 /**
- * The typed engine and document.
+ * The typed engine and document, over either WebAssembly module: the
+ * StarterKit one `@canvist/headless` loads, or the one with every extension
+ * `@canvist/headless/full` loads. Both export the same classes.
  *
  * @module
  */
-import { WasmDoc, WasmEngine } from "../wasm/canvist_headless_wasm.js";
-import { core, starterKit } from "./extensions.generated.ts";
-import { load, type WasmSource } from "./load.ts";
+import type { WasmDoc, WasmEngine } from "../wasm/canvist_headless_wasm.js";
+import { core, type starterKit } from "./extensions.generated.ts";
+import type { WasmSource } from "./load.ts";
 import type {
 	CommandName,
 	CommandParams,
@@ -34,7 +36,7 @@ export type Content<E extends Extensions> =
 	| { readonly format: Format; readonly input: string }
 	| DocJson<Registered<E>>;
 
-/** Options for {@link createEngine}. */
+/** Options for `createEngine`. */
 export interface EngineOptions {
 	/** The client block ids are allocated under; collaborating peers need distinct ones. Default 1. */
 	readonly client?: number;
@@ -72,40 +74,15 @@ export interface Validation {
 	readonly waiting: boolean;
 }
 
-/**
- * Load canvist and create an engine with the given extensions, the
- * StarterKit by default. The engine's documents only offer the registered
- * extensions' commands, queries, blocks, and marks, so using another one
- * is a type error.
- *
- * ```ts
- * const engine = await createEngine([bold, heading]);
- * const doc = engine.parse("markdown", "Hello");
- * doc.selectAll();
- * doc.commands.toggleBold();
- * doc.commands.toggleItalic(); // type error: italic is not registered
- * ```
- */
-export async function createEngine<const E extends Extensions = StarterKit>(
-	extensions?: E,
-	options: EngineOptions = {},
-): Promise<Engine<E>> {
-	await load(options.wasm);
-	return new Engine((extensions ?? starterKit) as E, options.client ?? 1);
-}
-
-/** A set of extensions that creates documents. Create one with {@link createEngine}. */
+/** A set of extensions that creates documents. Create one with `createEngine`. */
 export class Engine<E extends Extensions> {
 	readonly #wasm: WasmEngine;
 	readonly #extensions: Registered<E>;
 
-	/** @internal Use {@link createEngine}, which loads the WebAssembly module first. */
-	constructor(extensions: E, client: number) {
+	/** @internal Use `createEngine`, which loads the WebAssembly module first. */
+	constructor(wasm: WasmEngine, extensions: E) {
 		this.#extensions = [...core, ...extensions];
-		this.#wasm = new WasmEngine(
-			extensions.map((extension) => extension.name),
-			client,
-		);
+		this.#wasm = wasm;
 	}
 
 	/** The registered extensions, including the ones every engine has. */

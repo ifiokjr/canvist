@@ -17,7 +17,7 @@ import {
 	hashtag,
 	isCanvistError,
 	mention,
-} from "../src/mod.ts";
+} from "../src/full.ts";
 
 const atoms = [mention, hashtag, emoji] as const;
 
@@ -116,10 +116,7 @@ test("an engine offers only the atoms it registered", async () => {
 	doc.typeText(":smile: #tag ");
 	assert.equal(doc.export("html"), "<p>:smile: #tag </p>");
 
-	const metadata = engine.metadata() as {
-		name: string;
-		nodes: { name: string; attrs: { name: string }[] }[];
-	}[];
+	const metadata = engine.metadata();
 	const node = metadata.find((extension) => extension.name === "mention")
 		?.nodes[0];
 	assert.equal(node?.name, "mention");

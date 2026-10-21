@@ -205,9 +205,45 @@ fn flush_paragraph(build: &mut Builder<'_>, paragraph: &mut Vec<&str>, trees: &m
 		return;
 	}
 
-	let inline = parse_inline(build, &paragraph.join("\n"));
-	trees.push(build.text("paragraph", Attrs::new(), inline));
+	let source = paragraph.join("\n");
+	let image = cfg!(feature = "image")
+		.then(|| image(&source))
+		.flatten()
+		.and_then(|attrs| build.leaf("image", &attrs));
+	let tree = image.unwrap_or_else(|| {
+		let inline = parse_inline(build, &source);
+		build.text("paragraph", Attrs::new(), inline)
+	});
+
+	trees.push(tree);
 	paragraph.clear();
+}
+
+/// The attributes of a paragraph that is only an image, `![alt](src
+/// "title")`, which reads as an image block.
+fn image(source: &str) -> Option<Attrs> {
+	let rest = source.trim().strip_prefix("![")?;
+	let (alt, rest) = rest.split_once("](")?;
+	let target = rest.strip_suffix(')')?;
+	let (src, title) = match target.split_once(char::is_whitespace) {
+		Some((src, title)) => (src, Some(title.trim().trim_matches(['"', '\'']))),
+		None => (target, None),
+	};
+
+	if src.is_empty() || src.contains(char::is_whitespace) || alt.contains(']') {
+		return None;
+	}
+
+	let text = |text: Option<&str>| {
+		text.filter(|text| !text.is_empty())
+			.map_or(Value::Null, Value::from)
+	};
+	Some(
+		Attrs::new()
+			.with("src", src)
+			.with("alt", text(Some(alt)))
+			.with("title", text(title)),
+	)
 }
 
 /// Parse the block starting at `lines[0]`, returning how many lines it
@@ -227,7 +263,13 @@ fn block_at(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>) 
 	}
 
 	if is_rule(line) {
-		return (1, build.leaf("horizontalRule").into_iter().collect());
+		return (
+			1,
+			build
+				.leaf("horizontalRule", &Attrs::new())
+				.into_iter()
+				.collect(),
+		);
 	}
 
 	if quote(line).is_some() {

@@ -14,20 +14,24 @@ use canvist_editor::Editor;
 use canvist_editor::EditorError;
 use canvist_editor::Env;
 use canvist_extensions::Alignment;
+use canvist_extensions::Audio;
 use canvist_extensions::BackgroundColor;
 use canvist_extensions::CharacterCount;
 use canvist_extensions::CharacterCountHandle;
 use canvist_extensions::Color;
 use canvist_extensions::Emoji;
 use canvist_extensions::EmojiHandle;
+use canvist_extensions::File;
 use canvist_extensions::FontFamily;
 use canvist_extensions::FontSize;
 use canvist_extensions::Hashtag;
 use canvist_extensions::HashtagHandle;
 use canvist_extensions::Highlight;
 use canvist_extensions::HighlightHandle;
+use canvist_extensions::Image;
 use canvist_extensions::LineHeight;
 use canvist_extensions::MarkHandle;
+use canvist_extensions::MediaHandle;
 use canvist_extensions::Mention;
 use canvist_extensions::MentionHandle;
 use canvist_extensions::MentionTarget;
@@ -41,7 +45,9 @@ use canvist_extensions::TextAlign;
 use canvist_extensions::TextAlignHandle;
 use canvist_extensions::TextStyle;
 use canvist_extensions::TextStyleHandle;
+use canvist_extensions::Twitch;
 use canvist_extensions::Typography;
+use canvist_extensions::Youtube;
 use canvist_model::Attrs;
 use insta::assert_json_snapshot;
 use support::Typist;
@@ -64,6 +70,11 @@ struct Extras {
 	mention: MentionHandle,
 	hashtag: HashtagHandle,
 	emoji: EmojiHandle,
+	image: MediaHandle,
+	youtube: MediaHandle,
+	twitch: MediaHandle,
+	audio: MediaHandle,
+	file: MediaHandle,
 }
 
 /// The StarterKit plus every other extension, built through the typed path.
@@ -86,6 +97,11 @@ fn full() -> (Editor, Extras) {
 		mention: builder.add(Mention::default()),
 		hashtag: builder.add(Hashtag),
 		emoji: builder.add(Emoji),
+		image: builder.add(Image),
+		youtube: builder.add(Youtube),
+		twitch: builder.add(Twitch),
+		audio: builder.add(Audio),
+		file: builder.add(File),
 	};
 	builder.add(Typography::default());
 
@@ -273,6 +289,42 @@ fn typed_handles_and_named_commands_agree() {
 		&none,
 	);
 	same_as_named(|kit| kit.emoji.dismiss(), "dismissEmojiSuggestion", &none);
+	same_as_named(
+		|kit| {
+			kit.image
+				.insert("cat.png", &Attrs::new().with("alt", "A cat"))
+		},
+		"setImage",
+		&Attrs::new().with("src", "cat.png").with("alt", "A cat"),
+	);
+	same_as_named(
+		|kit| {
+			kit.youtube
+				.insert("https://youtu.be/x", &Attrs::new().with("start", 30))
+		},
+		"setYoutubeVideo",
+		&Attrs::new()
+			.with("src", "https://youtu.be/x")
+			.with("start", 30),
+	);
+	same_as_named(
+		|kit| kit.twitch.insert("https://twitch.tv/x", &Attrs::new()),
+		"setTwitchVideo",
+		&Attrs::new().with("src", "https://twitch.tv/x"),
+	);
+	same_as_named(
+		|kit| kit.audio.insert("a.mp3", &Attrs::new().with("loop", true)),
+		"setAudio",
+		&Attrs::new().with("src", "a.mp3").with("loop", true),
+	);
+	same_as_named(
+		|kit| {
+			kit.file
+				.insert("r.pdf", &Attrs::new().with("fileName", "r.pdf"))
+		},
+		"insertFile",
+		&Attrs::new().with("url", "r.pdf").with("fileName", "r.pdf"),
+	);
 }
 
 #[test]

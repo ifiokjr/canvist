@@ -2,7 +2,7 @@
 //!
 //! Schema items are compiled in (architecture Decision 7), so a binding
 //! carries every StarterKit extension, plus every other extension with the
-//! `full` feature, and its host language chooses which ones an engine
+//! `extras` feature, and its host language chooses which ones an engine
 //! registers. The names are the extension names in the metadata.
 
 use canvist_editor::BaseKeymap;
@@ -57,9 +57,9 @@ const STARTER_KIT: [&str; 17] = [
 	"trailingNode",
 ];
 
-/// Extensions beyond the StarterKit, compiled with the `full` feature.
-#[cfg(feature = "full")]
-const EXTRA: [&str; 16] = [
+/// Extensions beyond the StarterKit, compiled with the `extras` feature.
+#[cfg(feature = "extras")]
+const EXTRA: [&str; 21] = [
 	"subscript",
 	"superscript",
 	"highlight",
@@ -76,9 +76,14 @@ const EXTRA: [&str; 16] = [
 	"mention",
 	"hashtag",
 	"emoji",
+	"image",
+	"youtube",
+	"twitch",
+	"audio",
+	"file",
 ];
 
-#[cfg(not(feature = "full"))]
+#[cfg(not(feature = "extras"))]
 const EXTRA: [&str; 0] = [];
 
 /// Marks inline code excludes when they are registered, as the StarterKit
@@ -213,16 +218,19 @@ impl Extensions {
 }
 
 /// Register one of the extensions beyond the StarterKit.
-#[cfg(feature = "full")]
+#[cfg(feature = "extras")]
 fn register_extra(builder: &mut EditorBuilder, name: &str) {
+	use canvist_extensions::Audio;
 	use canvist_extensions::BackgroundColor;
 	use canvist_extensions::CharacterCount;
 	use canvist_extensions::Color;
 	use canvist_extensions::Emoji;
+	use canvist_extensions::File;
 	use canvist_extensions::FontFamily;
 	use canvist_extensions::FontSize;
 	use canvist_extensions::Hashtag;
 	use canvist_extensions::Highlight;
+	use canvist_extensions::Image;
 	use canvist_extensions::LineHeight;
 	use canvist_extensions::Mention;
 	use canvist_extensions::Placeholder;
@@ -230,7 +238,9 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 	use canvist_extensions::Superscript;
 	use canvist_extensions::TextAlign;
 	use canvist_extensions::TextStyle;
+	use canvist_extensions::Twitch;
 	use canvist_extensions::Typography;
+	use canvist_extensions::Youtube;
 
 	match name {
 		"subscript" => {
@@ -281,11 +291,26 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 		"emoji" => {
 			builder.add(Emoji);
 		}
+		"image" => {
+			builder.add(Image);
+		}
+		"youtube" => {
+			builder.add(Youtube);
+		}
+		"twitch" => {
+			builder.add(Twitch);
+		}
+		"audio" => {
+			builder.add(Audio);
+		}
+		"file" => {
+			builder.add(File);
+		}
 		_ => unreachable!("`Extensions::parse` admits only known names"),
 	}
 }
 
-#[cfg(not(feature = "full"))]
+#[cfg(not(feature = "extras"))]
 fn register_extra(_builder: &mut EditorBuilder, _name: &str) {
 	unreachable!("`Extensions::parse` admits only known names");
 }

@@ -1059,6 +1059,7 @@ dependencies = [
 name = "canvist_headless_wasm"
 version = "0.1.0"
 dependencies = [
+ "canvist_extensions",
  "canvist_headless",
  "js-sys",
  "serde_json",

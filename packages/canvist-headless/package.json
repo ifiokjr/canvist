@@ -23,6 +23,10 @@
 			"types": "./dist/extensions.generated.d.ts",
 			"default": "./dist/extensions.generated.js"
 		},
+		"./full": {
+			"types": "./dist/full.d.ts",
+			"default": "./dist/full.js"
+		},
 		"./scene": {
 			"types": "./dist/scene.d.ts",
 			"default": "./dist/scene.js"
@@ -32,6 +36,7 @@
 			"default": "./dist/ssr.js"
 		},
 		"./wasm/canvist_headless_wasm_bg.wasm": "./wasm/canvist_headless_wasm_bg.wasm",
+		"./wasm-full/canvist_headless_full_bg.wasm": "./wasm-full/canvist_headless_full_bg.wasm",
 		"./wasm-scene/canvist_headless_scene_bg.wasm": "./wasm-scene/canvist_headless_scene_bg.wasm",
 		"./wasm-ssr/canvist_headless_ssr_bg.wasm": "./wasm-ssr/canvist_headless_ssr_bg.wasm"
 	},
@@ -40,6 +45,9 @@
 		"wasm/*.js",
 		"wasm/*.d.ts",
 		"wasm/*.wasm",
+		"wasm-full/*.js",
+		"wasm-full/*.d.ts",
+		"wasm-full/*.wasm",
 		"wasm-scene/*.js",
 		"wasm-scene/*.d.ts",
 		"wasm-scene/*.wasm",
@@ -51,8 +59,9 @@
 		"node": ">=22"
 	},
 	"scripts": {
-		"build:wasm": "npm run build:wasm:document && npm run build:wasm:scene && npm run build:wasm:ssr",
+		"build:wasm": "npm run build:wasm:document && npm run build:wasm:full && npm run build:wasm:scene && npm run build:wasm:ssr",
 		"build:wasm:document": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm --no-pack && rm packages/canvist-headless/wasm/.gitignore",
+		"build:wasm:full": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm-full --out-name canvist_headless_full --no-pack -- --features full && rm packages/canvist-headless/wasm-full/.gitignore",
 		"build:wasm:scene": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm-scene --out-name canvist_headless_scene --no-pack -- --features scene && rm packages/canvist-headless/wasm-scene/.gitignore",
 		"build:wasm:ssr": "cd ../.. && wasm-pack build crates/canvist_headless_wasm --target web --profile wasm-release --out-dir ../../packages/canvist-headless/wasm-ssr --out-name canvist_headless_ssr --no-pack -- --features ssr && rm packages/canvist-headless/wasm-ssr/.gitignore",
 		"generate": "node scripts/generate.ts",
