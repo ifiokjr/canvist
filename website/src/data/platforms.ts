@@ -1,6 +1,7 @@
 /**
  * The seven hosts and where each one stands, from docs/src/quick-start/readme.md.
- * Keep the status lines honest: only the v1 web editor runs today.
+ * Keep the status lines honest: say live only for hosts whose tests run on
+ * every change.
  */
 export type PlatformId =
 	| "web"
@@ -32,8 +33,8 @@ export const platforms: Platform[] = [
 		id: "desktop",
 		name: "Desktop",
 		how: "a winit window painted with vello",
-		status: "planned",
-		statusText: "M5",
+		status: "live",
+		statusText: "available · macOS, Windows, Linux",
 	},
 	{
 		id: "ios",
