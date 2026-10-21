@@ -19,6 +19,7 @@ on:
       - "crates/canvist_headless/**"
       - "platforms/**"
       - "rust-toolchain.toml"
+      - "tools/bench/size.json"
   push:
     branches:
       - main
@@ -60,6 +61,18 @@ jobs:
       - name: test swift package and sample app
         timeout-minutes: 25
         run: platforms/apple/test.sh
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Budgets only: the native builds run on few pull requests, so there is
+      # no base to compare with. `bench / bundle size` tracks the host library.
+      - name: native library sizes
+        run: |
+          node tools/bench/size.ts measure --root . --groups apple --out "$RUNNER_TEMP/sizes.json"
+          node tools/bench/size.ts compare --head "$RUNNER_TEMP/sizes.json" --title "native size: iOS"
 
       - name: test flutter on ios
         timeout-minutes: 20
@@ -125,6 +138,16 @@ jobs:
       - name: build android library
         timeout-minutes: 15
         run: platforms/android/build.sh
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: native library sizes
+        run: |
+          node tools/bench/size.ts measure --root . --groups android --out "$RUNNER_TEMP/sizes.json"
+          node tools/bench/size.ts compare --head "$RUNNER_TEMP/sizes.json" --title "native size: Android"
 
       - name: test on emulator
         timeout-minutes: 35

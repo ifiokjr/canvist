@@ -1,0 +1,173 @@
+name: "bench"
+
+# `bench / bundle size`: every shipped artifact's raw, gzipped, and brotli
+# size against the budgets in `tools/bench/size.json` and against the base.
+# A required check; see docs/src/guides/performance.md for how to read it and
+# raise a budget.
+#
+# Builds are deterministic, so measurements are cached by tree: every push to
+# `main` records a baseline its pull requests compare with, and a label change
+# on a pull request re-judges the cached head without rebuilding.
+on:
+  # Dispatched by hand on the release pull request: GITHUB_TOKEN opens it,
+  # and GitHub starts no pull_request workflows for that.
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  # Every pull request, including stacked ones, and again when a label such
+  # as `size-increase-approved` is added or removed. No `paths` filter: a
+  # required check must always report.
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: bench-size-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  size:
+    name: bundle size
+    timeout-minutes: 60
+    runs-on: ubuntu-24.04
+    env:
+      SIZES: .bench/sizes.json
+      BASE_SIZES: .bench/base-sizes.json
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: find the base
+        id: revs
+        run: |
+          echo "base=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
+          echo "base-tree=$(git rev-parse 'HEAD^1^{tree}')" >> "$GITHUB_OUTPUT"
+          echo "head-tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install the rust toolchain
+        run: rustup toolchain install
+
+      - name: test the bench tools
+        run: node --test 'tools/bench/tests/*.test.ts'
+
+      - name: pick the affected artifact groups
+        id: plan
+        run: node tools/bench/size.ts plan --base "${{ steps.revs.outputs.base }}" ${{ github.event_name != 'pull_request' && '--all' || '' }}
+
+      - name: restore the base's measurement
+        id: base-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.SIZES }}
+          key: bench-size-${{ steps.revs.outputs.base-tree }}
+
+      - name: set the base's measurement aside
+        if: steps.base-cache.outputs.cache-hit == 'true'
+        run: mv "$SIZES" "$BASE_SIZES"
+
+      - name: restore the head's measurement
+        id: head-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.SIZES }}
+          key: bench-size-${{ steps.revs.outputs.head-tree }}
+
+      - name: decide what to build
+        id: need
+        run: |
+          build=false
+          base=false
+          if [ "${{ steps.head-cache.outputs.cache-hit }}" != true ] && [ -n "${{ steps.plan.outputs.groups }}" ]; then
+            build=true
+          fi
+          # Pull requests build their base when `main` recorded no baseline;
+          # pushes to `main` record one and only check budgets without it.
+          if [ "${{ steps.base-cache.outputs.cache-hit }}" != true ] && [ "${{ github.event_name }}" = pull_request ] && [ -n "${{ steps.plan.outputs.groups }}" ]; then
+            base=true
+          fi
+          echo "build=$build" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+
+      - name: install the wasm target
+        if: steps.need.outputs.build == 'true' || steps.need.outputs.base == 'true'
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: cache rust
+        if: steps.need.outputs.build == 'true' || steps.need.outputs.base == 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: bench-size
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: install wasm-pack
+        if: steps.need.outputs.build == 'true' || steps.need.outputs.base == 'true'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: install deno
+        if: steps.need.outputs.build == 'true' || steps.need.outputs.base == 'true'
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: build and measure the head
+        if: steps.need.outputs.build == 'true'
+        run: |
+          groups="${{ steps.plan.outputs.groups }}"
+          node tools/bench/size.ts build --root . --groups "$groups"
+          node tools/bench/size.ts measure --root . --groups "$groups" --out "$SIZES"
+
+      - name: record that nothing was rebuilt
+        if: steps.head-cache.outputs.cache-hit != 'true' && steps.need.outputs.build != 'true'
+        run: node tools/bench/size.ts measure --root . --groups "" --out "$SIZES"
+
+      - name: cache the head's measurement
+        if: steps.head-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.SIZES }}
+          key: bench-size-${{ steps.revs.outputs.head-tree }}
+
+      # The head's tools build the base, so a group the base can't build yet
+      # (one this pull request adds) only loses its comparison.
+      - name: build and measure the base
+        if: steps.need.outputs.base == 'true'
+        continue-on-error: true
+        run: |
+          base="$RUNNER_TEMP/base"
+          groups="${{ steps.plan.outputs.groups }}"
+          git worktree add --detach "$base" "${{ steps.revs.outputs.base }}"
+          mkdir -p target
+          ln -s "$PWD/target" "$base/target"
+          node tools/bench/size.ts build --root "$base" --groups "$groups"
+          node tools/bench/size.ts measure --root "$base" --groups "$groups" --out "$BASE_SIZES"
+
+      - name: compare
+        run: |
+          args=(--head "$SIZES" --comment size)
+          [ -f "$BASE_SIZES" ] && args+=(--base "$BASE_SIZES")
+          node tools/bench/size.ts compare "${args[@]}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: upload the measurements
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-size
+          path: .bench/*.json
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 30

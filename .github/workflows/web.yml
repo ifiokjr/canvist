@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  # Build @canvist/web, type-check it, run its unit tests, and report the
-  # bundle size against the budget in docs/src/guides/performance.md.
+  # Build @canvist/web, type-check it, and run its unit tests. Its bundle size
+  # is the `bench / bundle size` check (`bench-size.yml`).
   check:
     timeout-minutes: 30
     runs-on: ubuntu-latest
@@ -69,18 +69,6 @@ jobs:
       - name: unit tests
         working-directory: packages/canvist-web
         run: npm test
-
-      # What an app ships: a Vite build of a page that creates an editor,
-      # tree-shaken and minified, gzipped. Fails over the budget in
-      # docs/src/guides/performance.md.
-      - name: bundle size
-        working-directory: packages/canvist-web
-        run: |
-          {
-            echo "## @canvist/web bundle, gzipped"
-            echo
-            npm run --silent size
-          } | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Pixel parity between the canvas editor and the server-rendered HTML it
   # hydrates from, in every engine on both desktop platforms. Each run
