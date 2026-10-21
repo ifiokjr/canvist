@@ -161,26 +161,12 @@ pub(crate) fn find_in(text: &str, term: &str, exact: bool) -> Vec<Range<u32>> {
 	let mut found = Vec::new();
 	let mut from = 0;
 
+	if wanted.is_empty() {
+		return found;
+	}
+
 	while from < text.len() {
-		let mut ends = text[from..]
-			.char_indices()
-			.map(|(offset, character)| (from + offset, character));
-		let mut end = from;
-		let mut matched = true;
-
-		for &want in &wanted {
-			match ends.next() {
-				Some((offset, character)) if fold(character, exact) == want => {
-					end = offset + character.len_utf8();
-				}
-				_ => {
-					matched = false;
-					break;
-				}
-			}
-		}
-
-		if matched && !wanted.is_empty() {
+		if let Some(end) = match_end(text, from, &wanted, exact) {
 			found.push(from as u32..end as u32);
 			from = end;
 		} else {
@@ -189,6 +175,22 @@ pub(crate) fn find_in(text: &str, term: &str, exact: bool) -> Vec<Range<u32>> {
 	}
 
 	found
+}
+
+/// Where a match of the folded characters `wanted` that starts at byte
+/// `from` of `text` ends, or `None` when none starts there.
+fn match_end(text: &str, from: usize, wanted: &[char], exact: bool) -> Option<usize> {
+	let mut characters = text[from..].char_indices();
+	let mut end = from;
+
+	for &want in wanted {
+		let (offset, character) = characters
+			.next()
+			.filter(|&(_, character)| fold(character, exact) == want)?;
+		end = from + offset + character.len_utf8();
+	}
+
+	Some(end)
 }
 
 fn matches(state: &EditorState) -> Vec<SearchMatch> {
@@ -235,6 +237,7 @@ fn step(state: &mut EditorState, forward: bool) -> CommandResult {
 	let Some(range) = position::text_range(doc, state.selection()) else {
 		return Ok(None);
 	};
+
 	let target = if forward {
 		found
 			.iter()
@@ -255,6 +258,7 @@ fn step(state: &mut EditorState, forward: bool) -> CommandResult {
 			})
 			.or_else(|| found.last())
 	};
+
 	let Some(selection) = target.map(SearchMatch::selection) else {
 		return Ok(None);
 	};

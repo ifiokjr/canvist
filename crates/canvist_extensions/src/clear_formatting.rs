@@ -65,6 +65,8 @@ impl ClearFormattingHandle {
 	}
 }
 
+/// Remove every mark from the selected text, or clear the stored marks at
+/// a caret. Text with no marks changes nothing.
 fn unset_all_marks(state: &mut EditorState) -> CommandResult {
 	let mut ranges = position::selected_text(state.doc(), state.selection());
 	ranges.retain(|(_, range)| !range.is_empty());
@@ -126,13 +128,7 @@ fn clear_nodes(state: &mut EditorState) -> CommandResult {
 		for &block in &blocks {
 			let caret = Selection::caret(Point::new(block, 0));
 			fold(&mut update, commands::set_selection(state, caret)?);
-
-			for _ in 0..MAX_DEPTH {
-				let Some(lifted) = lift(state)? else {
-					break;
-				};
-				fold(&mut update, Some(lifted));
-			}
+			fold(&mut update, lift_out(state)?);
 		}
 
 		// Moving the caret block to block is only the means: when no block
@@ -146,6 +142,21 @@ fn clear_nodes(state: &mut EditorState) -> CommandResult {
 
 		Ok(update)
 	})
+}
+
+/// Lift the caret's block out of every container and list item that lets
+/// it go, at most `MAX_DEPTH` times.
+fn lift_out(state: &mut EditorState) -> CommandResult {
+	let mut update = None;
+
+	for _ in 0..MAX_DEPTH {
+		let Some(lifted) = lift(state)? else {
+			break;
+		};
+		fold(&mut update, Some(lifted));
+	}
+
+	Ok(update)
 }
 
 /// Lift the caret's block out of its container or list item, once.

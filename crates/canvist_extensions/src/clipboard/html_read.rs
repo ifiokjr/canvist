@@ -75,6 +75,9 @@ impl<'a> Tokenizer<'a> {
 		false
 	}
 
+	/// Read the tag at the start of the input, opening or closing, and skip
+	/// the contents of `script` and `style`, which are never text. `None`
+	/// when the tag never ends.
 	fn tag(&mut self) -> Option<Token> {
 		let closing = self.rest.starts_with("</");
 		let body_start = if closing { 2 } else { 1 };
@@ -116,6 +119,8 @@ impl<'a> Tokenizer<'a> {
 impl Iterator for Tokenizer<'_> {
 	type Item = Token;
 
+	/// Skip comments and declarations, then read a tag when `<` starts
+	/// one, or text up to the next `<`.
 	fn next(&mut self) -> Option<Token> {
 		while self.skip_markup() {}
 
@@ -480,14 +485,27 @@ fn atom_attrs(attrs: &[(String, String)]) -> Attrs {
 		.collect()
 }
 
+/// How an inline element reads: a boundary, plain content, or the marks
+/// its tag, `style`, and `data-*` attributes carry.
 fn inline_role(name: &str, attrs: &[(String, String)]) -> Role {
 	if BOUNDARIES.contains(&name) {
 		return Role::Boundary;
 	}
 
-	let style = attr(attrs, "style").map(Style::parse).unwrap_or_default();
+	let tagged = tag_mark(name);
+	let mut marks = plain_marks(tagged, attrs);
+	marks.extend(attribute_marks(name, attrs));
 
-	let tagged = match name {
+	if marks.is_empty() && tagged.is_none() && name != "span" && name != "a" {
+		return Role::Inline;
+	}
+
+	Role::Marks(marks)
+}
+
+/// The mark an element's tag stands for, when it takes no attributes.
+fn tag_mark(name: &str) -> Option<&'static str> {
+	match name {
 		"strong" | "b" => Some("bold"),
 		"em" | "i" => Some("italic"),
 		"u" => Some("underline"),
@@ -496,57 +514,61 @@ fn inline_role(name: &str, attrs: &[(String, String)]) -> Role {
 		"sub" if cfg!(feature = "subscript") => Some("subscript"),
 		"sup" if cfg!(feature = "superscript") => Some("superscript"),
 		_ => None,
-	};
+	}
+}
 
-	let mut marks: Vec<(&'static str, Attrs)> = tagged
+/// The tag's mark and the inline `style`'s, less bold when the style sets
+/// a normal weight.
+fn plain_marks(
+	tagged: Option<&'static str>,
+	attrs: &[(String, String)],
+) -> Vec<(&'static str, Attrs)> {
+	let style = attr(attrs, "style").map(Style::parse).unwrap_or_default();
+
+	tagged
 		.into_iter()
 		.chain(style.marks())
 		.filter(|&mark| !(mark == "bold" && style.bold == Some(false)))
 		.map(|mark| (mark, Attrs::new()))
-		.collect();
+		.collect()
+}
 
-	if name == "a" {
+/// The marks that carry attributes, in order: a link, a hashtag, a
+/// comment, a highlight, and a text style.
+fn attribute_marks(name: &str, attrs: &[(String, String)]) -> Vec<(&'static str, Attrs)> {
+	let data_type = attr(attrs, "data-type");
+	let css = attr(attrs, "style").unwrap_or_default();
+
+	let link = (name == "a").then(|| {
 		let href = attr(attrs, "href").unwrap_or_default();
-		marks.push(("link", Attrs::new().with("href", href)));
-	}
-
-	if cfg!(feature = "hashtag") && attr(attrs, "data-type") == Some("hashtag") {
+		("link", Attrs::new().with("href", href))
+	});
+	let hashtag = (cfg!(feature = "hashtag") && data_type == Some("hashtag")).then(|| {
 		let tag = attr(attrs, "data-tag").map_or(Value::Null, Value::from);
-		marks.push(("hashtag", Attrs::new().with("tag", tag)));
-	}
-
-	if cfg!(feature = "comments") && attr(attrs, "data-type") == Some("comment") {
+		("hashtag", Attrs::new().with("tag", tag))
+	});
+	let comment = (cfg!(feature = "comments") && data_type == Some("comment")).then(|| {
 		let threads: Vec<Value> = attr(attrs, "data-threads")
 			.unwrap_or_default()
 			.split_whitespace()
 			.map(Value::from)
 			.collect();
-		marks.push(("comment", Attrs::new().with("threads", threads)));
-	}
-
-	let css = attr(attrs, "style").unwrap_or_default();
-
-	if cfg!(feature = "highlight") && name == "mark" {
+		("comment", Attrs::new().with("threads", threads))
+	});
+	let highlight = (cfg!(feature = "highlight") && name == "mark").then(|| {
 		let color = attr(attrs, "data-color").or_else(|| css_value(css, "background-color"));
 		let attrs = color.map_or_else(Attrs::new, |color| Attrs::new().with("color", color));
-		marks.push(("highlight", attrs));
-	}
+		("highlight", attrs)
+	});
+	let text_style = (cfg!(feature = "text-style") && name != "mark")
+		.then(|| text_style_attrs(css))
+		.filter(|styles| !styles.is_empty())
+		.map(|styles| ("textStyle", styles));
 
-	let styles = if cfg!(feature = "text-style") {
-		text_style_attrs(css)
-	} else {
-		Attrs::new()
-	};
-
-	if cfg!(feature = "text-style") && !styles.is_empty() && name != "mark" {
-		marks.push(("textStyle", styles));
-	}
-
-	if marks.is_empty() && tagged.is_none() && name != "span" && name != "a" {
-		return Role::Inline;
-	}
-
-	Role::Marks(marks)
+	[link, hashtag, comment, highlight, text_style]
+		.into_iter()
+		.flatten()
+		.collect()
 }
 
 /// The value of CSS `property` in a `style` attribute.
@@ -815,6 +837,9 @@ impl<'s> Reader<'s> {
 		self.marks.push((tag, marks));
 	}
 
+	/// Close the innermost open thing `tag` closes, checked in order: the
+	/// open atom, a leaf, the text block, a mark, then a frame and every
+	/// frame inside it. A boundary tag only ends the text.
 	fn close(&mut self, tag: &str) {
 		if self.atom.as_ref().is_some_and(|atom| atom.tag == tag) {
 			self.finish_atom();

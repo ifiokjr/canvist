@@ -98,15 +98,19 @@ fn number(open: &mut Vec<(i64, u32)>, level: i64) -> String {
 		.join(".")
 }
 
+/// Every heading in document order, numbered by outline, with the one the
+/// selection head is under marked active.
 fn entries(state: &EditorState) -> Vec<TocEntry> {
 	let doc = state.doc();
 	let Some(heading) = doc.schema().block_type(HEADING) else {
 		return Vec::new();
 	};
+
 	let head = match state.selection() {
 		Selection::Text { head, .. } => head.block,
 		Selection::Blocks { head, .. } => head,
 	};
+
 	let mut open = Vec::new();
 	let mut found = Vec::new();
 	let mut active = None;
@@ -180,7 +184,7 @@ impl Extension for TableOfContents {
 	}
 
 	fn commands(&self, _schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {
-		let go = CommandSpec::new(
+		let go_to_heading = CommandSpec::new(
 			"goToHeading",
 			"Put the caret at the start of a heading, by its place in the table of contents.",
 			|args| {
@@ -199,7 +203,7 @@ impl Extension for TableOfContents {
 			"The heading's place in the table of contents, from zero.",
 		));
 
-		Ok(vec![go])
+		Ok(vec![go_to_heading])
 	}
 
 	fn queries(&self, _schema: &Schema) -> Result<Vec<QuerySpec>, EditorError> {

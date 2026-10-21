@@ -19,9 +19,13 @@ use canvist_editor::command;
 use canvist_editor::commands;
 use canvist_editor::position;
 use canvist_model::Attrs;
+use canvist_model::BlockId;
+use canvist_model::Document;
+use canvist_model::InlineText;
 use canvist_model::Mark;
 use canvist_model::MarkSpec;
 use canvist_model::MarkTypeId;
+use canvist_model::RunRef;
 use canvist_model::Schema;
 use canvist_model::SchemaBuilder;
 use canvist_model::Value;
@@ -103,6 +107,9 @@ fn with_ids(ids: &[String]) -> Option<Attrs> {
 	Some(Attrs::new().with(THREADS, values))
 }
 
+/// Add `thread` to every selected character, keeping the threads already
+/// there. A caret, or a selection that already carries `thread`
+/// everywhere, changes nothing.
 fn set(thread: &str) -> Command {
 	let thread = thread.to_owned();
 
@@ -156,31 +163,33 @@ fn unset(thread: &str) -> Command {
 	command(move |state| remove_everywhere(state, &thread))
 }
 
+/// Every text run in `doc`, with its block and its threads.
+fn runs_with_threads(
+	doc: &Document,
+	kind: MarkTypeId,
+) -> impl Iterator<Item = (BlockId, RunRef<'_>, Vec<String>)> {
+	doc.text_blocks().flat_map(move |block| {
+		block
+			.inline()
+			.into_iter()
+			.flat_map(InlineText::runs)
+			.map(move |run| {
+				let threads = ids(run.marks.get(kind).map(|mark| &mark.attrs));
+				(block.id(), run, threads)
+			})
+	})
+}
+
 /// Remove `thread` from every comment mark in the document.
 fn remove_everywhere(state: &mut EditorState, thread: &str) -> CommandResult {
 	let kind = resolve::mark(state, COMMENT, COMMENT)?;
-	let doc = state.doc();
-	let mut edits = Vec::new();
-
-	for block in doc.text_blocks() {
-		let Some(text) = block.inline() else {
-			continue;
-		};
-		let mut offset = 0;
-
-		for run in text.runs() {
-			let len = run.text.len() as u32;
-			let range = offset..offset + len;
-			offset += len;
-			let current = run.marks.get(kind).map(|mark| &mark.attrs);
-			let mut ids = ids(current);
-
-			if ids.iter().any(|id| id == thread) {
-				ids.retain(|id| id != thread);
-				edits.push((block.id(), range, with_ids(&ids)));
-			}
-		}
-	}
+	let edits: Vec<_> = runs_with_threads(state.doc(), kind)
+		.filter(|(_, _, ids)| ids.iter().any(|id| id == thread))
+		.map(|(block, run, mut ids)| {
+			ids.retain(|id| id != thread);
+			(block, run.range, with_ids(&ids))
+		})
+		.collect();
 
 	if edits.is_empty() {
 		return Ok(None);
@@ -210,13 +219,16 @@ fn active(state: &EditorState) -> Vec<String> {
 	let Some(text) = state.doc().inline(head.block) else {
 		return Vec::new();
 	};
+
 	let source = text.as_str();
 	let offset = (head.offset as usize).min(source.len());
 	let before = source[..offset].chars().next_back();
+
 	let range = match before {
 		Some(character) => (offset - character.len_utf8())..offset,
 		None => 0..source.chars().next().map_or(0, char::len_utf8),
 	};
+
 	let marks = text
 		.mark_runs(range.start as u32..range.end as u32)
 		.ok()
@@ -229,23 +241,19 @@ fn active(state: &EditorState) -> Vec<String> {
 		.map(|mark| &mark.attrs))
 }
 
+/// Every thread in the document, in order of first appearance, with the
+/// text it covers joined across runs and blocks.
 fn threads(state: &EditorState) -> Vec<(String, String)> {
 	let Some(kind) = state.schema().mark_type(COMMENT) else {
 		return Vec::new();
 	};
 	let mut found: Vec<(String, String)> = Vec::new();
 
-	for block in state.doc().text_blocks() {
-		let Some(text) = block.inline() else {
-			continue;
-		};
-
-		for run in text.runs() {
-			for id in ids(run.marks.get(kind).map(|mark| &mark.attrs)) {
-				match found.iter_mut().find(|(known, _)| *known == id) {
-					Some((_, covered)) => covered.push_str(run.text),
-					None => found.push((id, run.text.to_owned())),
-				}
+	for (_, run, threads) in runs_with_threads(state.doc(), kind) {
+		for id in threads {
+			match found.iter_mut().find(|(known, _)| *known == id) {
+				Some((_, covered)) => covered.push_str(run.text),
+				None => found.push((id, run.text.to_owned())),
 			}
 		}
 	}
