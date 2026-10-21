@@ -10,6 +10,15 @@ Matcher throwsCode(ErrorCode code) =>
     throwsA(isA<CanvistException>().having((e) => e.code, 'code', code));
 
 void main() {
+  drawsInk();
+  reportsErrors();
+  roundTripsDrawings();
+  movesText();
+  convergesWithPeers();
+}
+
+/// Ink draws, undoes, clears, and paints in the editor view.
+void drawsInk() {
   test('ink draws, undoes, and clears through its handle', () async {
     final builder = EngineBuilder();
     final ink = builder.add(Extensions.ink);
@@ -53,7 +62,43 @@ void main() {
     expect(doc.undo(), isTrue);
     expect(doc.query(ink.inks()).single.strokes, 2);
   });
+  test('an ink drawing paints its strokes in the editor view', () async {
+    final builder = EngineBuilder();
+    final ink = builder.add(Extensions.ink);
+    final engine = await builder.build();
+    final doc = engine.create()
+      ..run(ink.insertInk(height: 200))
+      ..run(ink.addInkStroke(ink: 0, points: [10, 20, 30, 40], width: 6));
+    final view = doc.view(const FixedMeasurer())..setWidth(400);
+    addTearDown(view.dispose);
 
+    final strokes = [
+      for (final item in view.frame(0, 600).display!.items)
+        if (item.kind == ViewItemKind.stroke) item,
+    ];
+    expect(strokes, hasLength(1));
+
+    final stroke = strokes.single;
+    final [x0, y0, x1, y1] = stroke.points;
+    final half = stroke.lineWidth / 2;
+    expect(stroke.lineWidth, greaterThan(0));
+    expect(
+      x1 - x0,
+      closeTo(y1 - y0, 1e-3),
+      reason: 'the drawing keeps its shape',
+    );
+    expect(
+      stroke.x,
+      closeTo(x0 - half, 1e-3),
+      reason: 'the caps are in bounds',
+    );
+    expect(stroke.y, closeTo(y0 - half, 1e-3));
+    expect(stroke.width, closeTo(x1 - x0 + stroke.lineWidth, 1e-3));
+  });
+}
+
+/// Malformed strokes fail with stable codes.
+void reportsErrors() {
   test('ink refuses malformed strokes with stable codes', () async {
     final builder = EngineBuilder();
     final ink = builder.add(Extensions.ink);
@@ -81,7 +126,10 @@ void main() {
     );
     expect(doc.query(ink.inks()), [(height: 400, strokes: 0)]);
   });
+}
 
+/// Drawings round trip through JSON, HTML, and Markdown.
+void roundTripsDrawings() {
   test('drawings round trip through JSON, HTML, and Markdown', () async {
     final builder = EngineBuilder();
     final ink = builder.add(Extensions.ink);
@@ -117,7 +165,10 @@ void main() {
       (height: 120, strokes: 1),
     ]);
   });
+}
 
+/// Kinetic text sets, toggles, and reads every effect.
+void movesText() {
   test('kinetic text sets, toggles, and reads every effect', () async {
     final builder = EngineBuilder();
     final kinetic = builder.add(Extensions.kinetic);
@@ -152,7 +203,10 @@ void main() {
     )..selectAll();
     expect(pasted.query(kinetic.kineticEffect()), 'pulse');
   });
+}
 
+/// Strokes made on two documents converge over Yjs.
+void convergesWithPeers() {
   test('strokes on two documents converge over Yjs', () async {
     final builder = EngineBuilder();
     final ink = builder.add(Extensions.ink);
