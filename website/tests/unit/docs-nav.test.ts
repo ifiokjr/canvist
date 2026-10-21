@@ -84,34 +84,34 @@ Deno.test("pages missing from SUMMARY.md still land in the sidebar, in their fol
 
 Deno.test("crate and package readmes render under virtual docs paths", () => {
 	assertEquals(
-		readmeDocsPath("crates/canvist_core/readme.md"),
-		"crates/canvist_core.md",
+		readmeDocsPath("crates/canvist_headless/readme.md"),
+		"crates/canvist_headless.md",
 	);
 	assertEquals(
 		readmeDocsPath("crates/canvist_model"),
 		"crates/canvist_model.md",
 	);
 	assertEquals(
-		readmeDocsPath("packages/canvist/README.md"),
-		"packages/canvist.md",
+		readmeDocsPath("packages/canvist-headless/readme.md"),
+		"packages/canvist-headless.md",
 	);
-	assertEquals(readmeDocsPath("crates/canvist_core/src/lib.rs"), undefined);
+	assertEquals(readmeDocsPath("crates/canvist_headless/src/lib.rs"), undefined);
 	assertEquals(
-		docsRoute("crates/canvist_core.md"),
-		"/docs/crates/canvist_core",
+		docsRoute("crates/canvist_headless.md"),
+		"/docs/crates/canvist_headless",
 	);
 
 	const nav = buildDocsNav(
 		[
 			{
-				path: "crates/canvist_core.md",
-				source: "crates/canvist_core/readme.md",
-				body: "# canvist_core",
+				path: "crates/canvist_headless.md",
+				source: "crates/canvist_headless/readme.md",
+				body: "# canvist_headless",
 			},
 			{
-				path: "packages/canvist.md",
-				source: "packages/canvist/README.md",
-				body: "# @canvist/canvist",
+				path: "packages/canvist-headless.md",
+				source: "packages/canvist-headless/readme.md",
+				body: "# @canvist/headless",
 			},
 		],
 		new Map(),
@@ -119,8 +119,8 @@ Deno.test("crate and package readmes render under virtual docs paths", () => {
 	assertEquals(
 		flatten(nav).map((link) => [link.group, link.title, link.source]),
 		[
-			["Rust crates", "canvist_core", "crates/canvist_core/readme.md"],
-			["Packages", "@canvist/canvist", "packages/canvist/README.md"],
+			["Rust crates", "canvist_headless", "crates/canvist_headless/readme.md"],
+			["Packages", "@canvist/headless", "packages/canvist-headless/readme.md"],
 		],
 	);
 });

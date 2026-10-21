@@ -329,7 +329,6 @@ These are opinionated. The repository currently pins `yrs ^0.25`; the latest rel
    - Moves are ID moves. This avoids y-prosemirror's whole-document replace and keeps remote edits O(changed blocks).
    - Put schema validation in Rust as content expressions compiled to an automaton, as ProseMirror does. Prefer `*` over `+` and **repair rather than delete** on invalid merges, per [CAVEATS.md](https://github.com/yjs/y-prosemirror/blob/master/CAVEATS.md).
    - Keep the in-memory render model (shaped lines, layout boxes) as a cache keyed by `(BlockId, version)` and derived from `yrs` observer events. It is never authoritative.
-   - Revisit the existing `canvist_core` `Document` and `OperationLog`: they should become views over the `yrs` doc, not a parallel store.
 2. **Positions.**
    - The canonical local position is `(BlockId, offset)`, with the offset in **UTF-16 code units**. Set yrs `OffsetKind::Utf16` so offsets agree with Yjs JS peers, Android, iOS `NSString`, and Flutter. Convert to UTF-8 byte offsets only at the shaping boundary, using a per-block SumTree-style index (Zed) that carries byte, UTF-16, and grapheme metrics.
    - Use yrs **`StickyIndex`** (relative positions) for anything that outlives a transaction: remote cursors, comments, decorations, the composition anchor, bookmarks, and undo selections.

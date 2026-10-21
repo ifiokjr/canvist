@@ -24,7 +24,7 @@ export function docsRoute(pathInDocs: string): string {
 
 /**
  * The docs path a crate or package readme renders at, such as
- * `crates/canvist_core.md` for `crates/canvist_core/readme.md`. `undefined`
+ * `crates/canvist_model.md` for `crates/canvist_model/readme.md`. `undefined`
  * for anything that isn't one.
  */
 export function readmeDocsPath(pathInRepo: string): string | undefined {

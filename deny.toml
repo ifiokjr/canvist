@@ -4,7 +4,7 @@
 [graph]
 targets = []
 all-features = true
-exclude = ["canvist_book", "canvist_test"]
+exclude = ["canvist_book"]
 
 [advisories]
 db-path = "~/.cargo/advisory-db"
@@ -13,9 +13,10 @@ ignore = [
 	# `smallstr` is unmaintained; it is a dependency of `yrs` (still in 0.28) with no maintained
 	# replacement upstream. Informational only, no known vulnerability.
 	{ id = "RUSTSEC-2026-0215", reason = "transitive via yrs, no upstream alternative yet" },
-	# `ttf-parser` is unmaintained; it only enters through `fontdue` in the v1 `canvist_render`
-	# crate, which the v2 roadmap deletes (M9).
-	{ id = "RUSTSEC-2026-0192", reason = "transitive via fontdue in the v1 renderer slated for removal" },
+	# `ttf-parser` is unmaintained; it enters through `ab_glyph` in `sctk-adwaita`, the Wayland
+	# window decorations of winit, which `canvist_desktop` uses on Linux.
+	# Informational only, no known vulnerability.
+	{ id = "RUSTSEC-2026-0192", reason = "transitive via sctk-adwaita in winit, no upstream alternative yet" },
 	# `basic-toml` is unmaintained; it enters through `askama`, the template engine of
 	# `uniffi_bindgen` (both already at their latest), which only generates the Swift and
 	# Kotlin bindings at build time.

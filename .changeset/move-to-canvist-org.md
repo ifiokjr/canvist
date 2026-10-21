@@ -7,17 +7,13 @@
 "canvist_canvas_wasm": patch
 "canvist_cloud": patch
 "canvist_collab": patch
-"canvist_core": patch
 "canvist_editor": patch
 "canvist_extensions": patch
 "canvist_ffi": patch
 "canvist_layout": patch
 "canvist_model": patch
 "canvist_paint": patch
-"canvist_render": patch
 "canvist_scene": patch
-"canvist_v1": patch
-"canvist_wasm": patch
 "canvist_web": patch
 website: change
 ---

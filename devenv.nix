@@ -90,14 +90,6 @@ in
       description = "Build the mdbook documentation.";
       binary = "bash";
     };
-    "build:wasm" = {
-      exec = ''
-        set -e
-        wasm-pack build crates/canvist_wasm --target web
-      '';
-      description = "Build the WASM package for the web.";
-      binary = "bash";
-    };
     "build:ios" = {
       exec = ''
         set -e
@@ -197,7 +189,7 @@ in
     "test:cargo" = {
       exec = ''
         set -e
-        cargo nextest run --workspace --exclude canvist_wasm --exclude canvist_test
+        cargo nextest run --workspace
         # The conformance fixtures for collaboration, the SSR renderer, and the
         # extensions beyond the StarterKit only run with canvist_headless's
         # optional features.
@@ -217,7 +209,7 @@ in
     "test:docs" = {
       exec = ''
         set -e
-        cargo test --doc --workspace --exclude canvist_wasm --exclude canvist_test
+        cargo test --doc --workspace
         cargo test --doc -p canvist_headless --all-features
         cargo test --doc -p canvist_collab --features scene
       '';
@@ -227,18 +219,9 @@ in
     "test:perf" = {
       exec = ''
         set -e
-        cargo test --release --workspace --exclude canvist_wasm --exclude canvist_test --features canvist_headless/collab,canvist_headless/scene,canvist_collab/scene,canvist_extensions/full,canvist_paint/cpu,canvist_paint/gpu --test perf_budgets -- --ignored --test-threads=1 --nocapture
+        cargo test --release --workspace --features canvist_headless/collab,canvist_headless/scene,canvist_collab/scene,canvist_extensions/full,canvist_paint/cpu,canvist_paint/gpu --test perf_budgets -- --ignored --test-threads=1 --nocapture
       '';
       description = "Fail when a hot path exceeds its performance budget (release mode; CANVIST_PERF_SLACK scales budgets).";
-      binary = "bash";
-    };
-    "test:playwright" = {
-      exec = ''
-        set -e
-        cd packages/canvist
-        deno test --allow-all tests/playwright/
-      '';
-      description = "Run Playwright browser tests for the JS/WASM package.";
       binary = "bash";
     };
     "coverage:all" = {
@@ -269,7 +252,7 @@ in
     "fix:clippy" = {
       exec = ''
         set -e
-        cargo clippy --workspace --exclude canvist_wasm --exclude canvist_test --fix --allow-dirty --allow-staged --all-features --all-targets
+        cargo clippy --workspace --fix --allow-dirty --allow-staged --all-features --all-targets
       '';
       description = "Fix clippy lints for rust.";
       binary = "bash";
@@ -312,7 +295,7 @@ in
         monostyle check tools/footage --fail-under 90
         monostyle check tools/bench --fail-under 90
       '';
-      description = "Require readability and complexity scores of at least 90 for the v2 crates.";
+      description = "Require readability and complexity scores of at least 90 in each crate and package.";
       binary = "bash";
     };
     "lint:all" = {
@@ -337,7 +320,7 @@ in
     "lint:clippy" = {
       exec = ''
         set -e
-        cargo clippy --workspace --exclude canvist_wasm --exclude canvist_test --all-features --all-targets
+        cargo clippy --workspace --all-features --all-targets
       '';
       description = "Check that all rust lints are passing.";
       binary = "bash";

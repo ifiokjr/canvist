@@ -1,10 +1,8 @@
 [workspace]
 members = [
-	"crates/canvist",
 	"crates/canvist_canvas",
 	"crates/canvist_canvas_wasm",
 	"crates/canvist_collab",
-	"crates/canvist_core",
 	"crates/canvist_desktop",
 	"crates/canvist_editor",
 	"crates/canvist_extensions",
@@ -14,10 +12,7 @@ members = [
 	"crates/canvist_layout",
 	"crates/canvist_model",
 	"crates/canvist_paint",
-	"crates/canvist_render",
 	"crates/canvist_scene",
-	"crates/canvist_test",
-	"crates/canvist_wasm",
 	"crates/canvist_web",
 	"docs",
 	"examples/desktop",
@@ -26,11 +21,9 @@ members = [
 	"tools/footage",
 ]
 default-members = [
-	"crates/canvist",
 	"crates/canvist_collab",
 	"crates/canvist_canvas",
 	"crates/canvist_canvas_wasm",
-	"crates/canvist_core",
 	"crates/canvist_desktop",
 	"crates/canvist_editor",
 	"crates/canvist_extensions",
@@ -40,9 +33,7 @@ default-members = [
 	"crates/canvist_model",
 	"crates/canvist_paint",
 	"crates/canvist_layout",
-	"crates/canvist_render",
 	"crates/canvist_scene",
-	"crates/canvist_wasm",
 	"crates/canvist_web",
 	"docs",
 	"services/cloud",
@@ -67,16 +58,13 @@ base64 = { default-features = false, version = "^0.22" }
 deadpool-postgres = { default-features = false, version = "^0.14" }
 divan = { default-features = false, version = "^0.1" }
 flutter_rust_bridge = { default-features = true, version = "=2.13.0" }
-fontdue = { default-features = false, version = "^0.9" }
 futures-util = { default-features = false, version = "^0.3" }
 getrandom = { default-features = false, version = "^0.3" }
 hmac = { default-features = false, version = "^0.12" }
 insta = { default-features = false, version = "^1" }
 js-sys = { default-features = false, version = "^0.3" }
 kurbo = { default-features = false, version = "^0.13" }
-lib0 = { default-features = false, version = "^0.16" }
 log = { default-features = false, version = "^0.4" }
-playwright-rs = { default-features = false, version = "^0.8" }
 proptest = { default-features = false, version = "^1" }
 regex-lite = { default-features = false, version = "^0.1" }
 reqwest = { default-features = false, version = "^0.12" }
@@ -92,21 +80,16 @@ tokio-util = { default-features = false, version = "^0.7" }
 tower-http = { default-features = false, version = "^0.6" }
 tracing = { default-features = false, version = "^0.1" }
 tracing-subscriber = { default-features = false, version = "^0.3" }
-typed-builder = { default-features = false, version = "^0.23" }
-unicode-linebreak = { default-features = false, version = "^0.1" }
 unicode-segmentation = { default-features = false, version = "^1" }
 uniffi = { default-features = false, version = "^0.32" }
 wasm-bindgen = { default-features = false, version = "^0.2" }
 wasm-bindgen-futures = { default-features = false, version = "^0.4" }
-wasm-bindgen-test = { default-features = false, version = "^0.3" }
 web-sys = { default-features = false, version = "^0.3" }
 yrs = { default-features = false, version = "^0.28" }
 
 # Internal crates
-canvist = { path = "./crates/canvist", version = "0.1.0" }
 canvist_canvas = { path = "./crates/canvist_canvas", version = "0.1.0" }
 canvist_collab = { path = "./crates/canvist_collab", version = "0.1.0" }
-canvist_core = { path = "./crates/canvist_core", version = "0.1.0" }
 canvist_desktop = { path = "./crates/canvist_desktop", version = "0.1.0" }
 canvist_editor = { path = "./crates/canvist_editor", version = "0.1.0" }
 canvist_extensions = { path = "./crates/canvist_extensions", version = "0.1.0" }
@@ -115,9 +98,7 @@ canvist_headless = { path = "./crates/canvist_headless", version = "0.1.0" }
 canvist_layout = { path = "./crates/canvist_layout", version = "0.1.0", default-features = false }
 canvist_model = { path = "./crates/canvist_model", version = "0.1.0" }
 canvist_paint = { path = "./crates/canvist_paint", version = "0.1.0" }
-canvist_render = { path = "./crates/canvist_render", version = "0.1.0" }
 canvist_scene = { path = "./crates/canvist_scene", version = "0.1.0" }
-canvist_wasm = { path = "./crates/canvist_wasm", version = "0.1.0" }
 canvist_web = { path = "./crates/canvist_web", version = "0.1.0" }
 
 # `platforms/dart/rust` ships in a pub.dev archive, so it names canvist crates
@@ -187,9 +168,6 @@ lto = true
 codegen-units = 1
 
 [profile.release.package.canvist_headless_wasm]
-opt-level = "s"
-
-[profile.release.package.canvist_wasm]
 opt-level = "s"
 
 # WebAssembly packages trade a little speed for size: `wasm-pack build
