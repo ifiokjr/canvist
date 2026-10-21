@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:canvist_flutter/canvist_flutter.dart';
 import 'package:flutter/material.dart';
 
+import 'keys.dart';
+
 /// Two collaborators on one document, joined through an in-memory relay
 /// that delays every Yjs update a little, as a network would. A real app
 /// sends the same updates over a WebSocket (see `doc.receiveSync`).
@@ -108,18 +110,13 @@ class PeersView extends StatelessWidget {
   Widget build(BuildContext context) {
     final editors = [
       _Pane(
-        key: const Key('you'),
+        key: Keys.you,
         label: 'You',
         color: you,
         controller: peers.you,
         autofocus: true,
       ),
-      _Pane(
-        key: const Key('peer'),
-        label: 'Peer',
-        color: peer,
-        controller: peers.peer,
-      ),
+      _Pane(key: Keys.peer, label: 'Peer', color: peer, controller: peers.peer),
     ];
 
     return LayoutBuilder(

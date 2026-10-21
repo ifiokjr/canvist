@@ -125,7 +125,7 @@ jobs:
         run: flutter pub get
 
       - name: format
-        run: dart format --output=none --set-exit-if-changed lib test example/lib example/integration_test
+        run: dart format --output=none --set-exit-if-changed lib test example/lib example/integration_test example/patrol_test
 
       - name: analyze
         run: flutter analyze --fatal-infos

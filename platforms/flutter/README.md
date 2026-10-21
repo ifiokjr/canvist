@@ -77,8 +77,11 @@ Commands come from the engine's typed handles, so a toolbar can only call extens
 
 ```sh
 flutter pub get
-flutter test   # widget tests and golden tests against server rendering
-./test.sh      # the example app's integration tests on an iOS Simulator and an Android emulator
+flutter test   # widget tests, and golden tests of the editor's pixels against server rendering
+dart pub global activate patrol_cli 4.8.0
+./test.sh      # integration and Patrol tests on an iOS Simulator and an Android emulator
 ```
+
+The Patrol suites in `example/patrol_test/` drive the example app through the device itself: the platform keyboard, native taps and swipes, long presses, the toolbar, two collaborating peers, and system dark mode. They also compare the editor's pixels, drawn by the device's GPU, with server rendering. Typing through the platform keyboard and system dark mode run on Android only: on iOS, Patrol types only into single-line text fields, and its dark-mode switch doesn't change the iOS 26 simulator's appearance.
 
 </details>

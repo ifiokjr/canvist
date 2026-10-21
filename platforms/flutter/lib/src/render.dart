@@ -15,6 +15,7 @@ final class EditorSemanticsActions {
     required this.onCut,
     required this.onPaste,
     required this.onMoveByCharacter,
+    required this.onSetText,
   });
 
   final VoidCallback onTap;
@@ -26,6 +27,10 @@ final class EditorSemanticsActions {
   /// selection with [extend].
   final void Function({required bool forward, required bool extend})
   onMoveByCharacter;
+
+  /// Replace the field's plain text, as voice control, switch access, and
+  /// UI automation do.
+  final ValueChanged<String> onSetText;
 }
 
 /// The editor's viewport: lays out the part of the document that is on
@@ -347,7 +352,8 @@ class RenderEditorViewport extends RenderBox {
     if (!_readOnly) {
       config
         ..onCut = actions.onCut
-        ..onPaste = actions.onPaste;
+        ..onPaste = actions.onPaste
+        ..onSetText = actions.onSetText;
     }
   }
 }

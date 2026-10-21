@@ -998,6 +998,44 @@ class _CanvistEditorState extends State<CanvistEditor>
   Rect _local(RenderEditorViewport viewport, ViewRect rect) =>
       viewport.toLocal(Offset(rect.x, rect.y)) & Size(rect.width, rect.height);
 
+  /// Assistive technology and UI automation replace the whole field's text.
+  /// Apply only the part that changed, so the formatting around it
+  /// survives: a line break in the new text splits the block, as Enter does.
+  void _setText(String text) {
+    if (widget.readOnly) {
+      return;
+    }
+
+    final delta = EditorInput.delta(
+      TextEditingValue(text: _view.semantics.text),
+      TextEditingValue(text: text),
+    );
+
+    if (delta is! TextEditingDeltaReplacement) {
+      return;
+    }
+
+    final range = delta.replacedRange;
+    _view.selectPlain(range.start, range.end);
+    final lines = delta.replacementText.split('\n');
+
+    if (lines.first.isNotEmpty) {
+      _view.insertText(lines.first);
+    } else if (!range.isCollapsed) {
+      _view.keyDown('Delete');
+    }
+
+    for (final line in lines.skip(1)) {
+      _view.keyDown('Enter');
+
+      if (line.isNotEmpty) {
+        _view.insertText(line);
+      }
+    }
+
+    _userEdited(true);
+  }
+
   void _moveByCharacter({required bool forward, required bool extend}) {
     if (_view.keyDown(forward ? 'ArrowRight' : 'ArrowLeft', shift: extend)) {
       widget.controller.refresh();
@@ -1025,6 +1063,7 @@ class _CanvistEditorState extends State<CanvistEditor>
           onCut: _cut,
           onPaste: () => unawaited(_paste()),
           onMoveByCharacter: _moveByCharacter,
+          onSetText: _setText,
         ),
       ),
     );

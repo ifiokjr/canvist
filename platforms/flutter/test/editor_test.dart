@@ -109,6 +109,11 @@ void main() {
   );
 
   testWidgets(
+    'assistive technology sets text with the smallest edit',
+    _setsTextAsAssistiveTechnologyDoes,
+  );
+
+  testWidgets(
     "collaborators' edits appear in each other's editors",
     _collaborates,
   );
@@ -437,6 +442,7 @@ Future<void> _exposesSemantics(WidgetTester tester) async {
       hasCutAction: true,
       hasPasteAction: true,
       hasSetSelectionAction: true,
+      hasSetTextAction: true,
       hasMoveCursorForwardByCharacterAction: true,
       hasMoveCursorBackwardByCharacterAction: true,
       value: 'Hi\nthere',
@@ -445,6 +451,34 @@ Future<void> _exposesSemantics(WidgetTester tester) async {
   expect(
     node.getSemanticsData().textSelection,
     const TextSelection(baseOffset: 3, extentOffset: 8),
+  );
+  handle.dispose();
+}
+
+Future<void> _setsTextAsAssistiveTechnologyDoes(WidgetTester tester) async {
+  final handle = tester.ensureSemantics();
+  final controller = controllerFor('# Hi\n\nthere');
+  await pumpEditor(
+    tester,
+    CanvistEditor(
+      controller: controller,
+      autofocus: true,
+      semanticsLabel: 'Notes',
+    ),
+  );
+  await tester.pump();
+
+  tester.semantics.setText(
+    find.semantics.byLabel('Notes'),
+    'Hi\nthere you\nand more',
+  );
+  await tester.pump();
+
+  expect(controller.export(Format.text), 'Hi\nthere you\nand more');
+  expect(
+    controller.export(Format.markdown),
+    startsWith('# Hi\n\n'),
+    reason: 'only the changed text is replaced, so the heading stays',
   );
   handle.dispose();
 }

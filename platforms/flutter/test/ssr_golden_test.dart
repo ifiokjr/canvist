@@ -7,6 +7,10 @@
 /// page rendered on the server and the editor that replaces it show the
 /// same lines in the same places.
 ///
+/// A second test per fixture pumps the real [CanvistEditor] and compares the
+/// pixels the widget itself draws, through its render object, padding, and
+/// background, with server rendering.
+///
 /// On a mismatch both images are written to `build/ssr_golden/`.
 library;
 
@@ -14,6 +18,8 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:canvist_flutter/canvist_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -27,6 +33,10 @@ const _tolerance = 0.75;
 /// The share of pixels that may differ, for antialiasing at fractional
 /// positions.
 const _pixelTolerance = 0.004;
+
+/// How far a colour channel may move, out of 255, before the pixel counts
+/// as different.
+const _channel = 64;
 
 const _fixtures = {
   'headings and paragraphs':
@@ -58,6 +68,10 @@ void main() {
   });
 
   for (final MapEntry(key: name, value: markdown) in _fixtures.entries) {
+    testWidgets(
+      'the editor widget draws $name as server rendering does',
+      (tester) => _compareLiveEditor(tester, engine, name, markdown),
+    );
     testWidgets('$name match server rendering', (tester) async {
       final doc = engine.parse(Format.markdown, markdown);
       final view = doc.view(const ParagraphMeasurer(fonts: _fonts))
@@ -92,15 +106,7 @@ void main() {
         );
       }
 
-      final serverFonts = [
-        for (final font in server.fonts)
-          FontSpec(
-            family: font.family,
-            size: font.size,
-            weight: font.weight,
-            italic: font.italic,
-          ),
-      ];
+      final serverFonts = _specs(server);
       final size = ui.Size(_width, height.ceilToDouble());
       final (expected, actual) = await tester.runAsync(
         () async => (
@@ -182,7 +188,7 @@ double _differentPixels(Uint8List a, Uint8List b) {
 
   for (var pixel = 0; pixel < a.length; pixel += 4) {
     for (var channel = 0; channel < 3; channel++) {
-      if ((a[pixel + channel] - b[pixel + channel]).abs() > 64) {
+      if ((a[pixel + channel] - b[pixel + channel]).abs() > _channel) {
         different++;
         break;
       }
@@ -198,10 +204,121 @@ Future<void> _save(
   List<FontSpec> fonts,
   ui.Size size,
 ) async {
-  final image = await _image(display, fonts, size);
+  await _savePng(name, await _image(display, fonts, size));
+}
+
+/// Write [image] to `build/ssr_golden/<name>.png`, then release it.
+Future<void> _savePng(String name, ui.Image image) async {
   final png = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();
   final file = File('build/ssr_golden/${name.replaceAll(' ', '_')}.png');
   await file.parent.create(recursive: true);
   await file.writeAsBytes(png!.buffer.asUint8List());
 }
+
+/// Pump a read-only [CanvistEditor] on [markdown], as tall as its document,
+/// and compare what it draws with server rendering.
+Future<void> _compareLiveEditor(
+  WidgetTester tester,
+  Engine engine,
+  String name,
+  String markdown,
+) async {
+  final doc = engine.parse(Format.markdown, markdown);
+  final controller = CanvistController(engine: engine, doc: doc, fonts: _fonts);
+  final boundary = GlobalKey();
+  addTearDown(() {
+    controller.dispose();
+    doc.dispose();
+  });
+
+  await tester.pumpWidget(
+    MaterialApp(
+      home: UnconstrainedBox(
+        alignment: Alignment.topLeft,
+        child: SizedBox(
+          width: _width,
+          child: RepaintBoundary(
+            key: boundary,
+            child: CanvistEditor(
+              controller: controller,
+              padding: EdgeInsets.zero,
+              readOnly: true,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  final render =
+      boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+  final size = render.size;
+  final server = doc.serverDisplay(_width);
+  final serverFonts = _specs(server);
+  final (expected, actual) = await tester.runAsync(() async {
+    final image = await render.toImage();
+    final bytes = (await image.toByteData())!.buffer.asUint8List();
+    image.dispose();
+    return (await _render(server, serverFonts, size), bytes);
+  }) as (Uint8List, Uint8List);
+  // The widget is as tall as its document, a fractional height, and paints
+  // only its own bounds: its last pixel row is part background, part
+  // nothing. Compare the rows it covers.
+  final covered = size.height.floor() * size.width.ceil() * 4;
+  final different = _differentPixels(
+    expected.sublist(0, covered),
+    actual.sublist(0, covered),
+  );
+
+  if (different > _pixelTolerance) {
+    await tester.runAsync(() async {
+      await _save('$name server for the widget', server, serverFonts, size);
+      await _savePng('$name widget', await render.toImage());
+    });
+  }
+
+  expect(
+    different,
+    lessThanOrEqualTo(_pixelTolerance),
+    reason:
+        'share of pixels that differ from server rendering: '
+        '${_whereDifferent(expected, actual, size.width.ceil())}',
+  );
+}
+
+/// Where the pixels that [_differentPixels] counts are: their bounding box
+/// and the first few, as `(x, y) expected → actual`.
+String _whereDifferent(Uint8List a, Uint8List b, int width) {
+  final points = <String>[];
+  var (left, top, right, bottom) = (width, a.length, -1, -1);
+
+  for (var pixel = 0; pixel < a.length; pixel += 4) {
+    final channels = [0, 1, 2];
+
+    if (!channels.any((c) => (a[pixel + c] - b[pixel + c]).abs() > _channel)) {
+      continue;
+    }
+
+    final (x, y) = ((pixel ~/ 4) % width, pixel ~/ 4 ~/ width);
+    (left, top) = (x < left ? x : left, y < top ? y : top);
+    (right, bottom) = (x > right ? x : right, y > bottom ? y : bottom);
+
+    if (points.length < 6) {
+      String rgb(Uint8List list) => list.sublist(pixel, pixel + 3).join(',');
+      points.add('($x, $y) ${rgb(a)} → ${rgb(b)}');
+    }
+  }
+
+  return 'within ($left, $top)–($right, $bottom): ${points.join('; ')}';
+}
+
+List<FontSpec> _specs(ViewDisplay display) => [
+  for (final font in display.fonts)
+    FontSpec(
+      family: font.family,
+      size: font.size,
+      weight: font.weight,
+      italic: font.italic,
+    ),
+];

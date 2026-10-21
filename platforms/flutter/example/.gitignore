@@ -49,3 +49,7 @@ app.*.map.json
 
 # Docs samples, written by docs/check-snippets.ts
 /doc_snippets/
+
+# Patrol's generated test bundle and dart-defines
+**/test_bundle.dart
+.patrol.env

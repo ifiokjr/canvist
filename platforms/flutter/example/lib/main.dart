@@ -1,6 +1,7 @@
 import 'package:canvist_flutter/canvist_flutter.dart';
 import 'package:flutter/material.dart';
 
+import 'keys.dart';
 import 'peers.dart';
 import 'toolbar.dart';
 
@@ -110,7 +111,7 @@ class _EditorScreenState extends State<EditorScreen> {
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         child: SelectableText(
           _controller.export(Format.markdown),
-          key: const Key('markdown'),
+          key: Keys.markdown,
           style: const TextStyle(fontFamily: 'monospace', height: 1.5),
         ),
       ),
@@ -128,12 +129,12 @@ class _EditorScreenState extends State<EditorScreen> {
         actions: [
           const Text('Two peers'),
           Switch(
-            key: const Key('peers'),
+            key: Keys.peers,
             value: peers != null,
             onChanged: _togglePeers,
           ),
           IconButton(
-            key: const Key('export'),
+            key: Keys.export,
             tooltip: 'Show Markdown',
             icon: const Icon(Icons.data_object),
             onPressed: _showMarkdown,
@@ -148,7 +149,7 @@ class _EditorScreenState extends State<EditorScreen> {
             Expanded(
               child: peers == null
                   ? CanvistEditor(
-                      key: const Key('editor'),
+                      key: Keys.editor,
                       controller: _controller,
                       autofocus: true,
                       padding: const EdgeInsets.all(24),

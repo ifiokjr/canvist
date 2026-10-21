@@ -1,6 +1,8 @@
 import 'package:canvist_flutter/canvist_flutter.dart';
 import 'package:flutter/material.dart';
 
+import 'keys.dart';
+
 /// Formatting buttons for a [CanvistController], lit up by the typed
 /// queries of the marks and blocks at the selection.
 class EditorToolbar extends StatelessWidget {
@@ -123,7 +125,7 @@ class EditorToolbar extends StatelessWidget {
     String tooltip,
     bool Function() onPressed,
   ) => IconButton(
-    key: Key(key),
+    key: Keys.toolbar(key),
     tooltip: tooltip,
     icon: Icon(icon),
     onPressed: onPressed,
@@ -144,7 +146,7 @@ class EditorToolbar extends StatelessWidget {
     bool selected,
     Command command,
   ) => IconButton(
-    key: Key(key),
+    key: Keys.toolbar(key),
     tooltip: tooltip,
     isSelected: selected,
     icon: Icon(icon),
