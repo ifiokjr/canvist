@@ -9,8 +9,12 @@
  * @module
  */
 
-/** How strongly the placeholder shows the body text's colour. */
-const PLACEHOLDER_OPACITY = 0.5;
+/**
+ * How strongly the placeholder shows the body text's colour: enough for
+ * 4.5:1 contrast on the StarterKit's light and dark pages, as WCAG asks of
+ * placeholder text.
+ */
+const PLACEHOLDER_OPACITY = 0.62;
 
 /** Placeholder text over an empty document. */
 export class Placeholder {

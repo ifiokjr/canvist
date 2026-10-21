@@ -40,9 +40,19 @@ if (element !== null) {
 - **Pointer selection.** Click to place the caret, Shift-click to extend, double-click for a word, triple-click for the paragraph. Dragging after a double or triple click extends by words or paragraphs.
 - **Drag and drop.** Drag the selection to move it, holding Option (Mac) or Ctrl (elsewhere) to copy it instead. Text and HTML dropped from other applications land where you drop them.
 
+## Platform quirks it handles
+
+These sequences are replayed in Chromium, Firefox, and WebKit on every change (`packages/canvist-web/tests/browser/input-edge.spec.ts`):
+
+- **Safari's input methods.** Composed text is inserted once, whether Safari's final `insertFromComposition` arrives before or after `compositionend`, and the Enter that commits a composition (key code 229) doesn't split the paragraph.
+- **Android keyboards.** Gboard and other soft keyboards send every key as `Unidentified` and say what they mean in `beforeinput`: typing, Backspace, Enter, undo, and redo all go through it, and words composed one at a time arrive whole.
+- **Touch.** A tap places the caret and focuses the text field, so the on-screen keyboard opens.
+
 ## Screen readers
 
-Beside the canvas, the editor keeps a visually hidden copy of the document as the same semantic HTML the server renders: headings, lists, links, and code. Screen readers read it, and so does find-in-page. It is refreshed when the browser is idle after a change, not on every keystroke. The focusable element has the `textbox` role and the name you pass as `label`.
+Beside the canvas, the editor keeps a visually hidden copy of the document as the same semantic HTML the server renders: headings, lists, links, and code. Screen readers read it, and so does find-in-page. It is refreshed when the browser is idle after a change, not on every keystroke. The focusable element has the `textbox` role and the name you pass as `label`, comes before the copy in reading order, and announces `aria-readonly` and the placeholder.
+
+Every change runs an [axe](https://github.com/dequelabs/axe-core) audit (WCAG 2.2 AA) of editable, read-only, empty, and menu-showing editors, and smoke tests that read the editor with a virtual screen reader (`packages/canvist-web/tests/browser/a11y.spec.ts`). The placeholder has 4.5:1 contrast on the StarterKit's light and dark pages.
 
 The copy does not yet mirror the selection, so a screen reader can read the document but doesn't announce the caret as it moves.
 
