@@ -1,6 +1,6 @@
 {
 	"name": "@canvist/web",
-	"version": "0.1.1",
+	"version": "0.1.0",
 	"description": "The canvist editor for the browser: a canvas that wraps text exactly like canvist's server-rendered HTML, with typed commands and a font plugin.",
 	"license": "Unlicense",
 	"homepage": "https://github.com/canvist/canvist/tree/main/packages/canvist-web#readme",
@@ -43,7 +43,7 @@
 		"size": "vite build --config tests/bundle/vite.config.ts --logLevel error && node scripts/bundle-size.ts --budget 350000"
 	},
 	"dependencies": {
-		"@canvist/headless": "^0.1.1"
+		"@canvist/headless": "file:../canvist-headless"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.58.0",

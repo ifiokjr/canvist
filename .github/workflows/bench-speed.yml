@@ -1,0 +1,129 @@
+name: "bench"
+
+# `bench / speed`: the divan benches on a pull request's base and head, run on
+# one runner and compared. A required check; see
+# docs/src/guides/performance.md for how to read it and change a threshold.
+#
+# The base is the first parent of the commit under test: the base branch tip
+# for a pull request's test merge commit, the previous commit on `main`. Every
+# push to `main` caches its bench binaries by tree, so a pull request usually
+# restores its base's binaries instead of building them.
+on:
+  # Dispatched by hand on the release pull request: GITHUB_TOKEN opens it,
+  # and GitHub starts no pull_request workflows for that.
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  # Every pull request, including stacked ones. No `paths` filter: a required
+  # check must always report, so the job decides what to run itself.
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: bench-speed-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  speed:
+    name: speed
+    timeout-minutes: 90
+    # Pinned so a runner image change never lands between a base and a head
+    # that share a cache entry.
+    runs-on: ubuntu-24.04
+    env:
+      BINS: .bench/bins
+      BASE_BINS: .bench/base
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: find the base
+        id: revs
+        run: |
+          echo "base=$(git rev-parse HEAD^1)" >> "$GITHUB_OUTPUT"
+          echo "base-tree=$(git rev-parse 'HEAD^1^{tree}')" >> "$GITHUB_OUTPUT"
+          echo "head-tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: install the rust toolchain
+        run: rustup toolchain install
+
+      - name: pick the affected suites
+        id: plan
+        run: node tools/bench/speed.ts plan --base "${{ steps.revs.outputs.base }}" ${{ github.event_name != 'pull_request' && '--all' || '' }}
+
+      - name: report that no suite is affected
+        if: steps.plan.outputs.suites == ''
+        run: node tools/bench/speed.ts skip --comment speed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: cache rust
+        if: steps.plan.outputs.suites != ''
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: bench-speed
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: restore the base's bench binaries
+        id: base-cache
+        if: steps.plan.outputs.suites != ''
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BINS }}
+          key: bench-speed-bins-${{ steps.revs.outputs.base-tree }}
+
+      - name: set the base's binaries aside
+        if: steps.plan.outputs.suites != '' && steps.base-cache.outputs.cache-hit == 'true'
+        run: mv "$BINS" "$BASE_BINS"
+
+      - name: build the head's bench binaries
+        if: steps.plan.outputs.suites != ''
+        run: node tools/bench/speed.ts build --root . --suites "${{ steps.plan.outputs.suites }}" --out "$BINS"
+
+      # After the head, never before: cargo hashes workspace crates by their
+      # path inside the workspace, so the two checkouts share artifacts in one
+      # target directory, and only sources newer than the last build count as
+      # changed. A base checked out after the head's build is newer everywhere
+      # and rebuilds; a head checked out before a base build would look fresh
+      # and silently reuse the base's binaries.
+      - name: build the base's bench binaries
+        if: steps.plan.outputs.suites != '' && steps.base-cache.outputs.cache-hit != 'true'
+        run: |
+          base="$RUNNER_TEMP/base"
+          git worktree add --detach "$base" "${{ steps.revs.outputs.base }}"
+          ln -s "$PWD/target" "$base/target"
+          node tools/bench/speed.ts build --root "$base" --suites "${{ steps.plan.outputs.suites }}" --out "$BASE_BINS"
+
+      - name: cache the head's bench binaries for later pull requests
+        if: steps.plan.outputs.suites != '' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.BINS }}
+          key: bench-speed-bins-${{ steps.revs.outputs.head-tree }}
+
+      - name: run and compare
+        if: steps.plan.outputs.suites != ''
+        run: node tools/bench/speed.ts compare --base "$BASE_BINS" --head "$BINS" --suites "${{ steps.plan.outputs.suites }}" --out .bench/samples.json --comment speed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: upload every run's medians
+        if: ${{ !cancelled() && steps.plan.outputs.suites != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-speed-samples
+          path: .bench/samples.json
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 30

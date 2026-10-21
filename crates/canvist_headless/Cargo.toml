@@ -1,6 +1,6 @@
 [package]
 name = "canvist_headless"
-version = "0.1.1"
+version.workspace = true
 authors.workspace = true
 categories.workspace = true
 documentation = "https://docs.rs/canvist_headless"
@@ -42,7 +42,7 @@ scene = [
 canvist_canvas = { workspace = true, optional = true }
 canvist_collab = { workspace = true, optional = true }
 canvist_editor = { workspace = true }
-canvist_extensions = { path = "../canvist_extensions", version = "0.1.1", default-features = false, features = ["clipboard"] }
+canvist_extensions = { path = "../canvist_extensions", version = "0.1.0", default-features = false, features = ["clipboard"] }
 canvist_layout = { workspace = true, optional = true }
 canvist_model = { workspace = true }
 canvist_paint = { workspace = true, optional = true }

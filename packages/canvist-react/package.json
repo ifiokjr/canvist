@@ -1,6 +1,6 @@
 {
 	"name": "@canvist/react",
-	"version": "0.1.1",
+	"version": "0.1.0",
 	"description": "React bindings for the canvist canvas editor: a component, and hooks typed from the extensions you register.",
 	"license": "Unlicense",
 	"homepage": "https://github.com/canvist/canvist/tree/main/packages/canvist-react#readme",
@@ -28,7 +28,7 @@
 		"prepack": "npm run build"
 	},
 	"dependencies": {
-		"@canvist/web": "^0.1.1"
+		"@canvist/web": "file:../canvist-web"
 	},
 	"peerDependencies": {
 		"react": "^18.3.0 || ^19.0.0"

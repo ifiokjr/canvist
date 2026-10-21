@@ -53,6 +53,65 @@ Every number below has a budget, and a test fails the build when an operation go
 
 ⁴ Chromium / Firefox / WebKit on an Apple silicon Mac, measured by `editor.inputLatency()` in canvist's Playwright tests: from each input event's timestamp until the change is painted on the canvas, in the same task. Firefox and WebKit round timestamps to 1 ms. In the burst, every key is painted in its own task, so none waits for a later frame; the 95th percentile is 0.4 / 3 / 1 ms. The browser's Event Timing API also counts the wait for the next frame, and reports only events that took 16 ms or more, so it can't resolve an 8 ms budget. The tests record its slow entries beside these numbers.
 
+## Regression checks on every pull request
+
+The budgets above are absolute: an operation fails when it takes longer than its limit, however long it took before. Two more checks run on every pull request and compare it with the commit it merges into. Both are required, so a pull request can't merge while either fails.
+
+### `bench / speed`
+
+The check runs every divan benchmark in the crates the pull request can change (model, editor keystrokes, extensions, layout, collaboration, headless, scene, canvas, and paint) on the base and on the head, on one runner, in one job. The base is the commit the pull request merges into, so the comparison shows exactly what the pull request changes.
+
+Each bench binary runs five times per side, alternating base and head so that a runner warming up or slowing down affects both. Every run gives one median per benchmark, and a time in the report is the median of those medians. A benchmark **regresses** only when both of these hold:
+
+- the head is slower than the base by more than the benchmark's threshold, and
+- every head run is slower than every base run.
+
+The second rule is what keeps runner noise from failing a pull request. A busy neighbour on the runner slows one run, not all of one side and none of the other. When a benchmark looks regressed, its suite runs five more times per side, and the verdict uses all ten runs.
+
+The report, in the job summary and in a comment on the pull request, lists what regressed or improved first, then every benchmark:
+
+| Column    | Meaning                                                               |
+| --------- | --------------------------------------------------------------------- |
+| Base      | the median time on the commit the pull request merges into            |
+| Head      | the median time with the pull request                                 |
+| Change    | head over base: `+12.0%` is 12% slower                                |
+| Threshold | the slowdown this benchmark may show before it fails                  |
+| Verdict   | ❌ regressed, 🚀 improved, `new` or `removed`, or empty for no change |
+
+Suites the pull request can't affect don't run, and the report names them. A suite is affected when a file changes in its crate or in any workspace crate it depends on, or when a global input changes: `Cargo.lock`, `Cargo.toml`, `rust-toolchain.toml`, `.cargo`, `tools/bench`, or the workflow. Every push to `main` runs every suite and caches its bench binaries, so most pull requests only build the head.
+
+Thresholds live in [`tools/bench/speed.json`](https://github.com/canvist/canvist/blob/main/tools/bench/speed.json): `threshold` is the default, in percent, and `thresholds` sets one benchmark by its id (`model/type_char/100000`) or a group by a pattern (`scene/to_json/*`). The longest matching pattern wins. Raise a threshold only for a benchmark that is noisy on the runner, never to let a slowdown through. A slowdown you mean to make, such as trading speed for correctness, should say so in the pull request, and the new speed becomes the base once it merges. Download the `bench-speed-samples` artifact to see every run's numbers.
+
+### `bench / bundle size`
+
+The check builds every shipped artifact and measures it raw, gzipped, and brotli-compressed:
+
+- `@canvist/web`: the app bundle (a Vite build of a page that creates an editor), its WebAssembly, and its JavaScript;
+- `@canvist/headless`: the document and scene WebAssembly modules and the JavaScript;
+- `@canvist/react` and `@canvist/vue`;
+- `@canvist/canvas`: its WebAssembly and JavaScript;
+- `libcanvist_ffi` built for Linux.
+
+An artifact **fails** when it is over its budget, or when its gzipped size grew by more than both 1% and 1,024 bytes since the base. Growth you mean to ship passes once the pull request has the `size-increase-approved` label, and adding the label re-runs the check. The label never waives a budget: raise the budget in [`tools/bench/size.json`](https://github.com/canvist/canvist/blob/main/tools/bench/size.json) in the same pull request, so the change is reviewed.
+
+Builds are deterministic, so every push to `main` records its sizes and pull requests compare with that record. An artifact the pull request can't affect isn't rebuilt; the report marks it `(unchanged)` and still checks it against its budget.
+
+The iOS and Android libraries (`CanvistFFI.xcframework`, `libcanvist_ffi.a`, and `libcanvist_ffi.so` for each Android ABI) only build in the `native` workflow, which runs on pull requests that touch the native surface. It checks them against their budgets in `size.json` and reports their sizes in its job summary.
+
+### Run them yourself
+
+Compare your branch with `main` the way CI does:
+
+```sh
+git worktree add ../canvist-base main
+ln -s "$PWD/target" ../canvist-base/target
+node tools/bench/speed.ts build --root ../canvist-base --suites "model keystroke" --out .bench/base
+node tools/bench/speed.ts build --root . --suites "model keystroke" --out .bench/head
+node tools/bench/speed.ts compare --base .bench/base --head .bench/head --suites "model keystroke"
+```
+
+Measure sizes the same way, with `node tools/bench/size.ts build --root . --groups web`, then `measure` and `compare`. The commands are documented at the top of each script.
+
 ## Keep your app fast
 
 - **Build one engine and share it.** Creating an engine registers its extensions. A document from an existing engine takes about 60 µs.
