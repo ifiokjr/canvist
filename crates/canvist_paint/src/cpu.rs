@@ -3,6 +3,7 @@
 //! into a Canvas2D `ImageData`).
 
 use kurbo::Affine;
+use kurbo::Diagonal2;
 use kurbo::Rect;
 use peniko::Brush;
 use peniko::Fill;
@@ -179,12 +180,22 @@ impl Painter for CpuPainter {
 					y: glyph.y,
 				}
 			});
-			// A glyph the font cannot draw leaves a gap; the rest still render.
-			let _ = self
+			let amount = part.embolden_amount();
+			let mut run = self
 				.context
 				.glyph_run(&mut self.resources, &part.font)
 				.font_size(part.size)
-				.fill_glyphs(glyphs);
+				.normalized_coords(&part.coords)
+				.font_embolden(glifo::FontEmbolden::new(Diagonal2::new(amount, amount)));
+
+			// Glyph space is y down here, so tops lean right with a negative
+			// shear.
+			if let Some(shear) = part.shear() {
+				run = run.glyph_transform(Affine::skew(-shear, 0.0));
+			}
+
+			// A glyph the font cannot draw leaves a gap; the rest still render.
+			let _ = run.fill_glyphs(glyphs);
 			offset += part.glyphs.last().map_or(0.0, |glyph| glyph.x);
 		}
 	}

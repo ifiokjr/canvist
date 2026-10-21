@@ -3,9 +3,10 @@
 //!
 //! Subtrees outside the viewport are skipped by their extent. Nodes smaller
 //! than a pixel on screen are skipped; nodes smaller than [`LOD_PIXELS`]
-//! draw as a box in their main colour; text smaller than [`GREEK_PIXELS`]
-//! draws as bars. In [`Quality::Interactive`] (while the camera moves)
-//! shadows are skipped too.
+//! draw as a box in their main colour; text smaller than
+//! [`GREEK_PIXELS`](crate::GREEK_PIXELS) draws as bars. In
+//! [`Quality::Interactive`] (while the camera moves) shadows are skipped
+//! too.
 
 use std::borrow::Cow;
 
@@ -13,7 +14,6 @@ use canvist_canvas::Camera;
 use canvist_canvas::NodeGeometry;
 use canvist_canvas::SceneIndex;
 use canvist_canvas::TextLayouts;
-use canvist_layout::DisplayItem;
 use canvist_scene::EffectKind;
 use canvist_scene::Node;
 use canvist_scene::NodeId;
@@ -34,30 +34,22 @@ use peniko::Brush;
 
 use crate::Assets;
 use crate::convert;
+use crate::display::DisplayStyle;
+use crate::display::paint_display_list;
 use crate::painter::BoxShadow;
 use crate::painter::Draw;
 use crate::painter::Image;
 use crate::painter::Layer;
 use crate::painter::Painter;
-use crate::painter::Text;
 
 /// Nodes smaller than this many screen pixels are not drawn.
 pub const MIN_PIXELS: f64 = 0.5;
 /// Nodes smaller than this many screen pixels draw as a box in their main
 /// colour.
 pub const LOD_PIXELS: f64 = 3.0;
-/// Text whose font is smaller than this many screen pixels draws as bars.
-pub const GREEK_PIXELS: f64 = 4.0;
 /// How deeply instances may nest before the walker stops, so a component
 /// that contains an instance of itself cannot recurse forever.
 const MAX_INSTANCE_DEPTH: usize = 8;
-/// The opacity of greeked text bars.
-const GREEK_ALPHA: f32 = 0.35;
-/// A greeked bar's height, as a fraction of the font size: about an
-/// x-height.
-const GREEK_HEIGHT: f64 = 0.3;
-/// How far above the baseline a greeked bar sits, in bar heights.
-const GREEK_RISE: f64 = 1.5;
 /// The light grey shown where an image has not loaded.
 const PLACEHOLDER: peniko::Color = peniko::Color::from_rgba8(229, 229, 229, 255);
 
@@ -160,16 +152,6 @@ struct Placement<'a> {
 struct Surface<'a> {
 	outline: &'a BezPath,
 	size: kurbo::Vec2,
-	transform: Affine,
-}
-
-/// What a text frame's items share.
-struct TextStyle<'a> {
-	fonts: &'a [canvist_layout::FontSpec],
-	/// The frame's fill, which colours all of its text.
-	fill: Option<peniko::Color>,
-	/// Screen pixels per frame unit, to decide when text is too small.
-	scale: f64,
 	transform: Affine,
 }
 
@@ -456,105 +438,12 @@ impl<P: Painter + ?Sized> Walker<'_, P> {
 		let Some(frame) = self.sources.texts.get(id) else {
 			return;
 		};
-		let style = TextStyle {
-			fonts: &frame.display.fonts,
-			fill: convert::summary_color(&props.fills),
-			scale: transform.as_coeffs()[0].hypot(transform.as_coeffs()[1]),
+		let style = DisplayStyle {
 			transform,
+			fill: convert::summary_color(&props.fills),
 		};
 
-		for item in &frame.display.items {
-			self.display_item(item, &style);
-		}
-	}
-
-	fn display_item(&mut self, item: &DisplayItem, style: &TextStyle<'_>) {
-		match item {
-			DisplayItem::Text(run) => self.run(run, style),
-			DisplayItem::Rect {
-				rect,
-				color,
-				radius,
-				..
-			} => {
-				let shape = kurbo::RoundedRect::from_rect(layout_rect(*rect), f64::from(*radius))
-					.to_path(geometry_tolerance());
-				let brush = Brush::Solid(convert::layout_color(*color));
-				self.painter.fill(
-					&draw(&shape, style.transform, &brush, None),
-					peniko::Fill::NonZero,
-				);
-			}
-			DisplayItem::Decoration {
-				x,
-				y,
-				width,
-				thickness,
-				color,
-				..
-			} => {
-				let half = f64::from(*thickness) / 2.0;
-				let line = Rect::new(
-					f64::from(*x),
-					f64::from(*y) - half,
-					f64::from(*x + *width),
-					f64::from(*y) + half,
-				);
-				let brush =
-					Brush::Solid(style.fill.unwrap_or_else(|| convert::layout_color(*color)));
-				self.painter.fill(
-					&draw(
-						&line.to_path(geometry_tolerance()),
-						style.transform,
-						&brush,
-						None,
-					),
-					peniko::Fill::NonZero,
-				);
-			}
-			// Node views are host-rendered; the canvas leaves their slots empty.
-			DisplayItem::Slot { .. } => {}
-		}
-	}
-
-	/// One text run, or a bar where it is too small to read.
-	fn run(&mut self, run: &canvist_layout::TextRun, style: &TextStyle<'_>) {
-		let Some(font) = style.fonts.get(run.font.index()) else {
-			return;
-		};
-		let color = style
-			.fill
-			.unwrap_or_else(|| convert::layout_color(run.color));
-
-		if f64::from(font.size) * style.scale >= GREEK_PIXELS {
-			self.painter.text(&Text {
-				run,
-				font,
-				transform: style.transform,
-				color,
-			});
-
-			return;
-		}
-
-		let height = f64::from(font.size) * GREEK_HEIGHT;
-		let top = f64::from(run.baseline) - height * GREEK_RISE;
-		let bar = Rect::new(
-			f64::from(run.x),
-			top,
-			f64::from(run.x + run.width),
-			top + height,
-		);
-		let brush = Brush::Solid(color.multiply_alpha(GREEK_ALPHA));
-		self.painter.fill(
-			&draw(
-				&bar.to_path(geometry_tolerance()),
-				style.transform,
-				&brush,
-				None,
-			),
-			peniko::Fill::NonZero,
-		);
+		paint_display_list(self.painter, &frame.display, &style);
 	}
 
 	fn children(
@@ -665,15 +554,6 @@ fn draw<'a>(
 		brush,
 		brush_transform,
 	}
-}
-
-fn layout_rect(rect: canvist_layout::Rect) -> Rect {
-	Rect::new(
-		f64::from(rect.x),
-		f64::from(rect.y),
-		f64::from(rect.x + rect.width),
-		f64::from(rect.y + rect.height),
-	)
 }
 
 /// The bounding box of `rect` after `transform`.

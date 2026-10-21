@@ -5,11 +5,13 @@
 use std::sync::Arc;
 
 use kurbo::Affine;
+use kurbo::Diagonal2;
 use kurbo::Shape as _;
 use peniko::Blob;
 use peniko::Fill;
 use peniko::ImageBrush;
 use rustc_hash::FxHashMap;
+use vello::FontEmbolden;
 use vello::Scene;
 
 use crate::painter::BoxShadow;
@@ -141,9 +143,13 @@ impl Painter for VelloPainter {
 					y: glyph.y,
 				}
 			});
+			let amount = part.embolden_amount();
 			self.scene
 				.draw_glyphs(&part.font)
 				.font_size(part.size)
+				.normalized_coords(&part.coords)
+				.font_embolden(FontEmbolden::new(Diagonal2::new(amount, amount)))
+				.glyph_transform(part.shear().map(|shear| Affine::skew(shear, 0.0)))
 				.transform(text.transform * origin)
 				.brush(text.color)
 				.draw(Fill::NonZero, glyphs);
