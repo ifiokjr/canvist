@@ -128,7 +128,8 @@ final class DisplayPainter {
     }
 
     private func drawCheckbox(_ rect: CGRect, checked: Bool) {
-        let box = UIBezierPath(roundedRect: rect.insetBy(dx: 0.75, dy: 0.75), cornerRadius: Self.checkboxRadius)
+        let inset = Self.checkboxBorderWidth / 2
+        let box = UIBezierPath(roundedRect: rect.insetBy(dx: inset, dy: inset), cornerRadius: Self.checkboxRadius)
 
         guard checked else {
             checkboxBorder.setStroke()
@@ -142,9 +143,12 @@ final class DisplayPainter {
         box.fill()
 
         let tick = UIBezierPath()
-        tick.move(to: CGPoint(x: rect.minX + rect.width * 0.25, y: rect.midY))
-        tick.addLine(to: CGPoint(x: rect.minX + rect.width * 0.43, y: rect.maxY - rect.height * 0.28))
-        tick.addLine(to: CGPoint(x: rect.maxX - rect.width * 0.22, y: rect.minY + rect.height * 0.28))
+        let point = { (x: CGFloat, y: CGFloat) in
+            CGPoint(x: rect.minX + rect.width * x, y: rect.minY + rect.height * y)
+        }
+        tick.move(to: point(Self.tick[0].x, Self.tick[0].y))
+        tick.addLine(to: point(Self.tick[1].x, Self.tick[1].y))
+        tick.addLine(to: point(Self.tick[2].x, Self.tick[2].y))
         UIColor.white.setStroke()
         tick.lineWidth = Self.checkboxBorderWidth
         tick.lineCapStyle = .round
@@ -158,13 +162,11 @@ final class DisplayPainter {
         switch item {
         case .fill(let bounds, _, _, _), .checkbox(let bounds, _), .slot(let bounds, _):
             return rect(bounds)
-        case .text(_, _, let x, let baseline, let width, _, _, _, _):
-            // Text runs carry their baseline, not their line box; a generous
-            // band around it covers ascenders, descenders, and accents.
-            let reach = CGFloat(width) + Self.glyphOverhang * 2
-            return CGRect(x: CGFloat(x) - Self.glyphOverhang, y: CGFloat(baseline) - 48, width: reach, height: 64)
+        case .text(_, _, _, _, _, _, _, _, let bounds):
+            return rect(bounds).insetBy(dx: -Self.glyphOverhang, dy: -Self.glyphOverhang)
         case .line(_, let x, let y, let width, let thickness, _):
-            return CGRect(x: CGFloat(x), y: CGFloat(y - thickness * 2), width: CGFloat(width), height: CGFloat(thickness * 4))
+            let reach = CGFloat(thickness) * Self.lineReach
+            return CGRect(x: CGFloat(x), y: CGFloat(y) - reach, width: CGFloat(width), height: reach * 2)
         }
     }
 
@@ -178,7 +180,14 @@ final class DisplayPainter {
     private static let checkboxBorderWidth: CGFloat = 1.5
     private static let squiggleAmplitude: CGFloat = 1.5
     private static let squiggleWavelength: CGFloat = 4
+    /// How far glyphs reach outside their line box: accents, descenders,
+    /// and italic overhangs.
     private static let glyphOverhang: CGFloat = 8
+    /// How far a decoration line's squiggle reaches, as multiples of its
+    /// thickness.
+    private static let lineReach: CGFloat = 2
+    /// The check mark's corners, as fractions of the box.
+    private static let tick: [(x: CGFloat, y: CGFloat)] = [(0.25, 0.5), (0.43, 0.72), (0.78, 0.28)]
 }
 
 /// What a typeset line draws.
