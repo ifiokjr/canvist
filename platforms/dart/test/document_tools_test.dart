@@ -11,6 +11,16 @@ Matcher throwsCode(ErrorCode code) =>
     throwsA(isA<CanvistException>().having((e) => e.code, 'code', code));
 
 void main() {
+  findsAndReplaces();
+  listsTheOutline();
+  tracksComments();
+  movesAndClearsBlocks();
+  reportsErrors();
+  describesTheMetadata();
+}
+
+/// Find and replace answers a typed record and replaces in one step.
+void findsAndReplaces() {
   test('find and replace answers a typed record and replaces', () async {
     final builder = EngineBuilder();
     final find = builder.add(Extensions.findAndReplace);
@@ -53,7 +63,10 @@ void main() {
     expect(doc.export(Format.markdown), 'Ça **va**, ÇA va');
     expect(doc.undo(), isFalse, reason: 'replacing all is one step');
   });
+}
 
+/// The table of contents lists headings as typed records.
+void listsTheOutline() {
   test('the table of contents is a typed list of records', () async {
     final builder = EngineBuilder();
     builder.add(Extensions.heading);
@@ -82,7 +95,10 @@ void main() {
       throwsCode(ErrorCode.invalidArgs),
     );
   });
+}
 
+/// Comments overlap, write HTML, and converge between peers.
+void tracksComments() {
   test('comments overlap, answer typed records, and write HTML', () async {
     final builder = EngineBuilder();
     final comments = builder.add(Extensions.comments);
@@ -117,7 +133,6 @@ void main() {
     expect(doc.run(comments.unsetComment(threadId: 'a')), isTrue);
     expect(doc.query(comments.comments()), [(threadId: 'b', text: 'words')]);
   });
-
   test('comments made on two documents converge over Yjs', () async {
     final builder = EngineBuilder();
     final comments = builder.add(Extensions.comments);
@@ -143,7 +158,10 @@ void main() {
     ]);
     expect(second.validate(), (rejectedBlocks: 0, waiting: false));
   });
+}
 
+/// Block moves and clearing formatting run through their handles.
+void movesAndClearsBlocks() {
   test('block moves and clearing formatting go through handles', () async {
     final builder = EngineBuilder();
     final drag = builder.add(Extensions.dragHandle);
@@ -179,7 +197,10 @@ void main() {
     expect(doc.press('Mod-\\'), isTrue);
     expect(doc.export(Format.markdown), 'one\n\nthree\n\ntwo');
   });
+}
 
+/// Wrong arguments and missing extensions fail with stable codes.
+void reportsErrors() {
   test('document tools refuse wrong arguments with stable codes', () async {
     final builder = EngineBuilder()
       ..add(Extensions.findAndReplace)
@@ -206,7 +227,10 @@ void main() {
     );
     expect(doc.export(Format.text), 'text');
   });
+}
 
+/// The metadata describes every document tool.
+void describesTheMetadata() {
   test('every document tool has a handle and metadata', () async {
     final builder = EngineBuilder();
     for (final extension in <Extension<ExtensionHandle>>[
