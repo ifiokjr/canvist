@@ -13,8 +13,8 @@
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
+use canvist_core::Editor;
+use canvist_core::Env;
 use canvist_extensions::Emoji;
 use canvist_extensions::StarterKit;
 use canvist_extensions::emoji;
@@ -49,7 +49,7 @@ fn search(editor: &Editor, query: &str) -> serde_json::Value {
 	let value = editor
 		.query("searchEmoji", &Attrs::new().with("query", query))
 		.expect("a known query");
-	canvist_editor::value_to_json(&value)
+	canvist_core::value_to_json(&value)
 }
 
 #[test]

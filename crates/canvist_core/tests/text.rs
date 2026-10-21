@@ -2,10 +2,10 @@
 
 mod support;
 
-use canvist_editor::EditKind;
-use canvist_editor::ParagraphNavigator;
-use canvist_editor::Unit;
-use canvist_editor::commands;
+use canvist_core::EditKind;
+use canvist_core::ParagraphNavigator;
+use canvist_core::Unit;
+use canvist_core::commands;
 use canvist_model::Attrs;
 use canvist_model::Embed;
 use canvist_model::Mark;
@@ -112,9 +112,9 @@ fn stored_marks_clear_when_the_caret_moves() {
 	let mut state = state("paragraph: ab|");
 	let bold = mark(&state, "bold");
 	commands::toggle_mark(&mut state, &bold).expect("toggle");
-	canvist_editor::motion::move_caret(
+	canvist_core::motion::move_caret(
 		&mut state,
-		canvist_editor::Direction::Backward,
+		canvist_core::Direction::Backward,
 		Unit::Grapheme,
 		false,
 		&mut ParagraphNavigator,

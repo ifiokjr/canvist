@@ -779,7 +779,7 @@ version = "0.1.0"
 dependencies = [
  "canvist_canvas",
  "canvist_collab",
- "canvist_editor",
+ "canvist_core",
  "canvist_extensions",
  "canvist_headless",
  "canvist_layout",
@@ -802,7 +802,7 @@ dependencies = [
 name = "canvist_canvas"
 version = "0.1.0"
 dependencies = [
- "canvist_editor",
+ "canvist_core",
  "canvist_extensions",
  "canvist_layout",
  "canvist_model",
@@ -823,7 +823,7 @@ version = "0.1.0"
 dependencies = [
  "canvist_canvas",
  "canvist_collab",
- "canvist_editor",
+ "canvist_core",
  "canvist_extensions",
  "canvist_layout",
  "canvist_model",
@@ -883,6 +883,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "canvist_core"
+version = "0.1.0"
+dependencies = [
+ "canvist_model",
+ "proptest",
+ "regex-lite",
+ "rustc-hash 2.1.1",
+ "serde_json",
+ "thiserror 2.0.18",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "canvist_dart"
 version = "0.0.0"
 dependencies = [
@@ -931,23 +944,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "canvist_editor"
-version = "0.1.0"
-dependencies = [
- "canvist_model",
- "proptest",
- "regex-lite",
- "rustc-hash 2.1.1",
- "serde_json",
- "thiserror 2.0.18",
- "unicode-segmentation",
-]
-
-[[package]]
 name = "canvist_extensions"
 version = "0.1.0"
 dependencies = [
- "canvist_editor",
+ "canvist_core",
  "canvist_model",
  "divan",
  "insta",
@@ -975,7 +975,7 @@ name = "canvist_footage"
 version = "0.0.0"
 dependencies = [
  "canvist_collab",
- "canvist_editor",
+ "canvist_core",
  "canvist_extensions",
  "canvist_layout",
  "canvist_model",
@@ -989,7 +989,7 @@ dependencies = [
  "base64",
  "canvist_canvas",
  "canvist_collab",
- "canvist_editor",
+ "canvist_core",
  "canvist_extensions",
  "canvist_layout",
  "canvist_model",
@@ -1016,7 +1016,7 @@ dependencies = [
 name = "canvist_layout"
 version = "0.1.0"
 dependencies = [
- "canvist_editor",
+ "canvist_core",
  "canvist_model",
  "divan",
  "icu_segmenter",

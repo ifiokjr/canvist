@@ -11,8 +11,8 @@ use canvist_canvas::DesignKit;
 use canvist_canvas::Modifiers;
 use canvist_canvas::OverlayItem;
 use canvist_canvas::TextSession;
-use canvist_editor::Editor;
-use canvist_editor::EditorBuilder;
+use canvist_core::Editor;
+use canvist_core::EditorBuilder;
 use canvist_scene::Scene;
 
 /// A StarterKit editor builder: what both the scene's text schema and the

@@ -1,6 +1,6 @@
 //! Errors, with codes every binding shares.
 
-use canvist_editor::EditorError;
+use canvist_core::EditorError;
 use canvist_model::JsonError;
 use canvist_model::StepError;
 

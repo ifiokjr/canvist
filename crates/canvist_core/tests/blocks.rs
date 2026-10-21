@@ -2,9 +2,9 @@
 
 mod support;
 
-use canvist_editor::ParagraphNavigator;
-use canvist_editor::Unit;
-use canvist_editor::commands;
+use canvist_core::ParagraphNavigator;
+use canvist_core::Unit;
+use canvist_core::commands;
 use canvist_model::Attrs;
 use support::after;
 use support::dedent;
@@ -13,11 +13,11 @@ use support::mark;
 use support::render;
 use support::state;
 
-fn backspace(state: &mut canvist_editor::EditorState) -> canvist_editor::CommandResult {
+fn backspace(state: &mut canvist_core::EditorState) -> canvist_core::CommandResult {
 	commands::delete_backward(state, Unit::Grapheme, &mut ParagraphNavigator)
 }
 
-fn delete(state: &mut canvist_editor::EditorState) -> canvist_editor::CommandResult {
+fn delete(state: &mut canvist_core::EditorState) -> canvist_core::CommandResult {
 	commands::delete_forward(state, Unit::Grapheme, &mut ParagraphNavigator)
 }
 

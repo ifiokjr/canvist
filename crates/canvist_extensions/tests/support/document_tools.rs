@@ -3,8 +3,8 @@
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
+use canvist_core::Editor;
+use canvist_core::Env;
 use canvist_model::Point;
 use canvist_model::Selection;
 use serde_json::Value as Json;
@@ -22,11 +22,11 @@ pub fn texts(typist: &Typist) -> Vec<String> {
 	doc.children(None)
 		.iter()
 		.map(|&id| {
-			canvist_editor::position::selected_text(
+			canvist_core::position::selected_text(
 				doc,
 				Selection::text(
 					Point::new(first_text(doc, id), 0),
-					canvist_editor::position::end_of(doc, last_text(doc, id)),
+					canvist_core::position::end_of(doc, last_text(doc, id)),
 				),
 			)
 			.iter()
@@ -77,7 +77,7 @@ pub struct Tools {
 
 /// A StarterKit editor on `platform` with the document tools, holding
 /// `doc` (ProseMirror JSON) or one empty paragraph.
-pub fn tools_on(platform: canvist_editor::Platform, doc: Option<&Json>) -> (Typist, Tools) {
+pub fn tools_on(platform: canvist_core::Platform, doc: Option<&Json>) -> (Typist, Tools) {
 	let mut builder = Editor::builder();
 	canvist_extensions::StarterKit::add_all(&mut builder);
 	let tools = Tools {
@@ -102,7 +102,7 @@ pub fn tools_on(platform: canvist_editor::Platform, doc: Option<&Json>) -> (Typi
 }
 
 pub fn tools(doc: Option<&Json>) -> (Typist, Tools) {
-	tools_on(canvist_editor::Platform::Other, doc)
+	tools_on(canvist_core::Platform::Other, doc)
 }
 
 /// A document of one paragraph per entry of `texts`.
@@ -120,7 +120,7 @@ pub fn paragraphs(texts: &[&str]) -> Json {
 	json!({ "type": "doc", "content": content })
 }
 
-pub fn apply(typist: &mut Typist, command: &canvist_editor::Command) -> bool {
+pub fn apply(typist: &mut Typist, command: &canvist_core::Command) -> bool {
 	typist
 		.editor
 		.run(command, &mut env())
@@ -128,7 +128,7 @@ pub fn apply(typist: &mut Typist, command: &canvist_editor::Command) -> bool {
 		.is_some()
 }
 
-pub fn can(typist: &mut Typist, command: &canvist_editor::Command) -> bool {
+pub fn can(typist: &mut Typist, command: &canvist_core::Command) -> bool {
 	typist
 		.editor
 		.can(command, &mut env())

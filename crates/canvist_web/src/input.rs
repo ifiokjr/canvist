@@ -7,13 +7,13 @@
 
 use std::cmp::Ordering;
 
-use canvist_headless::canvist_editor::KeyPress;
-use canvist_headless::canvist_editor::Modifiers;
-use canvist_headless::canvist_editor::Slice;
-use canvist_headless::canvist_editor::Update;
-use canvist_headless::canvist_editor::command;
-use canvist_headless::canvist_editor::commands;
-use canvist_headless::canvist_editor::position;
+use canvist_headless::canvist_core::KeyPress;
+use canvist_headless::canvist_core::Modifiers;
+use canvist_headless::canvist_core::Slice;
+use canvist_headless::canvist_core::Update;
+use canvist_headless::canvist_core::command;
+use canvist_headless::canvist_core::commands;
+use canvist_headless::canvist_core::position;
 use canvist_headless::canvist_extensions::clipboard;
 use canvist_headless::canvist_model::Bias;
 use canvist_headless::canvist_model::BlockId;

@@ -1,7 +1,7 @@
 //! Editing a text frame with the real canvist text editor.
 //!
 //! A [`TextSession`] borrows a text frame's document from the scene (see
-//! `Scene::lend_text`) and hands it to a `canvist_editor::Editor`, so every
+//! `Scene::lend_text`) and hands it to a `canvist_core::Editor`, so every
 //! text extension (marks, lists, links, input rules, undo) works inside the
 //! frame. While the session is open the editor owns the document: keys go
 //! to it, its commits are the frame's changes, and the canvas lays the frame
@@ -9,12 +9,12 @@
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::EditorBuilder;
-use canvist_editor::Env;
-use canvist_editor::KeyPress;
-use canvist_editor::Platform;
-use canvist_editor::Update;
+use canvist_core::Editor;
+use canvist_core::EditorBuilder;
+use canvist_core::Env;
+use canvist_core::KeyPress;
+use canvist_core::Platform;
+use canvist_core::Update;
 use canvist_layout::Caret;
 use canvist_model::Document;
 use canvist_model::Selection;
@@ -236,10 +236,10 @@ fn caret_at_end(doc: &Document, block: canvist_model::BlockId) -> Selection {
 
 /// Canvas modifiers as editor modifiers: the primary key is Cmd on Apple
 /// platforms and Ctrl elsewhere.
-fn editor_modifiers(modifiers: Modifiers, platform: Platform) -> canvist_editor::Modifiers {
+fn editor_modifiers(modifiers: Modifiers, platform: Platform) -> canvist_core::Modifiers {
 	let apple = platform == Platform::Apple;
 
-	canvist_editor::Modifiers {
+	canvist_core::Modifiers {
 		shift: modifiers.shift,
 		alt: modifiers.alt,
 		ctrl: modifiers.primary && !apple,
@@ -258,10 +258,10 @@ fn outline(to_screen: Affine, rect: canvist_layout::Rect) -> BezPath {
 	to_screen * rect.to_path(TOLERANCE)
 }
 
-fn editor_error(error: &canvist_editor::EditorError) -> CanvasError {
+fn editor_error(error: &canvist_core::EditorError) -> CanvasError {
 	CanvasError::InvalidArgs(format!("the text editor rejected the edit: {error}"))
 }
 
-fn open_error(error: &canvist_editor::EditorError) -> CanvasError {
+fn open_error(error: &canvist_core::EditorError) -> CanvasError {
 	CanvasError::InvalidArgs(format!("the text editor could not open the frame: {error}"))
 }

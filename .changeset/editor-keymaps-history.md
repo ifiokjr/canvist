@@ -1,5 +1,5 @@
 ---
-"canvist_editor": minor
+"canvist_core": minor
 ---
 
 # Add the `Editor`: history, keymaps, input and paste rules, and the `Extension` trait

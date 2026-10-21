@@ -20,7 +20,7 @@ canvist is a rich-text editor that owns every pixel. One Rust core holds the doc
 └──────────────┬──────────────────────────────────────▲─────────────────────┘
                │ input events, IME, pointer, clipboard │ display list, a11y tree
 ┌──────────────▼──────────────────────────────────────┴─────────────────────┐
-│ canvist_editor: commands, selection motion, keymaps, input rules,         │
+│ canvist_core: commands, selection motion, keymaps, input rules,           │
 │ history, extensions (schema + behaviour), IME composition state           │
 ├───────────────────────────────────┬───────────────────────────────────────┤
 │ canvist_layout                    │ canvist_collab (optional)             │
@@ -86,7 +86,7 @@ A `Transaction` applies steps atomically and can roll back. If any step fails, t
 
 ## Decision 3: UTF-8 offsets inside, UTF-16 at the edges
 
-The model uses UTF-8 byte offsets, validated to fall on character boundaries, because Rust strings are UTF-8 and slicing them is free. JavaScript hosts and the `yrs` binding convert offsets at the boundary. The binding sets `OffsetKind::Utf16`: the setting only changes how yrs reads indices locally (the wire format always counts UTF-16), but yrs's sticky indexes, which awareness carets use, mix units under `OffsetKind::Bytes`. Converting within one block costs `O(block length)`. Grapheme-cluster rules for caret movement live in `canvist_editor`, not the model.
+The model uses UTF-8 byte offsets, validated to fall on character boundaries, because Rust strings are UTF-8 and slicing them is free. JavaScript hosts and the `yrs` binding convert offsets at the boundary. The binding sets `OffsetKind::Utf16`: the setting only changes how yrs reads indices locally (the wire format always counts UTF-16), but yrs's sticky indexes, which awareness carets use, mix units under `OffsetKind::Bytes`. Converting within one block costs `O(block length)`. Grapheme-cluster rules for caret movement live in `canvist_core`, not the model.
 
 ## Decision 4: the host measures text, Rust lays it out
 
@@ -200,7 +200,7 @@ To make this automatic, every extension declares machine-readable metadata. It l
 
 **What it costs:**
 
-- **Each `Doc` builds its own editor.** It registers its keymap, rules, and commands from the engine's extensions, which takes about 60 µs for the StarterKit. Sharing one registry between documents would remove this, and needs an `Arc` inside `canvist_editor`. It is not worth doing until document creation shows up in a profile.
+- **Each `Doc` builds its own editor.** It registers its keymap, rules, and commands from the engine's extensions, which takes about 60 µs for the StarterKit. Sharing one registry between documents would remove this, and needs an `Arc` inside `canvist_core`. It is not worth doing until document creation shows up in a profile.
 - **A canvist document always has a block.** Joining an empty shared document writes one empty paragraph into it, untracked by undo. A server should seed the shared document itself (`Doc::share`) before clients connect, as y-websocket servers that persist documents do.
 
 ## Performance budgets

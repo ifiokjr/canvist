@@ -16,7 +16,7 @@
 //! | Module         | Crate                | Feature          | What it is                                                     |
 //! | -------------- | -------------------- | ---------------- | -------------------------------------------------------------- |
 //! | [`model`]      | `canvist_model`      | always           | The document model: schema, blocks, marks, steps, transactions |
-//! | [`editor`]     | `canvist_editor`     | always           | The editing engine: state, commands, keymaps, history          |
+//! | [`core`]       | `canvist_core`       | always           | The editing engine: state, commands, keymaps, history          |
 //! | [`extensions`] | `canvist_extensions` | always           | The extensions; `starter-kit` (default) turns on TipTap's kit  |
 //! | `headless`     | `canvist_headless`   | `headless`       | Load, edit, and export documents with no UI (default)          |
 //! | `collab`       | `canvist_collab`     | `collab`         | Yjs collaboration: bindings, y-sync, awareness, shared undo    |
@@ -79,7 +79,7 @@ pub use canvist_canvas as canvas;
 #[doc(inline)]
 pub use canvist_collab as collab;
 #[doc(inline)]
-pub use canvist_editor as editor;
+pub use canvist_core as core;
 #[doc(inline)]
 pub use canvist_extensions as extensions;
 #[cfg(feature = "headless")]

@@ -1,8 +1,8 @@
 //! Keys: clipboard shortcuts, the editor's key bindings, paging, and
 //! typing.
 
-use canvist_headless::canvist_editor::KeyPress;
-use canvist_headless::canvist_editor::Platform;
+use canvist_headless::canvist_core::KeyPress;
+use canvist_headless::canvist_core::Platform;
 use canvist_headless::canvist_model::Selection;
 
 use crate::Context;

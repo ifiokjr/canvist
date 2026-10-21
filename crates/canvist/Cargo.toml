@@ -77,7 +77,7 @@ headless-scene = ["headless", "png", "canvist_headless/scene"]
 [dependencies]
 canvist_canvas = { workspace = true, optional = true }
 canvist_collab = { workspace = true, optional = true }
-canvist_editor = { workspace = true }
+canvist_core = { workspace = true }
 # Named by path: the workspace entries enable default features, and these
 # two leave theirs to this crate's features.
 canvist_extensions = { path = "../canvist_extensions", version = "0.1.0", default-features = false }

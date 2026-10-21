@@ -53,7 +53,7 @@ Each module is the crate it names, so `canvist::headless::Engine` is `canvist_he
 | Module                | Crate                                         | Feature                                        |
 | --------------------- | --------------------------------------------- | ---------------------------------------------- |
 | `canvist::model`      | [`canvist_model`](../canvist_model)           | always                                         |
-| `canvist::editor`     | [`canvist_editor`](../canvist_editor)         | always                                         |
+| `canvist::core`       | [`canvist_core`](../canvist_core)             | always                                         |
 | `canvist::extensions` | [`canvist_extensions`](../canvist_extensions) | always; `starter-kit`, `extras`, `full`        |
 | `canvist::headless`   | [`canvist_headless`](../canvist_headless)     | `headless`; `journal`, `ssr`, `headless-scene` |
 | `canvist::collab`     | [`canvist_collab`](../canvist_collab)         | `collab`                                       |

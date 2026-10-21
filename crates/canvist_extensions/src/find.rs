@@ -3,21 +3,21 @@
 
 use std::ops::Range;
 
-use canvist_editor::Command;
-use canvist_editor::CommandResult;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditKind;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::Extension;
-use canvist_editor::Field;
-use canvist_editor::QuerySpec;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
-use canvist_editor::ValueType;
-use canvist_editor::command;
-use canvist_editor::commands;
-use canvist_editor::position;
+use canvist_core::Command;
+use canvist_core::CommandResult;
+use canvist_core::CommandSpec;
+use canvist_core::EditKind;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::Extension;
+use canvist_core::Field;
+use canvist_core::QuerySpec;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
+use canvist_core::ValueType;
+use canvist_core::command;
+use canvist_core::commands;
+use canvist_core::position;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::MarkSet;
@@ -272,7 +272,7 @@ fn step(state: &mut EditorState, forward: bool) -> CommandResult {
 /// Replace one match's text with `replacement`, which takes the marks of
 /// the match's first character, so a bold word stays bold.
 fn replace_match(
-	tr: &mut canvist_editor::EditorTransaction<'_>,
+	tr: &mut canvist_core::EditorTransaction<'_>,
 	found: &SearchMatch,
 	replacement: &str,
 ) -> Result<Point, EditorError> {

@@ -1,9 +1,9 @@
 //! Clipboard formats: HTML, Markdown, and plain text.
 //!
-//! [`Editor::copy`](canvist_editor::Editor::copy) produces a [`Slice`]; these
+//! [`Editor::copy`](canvist_core::Editor::copy) produces a [`Slice`]; these
 //! functions turn it into the formats a system clipboard carries, and turn
 //! pasted content back into a slice for
-//! [`Editor::paste`](canvist_editor::Editor::paste).
+//! [`Editor::paste`](canvist_core::Editor::paste).
 //!
 //! The codecs know the StarterKit's TipTap names (`heading`, `bulletList`,
 //! `bold`, ...). Unknown block types serialize as their text, and parsed
@@ -22,7 +22,7 @@ mod markdown_read;
 mod markdown_write;
 mod tree;
 
-use canvist_editor::Slice;
+use canvist_core::Slice;
 use canvist_model::BlockTree;
 use canvist_model::Schema;
 use canvist_model::TreeContent;

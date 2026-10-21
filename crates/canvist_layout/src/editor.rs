@@ -1,11 +1,11 @@
 //! The editor engine's line navigation, answered by layout.
 //!
-//! `canvist_editor` owns the [`LineNavigator`] trait so the editor never
+//! `canvist_core` owns the [`LineNavigator`] trait so the editor never
 //! depends on layout. With the `editor` feature, [`LayoutNavigator`]
 //! implements it, and the caret types convert both ways.
 
-use canvist_editor::LineNavigator;
-use canvist_editor::NavigationError;
+use canvist_core::LineNavigator;
+use canvist_core::NavigationError;
 use canvist_model::Document;
 
 use crate::Affinity;
@@ -15,16 +15,16 @@ use crate::LineEdge;
 use crate::VerticalDirection;
 use crate::VerticalMotion;
 
-impl From<canvist_editor::Affinity> for Affinity {
-	fn from(affinity: canvist_editor::Affinity) -> Self {
+impl From<canvist_core::Affinity> for Affinity {
+	fn from(affinity: canvist_core::Affinity) -> Self {
 		match affinity {
-			canvist_editor::Affinity::Upstream => Self::Upstream,
-			canvist_editor::Affinity::Downstream => Self::Downstream,
+			canvist_core::Affinity::Upstream => Self::Upstream,
+			canvist_core::Affinity::Downstream => Self::Downstream,
 		}
 	}
 }
 
-impl From<Affinity> for canvist_editor::Affinity {
+impl From<Affinity> for canvist_core::Affinity {
 	fn from(affinity: Affinity) -> Self {
 		match affinity {
 			Affinity::Upstream => Self::Upstream,
@@ -33,13 +33,13 @@ impl From<Affinity> for canvist_editor::Affinity {
 	}
 }
 
-impl From<canvist_editor::Caret> for Caret {
-	fn from(caret: canvist_editor::Caret) -> Self {
+impl From<canvist_core::Caret> for Caret {
+	fn from(caret: canvist_core::Caret) -> Self {
 		Self::with_affinity(caret.point, caret.affinity.into())
 	}
 }
 
-impl From<Caret> for canvist_editor::Caret {
+impl From<Caret> for canvist_core::Caret {
 	fn from(caret: Caret) -> Self {
 		Self {
 			point: caret.point,
@@ -48,25 +48,25 @@ impl From<Caret> for canvist_editor::Caret {
 	}
 }
 
-impl From<canvist_editor::VerticalDirection> for VerticalDirection {
-	fn from(direction: canvist_editor::VerticalDirection) -> Self {
+impl From<canvist_core::VerticalDirection> for VerticalDirection {
+	fn from(direction: canvist_core::VerticalDirection) -> Self {
 		match direction {
-			canvist_editor::VerticalDirection::Up => Self::Up,
-			canvist_editor::VerticalDirection::Down => Self::Down,
+			canvist_core::VerticalDirection::Up => Self::Up,
+			canvist_core::VerticalDirection::Down => Self::Down,
 		}
 	}
 }
 
-impl From<canvist_editor::LineEdge> for LineEdge {
-	fn from(edge: canvist_editor::LineEdge) -> Self {
+impl From<canvist_core::LineEdge> for LineEdge {
+	fn from(edge: canvist_core::LineEdge) -> Self {
 		match edge {
-			canvist_editor::LineEdge::Start => Self::Start,
-			canvist_editor::LineEdge::End => Self::End,
+			canvist_core::LineEdge::Start => Self::Start,
+			canvist_core::LineEdge::End => Self::End,
 		}
 	}
 }
 
-impl From<VerticalMotion> for canvist_editor::VerticalMotion {
+impl From<VerticalMotion> for canvist_core::VerticalMotion {
 	fn from(motion: VerticalMotion) -> Self {
 		Self {
 			caret: motion.caret.into(),
@@ -81,10 +81,10 @@ impl LineNavigator for LayoutNavigator<'_> {
 	fn vertical(
 		&mut self,
 		_doc: &Document,
-		from: canvist_editor::Caret,
-		direction: canvist_editor::VerticalDirection,
+		from: canvist_core::Caret,
+		direction: canvist_core::VerticalDirection,
 		goal_x: Option<f32>,
-	) -> Result<Option<canvist_editor::VerticalMotion>, NavigationError> {
+	) -> Result<Option<canvist_core::VerticalMotion>, NavigationError> {
 		let motion = LayoutNavigator::vertical(self, from.into(), direction.into(), goal_x)
 			.map_err(|error| NavigationError::new(&error))?;
 
@@ -94,9 +94,9 @@ impl LineNavigator for LayoutNavigator<'_> {
 	fn line_edge(
 		&mut self,
 		_doc: &Document,
-		at: canvist_editor::Caret,
-		edge: canvist_editor::LineEdge,
-	) -> Result<canvist_editor::Caret, NavigationError> {
+		at: canvist_core::Caret,
+		edge: canvist_core::LineEdge,
+	) -> Result<canvist_core::Caret, NavigationError> {
 		LayoutNavigator::line_edge(self, at.into(), edge.into())
 			.map(Into::into)
 			.map_err(|error| NavigationError::new(&error))

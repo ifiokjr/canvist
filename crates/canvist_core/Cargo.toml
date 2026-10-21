@@ -1,9 +1,9 @@
 [package]
-name = "canvist_editor"
+name = "canvist_core"
 version.workspace = true
 authors.workspace = true
 categories.workspace = true
-documentation = "https://docs.rs/canvist_editor"
+documentation = "https://docs.rs/canvist_core"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true

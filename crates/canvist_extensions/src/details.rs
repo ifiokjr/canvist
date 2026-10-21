@@ -1,26 +1,26 @@
 //! Details: a summary that opens and closes the content below it.
 
-use canvist_editor::Binding;
-use canvist_editor::Command;
-use canvist_editor::CommandResult;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditKind;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::Extension;
-use canvist_editor::Field;
-use canvist_editor::NodeKind;
-use canvist_editor::NodeMeta;
-use canvist_editor::Platform;
-use canvist_editor::QuerySpec;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
-use canvist_editor::Update;
-use canvist_editor::ValueType;
-use canvist_editor::command;
-use canvist_editor::commands;
-use canvist_editor::position;
-use canvist_editor::position::Stop;
+use canvist_core::Binding;
+use canvist_core::Command;
+use canvist_core::CommandResult;
+use canvist_core::CommandSpec;
+use canvist_core::EditKind;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::Extension;
+use canvist_core::Field;
+use canvist_core::NodeKind;
+use canvist_core::NodeMeta;
+use canvist_core::Platform;
+use canvist_core::QuerySpec;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
+use canvist_core::Update;
+use canvist_core::ValueType;
+use canvist_core::command;
+use canvist_core::commands;
+use canvist_core::position;
+use canvist_core::position::Stop;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::BlockSpec;
@@ -405,11 +405,11 @@ fn repair(state: &mut EditorState) -> CommandResult {
 
 /// [`repair`] one details block.
 fn reshape(
-	tr: &mut canvist_editor::EditorTransaction<'_>,
+	tr: &mut canvist_core::EditorTransaction<'_>,
 	details: BlockId,
 	(summary, content, paragraph): (BlockTypeId, BlockTypeId, BlockTypeId),
 ) -> Result<(), EditorError> {
-	let kind_at = |tr: &canvist_editor::EditorTransaction<'_>, index: usize| {
+	let kind_at = |tr: &canvist_core::EditorTransaction<'_>, index: usize| {
 		let doc = tr.doc();
 		let id = doc.children(Some(details)).get(index).copied()?;
 		Some((id, doc.block(id)?.kind()))

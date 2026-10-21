@@ -10,7 +10,7 @@ on:
       - "video/**"
       - "tools/footage/**"
       - "crates/canvist_model/**"
-      - "crates/canvist_editor/**"
+      - "crates/canvist_core/**"
       - "crates/canvist_extensions/**"
       - "crates/canvist_layout/**"
       - "crates/canvist_collab/**"

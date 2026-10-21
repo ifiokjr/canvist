@@ -1,21 +1,21 @@
 //! Ink: freehand drawings in the flow of the document, drawn by the canvas
 //! itself.
 
-use canvist_editor::Command;
-use canvist_editor::CommandResult;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::Extension;
-use canvist_editor::Field;
-use canvist_editor::NodeKind;
-use canvist_editor::NodeMeta;
-use canvist_editor::QuerySpec;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
-use canvist_editor::ValueType;
-use canvist_editor::command;
-use canvist_editor::commands;
+use canvist_core::Command;
+use canvist_core::CommandResult;
+use canvist_core::CommandSpec;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::Extension;
+use canvist_core::Field;
+use canvist_core::NodeKind;
+use canvist_core::NodeMeta;
+use canvist_core::QuerySpec;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
+use canvist_core::ValueType;
+use canvist_core::command;
+use canvist_core::commands;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::BlockSpec;
@@ -259,7 +259,7 @@ fn drawing_arg(state: &EditorState, index: usize) -> Option<BlockId> {
 /// The `ink` argument of command `name`: a place among the drawings, so
 /// never negative. A place past the last drawing is not an error; the
 /// command just does not apply, as the document may have changed.
-fn ink_index(args: &canvist_editor::Args<'_>, name: &str) -> Result<usize, EditorError> {
+fn ink_index(args: &canvist_core::Args<'_>, name: &str) -> Result<usize, EditorError> {
 	usize::try_from(args.int("ink")?).map_err(|_| {
 		EditorError::InvalidArgs {
 			name: name.to_owned(),
@@ -276,7 +276,7 @@ fn ink_field() -> Field {
 	)
 }
 
-fn floats(args: &canvist_editor::Args<'_>, key: &str) -> Result<Vec<f32>, EditorError> {
+fn floats(args: &canvist_core::Args<'_>, key: &str) -> Result<Vec<f32>, EditorError> {
 	Ok(args
 		.get(key)?
 		.as_array()
@@ -292,7 +292,7 @@ fn floats(args: &canvist_editor::Args<'_>, key: &str) -> Result<Vec<f32>, Editor
 		.collect())
 }
 
-fn add_stroke_command(args: &canvist_editor::Args<'_>) -> Result<Command, EditorError> {
+fn add_stroke_command(args: &canvist_core::Args<'_>) -> Result<Command, EditorError> {
 	let index = ink_index(args, "addInkStroke")?;
 	let width = match args.get("width")? {
 		Value::Int(width) => Some(*width as f32),
@@ -315,7 +315,7 @@ fn add_stroke_command(args: &canvist_editor::Args<'_>) -> Result<Command, Editor
 }
 
 fn by_index(
-	args: &canvist_editor::Args<'_>,
+	args: &canvist_core::Args<'_>,
 	name: &str,
 	change: fn(&mut Vec<Value>),
 ) -> Result<Command, EditorError> {

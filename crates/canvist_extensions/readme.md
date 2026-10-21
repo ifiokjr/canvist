@@ -24,7 +24,7 @@
 
 # canvist_extensions
 
-The [canvist](https://github.com/canvist/canvist) StarterKit: the extensions TipTap's StarterKit ships, built on [`canvist_editor`](../canvist_editor) and named the way TipTap names them, so documents move between the two as ProseMirror JSON.
+The [canvist](https://github.com/canvist/canvist) StarterKit: the extensions TipTap's StarterKit ships, built on [`canvist_core`](../canvist_core) and named the way TipTap names them, so documents move between the two as ProseMirror JSON.
 
 Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::extensions`: `cargo add canvist`.
 
@@ -35,8 +35,8 @@ Most apps add it through [`canvist`](../canvist), the crate to install, as `canv
 Each extension is behind its own Cargo feature, and `starter-kit` (the default) enables them all, so an app compiles only what it registers.
 
 ```rust
-use canvist_editor::Editor;
-use canvist_editor::Env;
+use canvist_core::Editor;
+use canvist_core::Env;
 use canvist_extensions::HeadingLevel;
 use canvist_extensions::StarterKit;
 

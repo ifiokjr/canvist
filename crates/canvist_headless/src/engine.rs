@@ -3,9 +3,9 @@
 use std::sync::Arc;
 use std::sync::OnceLock;
 
-use canvist_editor::Editor;
-use canvist_editor::EditorBuilder;
-use canvist_editor::Platform;
+use canvist_core::Editor;
+use canvist_core::EditorBuilder;
+use canvist_core::Platform;
 use canvist_model::Document;
 use canvist_model::Schema;
 use serde_json::Value as Json;

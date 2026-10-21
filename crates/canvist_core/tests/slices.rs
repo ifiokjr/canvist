@@ -2,16 +2,16 @@
 
 mod support;
 
-use canvist_editor::EditKind;
-use canvist_editor::Slice;
-use canvist_editor::commands;
+use canvist_core::EditKind;
+use canvist_core::Slice;
+use canvist_core::commands;
 use canvist_model::BlockTree;
 use canvist_model::TreeContent;
 use support::dedent;
 use support::render;
 use support::state;
 
-fn names(state: &canvist_editor::EditorState, slice: &Slice) -> Vec<String> {
+fn names(state: &canvist_core::EditorState, slice: &Slice) -> Vec<String> {
 	let mut names = Vec::new();
 
 	for tree in slice.blocks() {

@@ -1,5 +1,5 @@
 ---
-"canvist_editor": feat
+"canvist_core": feat
 "canvist_extensions": feat
 "canvist_layout": feat
 "canvist_headless": feat
@@ -21,7 +21,7 @@ Four editing extensions beyond the StarterKit, each behind its own Cargo feature
 
 Supporting changes:
 
-- `canvist_editor`:
+- `canvist_core`:
   - `Extension::update_filters` lets an extension refuse a local update after its fix-ups, like TipTap's `filterTransaction`. The update is undone, the command reports that it did not apply, and `Editor::can` answers the same way. The filters are collected when the editor is built, so an editor whose extensions have none pays nothing per update.
   - `EditorState::settings`, `EditorTransaction::set_setting`, and `commands::set_setting` keep per-editor values such as a limit or placeholder text outside the document, its history, and collaboration. Dry runs restore them.
   - Extension metadata now lists only the nodes the built schema has.

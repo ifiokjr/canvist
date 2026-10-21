@@ -3,7 +3,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use canvist_editor::Slice;
+use canvist_core::Slice;
 use canvist_extensions::clipboard;
 use canvist_model::BlockTree;
 use canvist_model::Document;

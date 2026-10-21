@@ -2,9 +2,9 @@
 
 mod support;
 
-use canvist_editor::EditorState;
-use canvist_editor::commands;
-use canvist_editor::commands::ListType;
+use canvist_core::EditorState;
+use canvist_core::commands;
+use canvist_core::commands::ListType;
 use support::after;
 use support::dedent;
 use support::kind;
@@ -36,22 +36,22 @@ fn known(state: &EditorState) -> Vec<ListType> {
 	vec![bullet(state), ordered(state), task(state)]
 }
 
-fn split(state: &mut EditorState) -> canvist_editor::CommandResult {
+fn split(state: &mut EditorState) -> canvist_core::CommandResult {
 	let item = kind(state, "listItem");
 	commands::split_list_item(state, item)
 }
 
-fn sink(state: &mut EditorState) -> canvist_editor::CommandResult {
+fn sink(state: &mut EditorState) -> canvist_core::CommandResult {
 	let item = kind(state, "listItem");
 	commands::sink_list_item(state, item)
 }
 
-fn lift(state: &mut EditorState) -> canvist_editor::CommandResult {
+fn lift(state: &mut EditorState) -> canvist_core::CommandResult {
 	let item = kind(state, "listItem");
 	commands::lift_list_item(state, item)
 }
 
-fn join(state: &mut EditorState) -> canvist_editor::CommandResult {
+fn join(state: &mut EditorState) -> canvist_core::CommandResult {
 	let item = kind(state, "listItem");
 	commands::join_list_item_backward(state, item)
 }
@@ -59,7 +59,7 @@ fn join(state: &mut EditorState) -> canvist_editor::CommandResult {
 fn toggle(
 	state: &mut EditorState,
 	target: fn(&EditorState) -> ListType,
-) -> canvist_editor::CommandResult {
+) -> canvist_core::CommandResult {
 	let target = target(state);
 	let known = known(state);
 	commands::toggle_list(state, target, &known)

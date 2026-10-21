@@ -5,10 +5,10 @@ mod support;
 
 use std::time::Duration;
 
-use canvist_editor::Command;
-use canvist_editor::Editor;
-use canvist_editor::EditorError;
-use canvist_editor::Env;
+use canvist_core::Command;
+use canvist_core::Editor;
+use canvist_core::EditorError;
+use canvist_core::Env;
 use canvist_extensions::HeadingLevel;
 use canvist_extensions::StarterKit;
 use canvist_extensions::StarterKitHandles;

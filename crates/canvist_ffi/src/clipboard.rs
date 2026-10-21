@@ -1,9 +1,9 @@
 //! Copy, cut, and paste, in the formats platform pasteboards carry, and the
 //! task checkboxes a tap toggles.
 
-use canvist_headless::canvist_editor::command;
-use canvist_headless::canvist_editor::commands;
-use canvist_headless::canvist_editor::position;
+use canvist_headless::canvist_core::command;
+use canvist_headless::canvist_core::commands;
+use canvist_headless::canvist_core::position;
 use canvist_headless::canvist_extensions::clipboard;
 use canvist_headless::canvist_model::Point;
 use canvist_headless::canvist_model::Selection;

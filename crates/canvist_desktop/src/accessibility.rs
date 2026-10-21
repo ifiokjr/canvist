@@ -22,7 +22,7 @@ use accesskit::Toggled;
 use accesskit::TreeId;
 use accesskit::TreeInfo;
 use accesskit::TreeUpdate;
-use canvist_headless::canvist_editor::position;
+use canvist_headless::canvist_core::position;
 use canvist_headless::canvist_model::BlockId;
 use canvist_headless::canvist_model::Point;
 use canvist_headless::canvist_model::Selection;

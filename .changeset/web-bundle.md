@@ -3,7 +3,7 @@
 "canvist_web": patch
 "canvist_layout": minor
 "canvist_headless": patch
-"canvist_editor": patch
+"canvist_core": patch
 ---
 
 # Fit the web editor in its 350 KB budget

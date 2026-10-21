@@ -9,7 +9,7 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 /// The model, editor, and extensions are in every build.
 #[test]
 fn core_modules_are_always_available() -> TestResult {
-	let mut builder = canvist::editor::Editor::builder();
+	let mut builder = canvist::core::Editor::builder();
 	builder.add(canvist::extensions::Document);
 	builder.add(canvist::extensions::Paragraph);
 	let editor = builder.build()?;
@@ -22,7 +22,7 @@ fn core_modules_are_always_available() -> TestResult {
 #[cfg(feature = "starter-kit")]
 #[test]
 fn starter_kit_registers_on_the_editor() -> TestResult {
-	let mut builder = canvist::editor::Editor::builder();
+	let mut builder = canvist::core::Editor::builder();
 	canvist::extensions::StarterKit::add_all(&mut builder);
 	let editor = builder.build()?;
 
@@ -67,7 +67,7 @@ fn headless_documents_are_model_documents() -> TestResult {
 #[cfg(feature = "extras")]
 #[test]
 fn extras_register_beyond_the_starter_kit() -> TestResult {
-	let editor = canvist::editor::Editor::builder()
+	let editor = canvist::core::Editor::builder()
 		.extensions(canvist::extensions::StarterKit::default().extensions())
 		.extensions(canvist::extensions::extras())
 		.build()?;
@@ -85,7 +85,7 @@ fn full_compiles_the_emoji_table_in() {
 #[cfg(feature = "collab")]
 #[test]
 fn collab_binds_a_document_to_yjs() -> TestResult {
-	let mut builder = canvist::editor::Editor::builder();
+	let mut builder = canvist::core::Editor::builder();
 	builder.add(canvist::extensions::Document);
 	builder.add(canvist::extensions::Paragraph);
 	let editor = builder.build()?;

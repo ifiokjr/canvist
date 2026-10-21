@@ -28,7 +28,7 @@ use canvist_desktop::winit::EditorWindow;
 pub use canvist_desktop::winit::winit;
 use canvist_headless::Engine;
 use canvist_headless::Format;
-use canvist_headless::canvist_editor::Platform;
+use canvist_headless::canvist_core::Platform;
 use canvist_headless::canvist_extensions::StarterKitHandles;
 use winit::application::ApplicationHandler;
 use winit::event::ElementState;

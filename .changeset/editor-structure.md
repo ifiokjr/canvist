@@ -1,8 +1,8 @@
 ---
-"canvist_editor": minor
+"canvist_core": minor
 ---
 
-# Add structural editing commands to `canvist_editor`
+# Add structural editing commands to `canvist_core`
 
 - Enter splits text blocks (a heading continues as a paragraph at its end), and Backspace and Delete join blocks across containers, adopting the rest of a joined list item or quote.
 - Block types, block attributes, wrapping and lifting (such as blockquotes), and atomic blocks such as horizontal rules.

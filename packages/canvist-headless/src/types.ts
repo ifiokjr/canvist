@@ -1,7 +1,7 @@
 /**
  * Types derived from extension metadata.
  *
- * Every extension descriptor is the metadata `canvist_editor` produces,
+ * Every extension descriptor is the metadata `canvist_core` produces,
  * kept as a literal type. The types here read it, so a document's commands,
  * queries, argument types, and JSON node names follow from the extensions
  * an engine registers, with nothing written by hand per extension.

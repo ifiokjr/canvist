@@ -17,7 +17,7 @@ on:
       - "crates/canvist_canvas/**"
       - "crates/canvist_canvas_wasm/**"
       - "crates/canvist_collab/**"
-      - "crates/canvist_editor/**"
+      - "crates/canvist_core/**"
       - "crates/canvist_extensions/**"
       - "crates/canvist_layout/**"
       - "crates/canvist_model/**"

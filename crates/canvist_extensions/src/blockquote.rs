@@ -1,22 +1,22 @@
 //! Block quotes.
 
-use canvist_editor::Binding;
-use canvist_editor::Command;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::Extension;
-use canvist_editor::InputRule;
-use canvist_editor::NodeKind;
-use canvist_editor::NodeMeta;
-use canvist_editor::Platform;
-use canvist_editor::QuerySpec;
-use canvist_editor::Registration;
-use canvist_editor::RuleMatch;
-use canvist_editor::TypedExtension;
-use canvist_editor::ValueType;
-use canvist_editor::command;
-use canvist_editor::commands;
+use canvist_core::Binding;
+use canvist_core::Command;
+use canvist_core::CommandSpec;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::Extension;
+use canvist_core::InputRule;
+use canvist_core::NodeKind;
+use canvist_core::NodeMeta;
+use canvist_core::Platform;
+use canvist_core::QuerySpec;
+use canvist_core::Registration;
+use canvist_core::RuleMatch;
+use canvist_core::TypedExtension;
+use canvist_core::ValueType;
+use canvist_core::command;
+use canvist_core::commands;
 use canvist_model::Attrs;
 use canvist_model::BlockSpec;
 use canvist_model::Schema;
@@ -98,7 +98,7 @@ impl Extension for Blockquote {
 	}
 
 	fn input_rules(&self, schema: &Schema) -> Result<Vec<InputRule>, EditorError> {
-		let quote = canvist_editor::block_type(schema, self.name(), "blockquote")?;
+		let quote = canvist_core::block_type(schema, self.name(), "blockquote")?;
 		let wrap = move |state: &mut EditorState, _: &RuleMatch| {
 			commands::wrap_in(state, quote, Attrs::new())
 		};

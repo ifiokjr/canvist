@@ -1,20 +1,20 @@
 //! Callouts: a tinted box for notes, tips, warnings, and errors.
 
-use canvist_editor::Command;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::Extension;
-use canvist_editor::Field;
-use canvist_editor::InputRule;
-use canvist_editor::NodeKind;
-use canvist_editor::NodeMeta;
-use canvist_editor::QuerySpec;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
-use canvist_editor::ValueType;
-use canvist_editor::command;
-use canvist_editor::commands;
+use canvist_core::Command;
+use canvist_core::CommandSpec;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::Extension;
+use canvist_core::Field;
+use canvist_core::InputRule;
+use canvist_core::NodeKind;
+use canvist_core::NodeMeta;
+use canvist_core::QuerySpec;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
+use canvist_core::ValueType;
+use canvist_core::command;
+use canvist_core::commands;
 use canvist_model::Attrs;
 use canvist_model::BlockSpec;
 use canvist_model::Schema;
@@ -146,7 +146,7 @@ fn set_type(kind: &'static str) -> Command {
 	})
 }
 
-fn type_arg(args: &canvist_editor::Args<'_>) -> Result<&'static str, EditorError> {
+fn type_arg(args: &canvist_core::Args<'_>) -> Result<&'static str, EditorError> {
 	let name = args.string("type")?;
 	TYPES.into_iter().find(|kind| *kind == name).ok_or_else(|| {
 		EditorError::InvalidArgs {
@@ -210,7 +210,7 @@ impl Extension for Callout {
 	}
 
 	fn input_rules(&self, schema: &Schema) -> Result<Vec<InputRule>, EditorError> {
-		let callout = canvist_editor::block_type(schema, CALLOUT, CALLOUT)?;
+		let callout = canvist_core::block_type(schema, CALLOUT, CALLOUT)?;
 		let rule = InputRule::wrap(r"^:::([a-zA-Z]*)\s$", move |state, found| {
 			let named = found.group(1).unwrap_or_default().to_ascii_lowercase();
 			let kind = TYPES

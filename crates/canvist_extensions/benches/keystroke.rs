@@ -10,10 +10,10 @@
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
-use canvist_editor::KeyPress;
-use canvist_editor::commands;
+use canvist_core::Editor;
+use canvist_core::Env;
+use canvist_core::KeyPress;
+use canvist_core::commands;
 use canvist_extensions::StarterKit;
 use canvist_model::BlockId;
 use canvist_model::BlockTree;
@@ -200,11 +200,11 @@ fn enter_and_backspace(bencher: Bencher<'_, '_>, blocks: usize) {
 fn state_commands_only(bencher: Bencher<'_, '_>, blocks: usize) {
 	let editor = fixture(blocks);
 	let mut state = editor.state().clone();
-	let mut lines = canvist_editor::ParagraphNavigator;
+	let mut lines = canvist_core::ParagraphNavigator;
 	bencher.bench_local(|| {
 		black_box(commands::insert_text(&mut state, black_box("a")).expect("type"));
 		black_box(
-			commands::delete_backward(&mut state, canvist_editor::Unit::Grapheme, &mut lines)
+			commands::delete_backward(&mut state, canvist_core::Unit::Grapheme, &mut lines)
 				.expect("delete"),
 		);
 	});

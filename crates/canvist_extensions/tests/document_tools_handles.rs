@@ -248,7 +248,7 @@ fn clear_formatting_follows_the_platform_modifier() {
 			{ "type": "text", "text": "Title", "marks": [{ "type": "italic" }] }
 		] }]
 	});
-	let (mut apple, _) = tools_on(canvist_editor::Platform::Apple, Some(&doc));
+	let (mut apple, _) = tools_on(canvist_core::Platform::Apple, Some(&doc));
 	apple.type_script("[Mod-a][Ctrl-\\]");
 	assert_eq!(
 		apple.snapshot()["doc"][0]["type"],
@@ -273,7 +273,7 @@ fn clear_formatting_follows_the_platform_modifier() {
 	assert_eq!(apple.snapshot()["doc"][0]["type"], "heading");
 
 	let (mut other, _) = tools_on(
-		canvist_editor::Platform::Apple,
+		canvist_core::Platform::Apple,
 		Some(&paragraphs(&["a", "b"])),
 	);
 	other.type_script("[Alt-ArrowDown]");

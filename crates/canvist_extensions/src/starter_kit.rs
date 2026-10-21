@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use canvist_editor::BaseKeymap;
-use canvist_editor::Extension;
-use canvist_editor::UndoInputRule;
+use canvist_core::BaseKeymap;
+use canvist_core::Extension;
+use canvist_core::UndoInputRule;
 
 use crate::Document;
 use crate::Paragraph;
@@ -16,7 +16,7 @@ use crate::Paragraph;
 /// at all.
 ///
 /// ```
-/// use canvist_editor::Editor;
+/// use canvist_core::Editor;
 /// use canvist_extensions::StarterKit;
 ///
 /// let kit = StarterKit {
@@ -26,7 +26,7 @@ use crate::Paragraph;
 /// let editor = Editor::builder().extensions(kit.extensions()).build()?;
 ///
 /// assert!(editor.schema().block_type("horizontalRule").is_none());
-/// # Ok::<(), canvist_editor::EditorError>(())
+/// # Ok::<(), canvist_core::EditorError>(())
 /// ```
 #[derive(Clone, Debug)]
 #[allow(
@@ -162,7 +162,7 @@ impl Kit {
 
 impl StarterKit {
 	/// The enabled extensions, ready for
-	/// [`EditorBuilder::extensions`](canvist_editor::EditorBuilder::extensions).
+	/// [`EditorBuilder::extensions`](canvist_core::EditorBuilder::extensions).
 	#[must_use]
 	pub fn extensions(&self) -> Vec<Arc<dyn Extension>> {
 		let mut kit = Kit::default();
@@ -301,11 +301,11 @@ impl StarterKit {
 	/// Register every compiled StarterKit extension with its default
 	/// configuration and return the typed handles. To configure or leave
 	/// out an extension, add extensions one by one with
-	/// [`EditorBuilder::add`](canvist_editor::EditorBuilder::add) instead.
+	/// [`EditorBuilder::add`](canvist_core::EditorBuilder::add) instead.
 	///
 	/// ```
-	/// use canvist_editor::Editor;
-	/// use canvist_editor::Env;
+	/// use canvist_core::Editor;
+	/// use canvist_core::Env;
 	/// use canvist_extensions::StarterKit;
 	///
 	/// let mut builder = Editor::builder();
@@ -316,9 +316,9 @@ impl StarterKit {
 	/// editor.insert_text("Hello", &mut env)?;
 	/// editor.run(&kit.bold.toggle(), &mut env)?;
 	/// assert!(kit.bold.is_active(editor.state()));
-	/// # Ok::<(), canvist_editor::EditorError>(())
+	/// # Ok::<(), canvist_core::EditorError>(())
 	/// ```
-	pub fn add_all(builder: &mut canvist_editor::EditorBuilder) -> StarterKitHandles {
+	pub fn add_all(builder: &mut canvist_core::EditorBuilder) -> StarterKitHandles {
 		builder.add(Document);
 		builder.add(BaseKeymap);
 		builder.add(UndoInputRule);
