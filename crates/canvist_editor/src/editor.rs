@@ -39,6 +39,7 @@ use crate::RuleInput;
 use crate::Slice;
 use crate::UndoHistory;
 use crate::Update;
+use crate::UpdateFilter;
 use crate::commands;
 use crate::context::AppliedRule;
 use crate::position;
@@ -100,6 +101,8 @@ pub(crate) struct Registry {
 	keymap: Keymap,
 	input_rules: Vec<InputRule>,
 	paste_rules: Vec<PasteRule>,
+	/// Every extension's update filters, in registration order.
+	update_filters: Vec<UpdateFilter>,
 	pub(crate) commands: FxHashMap<&'static str, CommandSpec>,
 	pub(crate) queries: FxHashMap<&'static str, QuerySpec>,
 	/// The command and query names each extension registered, in
@@ -133,6 +136,9 @@ impl Registry {
 			registry.describe(extension.as_ref(), schema)?;
 			registry.input_rules.extend(extension.input_rules(schema)?);
 			registry.paste_rules.extend(extension.paste_rules(schema)?);
+			registry
+				.update_filters
+				.extend(extension.update_filters(schema)?);
 			registry.code_blocks.extend(extension.code_blocks(schema)?);
 		}
 
@@ -173,11 +179,11 @@ impl Registry {
 		})
 	}
 
-	/// Whether every extension lets `update` stand.
+	/// Whether every update filter lets `update` stand.
 	pub(crate) fn allows(&self, state: &EditorState, update: &Update) -> bool {
-		self.extensions
+		self.update_filters
 			.iter()
-			.all(|extension| extension.allows(state, update))
+			.all(|allows| allows(state, update))
 	}
 
 	/// Register an extension's commands and queries by name, refusing

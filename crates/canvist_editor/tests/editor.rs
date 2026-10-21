@@ -31,6 +31,7 @@ use canvist_editor::Slice;
 use canvist_editor::UndoHistory;
 use canvist_editor::UndoInputRule;
 use canvist_editor::Update;
+use canvist_editor::UpdateFilter;
 use canvist_editor::ValueType;
 use canvist_editor::VerticalDirection;
 use canvist_editor::VerticalMotion;
@@ -811,13 +812,19 @@ impl Extension for MaxLength {
 		"maxLength"
 	}
 
-	fn allows(&self, state: &EditorState, _update: &Update) -> bool {
-		let max = state
-			.settings()
-			.get("maxLength")
-			.and_then(canvist_model::Value::as_int)
-			.unwrap_or(self.max);
-		(state.doc().plain_text().len() as i64) <= max
+	fn update_filters(&self, _schema: &Schema) -> Result<Vec<UpdateFilter>, EditorError> {
+		let default = self.max;
+
+		Ok(vec![Box::new(
+			move |state: &EditorState, _update: &Update| {
+				let max = state
+					.settings()
+					.get("maxLength")
+					.and_then(canvist_model::Value::as_int)
+					.unwrap_or(default);
+				(state.doc().plain_text().len() as i64) <= max
+			},
+		)])
 	}
 }
 

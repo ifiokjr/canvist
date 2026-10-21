@@ -21,6 +21,10 @@ use crate::Update;
 /// A key binding contributed by an extension.
 pub type Binding = (&'static str, Command);
 
+/// A check every local update, fix-ups included, must pass to stand; see
+/// [`Extension::update_filters`]. `state` is the state after the update.
+pub type UpdateFilter = Box<dyn Fn(&EditorState, &Update) -> bool + Send + Sync>;
+
 /// A feature: schema items plus the behaviour that goes with them.
 ///
 /// The editor first lets every extension add to the schema, builds it, and
@@ -89,12 +93,14 @@ pub trait Extension: Send + Sync {
 		Ok(None)
 	}
 
-	/// Whether a local update, fix-ups included, may stand. Returning
-	/// `false` undoes it, and the command reports that it did not apply, as
-	/// TipTap's `filterTransaction` does; a character limit uses it to
-	/// refuse text past the limit. `state` is the state after the update.
-	fn allows(&self, _state: &EditorState, _update: &Update) -> bool {
-		true
+	/// Checks a local update, fix-ups included, must pass to stand. One
+	/// that returns `false` undoes the update, and the command reports that
+	/// it did not apply, as TipTap's `filterTransaction` does; a character
+	/// limit uses one to refuse text past the limit. They are collected when
+	/// the editor is built, so an editor whose extensions have none pays
+	/// nothing per update.
+	fn update_filters(&self, _schema: &Schema) -> Result<Vec<UpdateFilter>, EditorError> {
+		Ok(Vec::new())
 	}
 }
 

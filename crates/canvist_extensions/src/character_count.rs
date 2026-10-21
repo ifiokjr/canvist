@@ -10,6 +10,7 @@ use canvist_editor::QuerySpec;
 use canvist_editor::Registration;
 use canvist_editor::TypedExtension;
 use canvist_editor::Update;
+use canvist_editor::UpdateFilter;
 use canvist_editor::ValueType;
 use canvist_editor::command;
 use canvist_editor::commands;
@@ -208,14 +209,20 @@ impl Extension for CharacterCount {
 	/// Refuse a local edit that adds characters past the limit. Counting
 	/// the document is linear, but only runs for edits that add text while a
 	/// limit is set, when the document is at most the limit long.
-	fn allows(&self, state: &EditorState, update: &Update) -> bool {
-		let Some(limit) = limit_in(state, self.limit) else {
-			return true;
-		};
-		let added = inserted(&update.commit.steps);
-		let removed = inserted(&update.commit.inverses);
+	fn update_filters(&self, _schema: &Schema) -> Result<Vec<UpdateFilter>, EditorError> {
+		let configured = self.limit;
 
-		added <= removed || characters(state.doc()) <= limit as usize
+		Ok(vec![Box::new(
+			move |state: &EditorState, update: &Update| {
+				let Some(limit) = limit_in(state, configured) else {
+					return true;
+				};
+				let added = inserted(&update.commit.steps);
+				let removed = inserted(&update.commit.inverses);
+
+				added <= removed || characters(state.doc()) <= limit as usize
+			},
+		)])
 	}
 }
 
