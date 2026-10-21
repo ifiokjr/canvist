@@ -148,9 +148,9 @@ void main() {
     final before = doc.export(Format.json);
 
     expect(
-      () => doc.run(m.image.setImage(src: null)),
+      () => doc.runNamed('setImage', {'src': null}),
       throwsCode(ErrorCode.invalidArgs),
-      reason: 'the generated handle allows a null source; Rust refuses it',
+      reason: 'the typed handle requires a source; Rust refuses a null one',
     );
     expect(
       () => doc.runNamed('setImage', {'src': 'a.png', 'width': 'wide'}),

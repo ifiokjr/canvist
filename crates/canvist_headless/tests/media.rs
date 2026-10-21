@@ -284,3 +284,28 @@ fn server_rendering_reserves_each_media_slot() -> Result<(), HeadlessError> {
 
 	Ok(())
 }
+
+#[cfg(feature = "ssr")]
+#[test]
+fn server_rendered_images_carry_their_alt_text() -> Result<(), HeadlessError> {
+	let mut doc = engine(1).create()?;
+	doc.run_named(
+		"setImage",
+		&json!({ "src": "cat.png", "alt": "A cat & a dog" }),
+	)?;
+	doc.run_named("setImage", &json!({ "src": "rule.png", "alt": "" }))?;
+
+	let html = canvist_headless::Renderer::new().html(&doc, 600.0).html;
+
+	assert!(
+		html.contains("role=\"img\" aria-label=\"A cat &amp; a dog\""),
+		"the image is named by its alt text, escaped: {html}"
+	);
+	assert_eq!(
+		html.matches("role=\"img\"").count(),
+		1,
+		"an empty alt marks a decorative image, which gets no name: {html}"
+	);
+
+	Ok(())
+}

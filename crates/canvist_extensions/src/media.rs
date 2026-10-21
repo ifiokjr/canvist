@@ -100,24 +100,28 @@ impl MediaAttr {
 		}
 	}
 
-	fn value_type(self) -> ValueType {
-		let ty = match self.kind {
+	/// The attribute's type, never null.
+	fn present_type(self) -> ValueType {
+		match self.kind {
 			Kind::Text => ValueType::String,
 			Kind::Number => ValueType::Float,
 			Kind::Flag => ValueType::Bool,
-		};
+		}
+	}
 
+	fn value_type(self) -> ValueType {
 		match self.default {
-			Initial::Null => ValueType::nullable(ty),
-			_ => ty,
+			Initial::Null => ValueType::nullable(self.present_type()),
+			_ => self.present_type(),
 		}
 	}
 
 	/// The attribute as a node attribute, or as a command argument: the
-	/// first attribute, the source, is required there.
+	/// first attribute, the source, is required there, and a required
+	/// argument can't be null even where the attribute defaults to it.
 	fn field(self, required: bool) -> Field {
 		if required {
-			Field::required(self.name, self.value_type(), self.doc)
+			Field::required(self.name, self.present_type(), self.doc)
 		} else {
 			Field::optional(self.name, self.value_type(), self.default_value(), self.doc)
 		}

@@ -139,7 +139,7 @@ test("invalid media arguments fail with stable codes", async () => {
 		"invalidArgs",
 	);
 	assert.equal(
-		errorCode(() => doc.commands.setImage({ src: null })),
+		errorCode(() => doc.commands.setImage({ src: null } as never)),
 		"invalidArgs",
 	);
 	assert.equal(

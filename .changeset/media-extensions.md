@@ -20,3 +20,5 @@ All five are data-driven by one implementation. Attributes equal to their defaul
 - HTML reads and writes TipTap's markup: `<img>`, `<audio>`, and `<iframe>` inside `<div data-youtube-video>` or `<div data-twitch-video>`, with a `title` so assistive technology can name the frame. File cards use `<div data-type="file">`. An image inside a paragraph splits it, and iframes from other sites are dropped.
 - Markdown writes and reads images as `![alt](src "title")`; other media become links, a file without a name linked by its URL.
 - The StarterKit theme reserves slots for video, audio, and file blocks.
+
+Media commands type their source as a required string in TypeScript and Dart, as Rust already required; before, `setImage({ src: null })` type-checked and failed at runtime. Server-rendered image slots carry `role="img"` and the image's `alt` text as their accessible name. An empty `alt` marks a decorative image, which gets none.

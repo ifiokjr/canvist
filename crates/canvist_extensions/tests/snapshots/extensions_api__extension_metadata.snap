@@ -1680,10 +1680,7 @@ expression: editor.metadata_json()
             "doc": "The image URL.",
             "name": "src",
             "type": {
-              "of": {
-                "type": "string"
-              },
-              "type": "nullable"
+              "type": "string"
             }
           },
           {
@@ -1809,10 +1806,7 @@ expression: editor.metadata_json()
             "doc": "The video URL.",
             "name": "src",
             "type": {
-              "of": {
-                "type": "string"
-              },
-              "type": "nullable"
+              "type": "string"
             }
           },
           {
@@ -1898,10 +1892,7 @@ expression: editor.metadata_json()
             "doc": "The video, clip, or channel URL.",
             "name": "src",
             "type": {
-              "of": {
-                "type": "string"
-              },
-              "type": "nullable"
+              "type": "string"
             }
           },
           {
@@ -2003,10 +1994,7 @@ expression: editor.metadata_json()
             "doc": "The audio URL.",
             "name": "src",
             "type": {
-              "of": {
-                "type": "string"
-              },
-              "type": "nullable"
+              "type": "string"
             }
           },
           {
@@ -2108,10 +2096,7 @@ expression: editor.metadata_json()
             "doc": "Where the file can be downloaded.",
             "name": "url",
             "type": {
-              "of": {
-                "type": "string"
-              },
-              "type": "nullable"
+              "type": "string"
             }
           },
           {

@@ -1000,10 +1000,7 @@ export const image = {
 				{
 					"name": "src",
 					"type": {
-						"of": {
-							"type": "string"
-						},
-						"type": "nullable"
+						"type": "string"
 					}
 				},
 				/** Text describing the image, for screen readers. */
@@ -1131,10 +1128,7 @@ export const youtube = {
 				{
 					"name": "src",
 					"type": {
-						"of": {
-							"type": "string"
-						},
-						"type": "nullable"
+						"type": "string"
 					}
 				},
 				/** Where playback starts, in seconds. */
@@ -1222,10 +1216,7 @@ export const twitch = {
 				{
 					"name": "src",
 					"type": {
-						"of": {
-							"type": "string"
-						},
-						"type": "nullable"
+						"type": "string"
 					}
 				},
 				/** The width in pixels. */
@@ -1329,10 +1320,7 @@ export const audio = {
 				{
 					"name": "src",
 					"type": {
-						"of": {
-							"type": "string"
-						},
-						"type": "nullable"
+						"type": "string"
 					}
 				},
 				/** Show playback controls. */
@@ -1436,10 +1424,7 @@ export const file = {
 				{
 					"name": "url",
 					"type": {
-						"of": {
-							"type": "string"
-						},
-						"type": "nullable"
+						"type": "string"
 					}
 				},
 				/** The file's name, such as `report.pdf`. */

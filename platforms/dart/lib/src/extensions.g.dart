@@ -19,7 +19,7 @@ final class AudioHandle extends ExtensionHandle {
   ///
   /// [muted]: Start muted.
   Command setAudio({
-    required String? src,
+    required String src,
     bool? controls,
     bool? autoplay,
     bool? loop,
@@ -239,7 +239,7 @@ final class FileHandle extends ExtensionHandle {
   ///
   /// [fileSize]: The file's size in bytes.
   Command insertFile({
-    required String? url,
+    required String url,
     String? fileName,
     String? fileType,
     double? fileSize,
@@ -414,7 +414,7 @@ final class ImageHandle extends ExtensionHandle {
   ///
   /// [height]: The height in pixels.
   Command setImage({
-    required String? src,
+    required String src,
     String? alt,
     String? title,
     double? width,
@@ -713,7 +713,7 @@ final class TwitchHandle extends ExtensionHandle {
   ///
   /// [muted]: Start muted.
   Command setTwitchVideo({
-    required String? src,
+    required String src,
     double? width,
     double? height,
     bool? autoplay,
@@ -763,7 +763,7 @@ final class YoutubeHandle extends ExtensionHandle {
   ///
   /// [height]: The height in pixels.
   Command setYoutubeVideo({
-    required String? src,
+    required String src,
     double? start,
     double? width,
     double? height,
