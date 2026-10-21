@@ -133,11 +133,42 @@
 			"name": "@canvist/web JS",
 			"group": "web",
 			"files": [
-				"packages/canvist-web/dist/**/*.js",
+				"packages/canvist-web/dist/{mod,editor,input,measure,mirror,placeholder,font-watcher,edit-context,load,platform,plugin,fonts}.js",
 				"packages/canvist-web/wasm/*.js"
 			],
 			"budget": {
 				"gzip": 40000
+			}
+		},
+		{
+			"name": "@canvist/web menus JS",
+			"group": "web",
+			"files": [
+				"packages/canvist-web/dist/menus.js"
+			],
+			"budget": {
+				"gzip": 2085
+			}
+		},
+		{
+			"name": "@canvist/web collab JS",
+			"group": "web",
+			"files": [
+				"packages/canvist-web/dist/collab.js",
+				"packages/canvist-web/wasm-collab/*.js"
+			],
+			"budget": {
+				"gzip": 12370
+			}
+		},
+		{
+			"name": "@canvist/web collab wasm",
+			"group": "web",
+			"files": [
+				"packages/canvist-web/wasm-collab/canvist_web_bg.wasm"
+			],
+			"budget": {
+				"gzip": 489318
 			}
 		},
 		{
