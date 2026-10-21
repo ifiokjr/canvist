@@ -9,15 +9,19 @@ use canvist_editor::EditorError;
 use canvist_editor::EditorState;
 use canvist_editor::Extension;
 use canvist_editor::Field;
+use canvist_editor::NodeKind;
+use canvist_editor::NodeMeta;
 use canvist_editor::QuerySpec;
 use canvist_editor::Registration;
 use canvist_editor::TypedExtension;
 use canvist_editor::ValueType;
 use canvist_editor::command;
 use canvist_editor::commands;
+use canvist_editor::position;
 use canvist_model::Attrs;
 use canvist_model::Mark;
 use canvist_model::MarkSpec;
+use canvist_model::MarkTypeId;
 use canvist_model::Schema;
 use canvist_model::SchemaBuilder;
 use canvist_model::Value;
@@ -108,6 +112,11 @@ fn set(thread: &str) -> Command {
 		}
 
 		let kind = resolve::mark(state, COMMENT, COMMENT)?;
+
+		if covers(state, kind, &thread) {
+			return Ok(None);
+		}
+
 		commands::update_mark_attrs(state, kind, &|current| {
 			let mut ids = ids(current);
 
@@ -118,6 +127,27 @@ fn set(thread: &str) -> Command {
 			with_ids(&ids)
 		})
 	})
+}
+
+/// Whether every selected character already carries `thread`, so adding it
+/// would change nothing.
+fn covers(state: &EditorState, kind: MarkTypeId, thread: &str) -> bool {
+	let doc = state.doc();
+
+	position::selected_text(doc, state.selection())
+		.into_iter()
+		.filter(|(_, range)| !range.is_empty())
+		.all(|(block, range)| {
+			doc.inline(block)
+				.and_then(|text| text.mark_runs(range).ok())
+				.is_some_and(|runs| {
+					runs.iter().all(|(_, marks)| {
+						ids(marks.get(kind).map(|mark| &mark.attrs))
+							.iter()
+							.any(|id| id == thread)
+					})
+				})
+		})
 }
 
 fn unset(thread: &str) -> Command {
@@ -242,6 +272,15 @@ impl Extension for Comments {
 				.inclusive(false)
 				.attrs(Attrs::new().with(THREADS, Vec::<Value>::new())),
 		)
+	}
+
+	fn nodes(&self) -> Vec<NodeMeta> {
+		vec![NodeMeta::new(NodeKind::Mark, COMMENT).attr(Field::optional(
+			THREADS,
+			ValueType::list(ValueType::String),
+			Value::from(Vec::<Value>::new()),
+			"The ids of the threads on this text.",
+		))]
 	}
 
 	fn commands(&self, _schema: &Schema) -> Result<Vec<CommandSpec>, EditorError> {

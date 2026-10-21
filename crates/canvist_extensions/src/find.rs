@@ -20,6 +20,7 @@ use canvist_editor::commands;
 use canvist_editor::position;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
+use canvist_model::MarkSet;
 use canvist_model::Point;
 use canvist_model::Schema;
 use canvist_model::Selection;
@@ -264,14 +265,19 @@ fn step(state: &mut EditorState, forward: bool) -> CommandResult {
 	})
 }
 
-/// Replace one match's text with `replacement`, keeping the marks at its
-/// start.
+/// Replace one match's text with `replacement`, which takes the marks of
+/// the match's first character, so a bold word stays bold.
 fn replace_match(
 	tr: &mut canvist_editor::EditorTransaction<'_>,
 	found: &SearchMatch,
 	replacement: &str,
 ) -> Result<Point, EditorError> {
-	let marks = commands::marks_at(tr.doc(), Point::new(found.block, found.range.start));
+	let marks = tr
+		.doc()
+		.inline(found.block)
+		.and_then(|text| text.marks_after(found.range.start))
+		.cloned()
+		.unwrap_or_else(MarkSet::empty);
 	tr.delete_text(found.block, found.range.clone())?;
 	let end = tr.insert_text(
 		Point::new(found.block, found.range.start),
@@ -460,7 +466,7 @@ mod tests {
 			vec![0..3, 4..7, 8..11]
 		);
 		assert_eq!(find_in("Cat cat CAT", "cat", true), vec![4..7]);
-		assert!(find_in("abc", "", false).is_empty());
+		assert_eq!(find_in("abc", "", false), []);
 	}
 
 	#[test]

@@ -109,8 +109,19 @@ fn clear_nodes(state: &mut EditorState) -> CommandResult {
 	let blocks = commands::selected_text_blocks(state);
 	let selection = state.selection();
 
+	let plain = Attrs::new();
+	let doc = state.doc();
+	let retype = blocks.iter().any(|&block| {
+		doc.block(block)
+			.is_some_and(|block| block.kind() != paragraph || *block.attrs() != plain)
+	});
+
 	state.atomic(|state| {
-		let mut update = commands::set_block_type(state, paragraph, &Attrs::new())?;
+		let mut update = if retype {
+			commands::set_block_type(state, paragraph, &plain)?
+		} else {
+			None
+		};
 
 		for &block in &blocks {
 			let caret = Selection::caret(Point::new(block, 0));
@@ -124,10 +135,14 @@ fn clear_nodes(state: &mut EditorState) -> CommandResult {
 			}
 		}
 
-		if update.is_some() {
-			let restored = position::valid_selection(state.doc(), selection);
-			fold(&mut update, commands::set_selection(state, restored)?);
+		// Moving the caret block to block is only the means: when no block
+		// changed, nothing applied, and `atomic` puts the selection back.
+		if !update.as_ref().is_some_and(Update::doc_changed) {
+			return Ok(None);
 		}
+
+		let restored = position::valid_selection(state.doc(), selection);
+		fold(&mut update, commands::set_selection(state, restored)?);
 
 		Ok(update)
 	})

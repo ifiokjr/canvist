@@ -19,5 +19,5 @@ Five document tools, each behind its own Cargo feature and included in `full`:
   - Commands: `setComment` and `unsetComment`. Queries: `activeComments` and `comments`.
   - HTML writes `<span data-type="comment" data-threads="…">`.
   - The StarterKit theme tints commented text.
-- **`DragHandle` (`dragHandle`).** `moveBlockUp` and `moveBlockDown` (Alt-↑ and Alt-↓), and `moveBlocksTo` for drops. A block alone in its container moves its container.
+- **`DragHandle` (`dragHandle`).** `moveBlockUp` and `moveBlockDown` (Alt-↑ and Alt-↓), and `moveBlocksTo` for drops. They move the blocks a text or block selection covers, such as a selected horizontal rule. A block alone in its container moves its container.
 - **`ClearFormatting` (`clearFormatting`).** `unsetAllMarks`, `clearNodes` (paragraphs, lifted out of quotes and lists), and `clearFormatting` on `Mod-\`.

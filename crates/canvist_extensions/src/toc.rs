@@ -13,7 +13,6 @@ use canvist_editor::Registration;
 use canvist_editor::TypedExtension;
 use canvist_editor::ValueType;
 use canvist_editor::command;
-use canvist_editor::position;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::Point;
@@ -113,8 +112,6 @@ fn entries(state: &EditorState) -> Vec<TocEntry> {
 	let mut active = None;
 
 	for block in doc.iter() {
-		let is_head = position::ancestors_or_self(doc, head).any(|id| id == block.id());
-
 		if block.kind() == heading {
 			let level = block
 				.attrs()
@@ -134,7 +131,10 @@ fn entries(state: &EditorState) -> Vec<TocEntry> {
 			});
 		}
 
-		if is_head && active.is_none() {
+		// The head block itself, not its outermost container: a caret in a
+		// heading inside a quote is under that heading, not the one before
+		// the quote.
+		if block.id() == head {
 			active = found.len().checked_sub(1);
 		}
 	}

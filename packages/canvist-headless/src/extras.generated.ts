@@ -1941,7 +1941,25 @@ export const comments = {
 		}
 	],
 	"name": "comments",
-	"nodes": [],
+	"nodes": [
+		{
+			"attrs": [
+				{
+					"default": [],
+					"doc": "The ids of the threads on this text.",
+					"name": "threads",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "list"
+					}
+				}
+			],
+			"kind": "mark",
+			"name": "comment"
+		}
+	],
 	"queries": [
 		{
 			"args": [],

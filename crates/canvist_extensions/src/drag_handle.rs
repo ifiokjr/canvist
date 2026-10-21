@@ -19,6 +19,7 @@ use canvist_editor::position;
 use canvist_model::BlockId;
 use canvist_model::Document;
 use canvist_model::Schema;
+use canvist_model::Selection;
 
 /// The commands behind TipTap's `DragHandle`.
 ///
@@ -63,11 +64,25 @@ impl DragHandleHandle {
 	}
 }
 
-/// The selected sibling blocks: their parent and index range.
+/// The selected sibling blocks: their parent and index range. A block
+/// selection, as a click on a drag handle or a horizontal rule makes, moves
+/// the blocks it covers.
 fn selected(state: &EditorState) -> Option<(Option<BlockId>, std::ops::Range<usize>)> {
 	let doc = state.doc();
-	let range = position::text_range(doc, state.selection())?;
-	position::sibling_range(doc, range.from.block, range.to.block)
+	let (first, last) = match state.selection() {
+		Selection::Blocks { anchor, head }
+			if position::compare_blocks(doc, anchor, head).is_gt() =>
+		{
+			(head, anchor)
+		}
+		Selection::Blocks { anchor, head } => (anchor, head),
+		selection @ Selection::Text { .. } => {
+			let range = position::text_range(doc, selection)?;
+			(range.from.block, range.to.block)
+		}
+	};
+
+	position::sibling_range(doc, first, last)
 }
 
 /// `range` of `parent`'s children, or the nearest enclosing block that can
