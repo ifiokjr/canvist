@@ -163,7 +163,7 @@ const tools = engine.metadata().flatMap((extension) =>
 	}))
 );
 console.log(tools.map((tool) => tool.name).join(", "));
-// setParagraph, toggleBold, setBold, unsetBold, toggleHeading, setHeading
+// setParagraph, toggleHeading, setHeading, toggleBold, setBold, unsetBold
 
 // Run a tool call from the model. It arrives as JSON, so the engine checks it at runtime,
 // and errors go back to the model as text it can act on.
