@@ -25,6 +25,7 @@ import {
 	superscript,
 	textStyle,
 } from "../src/mod.ts";
+import { comparable } from "./descriptors.ts";
 
 const formatting = [
 	subscript,
@@ -71,19 +72,12 @@ test("every formatting extension has a descriptor beyond the StarterKit", () => 
 	]);
 });
 
-test("the formatting descriptors match what Rust reports, less descriptions", async () => {
+test("the formatting descriptors match what Rust reports", async () => {
 	using engine = await createEngine([...starterKit, ...formatting]);
-	const byName = (list: readonly { name: string }[]) =>
-		[...list].sort((a, b) => a.name.localeCompare(b.name));
-	// Descriptions are comments in the generated file, not data.
-	const withoutDocs = (value: unknown): { name: string }[] =>
-		JSON.parse(
-			JSON.stringify(value, (key, item) => key === "doc" ? undefined : item),
-		);
 
 	assert.deepEqual(
-		byName(withoutDocs(engine.metadata())),
-		byName(withoutDocs(engine.extensions)),
+		comparable(engine.metadata()),
+		comparable(engine.extensions),
 	);
 });
 

@@ -16,6 +16,7 @@ import {
 	isCanvistError,
 	starterKit,
 } from "../src/mod.ts";
+import { comparable } from "./descriptors.ts";
 
 test("an engine offers exactly its extensions' commands and queries", async () => {
 	using engine = await createEngine([bold, heading]);
@@ -48,24 +49,15 @@ test("an engine offers exactly its extensions' commands and queries", async () =
 	]);
 });
 
-test("the generated descriptors match what Rust reports, less descriptions", async () => {
+test("the generated descriptors match what Rust reports", async () => {
 	using engine = await createEngine();
-	const byName = (list: readonly { name: string }[]) =>
-		[...list].sort((a, b) => a.name.localeCompare(b.name));
-	// Descriptions are comments in the generated file, not data.
-	const withoutDocs = (value: unknown): { name: string }[] =>
-		JSON.parse(
-			JSON.stringify(value, (key, item) => key === "doc" ? undefined : item),
-		);
 	const metadata = engine.metadata();
 
+	// The descriptions are in the metadata, and only there.
 	assert.ok(
 		metadata.some((extension) => (extension.commands[0]?.doc ?? "") !== ""),
 	);
-	assert.deepEqual(
-		byName(withoutDocs(metadata)),
-		byName(withoutDocs(engine.extensions)),
-	);
+	assert.deepEqual(comparable(metadata), comparable(engine.extensions));
 	assert.equal(engine.extensions.length, starterKit.length + 4);
 });
 

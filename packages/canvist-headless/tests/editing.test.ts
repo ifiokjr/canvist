@@ -21,6 +21,7 @@ import {
 	textAlign,
 	typography,
 } from "../src/mod.ts";
+import { comparable } from "./descriptors.ts";
 
 const editing = [textAlign, typography, characterCount, placeholder] as const;
 
@@ -54,21 +55,16 @@ test("every editing extension has a descriptor beyond the StarterKit", () => {
 
 test("the editing descriptors match what Rust reports", async () => {
 	using engine = await createEngine([...starterKit, ...editing]);
-	const byName = (list: readonly { name: string }[]) =>
-		[...list].sort((a, b) => a.name.localeCompare(b.name));
 
 	assert.deepEqual(
-		byName(engine.metadata() as { name: string }[]),
-		byName(JSON.parse(JSON.stringify(engine.extensions))),
+		comparable(engine.metadata()),
+		comparable(engine.extensions),
 	);
 });
 
 test("an engine without headings aligns only paragraphs", async () => {
 	using engine = await createEngine([textAlign]);
-	const metadata = engine.metadata() as {
-		name: string;
-		nodes: { name: string }[];
-	}[];
+	const metadata = engine.metadata();
 
 	assert.deepEqual(
 		metadata.find((extension) => extension.name === "textAlign")?.nodes.map((

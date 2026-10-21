@@ -1226,10 +1226,11 @@ export const lineHeight = {
 /** The `textAlign` extension. */
 export const textAlign = {
 	"commands": [
+		/** Align the selected text blocks. */
 		{
 			"args": [
+				/** The alignment: left, center, right, or justify. */
 				{
-					"doc": "The alignment: left, center, right, or justify.",
 					"name": "alignment",
 					"type": {
 						"enum": [
@@ -1242,18 +1243,18 @@ export const textAlign = {
 					}
 				}
 			],
-			"doc": "Align the selected text blocks.",
 			"name": "setTextAlign"
 		},
+		/** Clear the alignment of the selected text blocks. */
 		{
 			"args": [],
-			"doc": "Clear the alignment of the selected text blocks.",
 			"name": "unsetTextAlign"
 		},
+		/** Clear the alignment if every selected text block has it, otherwise set it. */
 		{
 			"args": [
+				/** The alignment: left, center, right, or justify. */
 				{
-					"doc": "The alignment: left, center, right, or justify.",
 					"name": "alignment",
 					"type": {
 						"enum": [
@@ -1266,7 +1267,6 @@ export const textAlign = {
 					}
 				}
 			],
-			"doc": "Clear the alignment if every selected text block has it, otherwise set it.",
 			"name": "toggleTextAlign"
 		}
 	],
@@ -1274,9 +1274,9 @@ export const textAlign = {
 	"nodes": [
 		{
 			"attrs": [
+				/** How the block's lines align, or null to follow the text direction. */
 				{
 					"default": null,
-					"doc": "How the block's lines align, or null to follow the text direction.",
 					"name": "textAlign",
 					"type": {
 						"of": {
@@ -1297,9 +1297,9 @@ export const textAlign = {
 		},
 		{
 			"attrs": [
+				/** How the block's lines align, or null to follow the text direction. */
 				{
 					"default": null,
-					"doc": "How the block's lines align, or null to follow the text direction.",
 					"name": "textAlign",
 					"type": {
 						"of": {
@@ -1320,9 +1320,9 @@ export const textAlign = {
 		}
 	],
 	"queries": [
+		/** The alignment every selected text block shares, or null. */
 		{
 			"args": [],
-			"doc": "The alignment every selected text block shares, or null.",
 			"name": "textAlign",
 			"returns": {
 				"of": {
@@ -1343,10 +1343,11 @@ export const textAlign = {
 /** The `characterCount` extension. */
 export const characterCount = {
 	"commands": [
+		/** Change the character limit, or remove it with null. */
 		{
 			"args": [
+				/** The most characters the document may hold, from 0 to 4294967295, or null for no limit. */
 				{
-					"doc": "The most characters the document may hold, from 0 to 4294967295, or null for no limit.",
 					"name": "limit",
 					"type": {
 						"of": {
@@ -1356,32 +1357,31 @@ export const characterCount = {
 					}
 				}
 			],
-			"doc": "Change the character limit, or remove it with null.",
 			"name": "setCharacterLimit"
 		}
 	],
 	"name": "characterCount",
 	"nodes": [],
 	"queries": [
+		/** The characters in the document: grapheme clusters, leaving out embeds. */
 		{
 			"args": [],
-			"doc": "The characters in the document: grapheme clusters, leaving out embeds.",
 			"name": "characters",
 			"returns": {
 				"type": "int"
 			}
 		},
+		/** The words in the document. */
 		{
 			"args": [],
-			"doc": "The words in the document.",
 			"name": "words",
 			"returns": {
 				"type": "int"
 			}
 		},
+		/** The character limit in force, or null. */
 		{
 			"args": [],
-			"doc": "The character limit in force, or null.",
 			"name": "characterLimit",
 			"returns": {
 				"of": {
@@ -1396,26 +1396,26 @@ export const characterCount = {
 /** The `placeholder` extension. */
 export const placeholder = {
 	"commands": [
+		/** Change the placeholder text. */
 		{
 			"args": [
+				/** The placeholder text. */
 				{
-					"doc": "The placeholder text.",
 					"name": "placeholder",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Change the placeholder text.",
 			"name": "setPlaceholder"
 		}
 	],
 	"name": "placeholder",
 	"nodes": [],
 	"queries": [
+		/** The placeholder the caret's empty block shows, or null. */
 		{
 			"args": [],
-			"doc": "The placeholder the caret's empty block shows, or null.",
 			"name": "placeholder",
 			"returns": {
 				"of": {
