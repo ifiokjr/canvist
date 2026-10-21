@@ -128,6 +128,7 @@ pub use editor::Env;
 pub use error::EditorError;
 pub use extension::Binding;
 pub use extension::Extension;
+pub use extension::UpdateFilter;
 pub use extension::block_type;
 pub use extension::embed_type;
 pub use extension::mark_type;

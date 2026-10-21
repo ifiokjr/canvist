@@ -38,10 +38,14 @@ starter-kit = [
 # Every extension in the crate.
 full = [
 	"starter-kit",
+	"character-count",
 	"highlight",
+	"placeholder",
 	"subscript",
 	"superscript",
+	"text-align",
 	"text-style-kit",
+	"typography",
 ]
 # TipTap's TextStyleKit: the `textStyle` mark and every attribute on it.
 text-style-kit = [
@@ -56,6 +60,7 @@ background-color = ["text-style"]
 blockquote = []
 bold = []
 bullet-list = ["list-item"]
+character-count = ["dep:unicode-segmentation"]
 clipboard = []
 code = []
 code-block = []
@@ -72,17 +77,21 @@ line-height = ["text-style"]
 link = []
 list-item = []
 ordered-list = ["list-item"]
+placeholder = []
 strike = []
 subscript = []
 superscript = []
 task-list = []
+text-align = []
 text-style = []
 trailing-node = []
+typography = []
 underline = []
 
 [dependencies]
 canvist_editor = { workspace = true }
 canvist_model = { workspace = true }
+unicode-segmentation = { workspace = true, optional = true }
 
 [dev-dependencies]
 divan = { workspace = true }

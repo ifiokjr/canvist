@@ -27,6 +27,7 @@ use crate::style::StyleId;
 use crate::style::Styles;
 use crate::style::attr;
 use crate::style::attr_px;
+use crate::text::Align;
 use crate::text::Direction;
 use crate::text::Previous;
 use crate::text::TextLayout;
@@ -81,6 +82,8 @@ pub(crate) struct Row {
 	/// The block revision the layout was built from.
 	pub(crate) rev: u32,
 	pub(crate) direction: Direction,
+	/// How the row's lines sit in its content box.
+	pub(crate) align: Align,
 	/// The text layout, once measured. Leaf and empty rows never need one.
 	pub(crate) layout: Option<Arc<TextLayout>>,
 	/// The layout from before the block's text was edited, kept so the next
@@ -494,7 +497,8 @@ impl Flattener<'_> {
 			height,
 			span: placement.frame.span,
 			rev: block.rev(),
-			direction: self.direction(block),
+			direction: direction(self.doc, block),
+			align: align(self.doc, block),
 			layout,
 			previous: None,
 			marker: placement.marker,
@@ -533,16 +537,6 @@ impl Flattener<'_> {
 		to_units(padding + content)
 	}
 
-	fn direction(&self, block: &Block) -> Direction {
-		let defaults = &self.doc.schema().block(block.kind()).attrs;
-
-		match attr(block.attrs(), defaults, "dir").and_then(Value::as_str) {
-			Some("rtl") => Direction::Rtl,
-			Some("ltr") => Direction::Ltr,
-			_ => Direction::Auto,
-		}
-	}
-
 	fn int_attr(&self, block: &Block, key: &str) -> Option<i64> {
 		let defaults = &self.doc.schema().block(block.kind()).attrs;
 		attr(block.attrs(), defaults, key).and_then(Value::as_int)
@@ -554,6 +548,23 @@ impl Flattener<'_> {
 			.and_then(Value::as_bool)
 			.unwrap_or(false)
 	}
+}
+
+/// The paragraph direction a block's `dir` attribute asks for.
+pub(crate) fn direction(doc: &Document, block: &Block) -> Direction {
+	let defaults = &doc.schema().block(block.kind()).attrs;
+
+	match attr(block.attrs(), defaults, "dir").and_then(Value::as_str) {
+		Some("rtl") => Direction::Rtl,
+		Some("ltr") => Direction::Ltr,
+		_ => Direction::Auto,
+	}
+}
+
+/// The line alignment a block's `textAlign` attribute asks for.
+pub(crate) fn align(doc: &Document, block: &Block) -> Align {
+	let defaults = &doc.schema().block(block.kind()).attrs;
+	Align::from_attr(attr(block.attrs(), defaults, "textAlign").and_then(Value::as_str))
 }
 
 /// The height of a leaf block's content: a rule's thickness, or a slot's

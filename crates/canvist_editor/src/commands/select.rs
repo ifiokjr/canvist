@@ -1,8 +1,10 @@
 //! Selection commands that do not move by units: select all, block
-//! selections, and setting a selection from a pointer.
+//! selections, and setting a selection from a pointer; and editor settings,
+//! which change no more of the document than a selection does.
 
 use canvist_model::BlockId;
 use canvist_model::Selection;
+use canvist_model::Value;
 
 use super::CommandResult;
 use crate::EditKind;
@@ -99,4 +101,17 @@ pub fn select_parent(state: &mut EditorState) -> CommandResult {
 	};
 
 	set_selection(state, selection)
+}
+
+/// Change editor setting `key`, which extensions read back with
+/// [`EditorState::settings`]. Does nothing if it already has `value`.
+pub fn set_setting(state: &mut EditorState, key: &str, value: Value) -> CommandResult {
+	if state.settings().get(key) == Some(&value) {
+		return Ok(None);
+	}
+
+	state.change(EditKind::Selection, |tr| {
+		tr.set_setting(key, value);
+		Ok(true)
+	})
 }

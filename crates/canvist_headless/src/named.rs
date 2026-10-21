@@ -59,7 +59,7 @@ const STARTER_KIT: [&str; 17] = [
 
 /// Extensions beyond the StarterKit, compiled with the `full` feature.
 #[cfg(feature = "full")]
-const EXTRA: [&str; 9] = [
+const EXTRA: [&str; 13] = [
 	"subscript",
 	"superscript",
 	"highlight",
@@ -69,6 +69,10 @@ const EXTRA: [&str; 9] = [
 	"fontFamily",
 	"fontSize",
 	"lineHeight",
+	"textAlign",
+	"typography",
+	"characterCount",
+	"placeholder",
 ];
 
 #[cfg(not(feature = "full"))]
@@ -209,14 +213,18 @@ impl Extensions {
 #[cfg(feature = "full")]
 fn register_extra(builder: &mut EditorBuilder, name: &str) {
 	use canvist_extensions::BackgroundColor;
+	use canvist_extensions::CharacterCount;
 	use canvist_extensions::Color;
 	use canvist_extensions::FontFamily;
 	use canvist_extensions::FontSize;
 	use canvist_extensions::Highlight;
 	use canvist_extensions::LineHeight;
+	use canvist_extensions::Placeholder;
 	use canvist_extensions::Subscript;
 	use canvist_extensions::Superscript;
+	use canvist_extensions::TextAlign;
 	use canvist_extensions::TextStyle;
+	use canvist_extensions::Typography;
 
 	match name {
 		"subscript" => {
@@ -245,6 +253,18 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 		}
 		"lineHeight" => {
 			builder.add(LineHeight);
+		}
+		"textAlign" => {
+			builder.add(TextAlign::default());
+		}
+		"typography" => {
+			builder.add(Typography::default());
+		}
+		"characterCount" => {
+			builder.add(CharacterCount::default());
+		}
+		"placeholder" => {
+			builder.add(Placeholder::default());
 		}
 		_ => unreachable!("`Extensions::parse` admits only known names"),
 	}

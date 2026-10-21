@@ -44,6 +44,10 @@ use crate::theme::Theme;
 /// `javascript:`, could run code when clicked.
 const SAFE_URL_SCHEMES: [&str; 3] = ["http:", "https:", "mailto:"];
 
+/// The `textAlign` values layout understands, which are also CSS
+/// `text-align` keywords.
+const ALIGNMENTS: [&str; 4] = ["left", "center", "right", "justify"];
+
 /// Options for [`to_html`].
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct HtmlOptions {
@@ -222,7 +226,8 @@ impl Writer<'_> {
 	}
 
 	/// The per-block declarations a shared class cannot carry: the collapsed
-	/// top margin, an ordered list's start number, and a slot's height.
+	/// top margin, an ordered list's start number, text alignment, and a
+	/// slot's height.
 	fn inline_style(&self, block: &Block, resolved: &BlockStyle, margin: f32) -> String {
 		let defaults = &self.doc.schema().block(block.kind()).attrs;
 		let mut inline_style = String::new();
@@ -236,6 +241,14 @@ impl Writer<'_> {
 				.and_then(Value::as_int)
 				.unwrap_or(1);
 			let _ = write!(inline_style, "counter-reset:cv-n {};", start - 1);
+		}
+
+		let align = attr(block.attrs(), defaults, "textAlign").and_then(Value::as_str);
+
+		if let Some(align) = align.filter(|align| ALIGNMENTS.contains(align))
+			&& matches!(block.content(), Content::Inline(_))
+		{
+			let _ = write!(inline_style, "text-align:{align};");
 		}
 
 		if let (Content::Leaf, LeafStyle::Slot { height }) = (block.content(), resolved.leaf) {

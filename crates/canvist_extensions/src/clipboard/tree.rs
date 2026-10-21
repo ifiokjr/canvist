@@ -223,12 +223,16 @@ impl<'s> Builder<'s> {
 	}
 }
 
-/// `attrs` on top of a type's default attributes.
+/// `attrs` on top of a type's default attributes, without the ones the type
+/// does not declare, such as an alignment pasted into an editor without
+/// text alignment.
 fn with_defaults(defaults: &Attrs, attrs: &Attrs) -> Attrs {
 	let mut merged = defaults.clone();
 
 	for (key, value) in attrs.iter() {
-		merged.set(key, value.clone());
+		if defaults.get(key).is_some() {
+			merged.set(key, value.clone());
+		}
 	}
 
 	merged

@@ -70,9 +70,13 @@ impl DocumentLayout {
 			builder.row_content(index);
 		}
 
+		builder.placeholders(&rows, &options.placeholders);
 		builder.finish(options.caret)
 	}
 }
+
+/// How opaque placeholder text is, relative to the block's text colour.
+const PLACEHOLDER_ALPHA: f32 = 0.4;
 
 /// A decoration line's thickness as a fraction of the font size, before
 /// rounding up to at least one pixel.
@@ -316,6 +320,48 @@ impl Builder<'_> {
 		}));
 
 		self.decorations(block, style, x, baseline, piece.width);
+	}
+
+	/// Draw each placeholder in its block, if the block is visible, empty,
+	/// and laid out. The text starts at the block's left edge on its first
+	/// line, in the block's text colour at [`PLACEHOLDER_ALPHA`]. It is not
+	/// measured, so its width is the block's.
+	fn placeholders(&mut self, rows: &[usize], placeholders: &[(BlockId, Arc<str>)]) {
+		if placeholders.is_empty() {
+			return;
+		}
+
+		let layout = self.layout;
+
+		for &index in rows {
+			let row = &layout.rows()[index];
+			let Some((_, text)) = placeholders.iter().find(|(block, _)| *block == row.block) else {
+				continue;
+			};
+			let Some(empty) = row.layout.as_ref().filter(|layout| layout.text.is_empty()) else {
+				continue;
+			};
+			let style = &empty.styles[0];
+			let line = self.first_line_box(index, layout.style_of(row));
+			let origin = layout.origin(index);
+			let width = crate::document::content_width(layout.style_of(row), row.width);
+			let color = style.style.color;
+			let alpha = (f32::from(color.a) * PLACEHOLDER_ALPHA).round() as u8;
+
+			self.list.items.push(DisplayItem::Text(TextRun {
+				block: row.block,
+				source: text.clone(),
+				range: 0..text.len() as u32,
+				font: style.font,
+				x: origin.x,
+				baseline: line.baseline,
+				width,
+				color: Color::rgba(color.r, color.g, color.b, alpha),
+				letter_spacing: style.style.letter_spacing,
+				rtl: false,
+				bounds: Rect::new(origin.x, line.top, width, line.height),
+			}));
+		}
 	}
 
 	/// Push the decoration lines `style` asks for under a run of `width` at

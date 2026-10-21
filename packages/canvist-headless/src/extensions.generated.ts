@@ -1223,6 +1223,218 @@ export const lineHeight = {
 	]
 } as const satisfies ExtensionDescriptor;
 
+/** The `textAlign` extension. */
+export const textAlign = {
+	"commands": [
+		{
+			"args": [
+				{
+					"doc": "The alignment: left, center, right, or justify.",
+					"name": "alignment",
+					"type": {
+						"enum": [
+							"left",
+							"center",
+							"right",
+							"justify"
+						],
+						"type": "string"
+					}
+				}
+			],
+			"doc": "Align the selected text blocks.",
+			"name": "setTextAlign"
+		},
+		{
+			"args": [],
+			"doc": "Clear the alignment of the selected text blocks.",
+			"name": "unsetTextAlign"
+		},
+		{
+			"args": [
+				{
+					"doc": "The alignment: left, center, right, or justify.",
+					"name": "alignment",
+					"type": {
+						"enum": [
+							"left",
+							"center",
+							"right",
+							"justify"
+						],
+						"type": "string"
+					}
+				}
+			],
+			"doc": "Clear the alignment if every selected text block has it, otherwise set it.",
+			"name": "toggleTextAlign"
+		}
+	],
+	"name": "textAlign",
+	"nodes": [
+		{
+			"attrs": [
+				{
+					"default": null,
+					"doc": "How the block's lines align, or null to follow the text direction.",
+					"name": "textAlign",
+					"type": {
+						"of": {
+							"enum": [
+								"left",
+								"center",
+								"right",
+								"justify"
+							],
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"kind": "block",
+			"name": "heading"
+		},
+		{
+			"attrs": [
+				{
+					"default": null,
+					"doc": "How the block's lines align, or null to follow the text direction.",
+					"name": "textAlign",
+					"type": {
+						"of": {
+							"enum": [
+								"left",
+								"center",
+								"right",
+								"justify"
+							],
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"kind": "block",
+			"name": "paragraph"
+		}
+	],
+	"queries": [
+		{
+			"args": [],
+			"doc": "The alignment every selected text block shares, or null.",
+			"name": "textAlign",
+			"returns": {
+				"of": {
+					"enum": [
+						"left",
+						"center",
+						"right",
+						"justify"
+					],
+					"type": "string"
+				},
+				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `characterCount` extension. */
+export const characterCount = {
+	"commands": [
+		{
+			"args": [
+				{
+					"doc": "The most characters the document may hold, from 0 to 4294967295, or null for no limit.",
+					"name": "limit",
+					"type": {
+						"of": {
+							"type": "int"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"doc": "Change the character limit, or remove it with null.",
+			"name": "setCharacterLimit"
+		}
+	],
+	"name": "characterCount",
+	"nodes": [],
+	"queries": [
+		{
+			"args": [],
+			"doc": "The characters in the document: grapheme clusters, leaving out embeds.",
+			"name": "characters",
+			"returns": {
+				"type": "int"
+			}
+		},
+		{
+			"args": [],
+			"doc": "The words in the document.",
+			"name": "words",
+			"returns": {
+				"type": "int"
+			}
+		},
+		{
+			"args": [],
+			"doc": "The character limit in force, or null.",
+			"name": "characterLimit",
+			"returns": {
+				"of": {
+					"type": "int"
+				},
+				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `placeholder` extension. */
+export const placeholder = {
+	"commands": [
+		{
+			"args": [
+				{
+					"doc": "The placeholder text.",
+					"name": "placeholder",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"doc": "Change the placeholder text.",
+			"name": "setPlaceholder"
+		}
+	],
+	"name": "placeholder",
+	"nodes": [],
+	"queries": [
+		{
+			"args": [],
+			"doc": "The placeholder the caret's empty block shows, or null.",
+			"name": "placeholder",
+			"returns": {
+				"of": {
+					"type": "string"
+				},
+				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `typography` extension. */
+export const typography = {
+	"commands": [],
+	"name": "typography",
+	"nodes": [],
+	"queries": []
+} as const satisfies ExtensionDescriptor;
+
 /** The `baseKeymap` extension. */
 export const baseKeymap = {
 	"commands": [],
@@ -1238,4 +1450,4 @@ export const core = [undoInputRule, paragraph, doc, baseKeymap] as const;
 export const starterKit = [trailingNode, heading, blockquote, codeBlock, hardBreak, horizontalRule, bulletList, orderedList, listItem, taskList, bold, italic, underline, strike, code, link, history] as const;
 
 /** Every optional extension canvist ships, the StarterKit's included. */
-export const allExtensions = [textStyle, trailingNode, heading, blockquote, codeBlock, hardBreak, horizontalRule, bulletList, orderedList, listItem, taskList, bold, italic, underline, strike, code, link, history, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight] as const;
+export const allExtensions = [textStyle, trailingNode, heading, blockquote, codeBlock, hardBreak, horizontalRule, bulletList, orderedList, listItem, taskList, bold, italic, underline, strike, code, link, history, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, typography] as const;

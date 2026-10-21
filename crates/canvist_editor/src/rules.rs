@@ -132,6 +132,9 @@ impl RuleInput {
 pub struct InputRule {
 	pattern: Regex,
 	trigger: Trigger,
+	/// The typed characters the rule declared it runs on, which override
+	/// the trigger read from its pattern.
+	on: Option<&'static str>,
 	/// Whether the pattern starts with `^`: it can only match from the
 	/// start of the block.
 	anchored: bool,
@@ -245,6 +248,7 @@ impl InputRule {
 		Ok(Self {
 			pattern: compile(pattern)?,
 			trigger: Trigger::of(pattern),
+			on: None,
 			anchored: pattern.starts_with('^'),
 			uses_start: pattern.contains('^'),
 			lookback: DEFAULT_LOOKBACK,
@@ -260,6 +264,15 @@ impl InputRule {
 		self
 	}
 
+	/// Only try the rule when the typed character is one of `chars`. A
+	/// pattern ending in a group or class, such as `(")$`, cannot say this
+	/// itself, so without it the rule runs on every punctuation keystroke.
+	#[must_use]
+	pub fn on(mut self, chars: &'static str) -> Self {
+		self.on = Some(chars);
+		self
+	}
+
 	/// Where in the haystack this rule's search starts, or `None` if the
 	/// rule cannot match there at all.
 	fn search_start(&self, input: &RuleInput) -> Option<usize> {
@@ -269,20 +282,19 @@ impl InputRule {
 
 		let before = &input.haystack[..input.haystack.len() - input.typed.len()];
 
-		let cut = match self.lookback {
+		let mut cut = match self.lookback {
 			Lookback::Word => before.rfind(char::is_whitespace).unwrap_or(0),
 			Lookback::Bytes(bytes) => before.len().saturating_sub(bytes as usize),
 		};
 
+		// A byte count can land inside a multi-byte character.
+		while !before.is_char_boundary(cut) {
+			cut += 1;
+		}
+
 		let at_block_start = cut == 0 && input.window == 0;
 
 		if at_block_start || !self.uses_start {
-			let mut cut = cut;
-
-			while !before.is_char_boundary(cut) {
-				cut += 1;
-			}
-
 			return Some(cut);
 		}
 
@@ -348,7 +360,12 @@ impl InputRule {
 	pub fn find(&self, input: &RuleInput) -> Option<RuleMatch> {
 		let last = input.typed.chars().next_back()?;
 
-		if !self.trigger.accepts(last) {
+		let triggered = match self.on {
+			Some(chars) => chars.contains(last),
+			None => self.trigger.accepts(last),
+		};
+
+		if !triggered {
 			return None;
 		}
 

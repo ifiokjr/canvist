@@ -344,15 +344,8 @@ fn can_checks_for_a_toolbar_in_a_100k_block_document() {
 /// Every extension beyond the StarterKit.
 #[cfg(feature = "full")]
 fn every_extension(builder: &mut canvist_editor::EditorBuilder) {
-	builder.add(canvist_extensions::Subscript);
-	builder.add(canvist_extensions::Superscript);
-	builder.add(canvist_extensions::Highlight::default());
-	builder.add(canvist_extensions::TextStyle);
-	builder.add(canvist_extensions::Color);
-	builder.add(canvist_extensions::BackgroundColor);
-	builder.add(canvist_extensions::FontFamily);
-	builder.add(canvist_extensions::FontSize);
-	builder.add(canvist_extensions::LineHeight);
+	let extras = std::mem::take(builder).extensions(canvist_extensions::extras());
+	*builder = extras;
 }
 
 /// 100,000 paragraphs in an editor with every extension.

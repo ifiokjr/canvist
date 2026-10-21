@@ -236,3 +236,187 @@ fn text_style_attributes_set_colour_size_and_line_height() {
 		html.html
 	);
 }
+
+/// The left edge and width of every text run on each line of a one-block
+/// document whose paragraph has `align`.
+fn aligned(align: &str, text: &str, width: f32) -> Vec<Vec<(f32, f32)>> {
+	let doc = doc(json!([{
+		"type": "paragraph",
+		"attrs": { "textAlign": align },
+		"content": [{ "type": "text", "text": text }]
+	}]));
+	let layout = layout(&doc, width);
+	let list = layout.display_list(&DisplayOptions::viewport(0.0, layout.height()));
+	let mut lines: Vec<Vec<(f32, f32)>> = Vec::new();
+	let mut baseline = None;
+
+	for item in &list.items {
+		let canvist_layout::DisplayItem::Text(run) = item else {
+			continue;
+		};
+
+		if baseline != Some(run.baseline) {
+			baseline = Some(run.baseline);
+			lines.push(Vec::new());
+		}
+
+		if let Some(line) = lines.last_mut() {
+			line.push((run.x, run.width));
+		}
+	}
+
+	lines
+}
+
+#[test]
+fn text_aligns_left_centre_and_right() {
+	// "abc" is three 9.6 px advances: 28.8 px in a 100 px line.
+	let left = aligned("left", "abc", 100.0);
+	let center = aligned("center", "abc", 100.0);
+	let right = aligned("right", "abc", 100.0);
+
+	assert_eq!(left[0][0].0, 0.0);
+	assert_eq!(center[0][0].0, (100.0 - 28.8) / 2.0);
+	assert_eq!(right[0][0].0, 100.0 - 28.8);
+}
+
+#[test]
+fn justified_lines_widen_their_spaces_except_the_last_line() {
+	// Fits "aaa bbb " but not "aaa bbb ccc", so the text wraps after "bbb".
+	let lines = aligned("justify", "aaa bbb ccc", 100.0);
+	let [first, last] = lines.as_slice() else {
+		panic!("two lines: {lines:?}");
+	};
+	let (bbb_x, bbb_width) = first[first.len() - 1];
+
+	assert_eq!(first[0].0, 0.0);
+	assert!(
+		(bbb_x + 3.0 * 9.6 - 100.0).abs() < 0.01,
+		"the wrapped line reaches the right edge: bbb at {bbb_x}, {bbb_width} wide"
+	);
+	assert_eq!(last[0].0, 0.0, "the last line aligns to the start");
+}
+
+#[test]
+fn server_html_carries_text_alignment() {
+	let doc = doc(json!([{
+		"type": "paragraph",
+		"attrs": { "textAlign": "center" },
+		"content": [{ "type": "text", "text": "Title" }]
+	}, {
+		"type": "paragraph",
+		"attrs": { "textAlign": "sideways" },
+		"content": [{ "type": "text", "text": "Ignored" }]
+	}]));
+	let html = to_html(
+		&doc,
+		&Arc::new(Theme::starter_kit()),
+		&HtmlOptions::new(320.0),
+	)
+	.html;
+
+	assert!(html.contains("style=\"text-align:center;\""), "{html}");
+	assert!(!html.contains("sideways"), "{html}");
+}
+
+#[test]
+fn right_to_left_text_aligns_to_the_physical_edge_it_names() {
+	let start = aligned("start", "שלום", 100.0);
+	let left = aligned("left", "שלום", 100.0);
+	let (x, width) = start[0][0];
+
+	assert!(
+		(x + width - 100.0).abs() < 0.01,
+		"right-to-left starts on the right"
+	);
+	assert_eq!(left[0][0].0, 0.0, "`left` means the left edge");
+}
+
+#[test]
+fn alignment_survives_typing_and_changing_it() {
+	let mut doc = doc(json!([{
+		"type": "paragraph",
+		"attrs": { "textAlign": "center" },
+		"content": [{ "type": "text", "text": "a centred line that wraps around" }]
+	}]));
+	let mut measurer = canvist_layout::FixedMeasurer::new();
+	let mut layout = canvist_layout::DocumentLayout::new(
+		&doc,
+		Arc::new(Theme::starter_kit()),
+		canvist_layout::LayoutOptions::new(120.0),
+	);
+	layout.layout_all(&doc, &mut measurer).expect("measured");
+	let block = doc.children(None)[0];
+	let paragraph = doc.schema().default_text_block();
+
+	let mut typing = doc.transaction();
+	typing
+		.insert_text(
+			canvist_model::Point::new(block, 1),
+			"!",
+			canvist_model::MarkSet::empty(),
+		)
+		.expect("valid point");
+	let commit = typing.commit();
+	layout.apply(&doc, &commit);
+	layout
+		.ensure(&doc, &mut measurer, 0.0, 1000.0)
+		.expect("measured");
+	assert_eq!(
+		layout.dump(),
+		support::layout(&doc, 120.0).dump(),
+		"after typing"
+	);
+
+	let mut realign = doc.transaction();
+	realign
+		.set_block(
+			block,
+			paragraph,
+			canvist_model::Attrs::new().with("textAlign", "right"),
+		)
+		.expect("valid block");
+	let commit = realign.commit();
+	layout.apply(&doc, &commit);
+	layout
+		.ensure(&doc, &mut measurer, 0.0, 1000.0)
+		.expect("measured");
+	assert_eq!(
+		layout.dump(),
+		support::layout(&doc, 120.0).dump(),
+		"after realigning"
+	);
+}
+
+#[test]
+fn placeholders_draw_faded_in_empty_blocks_only() {
+	let doc = doc(json!([{ "type": "paragraph" }, support::paragraph("text")]));
+	let layout = layout(&doc, 320.0);
+	let blocks = doc.children(None);
+	let options = DisplayOptions::viewport(0.0, layout.height())
+		.placeholder(blocks[0], "Write something …")
+		.placeholder(blocks[1], "Hidden");
+	let list = layout.display_list(&options);
+	let runs: Vec<&canvist_layout::TextRun> = list
+		.items
+		.iter()
+		.filter_map(|item| {
+			match item {
+				canvist_layout::DisplayItem::Text(run) => Some(run),
+				_ => None,
+			}
+		})
+		.collect();
+
+	assert_eq!(runs.len(), 2, "the placeholder and the second block's text");
+	let placeholder = runs
+		.iter()
+		.find(|run| run.text() == "Write something …")
+		.expect("drawn");
+	let ink = Theme::starter_kit().base().color;
+
+	assert_eq!(placeholder.block, blocks[0]);
+	assert_eq!(placeholder.x, 0.0);
+	assert_eq!(placeholder.color.a, (f32::from(ink.a) * 0.4).round() as u8);
+	assert!(!runs.iter().any(|run| run.text() == "Hidden"));
+}

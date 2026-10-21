@@ -60,6 +60,30 @@ final class BulletListHandle extends ExtensionHandle {
   Query<bool> isBulletList() => _query('isBulletList', (json) => json! as bool);
 }
 
+/// The commands and queries of `characterCount`.
+final class CharacterCountHandle extends ExtensionHandle {
+  CharacterCountHandle._(super.registration) : super._();
+
+  /// Change the character limit, or remove it with null.
+  ///
+  /// [limit]: The most characters the document may hold, from 0 to 4294967295, or null for no limit.
+  Command setCharacterLimit({required int? limit}) =>
+      _command('setCharacterLimit', {'limit': limit});
+
+  /// The characters in the document: grapheme clusters, leaving out embeds.
+  Query<int> characters() =>
+      _query('characters', (json) => (json! as num).toInt());
+
+  /// The words in the document.
+  Query<int> words() => _query('words', (json) => (json! as num).toInt());
+
+  /// The character limit in force, or null.
+  Query<int?> characterLimit() => _query(
+    'characterLimit',
+    (json) => json == null ? null : (json as num).toInt(),
+  );
+}
+
 /// The commands and queries of `code`.
 final class CodeHandle extends ExtensionHandle {
   CodeHandle._(super.registration) : super._();
@@ -336,6 +360,21 @@ final class ParagraphHandle extends ExtensionHandle {
   Query<bool> isParagraph() => _query('isParagraph', (json) => json! as bool);
 }
 
+/// The commands and queries of `placeholder`.
+final class PlaceholderHandle extends ExtensionHandle {
+  PlaceholderHandle._(super.registration) : super._();
+
+  /// Change the placeholder text.
+  ///
+  /// [placeholder]: The placeholder text.
+  Command setPlaceholder({required String placeholder}) =>
+      _command('setPlaceholder', {'placeholder': placeholder});
+
+  /// The placeholder the caret's empty block shows, or null.
+  Query<String?> placeholder() =>
+      _query('placeholder', (json) => json == null ? null : json as String);
+}
+
 /// The commands and queries of `strike`.
 final class StrikeHandle extends ExtensionHandle {
   StrikeHandle._(super.registration) : super._();
@@ -421,6 +460,30 @@ final class TaskListHandle extends ExtensionHandle {
       _query('isTaskChecked', (json) => json == null ? null : json as bool);
 }
 
+/// The commands and queries of `textAlign`.
+final class TextAlignHandle extends ExtensionHandle {
+  TextAlignHandle._(super.registration) : super._();
+
+  /// Align the selected text blocks.
+  ///
+  /// [alignment]: The alignment: left, center, right, or justify. One of left, center, right, justify.
+  Command setTextAlign({required String alignment}) =>
+      _command('setTextAlign', {'alignment': alignment});
+
+  /// Clear the alignment of the selected text blocks.
+  Command unsetTextAlign() => _command('unsetTextAlign', const {});
+
+  /// Clear the alignment if every selected text block has it, otherwise set it.
+  ///
+  /// [alignment]: The alignment: left, center, right, or justify. One of left, center, right, justify.
+  Command toggleTextAlign({required String alignment}) =>
+      _command('toggleTextAlign', {'alignment': alignment});
+
+  /// The alignment every selected text block shares, or null.
+  Query<String?> textAlign() =>
+      _query('textAlign', (json) => json == null ? null : json as String);
+}
+
 /// The commands and queries of `textStyle`.
 final class TextStyleHandle extends ExtensionHandle {
   TextStyleHandle._(super.registration) : super._();
@@ -432,6 +495,11 @@ final class TextStyleHandle extends ExtensionHandle {
 /// The commands and queries of `trailingNode`.
 final class TrailingNodeHandle extends ExtensionHandle {
   TrailingNodeHandle._(super.registration) : super._();
+}
+
+/// The commands and queries of `typography`.
+final class TypographyHandle extends ExtensionHandle {
+  TypographyHandle._(super.registration) : super._();
 }
 
 /// The commands and queries of `underline`.
@@ -480,6 +548,14 @@ final class BulletListExtension extends Extension<BulletListHandle> {
   @override
   BulletListHandle _handle(Registration registration) =>
       BulletListHandle._(registration);
+}
+
+/// Registers `characterCount`.
+final class CharacterCountExtension extends Extension<CharacterCountHandle> {
+  const CharacterCountExtension._() : super('characterCount');
+  @override
+  CharacterCountHandle _handle(Registration registration) =>
+      CharacterCountHandle._(registration);
 }
 
 /// Registers `code`.
@@ -599,6 +675,14 @@ final class OrderedListExtension extends Extension<OrderedListHandle> {
       OrderedListHandle._(registration);
 }
 
+/// Registers `placeholder`.
+final class PlaceholderExtension extends Extension<PlaceholderHandle> {
+  const PlaceholderExtension._() : super('placeholder');
+  @override
+  PlaceholderHandle _handle(Registration registration) =>
+      PlaceholderHandle._(registration);
+}
+
 /// Registers `strike`.
 final class StrikeExtension extends Extension<StrikeHandle> {
   const StrikeExtension._() : super('strike');
@@ -631,6 +715,14 @@ final class TaskListExtension extends Extension<TaskListHandle> {
       TaskListHandle._(registration);
 }
 
+/// Registers `textAlign`.
+final class TextAlignExtension extends Extension<TextAlignHandle> {
+  const TextAlignExtension._() : super('textAlign');
+  @override
+  TextAlignHandle _handle(Registration registration) =>
+      TextAlignHandle._(registration);
+}
+
 /// Registers `textStyle`.
 final class TextStyleExtension extends Extension<TextStyleHandle> {
   const TextStyleExtension._() : super('textStyle');
@@ -645,6 +737,14 @@ final class TrailingNodeExtension extends Extension<TrailingNodeHandle> {
   @override
   TrailingNodeHandle _handle(Registration registration) =>
       TrailingNodeHandle._(registration);
+}
+
+/// Registers `typography`.
+final class TypographyExtension extends Extension<TypographyHandle> {
+  const TypographyExtension._() : super('typography');
+  @override
+  TypographyHandle _handle(Registration registration) =>
+      TypographyHandle._(registration);
 }
 
 /// Registers `underline`.
@@ -668,6 +768,9 @@ abstract final class Extensions {
 
   /// The `bulletList` extension.
   static const bulletList = BulletListExtension._();
+
+  /// The `characterCount` extension.
+  static const characterCount = CharacterCountExtension._();
 
   /// The `code` extension.
   static const code = CodeExtension._();
@@ -714,6 +817,9 @@ abstract final class Extensions {
   /// The `orderedList` extension.
   static const orderedList = OrderedListExtension._();
 
+  /// The `placeholder` extension.
+  static const placeholder = PlaceholderExtension._();
+
   /// The `strike` extension.
   static const strike = StrikeExtension._();
 
@@ -726,11 +832,17 @@ abstract final class Extensions {
   /// The `taskList` extension.
   static const taskList = TaskListExtension._();
 
+  /// The `textAlign` extension.
+  static const textAlign = TextAlignExtension._();
+
   /// The `textStyle` extension.
   static const textStyle = TextStyleExtension._();
 
   /// The `trailingNode` extension.
   static const trailingNode = TrailingNodeExtension._();
+
+  /// The `typography` extension.
+  static const typography = TypographyExtension._();
 
   /// The `underline` extension.
   static const underline = UnderlineExtension._();
@@ -762,6 +874,7 @@ abstract final class Extensions {
     blockquote,
     bold,
     bulletList,
+    characterCount,
     code,
     codeBlock,
     color,
@@ -777,12 +890,15 @@ abstract final class Extensions {
     link,
     listItem,
     orderedList,
+    placeholder,
     strike,
     subscript,
     superscript,
     taskList,
+    textAlign,
     textStyle,
     trailingNode,
+    typography,
     underline,
   ];
 }
