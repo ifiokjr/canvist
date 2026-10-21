@@ -10,3 +10,6 @@ export const CONTENT = {
 		"- Start a line with `##` and a space for a heading.",
 	].join("\n"),
 } as const;
+
+/** What an empty document shows. */
+export const PLACEHOLDER = "Start writing…";

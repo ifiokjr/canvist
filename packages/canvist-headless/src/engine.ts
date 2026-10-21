@@ -12,6 +12,7 @@ import type {
 	Commands,
 	DocJson,
 	ErrorCode,
+	ExtensionDescriptor,
 	Extensions,
 	Format,
 	Position,
@@ -112,8 +113,11 @@ export class Engine<E extends Extensions> {
 		return this.#extensions;
 	}
 
-	/** The registered extensions' metadata, as Rust reports it. */
-	metadata(): unknown {
+	/**
+	 * The registered extensions' metadata as Rust reports it: their
+	 * descriptors, with every command, query, and field's `doc`.
+	 */
+	metadata(): ExtensionDescriptor[] {
 		return JSON.parse(this.#wasm.metadata());
 	}
 

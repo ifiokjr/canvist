@@ -5,6 +5,8 @@
  * kept as a literal type. The types here read it, so a document's commands,
  * queries, argument types, and JSON node names follow from the extensions
  * an engine registers, with nothing written by hand per extension.
+ * Descriptions are comments in `extensions.generated.ts`, so they never
+ * ship in a browser bundle; `engine.metadata()` returns them as data.
  *
  * @module
  */
@@ -19,7 +21,8 @@ export type ValueSpec =
 /** A named, typed value. A `default` makes an argument optional. */
 export interface FieldSpec {
 	readonly name: string;
-	readonly doc: string;
+	/** What it means: in `engine.metadata()`, not in the generated descriptors. */
+	readonly doc?: string;
 	readonly type: ValueSpec;
 	readonly default?: unknown;
 }
@@ -34,14 +37,16 @@ export interface NodeSpec {
 /** A command an extension registers. */
 export interface CommandSpec {
 	readonly name: string;
-	readonly doc: string;
+	/** What it does: in `engine.metadata()`, not in the generated descriptors. */
+	readonly doc?: string;
 	readonly args: readonly FieldSpec[];
 }
 
 /** A query an extension registers. */
 export interface QuerySpec {
 	readonly name: string;
-	readonly doc: string;
+	/** What it answers: in `engine.metadata()`, not in the generated descriptors. */
+	readonly doc?: string;
 	readonly args: readonly FieldSpec[];
 	readonly returns: ValueSpec;
 }

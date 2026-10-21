@@ -84,6 +84,59 @@ if (element !== null) {
 
 The server and the browser must lay text out with the same font files. [Fonts and text rendering](../guides/fonts.md#render-the-same-fonts-on-your-server) shows how.
 
+## 5. Read-only editors and placeholders
+
+```ts no_run
+import { createEditor } from "@canvist/web";
+
+const element = document.querySelector<HTMLElement>("#editor");
+
+if (element !== null) {
+	const editor = await createEditor(element, {
+		content: { format: "markdown", input: "" },
+		placeholder: "Write a comment…",
+		editable: false,
+	});
+
+	// Later, when the person may edit:
+	editor.setEditable(true);
+}
+```
+
+- **`editable: false`** makes the editor read-only. People can still select text with the pointer and navigation keys, and copy it, but typing, pasting, cutting, and dropping change nothing, and no caret shows. Commands and the API still change the document, as in TipTap. Screen readers hear `aria-readonly`.
+- **`placeholder`** shows dimmed text where the first line starts while the document is empty (`editor.isEmpty`), and is the field's `aria-placeholder`. Change it with `editor.setPlaceholder`.
+- **`editor.subscribe`** also calls back when focus or `editable` changes, and `editor.focused` and `editor.editable` read them.
+
+## 6. Menus that follow the selection
+
+`@canvist/web/menus` keeps an element you build next to the selection: `bubbleMenu` over selected text, and `floatingMenu` beside the caret on an empty line. They follow edits, scrolling, and resizing, flip to the other side when there's no room, and hide when they don't apply. Pressing inside a menu keeps the editor's focus, so its buttons act on the selection:
+
+```html
+<div id="bubble" role="toolbar" aria-label="Formatting">
+	<button id="italic" type="button">Italic</button>
+</div>
+```
+
+```ts no_run
+import { createEditor } from "@canvist/web";
+import { bubbleMenu } from "@canvist/web/menus";
+
+const element = document.querySelector<HTMLElement>("#editor");
+const bubble = document.querySelector<HTMLElement>("#bubble");
+
+if (element !== null && bubble !== null) {
+	const editor = await createEditor(element);
+	const menu = bubbleMenu(editor, bubble, { placement: "top", offset: 8 });
+
+	bubble.querySelector("#italic")?.addEventListener("click", () => {
+		editor.commands.toggleItalic();
+	});
+	// menu.destroy() stops following the editor.
+}
+```
+
+By default a bubble menu shows while the editor is editable and focused and the selection isn't a caret, and a floating menu while the caret is in an empty text block. Pass `shouldShow(editor)` to decide yourself. For your own positioning, `editor.selectionRect()` is the selection's bounding box in document coordinates, `editor.toClientRect(rect)` converts it to viewport coordinates, and `placeMenu(element, rect, { placement })` does the flipping and clamping.
+
 ## Run the examples
 
 `examples/web` in the repository has a plain page, React, Vue, and two server-rendered pages (plain and React), each with a Playwright test:

@@ -474,11 +474,45 @@ impl WebEditor {
 	/// place IME windows and scroll the caret into view with it.
 	#[wasm_bindgen(js_name = caretRect)]
 	pub fn caret_rect(&self) -> Vec<f32> {
-		self.caret()
-			.and_then(|caret| self.layout.caret_rect(caret))
-			.map_or_else(Vec::new, |rect| {
-				vec![rect.x, rect.y, rect.width, rect.height]
-			})
+		rect_array(self.caret().and_then(|caret| self.layout.caret_rect(caret)))
+	}
+
+	/// The smallest rectangle around the selection in document coordinates,
+	/// as `[x, y, width, height]`: the caret's rectangle for a caret, and
+	/// empty while the selection is not laid out. Hosts anchor menus to it.
+	#[wasm_bindgen(js_name = selectionBounds)]
+	pub fn selection_bounds(&self) -> Vec<f32> {
+		let bounds = match self.caret() {
+			Some(caret) => self.layout.caret_rect(caret),
+			None => self.layout.selection_bounds(&self.doc.selection()),
+		};
+
+		rect_array(bounds)
+	}
+
+	/// Whether the document is a single empty text block, as a new one is.
+	/// Hosts show a placeholder then.
+	#[wasm_bindgen(js_name = isEmpty)]
+	pub fn is_empty(&self) -> bool {
+		let document = self.doc.document();
+
+		match document.children(None) {
+			[block] => {
+				document
+					.inline(*block)
+					.is_some_and(|text| text.as_str().is_empty())
+			}
+			_ => false,
+		}
+	}
+
+	/// Body text's CSS `font` shorthand and colour, as `[font, color]`, for
+	/// text the host draws over the canvas in the document's style, such as
+	/// a placeholder.
+	#[wasm_bindgen(js_name = bodyStyle)]
+	pub fn body_style(&self) -> Vec<String> {
+		let base = self.options.theme.base();
+		vec![base.font.css(), base.color.to_string()]
 	}
 
 	/// The whole document laid out, as JSON: block rectangles, caret stops,
@@ -645,6 +679,13 @@ impl WebEditor {
 			.get(index)
 			.map(canvist_layout::FontSpec::css)
 	}
+}
+
+/// A rectangle as `[x, y, width, height]`, or empty for `None`.
+fn rect_array(rect: Option<Rect>) -> Vec<f32> {
+	rect.map_or_else(Vec::new, |rect| {
+		vec![rect.x, rect.y, rect.width, rect.height]
+	})
 }
 
 /// A position as JSON: `{"path":[…],"offset":n}`.
