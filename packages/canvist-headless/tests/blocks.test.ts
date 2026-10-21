@@ -18,6 +18,7 @@ import {
 	mathematics,
 	starterKit,
 } from "../src/full.ts";
+import { comparable } from "./descriptors.ts";
 
 const blocks = [...starterKit, details, callout, mathematics] as const;
 
@@ -28,12 +29,12 @@ function assertType<Condition extends true>(_condition?: Condition): void {}
 
 test("the block descriptors match what Rust reports", async () => {
 	using engine = await createEngine(blocks);
-	const reported = engine.metadata() as { name: string }[];
+	const reported = comparable(engine.metadata());
 
 	for (const descriptor of [details, callout, mathematics]) {
 		assert.deepEqual(
 			reported.find((extension) => extension.name === descriptor.name),
-			JSON.parse(JSON.stringify(descriptor)),
+			comparable([descriptor])[0],
 		);
 	}
 
