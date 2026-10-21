@@ -96,20 +96,24 @@ struct Extensions {
 impl Extensions {
 	/// Check `names` against the extensions this build has.
 	fn parse(names: &[String]) -> Result<Self, EditorError> {
+		for name in names {
+			let name = name.as_str();
+
+			if !(ALWAYS.contains(&name) || STARTER_KIT.contains(&name) || EXTRA.contains(&name)) {
+				return Err(EditorError::UnknownName(name.to_owned()));
+			}
+		}
+
+		// Register in one fixed order, whatever order the names came in.
+		// Marks nest and serialize in registration order, so without this
+		// the same names build different schemas: Dart's alphabetical
+		// `Extensions.all` would write `<mark><sub>` where TypeScript writes
+		// `<sub><mark>`. Taking the known names in order, rather than
+		// sorting the given ones, keeps a sort out of every binary.
 		let mut found = Vec::new();
 
-		for name in names {
-			if ALWAYS.contains(&name.as_str()) {
-				continue;
-			}
-
-			let known = STARTER_KIT
-				.iter()
-				.chain(EXTRA.iter())
-				.find(|known| **known == name)
-				.ok_or_else(|| EditorError::UnknownName(name.clone()))?;
-
-			if !found.contains(known) {
+		for known in STARTER_KIT.iter().chain(EXTRA.iter()) {
+			if names.iter().any(|name| name == known) {
 				found.push(*known);
 			}
 		}

@@ -152,6 +152,7 @@ fn tabs_advance_to_stops() {
 	insta::assert_snapshot!(layout(&doc, 600.0).dump());
 }
 
+#[cfg(feature = "theme-extensions")]
 /// The runs of a one-paragraph document, keyed by their text.
 fn runs(content: &serde_json::Value) -> Vec<(String, f32, f32)> {
 	let doc = doc(json!([{ "type": "paragraph", "content": content }]));
@@ -172,6 +173,8 @@ fn runs(content: &serde_json::Value) -> Vec<(String, f32, f32)> {
 		.collect()
 }
 
+// The extension theme rules are behind `theme-extensions`.
+#[cfg(feature = "theme-extensions")]
 #[test]
 fn scripts_shrink_and_shift_the_baseline() {
 	let runs = runs(&json!([

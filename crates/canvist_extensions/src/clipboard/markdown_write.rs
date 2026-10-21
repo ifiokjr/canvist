@@ -258,6 +258,15 @@ fn escape(text: &str) -> String {
 	escaped
 }
 
+/// Whether Markdown writes `a` and `b` the same way: the same kind, and
+/// for a link the same `href`. Any other attribute, such as a highlight's
+/// colour, has no Markdown form, so marks that differ only in it share one
+/// span: `==a b==`, not `==a====b==`, which reads back as one highlight
+/// anyway.
+fn same_in_markdown(schema: &Schema, a: &Mark, b: &Mark) -> bool {
+	a.kind == b.kind && (a.attrs == b.attrs || schema.mark(a.kind).name.as_ref() != "link")
+}
+
 /// The delimiters around text with `mark`, or `None` for marks Markdown
 /// cannot express.
 fn delimiters(schema: &Schema, mark: &Mark) -> Option<(String, String)> {
@@ -318,7 +327,11 @@ impl InlineWriter<'_> {
 		let keep = self
 			.open
 			.iter()
-			.take_while(|(mark, _)| wanted.contains(&mark))
+			.take_while(|(mark, _)| {
+				wanted
+					.iter()
+					.any(|wanted| same_in_markdown(self.schema, mark, wanted))
+			})
 			.count();
 
 		for (_, close) in self.open.drain(keep..).rev() {
@@ -405,7 +418,10 @@ fn open_marks(
 	out: &mut String,
 ) {
 	for mark in wanted {
-		if open.iter().any(|(existing, _)| existing == *mark) {
+		if open
+			.iter()
+			.any(|(existing, _)| same_in_markdown(schema, existing, mark))
+		{
 			continue;
 		}
 
