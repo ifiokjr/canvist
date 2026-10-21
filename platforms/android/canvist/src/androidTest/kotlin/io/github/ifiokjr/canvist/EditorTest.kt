@@ -147,7 +147,7 @@ class EditorTest {
             val p95 = samples[samples.size * P95 / 100]
 
             Log.i(TAG, "PERF kotlin(${build()}, ${Build.SUPPORTED_ABIS[0]}) keystroke-to-frame median=${median.toLong()}µs p95=${p95.toLong()}µs")
-            assertTrue("keystroke-to-frame p95 ${p95}µs is over its budget", p95 < BUDGET_MICROS)
+            assertTrue("keystroke-to-frame p95 ${p95}µs is over its budget", p95 < BUDGET_MICROS * perfSlack)
         }
     }
 

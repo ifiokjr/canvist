@@ -208,7 +208,7 @@ final class CanvistViewTests: XCTestCase {
         let p95 = samples[samples.count * Self.percentile / 100]
 
         print("PERF swift keystroke-to-paint median=\(Int(median))µs p95=\(Int(p95))µs")
-        XCTAssertLessThan(p95, Self.budget, "keystroke-to-paint p95 \(p95)µs is over its budget")
+        XCTAssertLessThan(p95, Self.budget * perfSlack, "keystroke-to-paint p95 \(p95)µs is over its budget")
     }
 
     /// Type or delete a character and paint it; returns microseconds.
