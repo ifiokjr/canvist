@@ -285,7 +285,9 @@ const BOUNDARIES: [&str; 22] = [
 fn text_block_attrs(attrs: &[(String, String)]) -> Attrs {
 	let style = attr(attrs, "style").unwrap_or_default();
 	// CSS keywords ignore ASCII case: `TEXT-ALIGN: Center` is centred.
-	let align = css_value(style, "text-align").map(str::to_ascii_lowercase);
+	let align = cfg!(feature = "text-align")
+		.then(|| css_value(style, "text-align").map(str::to_ascii_lowercase))
+		.flatten();
 
 	match align.as_deref() {
 		Some(align @ ("left" | "center" | "right" | "justify")) if cfg!(feature = "text-align") => {
