@@ -167,6 +167,12 @@ class _CanvistEditorState extends State<CanvistEditor>
   late DisplayPainter _painter;
   TextInputConnection? _connection;
   TextEditingValue _platformValue = TextEditingValue.empty;
+
+  /// Whether the platform's composing range is one the input method marked
+  /// over text the editor isn't composing, as Android keyboards mark the
+  /// word at the caret for suggestions.
+  var _platformMarked = false;
+
   ViewOptions? _options;
   Timer? _blink;
   var _caretOn = true;
@@ -372,6 +378,7 @@ class _CanvistEditorState extends State<CanvistEditor>
       ),
     );
     _platformValue = _input.value;
+    _platformMarked = false;
     _connection!
       ..setEditingState(_platformValue)
       ..show();
@@ -385,16 +392,30 @@ class _CanvistEditorState extends State<CanvistEditor>
 
   /// Give the platform the editor's state when it differs from what the
   /// platform has.
+  ///
+  /// A range the input method marked stays marked: sending the editor's
+  /// value would clear it, and Android restarts the input method, which
+  /// marks the word again, without end.
   void _sendValue() {
     final value = _input.value;
+    final marked =
+        _platformMarked &&
+        value.text == _platformValue.text &&
+        value.selection == _platformValue.selection;
 
-    if (value != _platformValue) {
+    if (value != _platformValue && !marked) {
       _platformValue = value;
+      _platformMarked = false;
       _connection?.setEditingState(value);
     }
 
     _updateInputGeometry();
   }
+
+  /// Whether the platform's composing range, after its latest edit, marks
+  /// text the editor isn't composing.
+  bool get _markedByPlatform =>
+      !_input.composing && !_platformValue.composing.isCollapsed;
 
   /// Tell the platform where the editor and its caret are, for IME
   /// candidate windows and the iOS floating cursor.
@@ -444,7 +465,9 @@ class _CanvistEditorState extends State<CanvistEditor>
       return;
     }
 
-    _userEdited(_input.applyDeltas(deltas));
+    final changed = _input.applyDeltas(deltas);
+    _platformMarked = _markedByPlatform;
+    _userEdited(changed);
   }
 
   @override
@@ -456,7 +479,9 @@ class _CanvistEditorState extends State<CanvistEditor>
       return;
     }
 
-    _userEdited(_input.applyValue(previous, value));
+    final changed = _input.applyValue(previous, value);
+    _platformMarked = _markedByPlatform;
+    _userEdited(changed);
   }
 
   /// The user changed the document or selection through input.
