@@ -72,6 +72,15 @@ pub fn load(table: String) -> bool {
 	LOADED.set(table).is_ok()
 }
 
+/// With the `emoji-data` feature the table is compiled in, so there is
+/// nothing to load: this keeps `load` callable in every build, and returns
+/// `false`, as it does once a table is loaded.
+#[cfg(feature = "emoji-data")]
+#[must_use]
+pub fn load(_table: String) -> bool {
+	false
+}
+
 /// Whether the table is available: compiled in, or given to `load`.
 #[must_use]
 pub fn is_loaded() -> bool {
