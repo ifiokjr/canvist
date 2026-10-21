@@ -78,6 +78,31 @@ export function Comment() {
 }
 ```
 
-To hydrate server-rendered HTML, pass it as `html`. The editor reads the document from it and swaps in the canvas once fonts are ready, with no layout shift.
+Its `editable` and `placeholder` props follow their values, so `<CanvistEditor editable={!locked} />` switches read-only on and off. The other options are read once.
+
+To hydrate server-rendered HTML, pass it as `html`. The editor reads the document from it and swaps in the canvas once fonts are ready, with no layout shift. [Server-side rendering](./ssr.md#nextjs) shows a Next.js page.
+
+## 4. Add a bubble menu
+
+`BubbleMenu` keeps its children over selected text, and `FloatingMenu` beside the caret on an empty line. Both take the editor and the options of [`@canvist/web/menus`](./web.md#6-menus-that-follow-the-selection):
+
+```tsx
+import { BubbleMenu, useCanvistEditor } from "@canvist/react";
+
+export function Notes() {
+	const { ref, editor } = useCanvistEditor({ placeholder: "Write…" });
+
+	return (
+		<>
+			<div ref={ref} style={{ maxWidth: 640 }} />
+			<BubbleMenu editor={editor} placement="top">
+				<button type="button" onClick={() => editor?.commands.toggleItalic()}>
+					Italic
+				</button>
+			</BubbleMenu>
+		</>
+	);
+}
+```
 
 `examples/web/src/react.tsx` in the repository is a complete app.

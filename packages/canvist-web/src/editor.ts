@@ -31,6 +31,7 @@ import { Input, type InputMode } from "./input.ts";
 import { load, type WasmSource } from "./load.ts";
 import { CanvasMeasurer } from "./measure.ts";
 import { AccessibilityMirror } from "./mirror.ts";
+import { Placeholder } from "./placeholder.ts";
 import { detectPlatform, type KeyPlatform } from "./platform.ts";
 import type { PluginApis, PluginContext, Plugins } from "./plugin.ts";
 
@@ -72,6 +73,19 @@ export interface EditorOptions<E extends Extensions, P extends Plugins> {
 	readonly input?: InputMode;
 	/** The editor's accessible name. Default `"Editor"`. */
 	readonly label?: string;
+	/**
+	 * Whether people can change the document. `false` makes it read-only:
+	 * they can still select (with the pointer and navigation keys) and copy,
+	 * and commands and the API still change it. Default `true`; change it
+	 * later with {@link Editor.setEditable}.
+	 */
+	readonly editable?: boolean;
+	/**
+	 * Text shown, dimmed, where the first line starts while the document is
+	 * empty, and announced as the field's placeholder. Change it later with
+	 * {@link Editor.setPlaceholder}.
+	 */
+	readonly placeholder?: string;
 	/**
 	 * Whether `Mod` in key bindings is Cmd (`"apple"`) or Ctrl (`"other"`);
 	 * detected from the browser by default.
@@ -195,6 +209,7 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	readonly #resize: ResizeObserver;
 	readonly #input: Input;
 	readonly #mirror: AccessibilityMirror;
+	readonly #placeholder: Placeholder;
 	/** A ring of recent input-to-paint times. */
 	readonly #latency = new Float64Array(LATENCY_SAMPLES);
 	readonly #subscribers = new Set<() => void>();
@@ -207,6 +222,7 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	#width = 0;
 	#lastFrame: FrameReport | undefined;
 	#focused = false;
+	#editable = true;
 
 	/** @internal Use {@link createEditor}, which loads the WebAssembly module first. */
 	constructor(element: HTMLElement, options: EditorOptions<E, P>) {
@@ -271,6 +287,10 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 			changed: (since) => this.#inputChanged(since),
 			focusChanged: (focused) => this.setFocused(focused),
 		}, options.input ?? "auto");
+		const [font = "", color = ""] = this.#wasm.bodyStyle();
+		this.#placeholder = new Placeholder(element, font, color);
+		this.setPlaceholder(options.placeholder ?? "");
+		this.setEditable(options.editable ?? true);
 
 		this.#resize = new ResizeObserver((entries) => this.#observe(entries));
 		this.#resize.observe(element, { box: "content-box" });
@@ -310,6 +330,52 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		this.#input.focus();
 	}
 
+	/** Whether the editor has focus. */
+	get focused(): boolean {
+		return this.#focused;
+	}
+
+	/** Whether people can change the document; see {@link EditorOptions.editable}. */
+	get editable(): boolean {
+		return this.#editable;
+	}
+
+	/**
+	 * Let people change the document, or make it read-only. A read-only
+	 * editor shows no caret, and subscribers hear of the change.
+	 */
+	setEditable(editable: boolean): void {
+		if (editable === this.#editable) {
+			return;
+		}
+
+		this.#editable = editable;
+		this.#input.setEditable(editable);
+		this.#showCaret();
+		this.#notify();
+	}
+
+	/** Show `text` while the document is empty; an empty string shows none. */
+	setPlaceholder(text: string): void {
+		this.#placeholder.text = text;
+		this.#input.setPlaceholder(text);
+		this.#invalidate();
+	}
+
+	/** Whether the document is a single empty text block, as a new one is. */
+	get isEmpty(): boolean {
+		return this.#wasm.isEmpty();
+	}
+
+	/**
+	 * The text of the text block holding the selection's head, or `null`
+	 * when the head is not in a text block. A floating menu shows on an
+	 * empty one.
+	 */
+	blockText(): string | null {
+		return this.#wasm.editContextState()[0] ?? null;
+	}
+
 	/**
 	 * Input-to-paint times over the most recent input events: from each
 	 * keystroke, composition, paste, drop, or pointer event's timestamp
@@ -347,9 +413,10 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 	}
 
 	/**
-	 * Call `listener` after every change to the document or selection, from
-	 * input, commands, or the API. Returns a function that unsubscribes. Its
-	 * shape suits React's `useSyncExternalStore`.
+	 * Call `listener` after every change to the document, the selection,
+	 * focus, or {@link Editor.editable}, from input, commands, or the API.
+	 * Returns a function that unsubscribes. Its shape suits React's
+	 * `useSyncExternalStore`.
 	 */
 	subscribe(listener: () => void): () => void {
 		this.#subscribers.add(listener);
@@ -454,26 +521,49 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		return changed;
 	}
 
-	/** Show the caret and blink it, as when the editor has focus. */
+	/**
+	 * Show the caret and blink it, as when the editor has focus. Subscribers
+	 * hear of the change.
+	 */
 	setFocused(focused: boolean): void {
 		if (focused === this.#focused) {
 			return;
 		}
 
 		this.#focused = focused;
-		this.#wasm.setFocused(focused);
-		this.#restartBlink();
-		this.#invalidate();
+		this.#showCaret();
+		this.#notify();
 	}
 
 	/** The caret's rectangle in document coordinates, or `null` when the selection is a range. */
 	caretRect(): DOMRect | null {
-		const [x, y, width, height] = this.#wasm.caretRect();
+		this.#settle();
 
-		return x === undefined || y === undefined || width === undefined ||
-				height === undefined
-			? null
-			: new DOMRect(x, y, width, height);
+		return domRect(this.#wasm.caretRect());
+	}
+
+	/**
+	 * The smallest rectangle around the selection in document coordinates:
+	 * the caret's for a caret, or `null` while the selection is scrolled too
+	 * far away to be laid out. Pass it to {@link Editor.toClientRect} to
+	 * anchor a menu, or use `@canvist/web/menus`.
+	 */
+	selectionRect(): DOMRect | null {
+		this.#settle();
+
+		return domRect(this.#wasm.selectionBounds());
+	}
+
+	/** `rect`, in document coordinates, in the viewport's coordinates, as `getBoundingClientRect` reports them. */
+	toClientRect(rect: DOMRectReadOnly): DOMRect {
+		const canvas = this.#canvas.getBoundingClientRect();
+
+		return new DOMRect(
+			canvas.left + rect.x,
+			canvas.top + rect.y - this.#viewportTop(),
+			rect.width,
+			rect.height,
+		);
 	}
 
 	/** Measurement cache statistics. */
@@ -504,6 +594,7 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		this.#resize.disconnect();
 		this.#fonts.dispose();
 		this.#mirror.dispose();
+		this.#placeholder.dispose();
 		this.#input.dispose();
 		this.#canvas.remove();
 		this.#spacer.remove();
@@ -691,6 +782,16 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		}
 	}
 
+	/**
+	 * Lay out now if a change is waiting for the next frame, so geometry read
+	 * right after an edit describes the edited document.
+	 */
+	#settle(): void {
+		if (this.#frame !== 0) {
+			this.#render();
+		}
+	}
+
 	#invalidate(): void {
 		if (this.#frame !== 0) {
 			return;
@@ -737,6 +838,12 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 				break;
 			}
 		}
+
+		this.#placeholder.show(
+			this.#server === null && this.#wasm.isEmpty()
+				? this.selectionRect()
+				: null,
+		);
 	}
 
 	/** Size the canvas to the visible part of the document. Returns whether it changed. */
@@ -837,10 +944,17 @@ export class Editor<E extends Extensions, P extends Plugins = []> {
 		);
 	}
 
+	/** Draw the caret while the editor has focus and accepts typing. */
+	#showCaret(): void {
+		this.#wasm.setFocused(this.#focused && this.#editable);
+		this.#restartBlink();
+		this.#invalidate();
+	}
+
 	#restartBlink(): void {
 		clearTimeout(this.#blink);
 
-		if (!this.#focused) {
+		if (!this.#focused || !this.#editable) {
 			return;
 		}
 
@@ -928,6 +1042,16 @@ function devicePixels(start: number, size: number, scale: number): number {
 		0,
 		Math.round((start + size) * scale) - Math.round(start * scale),
 	);
+}
+
+/** `[x, y, width, height]` as a rectangle, or `null` when empty. */
+function domRect(rect: Float32Array): DOMRect | null {
+	const [x, y, width, height] = rect;
+
+	return x === undefined || y === undefined || width === undefined ||
+			height === undefined
+		? null
+		: new DOMRect(x, y, width, height);
 }
 
 /** Resolve in the next animation frame. */

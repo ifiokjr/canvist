@@ -13,9 +13,9 @@ export const undoInputRule = {
 /** The `paragraph` extension. */
 export const paragraph = {
 	"commands": [
+		/** Turn the selected text blocks into paragraphs. */
 		{
 			"args": [],
-			"doc": "Turn the selected text blocks into paragraphs.",
 			"name": "setParagraph"
 		}
 	],
@@ -28,9 +28,9 @@ export const paragraph = {
 		}
 	],
 	"queries": [
+		/** Whether every selected text block is a paragraph. */
 		{
 			"args": [],
-			"doc": "Whether every selected text block is a paragraph.",
 			"name": "isParagraph",
 			"returns": {
 				"type": "bool"
@@ -42,9 +42,9 @@ export const paragraph = {
 /** The `textStyle` extension. */
 export const textStyle = {
 	"commands": [
+		/** Remove text styles whose attributes are all unset. */
 		{
 			"args": [],
-			"doc": "Remove text styles whose attributes are all unset.",
 			"name": "removeEmptyTextStyle"
 		}
 	],
@@ -57,6 +57,109 @@ export const textStyle = {
 		}
 	],
 	"queries": []
+} as const satisfies ExtensionDescriptor;
+
+/** The `mention` extension. */
+export const mention = {
+	"commands": [
+		{
+			"args": [
+				{
+					"doc": "What the mention points at.",
+					"name": "id",
+					"type": {
+						"type": "string"
+					}
+				},
+				{
+					"default": null,
+					"doc": "The text shown after the trigger character.",
+					"name": "label",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"doc": "Replace the mention suggestion, or insert at the caret, with a mention and a space.",
+			"name": "insertMention"
+		},
+		{
+			"args": [],
+			"doc": "Stop suggesting mentions until another trigger character is typed.",
+			"name": "dismissMentionSuggestion"
+		}
+	],
+	"name": "mention",
+	"nodes": [
+		{
+			"attrs": [
+				{
+					"default": null,
+					"doc": "What the mention points at, such as a user id.",
+					"name": "id",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				},
+				{
+					"default": null,
+					"doc": "The text shown after the trigger character.",
+					"name": "label",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				},
+				{
+					"default": "@",
+					"doc": "The character that started the mention.",
+					"name": "mentionSuggestionChar",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"kind": "embed",
+			"name": "mention"
+		}
+	],
+	"queries": [
+		{
+			"args": [],
+			"doc": "The trigger character and the query typed after it, while a mention is suggested.",
+			"name": "mentionSuggestion",
+			"returns": {
+				"of": {
+					"fields": [
+						{
+							"doc": "The trigger character.",
+							"name": "char",
+							"type": {
+								"type": "string"
+							}
+						},
+						{
+							"doc": "The text typed after it.",
+							"name": "query",
+							"type": {
+								"type": "string"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "nullable"
+			}
+		}
+	]
 } as const satisfies ExtensionDescriptor;
 
 /** The `doc` extension. */
@@ -78,10 +181,11 @@ export const trailingNode = {
 /** The `heading` extension. */
 export const heading = {
 	"commands": [
+		/** Make the selected text blocks headings of a level, or paragraphs if they already are. */
 		{
 			"args": [
+				/** The heading level. */
 				{
-					"doc": "The heading level.",
 					"name": "level",
 					"type": {
 						"max": 6,
@@ -90,13 +194,13 @@ export const heading = {
 					}
 				}
 			],
-			"doc": "Make the selected text blocks headings of a level, or paragraphs if they already are.",
 			"name": "toggleHeading"
 		},
+		/** Make the selected text blocks headings of a level. */
 		{
 			"args": [
+				/** The heading level. */
 				{
-					"doc": "The heading level.",
 					"name": "level",
 					"type": {
 						"max": 6,
@@ -105,7 +209,6 @@ export const heading = {
 					}
 				}
 			],
-			"doc": "Make the selected text blocks headings of a level.",
 			"name": "setHeading"
 		}
 	],
@@ -113,9 +216,9 @@ export const heading = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The heading level. */
 				{
 					"default": 1,
-					"doc": "The heading level.",
 					"name": "level",
 					"type": {
 						"max": 6,
@@ -129,9 +232,9 @@ export const heading = {
 		}
 	],
 	"queries": [
+		/** The level every selected text block shares, or null if they are not all headings of one level. */
 		{
 			"args": [],
-			"doc": "The level every selected text block shares, or null if they are not all headings of one level.",
 			"name": "headingLevel",
 			"returns": {
 				"of": {
@@ -148,9 +251,9 @@ export const heading = {
 /** The `blockquote` extension. */
 export const blockquote = {
 	"commands": [
+		/** Wrap the selected blocks in a quote, or lift them out of one. */
 		{
 			"args": [],
-			"doc": "Wrap the selected blocks in a quote, or lift them out of one.",
 			"name": "toggleBlockquote"
 		}
 	],
@@ -163,9 +266,9 @@ export const blockquote = {
 		}
 	],
 	"queries": [
+		/** Whether the selection is inside a quote. */
 		{
 			"args": [],
-			"doc": "Whether the selection is inside a quote.",
 			"name": "isBlockquote",
 			"returns": {
 				"type": "bool"
@@ -177,11 +280,12 @@ export const blockquote = {
 /** The `codeBlock` extension. */
 export const codeBlock = {
 	"commands": [
+		/** Make the selected text blocks code, or paragraphs if they already are code. */
 		{
 			"args": [
+				/** The code's language, such as `rust`. */
 				{
 					"default": null,
-					"doc": "The code's language, such as `rust`.",
 					"name": "language",
 					"type": {
 						"of": {
@@ -191,14 +295,14 @@ export const codeBlock = {
 					}
 				}
 			],
-			"doc": "Make the selected text blocks code, or paragraphs if they already are code.",
 			"name": "toggleCodeBlock"
 		},
+		/** Make the selected text blocks code in a language. */
 		{
 			"args": [
+				/** The code's language, such as `rust`. */
 				{
 					"default": null,
-					"doc": "The code's language, such as `rust`.",
 					"name": "language",
 					"type": {
 						"of": {
@@ -208,7 +312,6 @@ export const codeBlock = {
 					}
 				}
 			],
-			"doc": "Make the selected text blocks code in a language.",
 			"name": "setCodeBlock"
 		}
 	],
@@ -216,9 +319,9 @@ export const codeBlock = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The code's language, such as `rust`. */
 				{
 					"default": null,
-					"doc": "The code's language, such as `rust`.",
 					"name": "language",
 					"type": {
 						"of": {
@@ -233,17 +336,17 @@ export const codeBlock = {
 		}
 	],
 	"queries": [
+		/** Whether the selection is in a code block. */
 		{
 			"args": [],
-			"doc": "Whether the selection is in a code block.",
 			"name": "isCodeBlock",
 			"returns": {
 				"type": "bool"
 			}
 		},
+		/** The language of the code block holding the selection, or null. */
 		{
 			"args": [],
-			"doc": "The language of the code block holding the selection, or null.",
 			"name": "codeBlockLanguage",
 			"returns": {
 				"of": {
@@ -258,9 +361,9 @@ export const codeBlock = {
 /** The `hardBreak` extension. */
 export const hardBreak = {
 	"commands": [
+		/** Insert a line break at the selection. */
 		{
 			"args": [],
-			"doc": "Insert a line break at the selection.",
 			"name": "setHardBreak"
 		}
 	],
@@ -278,9 +381,9 @@ export const hardBreak = {
 /** The `horizontalRule` extension. */
 export const horizontalRule = {
 	"commands": [
+		/** Insert a horizontal rule at the selection. */
 		{
 			"args": [],
-			"doc": "Insert a horizontal rule at the selection.",
 			"name": "setHorizontalRule"
 		}
 	],
@@ -298,9 +401,9 @@ export const horizontalRule = {
 /** The `bulletList` extension. */
 export const bulletList = {
 	"commands": [
+		/** Wrap the selection in a bullet list, convert another list into one, or lift it out. */
 		{
 			"args": [],
-			"doc": "Wrap the selection in a bullet list, convert another list into one, or lift it out.",
 			"name": "toggleBulletList"
 		}
 	],
@@ -313,9 +416,9 @@ export const bulletList = {
 		}
 	],
 	"queries": [
+		/** Whether the selection is inside a bullet list. */
 		{
 			"args": [],
-			"doc": "Whether the selection is inside a bullet list.",
 			"name": "isBulletList",
 			"returns": {
 				"type": "bool"
@@ -327,22 +430,22 @@ export const bulletList = {
 /** The `orderedList` extension. */
 export const orderedList = {
 	"commands": [
+		/** Wrap the selection in an ordered list, convert another list into one, or lift it out. */
 		{
 			"args": [],
-			"doc": "Wrap the selection in an ordered list, convert another list into one, or lift it out.",
 			"name": "toggleOrderedList"
 		},
+		/** Number the ordered list around the selection from a start number. */
 		{
 			"args": [
+				/** The number of the first item. */
 				{
-					"doc": "The number of the first item.",
 					"name": "start",
 					"type": {
 						"type": "int"
 					}
 				}
 			],
-			"doc": "Number the ordered list around the selection from a start number.",
 			"name": "setOrderedListStart"
 		}
 	],
@@ -350,9 +453,9 @@ export const orderedList = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The number of the first item. */
 				{
 					"default": 1,
-					"doc": "The number of the first item.",
 					"name": "start",
 					"type": {
 						"type": "int"
@@ -364,17 +467,17 @@ export const orderedList = {
 		}
 	],
 	"queries": [
+		/** Whether the selection is inside an ordered list. */
 		{
 			"args": [],
-			"doc": "Whether the selection is inside an ordered list.",
 			"name": "isOrderedList",
 			"returns": {
 				"type": "bool"
 			}
 		},
+		/** The start number of the ordered list around the selection, or null. */
 		{
 			"args": [],
-			"doc": "The start number of the ordered list around the selection, or null.",
 			"name": "orderedListStart",
 			"returns": {
 				"of": {
@@ -389,19 +492,19 @@ export const orderedList = {
 /** The `listItem` extension. */
 export const listItem = {
 	"commands": [
+		/** Split the item at the caret. */
 		{
 			"args": [],
-			"doc": "Split the item at the caret.",
 			"name": "splitListItem"
 		},
+		/** Nest the selected items in the item before them. */
 		{
 			"args": [],
-			"doc": "Nest the selected items in the item before them.",
 			"name": "sinkListItem"
 		},
+		/** Lift the selected items one level. */
 		{
 			"args": [],
-			"doc": "Lift the selected items one level.",
 			"name": "liftListItem"
 		}
 	],
@@ -419,42 +522,42 @@ export const listItem = {
 /** The `taskList` extension. */
 export const taskList = {
 	"commands": [
+		/** Wrap the selection in a task list, convert another list into one, or lift it out. */
 		{
 			"args": [],
-			"doc": "Wrap the selection in a task list, convert another list into one, or lift it out.",
 			"name": "toggleTaskList"
 		},
+		/** Check or uncheck the task at the caret. */
 		{
 			"args": [],
-			"doc": "Check or uncheck the task at the caret.",
 			"name": "toggleTask"
 		},
+		/** Check or uncheck the task at the caret. */
 		{
 			"args": [
+				/** Whether the task is done. */
 				{
-					"doc": "Whether the task is done.",
 					"name": "checked",
 					"type": {
 						"type": "bool"
 					}
 				}
 			],
-			"doc": "Check or uncheck the task at the caret.",
 			"name": "setTaskChecked"
 		},
+		/** Split the item at the caret. */
 		{
 			"args": [],
-			"doc": "Split the item at the caret.",
 			"name": "splitTaskItem"
 		},
+		/** Nest the selected items in the item before them. */
 		{
 			"args": [],
-			"doc": "Nest the selected items in the item before them.",
 			"name": "sinkTaskItem"
 		},
+		/** Lift the selected items one level. */
 		{
 			"args": [],
-			"doc": "Lift the selected items one level.",
 			"name": "liftTaskItem"
 		}
 	],
@@ -467,9 +570,9 @@ export const taskList = {
 		},
 		{
 			"attrs": [
+				/** Whether the task is done. */
 				{
 					"default": false,
-					"doc": "Whether the task is done.",
 					"name": "checked",
 					"type": {
 						"type": "bool"
@@ -481,17 +584,17 @@ export const taskList = {
 		}
 	],
 	"queries": [
+		/** Whether the selection is inside a task list. */
 		{
 			"args": [],
-			"doc": "Whether the selection is inside a task list.",
 			"name": "isTaskList",
 			"returns": {
 				"type": "bool"
 			}
 		},
+		/** Whether the task around the selection is checked, or null outside tasks. */
 		{
 			"args": [],
-			"doc": "Whether the task around the selection is checked, or null outside tasks.",
 			"name": "isTaskChecked",
 			"returns": {
 				"of": {
@@ -506,19 +609,19 @@ export const taskList = {
 /** The `bold` extension. */
 export const bold = {
 	"commands": [
+		/** Add the mark to the selection, or remove it if every selected character has it. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection, or remove it if every selected character has it.",
 			"name": "toggleBold"
 		},
+		/** Add the mark to the selection. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection.",
 			"name": "setBold"
 		},
+		/** Remove the mark from the selection. */
 		{
 			"args": [],
-			"doc": "Remove the mark from the selection.",
 			"name": "unsetBold"
 		}
 	],
@@ -531,9 +634,9 @@ export const bold = {
 		}
 	],
 	"queries": [
+		/** Whether the mark is active at the selection. */
 		{
 			"args": [],
-			"doc": "Whether the mark is active at the selection.",
 			"name": "isBold",
 			"returns": {
 				"type": "bool"
@@ -545,19 +648,19 @@ export const bold = {
 /** The `italic` extension. */
 export const italic = {
 	"commands": [
+		/** Add the mark to the selection, or remove it if every selected character has it. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection, or remove it if every selected character has it.",
 			"name": "toggleItalic"
 		},
+		/** Add the mark to the selection. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection.",
 			"name": "setItalic"
 		},
+		/** Remove the mark from the selection. */
 		{
 			"args": [],
-			"doc": "Remove the mark from the selection.",
 			"name": "unsetItalic"
 		}
 	],
@@ -570,9 +673,9 @@ export const italic = {
 		}
 	],
 	"queries": [
+		/** Whether the mark is active at the selection. */
 		{
 			"args": [],
-			"doc": "Whether the mark is active at the selection.",
 			"name": "isItalic",
 			"returns": {
 				"type": "bool"
@@ -584,19 +687,19 @@ export const italic = {
 /** The `underline` extension. */
 export const underline = {
 	"commands": [
+		/** Add the mark to the selection, or remove it if every selected character has it. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection, or remove it if every selected character has it.",
 			"name": "toggleUnderline"
 		},
+		/** Add the mark to the selection. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection.",
 			"name": "setUnderline"
 		},
+		/** Remove the mark from the selection. */
 		{
 			"args": [],
-			"doc": "Remove the mark from the selection.",
 			"name": "unsetUnderline"
 		}
 	],
@@ -609,9 +712,9 @@ export const underline = {
 		}
 	],
 	"queries": [
+		/** Whether the mark is active at the selection. */
 		{
 			"args": [],
-			"doc": "Whether the mark is active at the selection.",
 			"name": "isUnderline",
 			"returns": {
 				"type": "bool"
@@ -623,19 +726,19 @@ export const underline = {
 /** The `strike` extension. */
 export const strike = {
 	"commands": [
+		/** Add the mark to the selection, or remove it if every selected character has it. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection, or remove it if every selected character has it.",
 			"name": "toggleStrike"
 		},
+		/** Add the mark to the selection. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection.",
 			"name": "setStrike"
 		},
+		/** Remove the mark from the selection. */
 		{
 			"args": [],
-			"doc": "Remove the mark from the selection.",
 			"name": "unsetStrike"
 		}
 	],
@@ -648,9 +751,9 @@ export const strike = {
 		}
 	],
 	"queries": [
+		/** Whether the mark is active at the selection. */
 		{
 			"args": [],
-			"doc": "Whether the mark is active at the selection.",
 			"name": "isStrike",
 			"returns": {
 				"type": "bool"
@@ -662,19 +765,19 @@ export const strike = {
 /** The `code` extension. */
 export const code = {
 	"commands": [
+		/** Add the mark to the selection, or remove it if every selected character has it. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection, or remove it if every selected character has it.",
 			"name": "toggleCode"
 		},
+		/** Add the mark to the selection. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection.",
 			"name": "setCode"
 		},
+		/** Remove the mark from the selection. */
 		{
 			"args": [],
-			"doc": "Remove the mark from the selection.",
 			"name": "unsetCode"
 		}
 	],
@@ -687,9 +790,9 @@ export const code = {
 		}
 	],
 	"queries": [
+		/** Whether the mark is active at the selection. */
 		{
 			"args": [],
-			"doc": "Whether the mark is active at the selection.",
 			"name": "isCode",
 			"returns": {
 				"type": "bool"
@@ -701,22 +804,22 @@ export const code = {
 /** The `link` extension. */
 export const link = {
 	"commands": [
+		/** Link the selection to a URL, or update the link it already has. */
 		{
 			"args": [
+				/** The link target. */
 				{
-					"doc": "The link target.",
 					"name": "href",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Link the selection to a URL, or update the link it already has.",
 			"name": "setLink"
 		},
+		/** Remove links from the selection. */
 		{
 			"args": [],
-			"doc": "Remove links from the selection.",
 			"name": "unsetLink"
 		}
 	],
@@ -724,9 +827,9 @@ export const link = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The link target. */
 				{
 					"default": null,
-					"doc": "The link target.",
 					"name": "href",
 					"type": {
 						"of": {
@@ -741,9 +844,9 @@ export const link = {
 		}
 	],
 	"queries": [
+		/** The href of the link at the selection, or null. */
 		{
 			"args": [],
-			"doc": "The href of the link at the selection, or null.",
 			"name": "linkHref",
 			"returns": {
 				"of": {
@@ -758,14 +861,14 @@ export const link = {
 /** The `history` extension. */
 export const history = {
 	"commands": [
+		/** Undo the last group of changes. */
 		{
 			"args": [],
-			"doc": "Undo the last group of changes.",
 			"name": "undo"
 		},
+		/** Redo the last undone group. */
 		{
 			"args": [],
-			"doc": "Redo the last undone group.",
 			"name": "redo"
 		}
 	],
@@ -777,19 +880,19 @@ export const history = {
 /** The `subscript` extension. */
 export const subscript = {
 	"commands": [
+		/** Add the mark to the selection, or remove it if every selected character has it. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection, or remove it if every selected character has it.",
 			"name": "toggleSubscript"
 		},
+		/** Add the mark to the selection. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection.",
 			"name": "setSubscript"
 		},
+		/** Remove the mark from the selection. */
 		{
 			"args": [],
-			"doc": "Remove the mark from the selection.",
 			"name": "unsetSubscript"
 		}
 	],
@@ -802,9 +905,9 @@ export const subscript = {
 		}
 	],
 	"queries": [
+		/** Whether the mark is active at the selection. */
 		{
 			"args": [],
-			"doc": "Whether the mark is active at the selection.",
 			"name": "isSubscript",
 			"returns": {
 				"type": "bool"
@@ -816,19 +919,19 @@ export const subscript = {
 /** The `superscript` extension. */
 export const superscript = {
 	"commands": [
+		/** Add the mark to the selection, or remove it if every selected character has it. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection, or remove it if every selected character has it.",
 			"name": "toggleSuperscript"
 		},
+		/** Add the mark to the selection. */
 		{
 			"args": [],
-			"doc": "Add the mark to the selection.",
 			"name": "setSuperscript"
 		},
+		/** Remove the mark from the selection. */
 		{
 			"args": [],
-			"doc": "Remove the mark from the selection.",
 			"name": "unsetSuperscript"
 		}
 	],
@@ -841,9 +944,9 @@ export const superscript = {
 		}
 	],
 	"queries": [
+		/** Whether the mark is active at the selection. */
 		{
 			"args": [],
-			"doc": "Whether the mark is active at the selection.",
 			"name": "isSuperscript",
 			"returns": {
 				"type": "bool"
@@ -855,11 +958,12 @@ export const superscript = {
 /** The `highlight` extension. */
 export const highlight = {
 	"commands": [
+		/** Highlight the selection, in a colour or the theme's. */
 		{
 			"args": [
+				/** The highlight colour, such as `#fef08a`, or null for the theme's colour. */
 				{
 					"default": null,
-					"doc": "The highlight colour, such as `#fef08a`, or null for the theme's colour.",
 					"name": "color",
 					"type": {
 						"of": {
@@ -869,14 +973,14 @@ export const highlight = {
 					}
 				}
 			],
-			"doc": "Highlight the selection, in a colour or the theme's.",
 			"name": "setHighlight"
 		},
+		/** Remove the selection's highlight in a colour, or highlight it in that colour. */
 		{
 			"args": [
+				/** The highlight colour, such as `#fef08a`, or null for the theme's colour. */
 				{
 					"default": null,
-					"doc": "The highlight colour, such as `#fef08a`, or null for the theme's colour.",
 					"name": "color",
 					"type": {
 						"of": {
@@ -886,12 +990,11 @@ export const highlight = {
 					}
 				}
 			],
-			"doc": "Remove the selection's highlight in a colour, or highlight it in that colour.",
 			"name": "toggleHighlight"
 		},
+		/** Remove highlights from the selection. */
 		{
 			"args": [],
-			"doc": "Remove highlights from the selection.",
 			"name": "unsetHighlight"
 		}
 	],
@@ -899,9 +1002,9 @@ export const highlight = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The highlight colour, such as `#fef08a`, or null for the theme's colour. */
 				{
 					"default": null,
-					"doc": "The highlight colour, such as `#fef08a`, or null for the theme's colour.",
 					"name": "color",
 					"type": {
 						"of": {
@@ -916,17 +1019,17 @@ export const highlight = {
 		}
 	],
 	"queries": [
+		/** Whether the selection is highlighted. */
 		{
 			"args": [],
-			"doc": "Whether the selection is highlighted.",
 			"name": "isHighlight",
 			"returns": {
 				"type": "bool"
 			}
 		},
+		/** The colour every selected character is highlighted in, or null. */
 		{
 			"args": [],
-			"doc": "The colour every selected character is highlighted in, or null.",
 			"name": "highlightColor",
 			"returns": {
 				"of": {
@@ -941,22 +1044,22 @@ export const highlight = {
 /** The `color` extension. */
 export const color = {
 	"commands": [
+		/** Set the style on the selection, keeping its other styles. */
 		{
 			"args": [
+				/** The text colour, any CSS colour such as `#958df1`. */
 				{
-					"doc": "The text colour, any CSS colour such as `#958df1`.",
 					"name": "color",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Set the style on the selection, keeping its other styles.",
 			"name": "setColor"
 		},
+		/** Clear the style from the selection. */
 		{
 			"args": [],
-			"doc": "Clear the style from the selection.",
 			"name": "unsetColor"
 		}
 	],
@@ -964,9 +1067,9 @@ export const color = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The text colour, any CSS colour such as `#958df1`. */
 				{
 					"default": null,
-					"doc": "The text colour, any CSS colour such as `#958df1`.",
 					"name": "color",
 					"type": {
 						"of": {
@@ -981,9 +1084,9 @@ export const color = {
 		}
 	],
 	"queries": [
+		/** The value every selected character shares, or null. */
 		{
 			"args": [],
-			"doc": "The value every selected character shares, or null.",
 			"name": "color",
 			"returns": {
 				"of": {
@@ -998,22 +1101,22 @@ export const color = {
 /** The `backgroundColor` extension. */
 export const backgroundColor = {
 	"commands": [
+		/** Set the style on the selection, keeping its other styles. */
 		{
 			"args": [
+				/** The background colour behind the text, any CSS colour. */
 				{
-					"doc": "The background colour behind the text, any CSS colour.",
 					"name": "backgroundColor",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Set the style on the selection, keeping its other styles.",
 			"name": "setBackgroundColor"
 		},
+		/** Clear the style from the selection. */
 		{
 			"args": [],
-			"doc": "Clear the style from the selection.",
 			"name": "unsetBackgroundColor"
 		}
 	],
@@ -1021,9 +1124,9 @@ export const backgroundColor = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The background colour behind the text, any CSS colour. */
 				{
 					"default": null,
-					"doc": "The background colour behind the text, any CSS colour.",
 					"name": "backgroundColor",
 					"type": {
 						"of": {
@@ -1038,9 +1141,9 @@ export const backgroundColor = {
 		}
 	],
 	"queries": [
+		/** The value every selected character shares, or null. */
 		{
 			"args": [],
-			"doc": "The value every selected character shares, or null.",
 			"name": "backgroundColor",
 			"returns": {
 				"of": {
@@ -1055,22 +1158,22 @@ export const backgroundColor = {
 /** The `fontFamily` extension. */
 export const fontFamily = {
 	"commands": [
+		/** Set the style on the selection, keeping its other styles. */
 		{
 			"args": [
+				/** The CSS font family list, such as `Inter, sans-serif`. */
 				{
-					"doc": "The CSS font family list, such as `Inter, sans-serif`.",
 					"name": "fontFamily",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Set the style on the selection, keeping its other styles.",
 			"name": "setFontFamily"
 		},
+		/** Clear the style from the selection. */
 		{
 			"args": [],
-			"doc": "Clear the style from the selection.",
 			"name": "unsetFontFamily"
 		}
 	],
@@ -1078,9 +1181,9 @@ export const fontFamily = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The CSS font family list, such as `Inter, sans-serif`. */
 				{
 					"default": null,
-					"doc": "The CSS font family list, such as `Inter, sans-serif`.",
 					"name": "fontFamily",
 					"type": {
 						"of": {
@@ -1095,9 +1198,9 @@ export const fontFamily = {
 		}
 	],
 	"queries": [
+		/** The value every selected character shares, or null. */
 		{
 			"args": [],
-			"doc": "The value every selected character shares, or null.",
 			"name": "fontFamily",
 			"returns": {
 				"of": {
@@ -1112,22 +1215,22 @@ export const fontFamily = {
 /** The `fontSize` extension. */
 export const fontSize = {
 	"commands": [
+		/** Set the style on the selection, keeping its other styles. */
 		{
 			"args": [
+				/** The font size, such as `18px`. */
 				{
-					"doc": "The font size, such as `18px`.",
 					"name": "fontSize",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Set the style on the selection, keeping its other styles.",
 			"name": "setFontSize"
 		},
+		/** Clear the style from the selection. */
 		{
 			"args": [],
-			"doc": "Clear the style from the selection.",
 			"name": "unsetFontSize"
 		}
 	],
@@ -1135,9 +1238,9 @@ export const fontSize = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The font size, such as `18px`. */
 				{
 					"default": null,
-					"doc": "The font size, such as `18px`.",
 					"name": "fontSize",
 					"type": {
 						"of": {
@@ -1152,9 +1255,9 @@ export const fontSize = {
 		}
 	],
 	"queries": [
+		/** The value every selected character shares, or null. */
 		{
 			"args": [],
-			"doc": "The value every selected character shares, or null.",
 			"name": "fontSize",
 			"returns": {
 				"of": {
@@ -1169,22 +1272,22 @@ export const fontSize = {
 /** The `lineHeight` extension. */
 export const lineHeight = {
 	"commands": [
+		/** Set the style on the selection, keeping its other styles. */
 		{
 			"args": [
+				/** The line height as a multiple of the font size, such as `1.5`. */
 				{
-					"doc": "The line height as a multiple of the font size, such as `1.5`.",
 					"name": "lineHeight",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Set the style on the selection, keeping its other styles.",
 			"name": "setLineHeight"
 		},
+		/** Clear the style from the selection. */
 		{
 			"args": [],
-			"doc": "Clear the style from the selection.",
 			"name": "unsetLineHeight"
 		}
 	],
@@ -1192,9 +1295,9 @@ export const lineHeight = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The line height as a multiple of the font size, such as `1.5`. */
 				{
 					"default": null,
-					"doc": "The line height as a multiple of the font size, such as `1.5`.",
 					"name": "lineHeight",
 					"type": {
 						"of": {
@@ -1209,9 +1312,9 @@ export const lineHeight = {
 		}
 	],
 	"queries": [
+		/** The value every selected character shares, or null. */
 		{
 			"args": [],
-			"doc": "The value every selected character shares, or null.",
 			"name": "lineHeight",
 			"returns": {
 				"of": {
@@ -1226,10 +1329,11 @@ export const lineHeight = {
 /** The `textAlign` extension. */
 export const textAlign = {
 	"commands": [
+		/** Align the selected text blocks. */
 		{
 			"args": [
+				/** The alignment: left, center, right, or justify. */
 				{
-					"doc": "The alignment: left, center, right, or justify.",
 					"name": "alignment",
 					"type": {
 						"enum": [
@@ -1242,18 +1346,18 @@ export const textAlign = {
 					}
 				}
 			],
-			"doc": "Align the selected text blocks.",
 			"name": "setTextAlign"
 		},
+		/** Clear the alignment of the selected text blocks. */
 		{
 			"args": [],
-			"doc": "Clear the alignment of the selected text blocks.",
 			"name": "unsetTextAlign"
 		},
+		/** Clear the alignment if every selected text block has it, otherwise set it. */
 		{
 			"args": [
+				/** The alignment: left, center, right, or justify. */
 				{
-					"doc": "The alignment: left, center, right, or justify.",
 					"name": "alignment",
 					"type": {
 						"enum": [
@@ -1266,7 +1370,6 @@ export const textAlign = {
 					}
 				}
 			],
-			"doc": "Clear the alignment if every selected text block has it, otherwise set it.",
 			"name": "toggleTextAlign"
 		}
 	],
@@ -1274,9 +1377,9 @@ export const textAlign = {
 	"nodes": [
 		{
 			"attrs": [
+				/** How the block's lines align, or null to follow the text direction. */
 				{
 					"default": null,
-					"doc": "How the block's lines align, or null to follow the text direction.",
 					"name": "textAlign",
 					"type": {
 						"of": {
@@ -1297,9 +1400,9 @@ export const textAlign = {
 		},
 		{
 			"attrs": [
+				/** How the block's lines align, or null to follow the text direction. */
 				{
 					"default": null,
-					"doc": "How the block's lines align, or null to follow the text direction.",
 					"name": "textAlign",
 					"type": {
 						"of": {
@@ -1320,9 +1423,9 @@ export const textAlign = {
 		}
 	],
 	"queries": [
+		/** The alignment every selected text block shares, or null. */
 		{
 			"args": [],
-			"doc": "The alignment every selected text block shares, or null.",
 			"name": "textAlign",
 			"returns": {
 				"of": {
@@ -1343,10 +1446,11 @@ export const textAlign = {
 /** The `characterCount` extension. */
 export const characterCount = {
 	"commands": [
+		/** Change the character limit, or remove it with null. */
 		{
 			"args": [
+				/** The most characters the document may hold, from 0 to 4294967295, or null for no limit. */
 				{
-					"doc": "The most characters the document may hold, from 0 to 4294967295, or null for no limit.",
 					"name": "limit",
 					"type": {
 						"of": {
@@ -1356,32 +1460,31 @@ export const characterCount = {
 					}
 				}
 			],
-			"doc": "Change the character limit, or remove it with null.",
 			"name": "setCharacterLimit"
 		}
 	],
 	"name": "characterCount",
 	"nodes": [],
 	"queries": [
+		/** The characters in the document: grapheme clusters, leaving out embeds. */
 		{
 			"args": [],
-			"doc": "The characters in the document: grapheme clusters, leaving out embeds.",
 			"name": "characters",
 			"returns": {
 				"type": "int"
 			}
 		},
+		/** The words in the document. */
 		{
 			"args": [],
-			"doc": "The words in the document.",
 			"name": "words",
 			"returns": {
 				"type": "int"
 			}
 		},
+		/** The character limit in force, or null. */
 		{
 			"args": [],
-			"doc": "The character limit in force, or null.",
 			"name": "characterLimit",
 			"returns": {
 				"of": {
@@ -1396,32 +1499,243 @@ export const characterCount = {
 /** The `placeholder` extension. */
 export const placeholder = {
 	"commands": [
+		/** Change the placeholder text. */
 		{
 			"args": [
+				/** The placeholder text. */
 				{
-					"doc": "The placeholder text.",
 					"name": "placeholder",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Change the placeholder text.",
 			"name": "setPlaceholder"
 		}
 	],
 	"name": "placeholder",
 	"nodes": [],
 	"queries": [
+		/** The placeholder the caret's empty block shows, or null. */
 		{
 			"args": [],
-			"doc": "The placeholder the caret's empty block shows, or null.",
 			"name": "placeholder",
 			"returns": {
 				"of": {
 					"type": "string"
 				},
 				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `hashtag` extension. */
+export const hashtag = {
+	"commands": [
+		{
+			"args": [
+				{
+					"doc": "The tag, with or without `#`.",
+					"name": "tag",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"doc": "Replace the hashtag suggestion, or insert at the caret, with `#tag` and a space.",
+			"name": "insertHashtag"
+		},
+		{
+			"args": [],
+			"doc": "Stop suggesting hashtags until another `#` is typed.",
+			"name": "dismissHashtagSuggestion"
+		}
+	],
+	"name": "hashtag",
+	"nodes": [
+		{
+			"attrs": [
+				{
+					"default": null,
+					"doc": "The tag, without `#`.",
+					"name": "tag",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"kind": "mark",
+			"name": "hashtag"
+		}
+	],
+	"queries": [
+		{
+			"args": [],
+			"doc": "The trigger character and the query typed after it, while a hashtag is suggested.",
+			"name": "hashtagSuggestion",
+			"returns": {
+				"of": {
+					"fields": [
+						{
+							"doc": "The trigger character.",
+							"name": "char",
+							"type": {
+								"type": "string"
+							}
+						},
+						{
+							"doc": "The text typed after it.",
+							"name": "query",
+							"type": {
+								"type": "string"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "nullable"
+			}
+		},
+		{
+			"args": [],
+			"doc": "Every tag in the document, sorted, without `#`.",
+			"name": "hashtags",
+			"returns": {
+				"of": {
+					"type": "string"
+				},
+				"type": "list"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `emoji` extension. */
+export const emoji = {
+	"commands": [
+		{
+			"args": [
+				{
+					"doc": "The shortcode, such as `smile`.",
+					"name": "name",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"doc": "Replace the emoji suggestion, or insert at the caret, with the emoji for a shortcode.",
+			"name": "setEmoji"
+		},
+		{
+			"args": [],
+			"doc": "Stop suggesting emoji until another `:` is typed.",
+			"name": "dismissEmojiSuggestion"
+		}
+	],
+	"name": "emoji",
+	"nodes": [
+		{
+			"attrs": [
+				{
+					"default": null,
+					"doc": "The shortcode, such as `smile`.",
+					"name": "name",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				},
+				{
+					"default": null,
+					"doc": "The emoji itself, so it draws without the table.",
+					"name": "emoji",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"kind": "embed",
+			"name": "emoji"
+		}
+	],
+	"queries": [
+		{
+			"args": [],
+			"doc": "The trigger character and the query typed after it, while an emoji is suggested.",
+			"name": "emojiSuggestion",
+			"returns": {
+				"of": {
+					"fields": [
+						{
+							"doc": "The trigger character.",
+							"name": "char",
+							"type": {
+								"type": "string"
+							}
+						},
+						{
+							"doc": "The text typed after it.",
+							"name": "query",
+							"type": {
+								"type": "string"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "nullable"
+			}
+		},
+		{
+			"args": [
+				{
+					"doc": "What to look for, such as `smi`.",
+					"name": "query",
+					"type": {
+						"type": "string"
+					}
+				},
+				{
+					"default": 10,
+					"doc": "The most matches to return.",
+					"name": "limit",
+					"type": {
+						"type": "int"
+					}
+				}
+			],
+			"doc": "Emoji whose shortcode contains the query, those starting with it first.",
+			"name": "searchEmoji",
+			"returns": {
+				"of": {
+					"fields": [
+						{
+							"doc": "The shortcode.",
+							"name": "name",
+							"type": {
+								"type": "string"
+							}
+						},
+						{
+							"doc": "The emoji.",
+							"name": "emoji",
+							"type": {
+								"type": "string"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "list"
 			}
 		}
 	]
@@ -1450,4 +1764,4 @@ export const core = [undoInputRule, paragraph, doc, baseKeymap] as const;
 export const starterKit = [trailingNode, heading, blockquote, codeBlock, hardBreak, horizontalRule, bulletList, orderedList, listItem, taskList, bold, italic, underline, strike, code, link, history] as const;
 
 /** Every optional extension canvist ships, the StarterKit's included. */
-export const allExtensions = [textStyle, trailingNode, heading, blockquote, codeBlock, hardBreak, horizontalRule, bulletList, orderedList, listItem, taskList, bold, italic, underline, strike, code, link, history, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, typography] as const;
+export const allExtensions = [textStyle, mention, trailingNode, heading, blockquote, codeBlock, hardBreak, horizontalRule, bulletList, orderedList, listItem, taskList, bold, italic, underline, strike, code, link, history, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, typography] as const;

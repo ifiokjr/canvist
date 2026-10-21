@@ -358,13 +358,8 @@ impl Writer<'_> {
 
 				return true;
 			}
-			Some(EmbedStyle::Label { attr, prefix, .. }) => {
-				let label = embed
-					.attrs
-					.get(attr)
-					.and_then(Value::as_str)
-					.unwrap_or_default();
-				let text = format!("{prefix}{label}");
+			Some(label @ EmbedStyle::Label { .. }) => {
+				let text = label.label_text(&embed.attrs).unwrap_or_default();
 				self.label(embed, &name, &text);
 
 				return false;

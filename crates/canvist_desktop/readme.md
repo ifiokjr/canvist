@@ -49,6 +49,6 @@ canvist_desktop::winit::run(editor, Window::default_attributes().with_title("Not
 # Ok::<(), canvist_desktop::DesktopError>(())
 ```
 
-To put the editor in your own app beside a toolbar, use `winit::EditorWindow`: see the [quick start](../../docs/src/quick-start/desktop.md). Without the default `winit` feature, the crate is the headless editor core: it takes input as `InputEvent`s, lays out, renders PNGs, and builds the accessibility tree, which is how its tests drive it.
+To put the editor in your own app beside a toolbar, use `winit::EditorWindow`: see the [quick start](../../docs/src/quick-start/desktop.md) and the [example app](../../examples/desktop). Without the default `winit` feature, the crate is the headless editor core: it takes input as `InputEvent`s, lays out, renders PNGs, and builds the accessibility tree, which is how its tests drive it.
 
 A keystroke's whole frame (the edit, layout, display list, and GPU scene encoding) takes about 0.14 ms in a 10,000-paragraph document on an Apple silicon Mac. The [performance budgets](../../docs/src/guides/performance.md) hold it under 4 ms.

@@ -6,6 +6,10 @@
  * Every extension comes from the full metadata snapshot; the StarterKit
  * snapshot says which of them make up `starterKit`, the default set.
  *
+ * Descriptions become comments rather than data: types never read them,
+ * and as data they would ship in every browser bundle. `engine.metadata()`
+ * returns them from Rust.
+ *
  * Run with `node scripts/generate.ts` or `deno run -R -W scripts/generate.ts`.
  * Pass `--check` to fail instead of writing when the file is out of date.
  *
@@ -53,7 +57,7 @@ function render(
 	);
 	const declarations = extensions.map((extension) =>
 		`/** The \`${extension.name}\` extension. */\nexport const ${extension.name} = ${
-			JSON.stringify(extension, null, "\t")
+			literal(extension, "")
 		} as const satisfies ExtensionDescriptor;\n`
 	);
 	const list = (items: readonly Described[]) =>
@@ -70,6 +74,49 @@ function render(
 		"/** Every optional extension canvist ships, the StarterKit's included. */",
 		`export const allExtensions = [${list(optional)}] as const;\n`,
 	].join("\n");
+}
+
+/**
+ * `value` as a tab-indented TypeScript literal, like `JSON.stringify`, with
+ * each `doc` moved out of the data into a comment above its object.
+ */
+function literal(value: unknown, indent: string): string {
+	const inner = `${indent}\t`;
+
+	if (Array.isArray(value)) {
+		if (value.length === 0) {
+			return "[]";
+		}
+
+		const items = value.map((item) =>
+			`${comment(item, inner)}${inner}${literal(item, inner)}`
+		);
+		return `[\n${items.join(",\n")}\n${indent}]`;
+	}
+
+	if (value !== null && typeof value === "object") {
+		const entries = Object.entries(value).filter(([key]) => key !== "doc");
+
+		if (entries.length === 0) {
+			return "{}";
+		}
+
+		const fields = entries.map(([key, item]) =>
+			`${inner}${JSON.stringify(key)}: ${literal(item, inner)}`
+		);
+		return `{\n${fields.join(",\n")}\n${indent}}`;
+	}
+
+	return JSON.stringify(value);
+}
+
+/** A JSDoc line holding `item`'s `doc`, or nothing when it has none. */
+function comment(item: unknown, indent: string): string {
+	const doc = item !== null && typeof item === "object" && "doc" in item
+		? item.doc
+		: undefined;
+
+	return typeof doc === "string" ? `${indent}/** ${doc} */\n` : "";
 }
 
 function read(snapshot: URL): readonly Described[] {

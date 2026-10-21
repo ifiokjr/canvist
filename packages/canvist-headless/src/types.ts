@@ -5,6 +5,8 @@
  * kept as a literal type. The types here read it, so a document's commands,
  * queries, argument types, and JSON node names follow from the extensions
  * an engine registers, with nothing written by hand per extension.
+ * Descriptions are comments in `extensions.generated.ts`, so they never
+ * ship in a browser bundle; `engine.metadata()` returns them as data.
  *
  * @module
  */
@@ -14,12 +16,15 @@ export type ValueSpec =
 	| { readonly type: "int"; readonly min?: number; readonly max?: number }
 	| { readonly type: "float" }
 	| { readonly type: "string"; readonly enum?: readonly string[] }
-	| { readonly type: "nullable"; readonly of: ValueSpec };
+	| { readonly type: "nullable"; readonly of: ValueSpec }
+	| { readonly type: "list"; readonly of: ValueSpec }
+	| { readonly type: "record"; readonly fields: readonly FieldSpec[] };
 
 /** A named, typed value. A `default` makes an argument optional. */
 export interface FieldSpec {
 	readonly name: string;
-	readonly doc: string;
+	/** What it means: in `engine.metadata()`, not in the generated descriptors. */
+	readonly doc?: string;
 	readonly type: ValueSpec;
 	readonly default?: unknown;
 }
@@ -34,14 +39,16 @@ export interface NodeSpec {
 /** A command an extension registers. */
 export interface CommandSpec {
 	readonly name: string;
-	readonly doc: string;
+	/** What it does: in `engine.metadata()`, not in the generated descriptors. */
+	readonly doc?: string;
 	readonly args: readonly FieldSpec[];
 }
 
 /** A query an extension registers. */
 export interface QuerySpec {
 	readonly name: string;
-	readonly doc: string;
+	/** What it answers: in `engine.metadata()`, not in the generated descriptors. */
+	readonly doc?: string;
 	readonly args: readonly FieldSpec[];
 	readonly returns: ValueSpec;
 }
@@ -88,6 +95,12 @@ export type ValueOf<S> = S extends { readonly type: "bool" } ? boolean
 	: S extends { readonly type: "string" } ? string
 	: S extends { readonly type: "nullable"; readonly of: infer Inner }
 		? ValueOf<Inner> | null
+	: S extends { readonly type: "list"; readonly of: infer Inner }
+		? readonly ValueOf<Inner>[]
+	: S extends {
+		readonly type: "record";
+		readonly fields: infer Fields extends readonly FieldSpec[];
+	} ? ArgsOf<Fields>
 	: never;
 
 type Simplify<T> = { [Key in keyof T]: T[Key] } & {};

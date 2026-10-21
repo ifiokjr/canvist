@@ -59,6 +59,27 @@ import { CanvistEditor } from "@canvist/vue";
 </template>
 ```
 
-To hydrate server-rendered HTML, pass it as `html`. The editor reads the document from it and swaps in the canvas once fonts are ready, with no layout shift.
+Its `editable` and `placeholder` props follow their values, so `<CanvistEditor :editable="!locked" />` switches read-only on and off. The other options are read once.
+
+To hydrate server-rendered HTML, pass it as `html`. The editor reads the document from it and swaps in the canvas once fonts are ready, with no layout shift. [Server-side rendering](./ssr.md#nuxt) shows a Nuxt page.
+
+## 4. Add a bubble menu
+
+`BubbleMenu` keeps its slot over selected text, and `FloatingMenu` beside the caret on an empty line. Both take the editor and the options of [`@canvist/web/menus`](./web.md#6-menus-that-follow-the-selection):
+
+```vue
+<script setup lang="ts">
+import { BubbleMenu, useCanvistEditor } from "@canvist/vue";
+
+const { element, editor } = useCanvistEditor({ placeholder: "Write…" });
+</script>
+
+<template>
+	<div ref="element" style="max-width: 640px" />
+	<BubbleMenu :editor="editor" placement="top">
+		<button type="button" @click="editor?.commands.toggleItalic()">Italic</button>
+	</BubbleMenu>
+</template>
+```
 
 `examples/web/src/App.vue` in the repository is a complete app.

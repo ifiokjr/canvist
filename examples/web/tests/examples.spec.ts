@@ -50,6 +50,55 @@ for (const example of ["vanilla", "react", "vue"] as const) {
 	});
 }
 
+for (const example of ["vanilla", "react", "vue"] as const) {
+	test(`${example}: a bubble menu acts on selected text`, async ({ page }) => {
+		await page.goto(`/${example}.html`);
+		await waitForEditor(page);
+		const bubble = page.getByRole("toolbar", { name: "Selection" });
+		await expect(bubble).toBeHidden();
+
+		await page.evaluate(() => {
+			globalThis.editor?.select({ path: [1], offset: 0 }, {
+				path: [1],
+				offset: 5,
+			});
+			globalThis.editor?.focus();
+		});
+		await expect(bubble).toBeVisible();
+		await bubble.getByRole("button", { name: "Italic" }).click();
+		await expect(bubble.getByRole("button", { name: "Italic" }))
+			.toHaveAttribute("aria-pressed", "true");
+		expect(await page.evaluate(() => globalThis.editor?.export("markdown")))
+			.toContain("*Every*");
+	});
+
+	test(`${example}: read-only and the placeholder`, async ({ page }) => {
+		await page.goto(`/${example}.html`);
+		await waitForEditor(page);
+		const before = await page.evaluate(() =>
+			globalThis.editor?.export("markdown")
+		);
+
+		await page.getByRole("checkbox", { name: "Read-only" }).check();
+		await expect(page.getByRole("textbox", { name: "Example document" }))
+			.toHaveAttribute("aria-readonly", "true");
+		await expect(page.getByRole("button", { name: "Bold" })).toBeDisabled();
+		await page.evaluate(() => globalThis.editor?.focus());
+		await page.keyboard.type("typed");
+		expect(await page.evaluate(() => globalThis.editor?.export("markdown")))
+			.toBe(before);
+
+		await page.getByRole("checkbox", { name: "Read-only" }).uncheck();
+		await page.evaluate(() =>
+			globalThis.editor?.setContent({ format: "markdown", input: "" })
+		);
+		await expect(page.locator(".cv-placeholder")).toHaveText(
+			"Start writing…",
+		);
+		await expect(page.locator(".cv-placeholder")).toBeVisible();
+	});
+}
+
 for (const example of ["ssr", "ssr-react"] as const) {
 	test(`${example}: the editor replaces server-rendered HTML without moving it`, async ({ page }) => {
 		const errors: string[] = [];

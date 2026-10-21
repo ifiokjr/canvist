@@ -1,0 +1,27 @@
+[package]
+name = "canvist_desktop_example"
+version = "0.0.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+rust-version.workspace = true
+description = "A small Markdown editor built on canvist_desktop: a toolbar, open and save, and live collaboration over y-websocket"
+
+[[bin]]
+name = "canvist-notes"
+path = "src/main.rs"
+
+[dependencies]
+canvist_desktop = { workspace = true, features = ["winit", "collab"] }
+canvist_headless = { workspace = true, features = ["starter-kit"] }
+futures-util = { workspace = true, features = ["sink", "std"] }
+parley = { version = "^0.12", default-features = false, features = ["std"] }
+rfd = { version = "^0.17", default-features = false, features = ["xdg-portal", "wayland"] }
+tokio = { workspace = true, features = ["macros", "net", "rt", "sync"] }
+tokio-tungstenite = { workspace = true, features = ["connect"] }
+vello = { version = "^0.11", default-features = false, features = ["wgpu_default"] }
+
+[lints]
+workspace = true

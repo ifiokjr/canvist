@@ -323,6 +323,29 @@ impl Doc {
 		self.finish(update.as_ref())
 	}
 
+	/// Whether [`Doc::undo`] has anything to undo: this peer's own changes
+	/// on a shared document, every change otherwise.
+	#[must_use]
+	pub fn can_undo(&self) -> bool {
+		#[cfg(feature = "collab")]
+		if let Some(binding) = &self.shared {
+			return binding.can_undo();
+		}
+
+		self.editor.can_undo()
+	}
+
+	/// Whether [`Doc::redo`] has anything to redo.
+	#[must_use]
+	pub fn can_redo(&self) -> bool {
+		#[cfg(feature = "collab")]
+		if let Some(binding) = &self.shared {
+			return binding.can_redo();
+		}
+
+		self.editor.can_redo()
+	}
+
 	/// Change the document through the editor with an interactive host's
 	/// clock and line navigator, and return the update so the host can lay
 	/// out again.
@@ -434,7 +457,7 @@ fn attrs(name: &str, args: &Json) -> Result<Attrs, HeadlessError> {
 				.map(|value| (key.as_str(), value))
 				.ok_or_else(|| {
 					invalid(&format!(
-						"`{key}` must be a string, number, boolean, null, or array"
+						"`{key}` must be a string, number, boolean, null, array, or object"
 					))
 				})
 		})
@@ -455,6 +478,12 @@ fn value_of(json: &Json) -> Option<Value> {
 		Json::Array(values) => {
 			Value::from(values.iter().map(value_of).collect::<Option<Vec<_>>>()?)
 		}
-		Json::Object(_) => return None,
+		Json::Object(fields) => {
+			let attrs = fields
+				.iter()
+				.map(|(key, value)| Some((key.as_str(), value_of(value)?)))
+				.collect::<Option<Attrs>>()?;
+			Value::from(attrs)
+		}
 	})
 }

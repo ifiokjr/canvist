@@ -18,12 +18,19 @@ use canvist_extensions::BackgroundColor;
 use canvist_extensions::CharacterCount;
 use canvist_extensions::CharacterCountHandle;
 use canvist_extensions::Color;
+use canvist_extensions::Emoji;
+use canvist_extensions::EmojiHandle;
 use canvist_extensions::FontFamily;
 use canvist_extensions::FontSize;
+use canvist_extensions::Hashtag;
+use canvist_extensions::HashtagHandle;
 use canvist_extensions::Highlight;
 use canvist_extensions::HighlightHandle;
 use canvist_extensions::LineHeight;
 use canvist_extensions::MarkHandle;
+use canvist_extensions::Mention;
+use canvist_extensions::MentionHandle;
+use canvist_extensions::MentionTarget;
 use canvist_extensions::Placeholder;
 use canvist_extensions::PlaceholderHandle;
 use canvist_extensions::StarterKit;
@@ -54,6 +61,9 @@ struct Extras {
 	text_align: TextAlignHandle,
 	character_count: CharacterCountHandle,
 	placeholder: PlaceholderHandle,
+	mention: MentionHandle,
+	hashtag: HashtagHandle,
+	emoji: EmojiHandle,
 }
 
 /// The StarterKit plus every other extension, built through the typed path.
@@ -73,6 +83,9 @@ fn full() -> (Editor, Extras) {
 		text_align: builder.add(TextAlign::default()),
 		character_count: builder.add(CharacterCount::default()),
 		placeholder: builder.add(Placeholder::default()),
+		mention: builder.add(Mention::default()),
+		hashtag: builder.add(Hashtag),
+		emoji: builder.add(Emoji),
 	};
 	builder.add(Typography::default());
 
@@ -132,9 +145,14 @@ fn every_query_answers_with_its_declared_type() {
 		.iter()
 		.flat_map(|extension| &extension.queries)
 	{
+		let args: Attrs = query
+			.args
+			.iter()
+			.map(|arg| (arg.name, arg.ty.sample()))
+			.collect();
 		let answer = typist
 			.editor
-			.query(query.name, &Attrs::new())
+			.query(query.name, &args)
 			.expect("queries answer");
 		assert!(
 			query.returns.accepts(&answer),
@@ -224,6 +242,48 @@ fn typed_handles_and_named_commands_agree() {
 		"setPlaceholder",
 		&Attrs::new().with("placeholder", "Say hi"),
 	);
+	same_as_named(
+		|kit| {
+			kit.mention.insert(MentionTarget {
+				id: "7",
+				label: Some("Ada"),
+			})
+		},
+		"insertMention",
+		&Attrs::new().with("id", "7").with("label", "Ada"),
+	);
+	same_as_named(
+		|kit| kit.hashtag.insert("canvas"),
+		"insertHashtag",
+		&Attrs::new().with("tag", "canvas"),
+	);
+	same_as_named(
+		|kit| kit.emoji.set("tada"),
+		"setEmoji",
+		&Attrs::new().with("name", "tada"),
+	);
+	same_as_named(
+		|kit| kit.mention.dismiss(),
+		"dismissMentionSuggestion",
+		&none,
+	);
+	same_as_named(
+		|kit| kit.hashtag.dismiss(),
+		"dismissHashtagSuggestion",
+		&none,
+	);
+	same_as_named(|kit| kit.emoji.dismiss(), "dismissEmojiSuggestion", &none);
+}
+
+#[test]
+fn suggestion_handles_read_the_query() {
+	let (typist, kit) = typed_with("@ad");
+	let state = typist.editor.state();
+
+	assert_eq!(kit.mention.suggestion(state).as_deref(), Some("ad"));
+	assert_eq!(kit.hashtag.suggestion(state), None);
+	assert_eq!(kit.emoji.suggestion(state), None);
+	assert!(kit.hashtag.tags(state).is_empty());
 }
 
 #[test]

@@ -52,6 +52,9 @@
 //! | [`Typography`]      | `typography`       | Smart quotes, dashes, arrows, fractions  |
 //! | [`CharacterCount`]  | `character-count`  | Character and word counts, a limit       |
 //! | [`Placeholder`]     | `placeholder`      | Hint text in empty blocks                |
+//! | [`Mention`]         | `mention`          | `mention`, `@` suggestions               |
+//! | [`Hashtag`]         | `hashtag`          | `hashtag`, `#tag` as you type            |
+//! | [`Emoji`]           | `emoji`            | `emoji`, `:smile:`, `:` suggestions      |
 //!
 //! `docs/src/extensions/parity.md` compares the whole set with Remirror and
 //! TipTap.
@@ -90,8 +93,12 @@ mod character_count;
 pub mod clipboard;
 #[cfg(feature = "code-block")]
 mod code_block;
+#[cfg(feature = "emoji")]
+pub mod emoji;
 #[cfg(feature = "full")]
 mod extras;
+#[cfg(feature = "hashtag")]
+mod hashtag;
 
 #[cfg(feature = "hard-break")]
 mod hard_break;
@@ -121,6 +128,8 @@ mod lists;
 	feature = "superscript"
 ))]
 mod marks;
+#[cfg(feature = "mention")]
+mod mention;
 #[cfg(feature = "ordered-list")]
 mod ordered_list;
 #[cfg(feature = "placeholder")]
@@ -129,6 +138,8 @@ mod placeholder;
 mod paragraph;
 mod resolve;
 mod starter_kit;
+#[cfg(any(feature = "mention", feature = "hashtag", feature = "emoji"))]
+mod suggestion;
 #[cfg(feature = "task-list")]
 mod task_list;
 #[cfg(feature = "text-align")]
@@ -156,12 +167,20 @@ pub use character_count::CharacterCountHandle;
 pub use code_block::CodeBlock;
 #[cfg(feature = "code-block")]
 pub use code_block::CodeBlockHandle;
+#[cfg(feature = "emoji")]
+pub use emoji::Emoji;
+#[cfg(feature = "emoji")]
+pub use emoji::EmojiHandle;
 #[cfg(feature = "full")]
 pub use extras::extras;
 #[cfg(feature = "hard-break")]
 pub use hard_break::HardBreak;
 #[cfg(feature = "hard-break")]
 pub use hard_break::HardBreakHandle;
+#[cfg(feature = "hashtag")]
+pub use hashtag::Hashtag;
+#[cfg(feature = "hashtag")]
+pub use hashtag::HashtagHandle;
 #[cfg(feature = "heading")]
 pub use heading::Heading;
 #[cfg(feature = "heading")]
@@ -212,6 +231,12 @@ pub use marks::Subscript;
 pub use marks::Superscript;
 #[cfg(feature = "underline")]
 pub use marks::Underline;
+#[cfg(feature = "mention")]
+pub use mention::Mention;
+#[cfg(feature = "mention")]
+pub use mention::MentionHandle;
+#[cfg(feature = "mention")]
+pub use mention::MentionTarget;
 #[cfg(feature = "ordered-list")]
 pub use ordered_list::OrderedList;
 #[cfg(feature = "ordered-list")]

@@ -25,6 +25,7 @@ import {
 	superscript,
 	textStyle,
 } from "../src/mod.ts";
+import { comparable } from "./descriptors.ts";
 
 const formatting = [
 	subscript,
@@ -73,12 +74,10 @@ test("every formatting extension has a descriptor beyond the StarterKit", () => 
 
 test("the formatting descriptors match what Rust reports", async () => {
 	using engine = await createEngine([...starterKit, ...formatting]);
-	const byName = (list: readonly { name: string }[]) =>
-		[...list].sort((a, b) => a.name.localeCompare(b.name));
 
 	assert.deepEqual(
-		byName(engine.metadata() as { name: string }[]),
-		byName(JSON.parse(JSON.stringify(engine.extensions))),
+		comparable(engine.metadata()),
+		comparable(engine.extensions),
 	);
 });
 

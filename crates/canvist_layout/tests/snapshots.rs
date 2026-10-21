@@ -420,3 +420,37 @@ fn placeholders_draw_faded_in_empty_blocks_only() {
 	assert_eq!(placeholder.color.a, (f32::from(ink.a) * 0.4).round() as u8);
 	assert!(!runs.iter().any(|run| run.text() == "Hidden"));
 }
+
+// The extension theme rules are behind `theme-extensions`.
+#[cfg(feature = "theme-extensions")]
+#[test]
+fn emoji_draw_their_character_or_their_shortcode() {
+	let schema = canvist_model::Schema::builder()
+		.block(canvist_model::BlockSpec::text("paragraph"))
+		.embed(canvist_model::EmbedSpec::new("emoji"))
+		.build()
+		.expect("valid schema");
+	let doc = Document::from_json(
+		Arc::new(schema),
+		1,
+		&json!({ "type": "doc", "content": [{ "type": "paragraph", "content": [
+			{ "type": "emoji", "attrs": { "name": "smile", "emoji": "😄" } },
+			{ "type": "emoji", "attrs": { "name": "wave" } }
+		] }] }),
+	)
+	.expect("valid JSON");
+	let layout = layout(&doc, 320.0);
+	let list = layout.display_list(&DisplayOptions::viewport(0.0, layout.height()));
+	let texts: Vec<&str> = list
+		.items
+		.iter()
+		.filter_map(|item| {
+			match item {
+				canvist_layout::DisplayItem::Text(run) => Some(run.text()),
+				_ => None,
+			}
+		})
+		.collect();
+
+	assert_eq!(texts, ["😄", ":wave:"]);
+}

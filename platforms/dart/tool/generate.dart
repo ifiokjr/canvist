@@ -172,11 +172,15 @@ void _handle(StringBuffer out, _Json extension) {
 
   for (final query in _list(extension, 'queries')) {
     final returns = query['returns']! as _Json;
+    final args = _list(query, 'args');
+    final passed = args.isEmpty ? '' : ', ${_argsMap(args)}';
     out
-      ..writeln(_doc(query, const []))
-      ..writeln('  Query<${_dartType(returns)}> ${query['name']}() =>')
+      ..writeln(_doc(query, args))
       ..writeln(
-        "      _query('${query['name']}', (json) => ${_decode(returns, 'json')});",
+        '  Query<${_dartType(returns)}> ${query['name']}(${_params(args)}) =>',
+      )
+      ..writeln(
+        "      _query('${query['name']}', (json) => ${_decode(returns, 'json')}$passed);",
       )
       ..writeln();
   }
@@ -208,6 +212,14 @@ String _range(_Json type) => type.containsKey('min')
 String _params(List<_Json> args) {
   if (args.isEmpty) {
     return '';
+  }
+
+  for (final arg in args) {
+    if ((arg['type']! as _Json)['type'] == 'record') {
+      throw FormatException(
+        'record arguments are not supported: ${arg['name']}',
+      );
+    }
   }
 
   final params = args.map((arg) {
@@ -243,12 +255,24 @@ String _dartType(_Json type) => switch (type['type']) {
   'float' => 'double',
   'string' => 'String',
   'nullable' => '${_dartType(type['of']! as _Json)}?',
+  'list' => 'List<${_dartType(type['of']! as _Json)}>',
+  'record' => '({${_list(type, 'fields').map(_recordField).join(', ')}})',
   final other => throw FormatException('unknown value type $other'),
 };
 
+/// One named field of a Dart record type.
+String _recordField(_Json field) =>
+    '${_dartType(field['type']! as _Json)} ${field['name']}';
+
 /// An expression decoding [value]; `[value]!` unless a null check already
-/// promoted it.
-String _decode(_Json type, String value, {bool promoted = false}) {
+/// promoted it. [depth] keeps the names nested lists and records bind
+/// apart.
+String _decode(
+  _Json type,
+  String value, {
+  bool promoted = false,
+  int depth = 0,
+}) {
   final known = promoted ? value : '$value!';
 
   return switch (type['type']) {
@@ -257,9 +281,33 @@ String _decode(_Json type, String value, {bool promoted = false}) {
     'float' => '($known as num).toDouble()',
     'string' => '$known as String',
     'nullable' =>
-      '$value == null ? null : ${_decode(type['of']! as _Json, value, promoted: true)}',
+      '$value == null ? null : ${_decode(type['of']! as _Json, value, promoted: true, depth: depth)}',
+    'list' => _decodeList(type, known, depth),
+    'record' => _decodeRecord(type, known, depth),
     final other => throw FormatException('unknown value type $other'),
   };
+}
+
+String _decodeList(_Json type, String known, int depth) {
+  final item = 'item$depth';
+  final decoded = _decode(type['of']! as _Json, item, depth: depth + 1);
+
+  return '[for (final $item in $known as List<Object?>) $decoded]';
+}
+
+String _decodeRecord(_Json type, String known, int depth) {
+  final map = 'map$depth';
+  final fields = _list(type, 'fields').map((field) {
+    final decoded = _decode(
+      field['type']! as _Json,
+      "$map['${field['name']}']",
+      depth: depth + 1,
+    );
+
+    return '${field['name']}: $decoded';
+  });
+
+  return 'switch ($known as Map<String, Object?>) { final $map => (${fields.join(', ')}) }';
 }
 
 Future<String> _format(String source) async {

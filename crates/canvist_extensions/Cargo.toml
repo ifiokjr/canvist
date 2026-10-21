@@ -6,7 +6,14 @@ categories.workspace = true
 documentation = "https://docs.rs/canvist_extensions"
 edition.workspace = true
 homepage.workspace = true
-include.workspace = true
+# The emoji table and its licence are data the `emoji` feature compiles in.
+include = [
+	"Cargo.toml",
+	"license",
+	"readme.md",
+	"src/**/*.rs",
+	"src/emoji/*.txt",
+]
 keywords = ["text-editor", "rich-text", "editor", "extensions"]
 license.workspace = true
 readme = "readme.md"
@@ -39,7 +46,10 @@ starter-kit = [
 full = [
 	"starter-kit",
 	"character-count",
+	"emoji",
+	"hashtag",
 	"highlight",
+	"mention",
 	"placeholder",
 	"subscript",
 	"superscript",
@@ -65,9 +75,11 @@ clipboard = []
 code = []
 code-block = []
 color = ["text-style"]
+emoji = []
 font-family = ["text-style"]
 font-size = ["text-style"]
 hard-break = []
+hashtag = []
 heading = []
 highlight = []
 history = []
@@ -76,6 +88,7 @@ italic = []
 line-height = ["text-style"]
 link = []
 list-item = []
+mention = []
 ordered-list = ["list-item"]
 placeholder = []
 strike = []

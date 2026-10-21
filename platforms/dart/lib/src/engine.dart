@@ -158,8 +158,11 @@ abstract base class ExtensionHandle {
   Command _command(String name, [Map<String, Object?> args = const {}]) =>
       Command._(_registration, name, args);
 
-  Query<T> _query<T>(String name, T Function(Object? json) decode) =>
-      Query._(_registration, name, decode);
+  Query<T> _query<T>(
+    String name,
+    T Function(Object? json) decode, [
+    Map<String, Object?> args = const {},
+  ]) => Query._(_registration, name, decode, args);
 }
 
 /// A command from a handle, run with [Doc.run] or checked with [Doc.can].
@@ -177,12 +180,15 @@ final class Command {
 
 /// A query from a handle, answered with [Doc.query].
 final class Query<T> {
-  const Query._(this._registration, this.name, this._decode);
+  const Query._(this._registration, this.name, this._decode, this.args);
 
   final Registration _registration;
 
   /// The query's name in the metadata.
   final String name;
+
+  /// Its arguments.
+  final Map<String, Object?> args;
 
   final T Function(Object? json) _decode;
 }
@@ -327,7 +333,7 @@ final class Doc {
   T query<T>(Query<T> query) {
     _check(query._registration, query.name);
 
-    return query._decode(queryNamed(query.name));
+    return query._decode(queryNamed(query.name, query.args));
   }
 
   /// Run the command named [name], for callers that pick commands at

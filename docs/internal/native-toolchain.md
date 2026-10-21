@@ -2,12 +2,12 @@
 
 canvist ships one Rust core to every platform. This page covers the native pipeline: how the core is compiled and bound for iOS (Swift), Android (Kotlin) and Flutter (Dart), and the exact commands to build and test each one on a simulator or emulator.
 
-> **Placeholder API for Swift and Kotlin.** The UniFFI surface is deliberately tiny while the v2 engine is designed: an `EditorHandle` with `new()`, `insert_text(offset, text)`, `text()` and `version()`, backed by a plain `String`. Offsets count Unicode scalar values. It exists to prove the build pipeline end to end; the real engine will replace it behind the same handle. Dart already binds the real engine, through `canvist_headless` (architecture Decision 9).
+Swift and Kotlin bind the whole engine through `canvist_ffi`: an `Editor` that owns a `canvist_headless` document with the StarterKit's commands, its `canvist_layout` layout, and the Yjs binding. Text is measured by the platform (`CoreTextMeasurer`, `PaintMeasurer`) through the `PlatformMeasurer` callback, and each frame hands the platform a display list to paint. Text input methods address the document as one UTF-16 string (text blocks joined by line feeds), which is what `UITextInput` and `InputConnection` expect. Dart binds `canvist_headless` directly (architecture Decision 9).
 
 ## How it fits together
 
 ```text
-crates/canvist_ffi            Rust handle, exported with UniFFI (proc macros)
+crates/canvist_ffi            the editor (headless + layout + collab), exported with UniFFI
  ├─ staticlib ─► platforms/apple     CanvistFFI.xcframework + Swift package `Canvist`
  └─ cdylib ────► platforms/android   jniLibs/*.so + Android library `:canvist`
 
@@ -23,7 +23,7 @@ crates/canvist_headless       the engine with no UI
 | Dart     | flutter_rust_bridge v2 | Dart build hook (native assets)                             | Dart package `platforms/dart`              | `dart test` (conformance, API, server) on Linux and macOS, no Flutter      |
 | Flutter  | (from `canvist`)       | (from `canvist`)                                            | Flutter package `platforms/flutter`        | `integration_test` (API + widget flow) on an iOS Simulator and an emulator |
 
-Generated sources and native libraries are build outputs and are not committed (`Sources/Canvist/Canvist.swift`, `Frameworks/`, `jniLibs/`, the Kotlin bindings). The one exception is the flutter_rust_bridge output (`platforms/dart/lib/src/rust`, `platforms/dart/rust/src/frb_generated.rs`): the adapter crate is a workspace member, so `cargo build --workspace` needs it, and CI checks it is up to date.
+Generated sources and native libraries are build outputs and are not committed (`Sources/Canvist/Canvist.swift`, `Frameworks/`, `jniLibs/`, the UniFFI Kotlin bindings `canvist_ffi.kt`). The typed extension handles are committed: `crates/canvist_ffi/tests/handles.rs` generates `Extensions.generated.swift` and `Extensions.generated.kt` from the extension metadata, fails when they are out of date, and rewrites them with `CANVIST_UPDATE_HANDLES=1 cargo test -p canvist_ffi --test handles`. The one exception is the flutter_rust_bridge output (`platforms/dart/lib/src/rust`, `platforms/dart/rust/src/frb_generated.rs`): the adapter crate is a workspace member, so `cargo build --workspace` needs it, and CI checks it is up to date.
 
 ## Why flutter_rust_bridge for Flutter
 
@@ -83,7 +83,7 @@ build:ios
 cd platforms/apple/Example && xcodegen generate && open CanvistExample.xcodeproj
 ```
 
-To use the package from another app, run `build:ios` and add `platforms/apple` as a local Swift package; the `Canvist` product exposes `EditorHandle` and `EditorError`.
+To use the package from another app, run `build:ios` and add `platforms/apple` as a local Swift package; the `Canvist` product exposes `Editor`, the typed handles (`StarterKit`, `Extensions`), and `CoreTextMeasurer`.
 
 ### Android
 
@@ -123,52 +123,41 @@ cd platforms/dart && cargo bin flutter_rust_bridge_codegen generate
 - **ios (simulator)** on `macos-latest`: `platforms/apple/test.sh`, then the Flutter integration tests on iOS.
 - **android (emulator)** on `ubuntu-24.04` with KVM: checks the flutter_rust_bridge output is current, builds with cargo-ndk, then runs the Android instrumented tests and the Flutter integration tests on an API 35 `x86_64` emulator.
 
-A full run takes 10-20 minutes, dominated by emulator boot and Gradle. To keep unrelated pull requests fast, the workflow runs on a pull request only when it touches the native surface (`crates/canvist_ffi`, `platforms/`, `Cargo.toml`/`Cargo.lock`, `rust-toolchain.toml` or the workflow), and its jobs are not required checks. The tradeoff is that a core change which breaks the native build is caught after merge rather than before, so the workflow also runs on every push to `main` and nightly (which also catches runner image and toolchain drift). Once `canvist_ffi` depends on the core crates, widen the path filter to `crates/**`, or make the jobs required if they stay fast enough.
+A full run takes 10-20 minutes, dominated by emulator boot and Gradle. `canvist_ffi` depends on the core crates, so the workflow runs on a pull request when it touches any crate (`crates/**`), `platforms/`, `Cargo.toml`/`Cargo.lock`, `rust-toolchain.toml` or the workflow. Its jobs are not required checks; the workflow also runs on every push to `main` and nightly, which catches runner image and toolchain drift.
 
 ## Performance
 
-Every binding runs the same micro-benchmark: per sample, a fresh handle gets 100 single-character `insert_text` appends and then 100 `text()` reads. The per-call time is the sample time divided by 100, and the result is the median (and p90) of 200 samples after 1,000 warm-up calls. `crates/canvist_ffi/benches/round_trip.rs` runs it in Rust with no FFI, so each platform's number minus the Rust number is the binding overhead.
+Keystroke-to-paint is measured in three places:
 
-| Run                    | Command                                                                                                                                                                                                                                 |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Rust baseline          | `cargo bench -p canvist_ffi --bench round_trip`                                                                                                                                                                                         |
-| Swift (release)        | `cd platforms/apple && xcodebuild test -scheme Canvist -configuration Release -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:CanvistTests/FFIPerformanceTests`                                                  |
-| Kotlin (release)       | `cd platforms/android && ./gradlew :canvist:connectedAndroidTest -PcanvistTestBuildType=release -Pandroid.testInstrumentationRunnerArguments.class=io.github.ifiokjr.canvist.FfiPerformanceTest`, then `adb logcat -d -s CanvistPerf:I` |
-| Dart (profile, device) | `cd platforms/flutter/example && fvm flutter drive --profile --driver test_driver/integration_test.dart --target integration_test/canvist_test.dart`                                                                                    |
+| Run                                      | Command                                                                                                          | Budget                   |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Rust: keystroke → frame (no FFI)         | `cargo bench -p canvist_ffi`, budgets in `cargo test --release -p canvist_ffi --test perf_budgets -- --ignored`  | 200 µs at 10k paragraphs |
+| Swift: keystroke → frame through UniFFI  | `cd platforms/apple && xcodebuild test -scheme Canvist -destination 'platform=iOS Simulator,name=iPhone 17 Pro'` | p95 4 ms on a simulator  |
+| Kotlin: keystroke → frame through UniFFI | `cd platforms/android && ./gradlew :canvist:connectedAndroidTest`, then `adb logcat -d -s CanvistPerf:I`         | p95 8 ms on an emulator  |
 
-The regular test suites also run these benchmarks in debug builds and print `PERF` lines. The assertions only guard against a broken measurement; they never fail on slow hardware.
+The Rust benchmarks measure everything between the platform delivering a key and painting: the edit, relayout, the display list, and its damage, for typing, IME composition, the queries `UITextInput` makes after each keystroke, scrolling, and a collaborator's keystroke. The Swift and Kotlin tests add the binding and real text measurement. `-PcanvistTestBuildType=release` runs the Kotlin numbers against a non-debuggable build.
 
-Baseline measured on 2026-10-18 on an M2 Max, with an iPhone 17 Pro simulator (iOS 26.5) and the `canvist-api35` arm64 emulator:
+`crates/canvist_ffi/tests/stress.rs` types thousands of random keyboard, IME, autocorrect, undo, and collaboration inputs and checks that nothing fails and the text model always matches the document.
 
-| Binding                    | Build                      | `insert_text` median (p90) | `text()` median |
-| -------------------------- | -------------------------- | -------------------------- | --------------- |
-| Rust, no FFI               | release                    | 20 ns (22 ns)              | 27 ns           |
-| Swift → UniFFI             | release                    | 120 ns (144 ns)            | 101 ns          |
-| Swift → UniFFI             | debug                      | 1.35 µs                    | 0.85 µs         |
-| Kotlin → UniFFI (JNA)      | release (non-debuggable)   | 25-28 µs (32-40 µs)        | 22-25 µs        |
-| Kotlin → UniFFI (JNA)      | debug                      | 90 µs                      | 82 µs           |
-| Dart → flutter_rust_bridge | profile (AOT), emulator    | 0.86 µs (1.5 µs)           | 1.03 µs         |
-| Dart → flutter_rust_bridge | debug (JIT), iOS Simulator | 1.56 µs                    | 1.78 µs         |
+The Dart binding keeps its own benchmark: `cd platforms/flutter/example && fvm flutter drive --profile --driver test_driver/integration_test.dart --target integration_test/canvist_test.dart`.
 
-Library sizes (release, `lto = true`):
+### Keeping the binding cheap
 
-| Artifact                                                                         | Size                                                           |
-| -------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `libcanvist_ffi.a`, per XCFramework slice                                        | 16 MiB archive; dead-stripped at app link time                 |
-| Linked iOS code (stripped `aarch64-apple-ios` cdylib as a proxy)                 | 346 KiB                                                        |
-| `libcanvist_ffi.so` `arm64-v8a` / `x86_64`, stripped (as in the APK)             | 357 KiB / 387 KiB                                              |
-| JNA runtime that the Kotlin binding needs                                        | `libjnidispatch.so` 162 KiB (`arm64-v8a`) + 218 KiB of classes |
-| `libcanvist_flutter.so` in a release APK, `arm64-v8a` / `x86_64` / `armeabi-v7a` | 565 KiB / 598 KiB / 414 KiB                                    |
-| `canvist_flutter.framework` in a release iOS build                               | 549 KiB                                                        |
+UniFFI calls are not free: on Android each one costs about 25 µs through JNA (release build; the placeholder handle measured 20 ns in Rust, 120 ns through Swift, and 25 µs through Kotlin on 2026-10-18), mostly in `Structure` marshalling. The editor's API is shaped around that:
 
-### What the real binding must avoid
+- **Coarse calls.** A keystroke is one call (`insertText`, `deleteBackward`, `press`) and one `frame()`. Text input queries return small records, never the whole document.
+- **Frames only when something changed.** `frame()` returns the display list only when it differs from the last one, with the damaged rectangles, so an idle frame costs one call and no list.
+- **Batched measurement.** Layout collects every segment a relayout needs and asks the platform once, and caches the answers, so typing usually measures nothing.
+- **Owned byte arrays.** Collaboration methods take `Vec<u8>`, which both platforms see as their native byte arrays.
 
-- **JNA struct marshalling on Android.** A JNA call with primitive arguments costs about 50 ns. However, each JNA `Structure` costs about 4 µs. UniFFI's Kotlin code allocates a `RustCallStatus` for every crossing and passes `RustBuffer`s by value, and each method makes three crossings: clone the handle, allocate the string buffer, then the call itself. That is where the 25 µs goes. The fix is to keep UniFFI for coarse API calls and route per-keystroke and per-frame calls through a JNI fast path (for example the `jni` crate with primitive arguments and direct `ByteBuffer`s) or a batched event buffer. Measure on a mid-range device first; emulators on Apple silicon run close to native speed, so real devices are likely slower.
-- **Three FFI crossings per UniFFI method call.** On every method call, Swift and Kotlin first call `uniffi_*_fn_clone_*` (an `Arc` increment), and a `String` argument costs another call to allocate the `RustBuffer`. Primitive-only arguments avoid the second crossing.
-- **Copies on string arguments.** Swift copies through `utf8CString` and then into a Rust-allocated buffer. Kotlin encodes UTF-16 to UTF-8 and copies into the `RustBuffer`. flutter_rust_bridge serialises into an SSE byte buffer, copies it to native memory and decodes a new `String`. That is two or three allocations and copies per keystroke on every platform.
-- **Copies on string returns.** `text()` clones the whole document in Rust, and each binding copies it again. Any UI that re-reads the full text per keystroke pays O(n) two or three times. The engine API should return deltas or dirty ranges, not the full string.
-- **The placeholder's linear-time edits.** `insert_text` scans the text to map the offset, then shifts the tail. The engine needs an indexed structure (for example a rope with cached char and UTF-16 offsets).
-- **Binary size.** Most of the roughly 350 KiB per ABI is the Rust standard library and UniFFI runtime. `panic = "abort"`, `opt-level = "s"` and `strip = true` on a native-only profile are the obvious next steps. They are not applied yet because the release profile is shared with the wasm build. Apps must also set `abiFilters` to the ABIs we build: JNA's AAR ships `libjnidispatch.so` for seven ABIs, and without a filter the app installs on devices it cannot run on.
+Library sizes (release, `lto = true`, stripped):
+
+| Artifact                                   | Size              |
+| ------------------------------------------ | ----------------- |
+| `libcanvist_ffi.so` `arm64-v8a` / `x86_64` | 2.6 MiB / 3.0 MiB |
+| JNA runtime that the Kotlin binding needs  | 162 KiB + 218 KiB |
+
+About two thirds is code (`cargo bloat` on a host build: the standard library about 570 KiB, yrs and the Yjs binding about 450 KiB, the editor, layout, and model crates about 600 KiB); the rest is read-only data such as Unicode tables. A collaboration-free build is the obvious way to shrink it. Apps must set `abiFilters` to the ABIs we build: JNA's AAR ships `libjnidispatch.so` for seven ABIs, and without a filter the app installs on devices it cannot run on.
 
 ## Troubleshooting
 

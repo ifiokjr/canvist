@@ -34,6 +34,21 @@ const CTRL = 2;
 const ALT = 4;
 const META = 8;
 
+/**
+ * Keys that only move the selection, which a read-only editor still
+ * handles (with any modifiers) so people can select text to copy.
+ */
+const NAVIGATION_KEYS = new Set([
+	"ArrowLeft",
+	"ArrowRight",
+	"ArrowUp",
+	"ArrowDown",
+	"Home",
+	"End",
+	"PageUp",
+	"PageDown",
+]);
+
 /** Presses this close in time (ms) and space (CSS px) count as one multi-click. */
 const MULTI_CLICK_MS = 500;
 const MULTI_CLICK_SLOP = 4;
@@ -87,6 +102,7 @@ export class Input {
 	/** This editor's selection is being dragged. */
 	#dragging = false;
 	#droppedHere = false;
+	#editable = true;
 	#lastPress: Press = { count: 0, time: -Infinity, x: 0, y: 0 };
 	/**
 	 * When the last key without a binding went down: the text it types
@@ -131,6 +147,39 @@ export class Input {
 
 	focus(): void {
 		this.#target.focus({ preventScroll: true });
+	}
+
+	/**
+	 * Accept text input, or make the editor read-only: the selection still
+	 * moves with the pointer and navigation keys, and copying works, but
+	 * nothing typed, pasted, cut, or dropped changes the document.
+	 */
+	setEditable(editable: boolean): void {
+		if (editable === this.#editable) {
+			return;
+		}
+
+		this.#editable = editable;
+		this.#target.setAttribute("aria-readonly", String(!editable));
+
+		if (this.#textarea !== undefined) {
+			// A read-only textarea takes focus but no text or composition.
+			this.#textarea.readOnly = !editable;
+		}
+
+		if (this.#context !== undefined) {
+			const canvas = this.#host.canvas as HTMLCanvasElement & EditContextHost;
+			canvas.editContext = editable ? this.#context : null;
+		}
+	}
+
+	/** Show `text`, dimmed, while the document is empty; an empty string shows none. */
+	setPlaceholder(text: string): void {
+		if (text === "") {
+			this.#target.removeAttribute("aria-placeholder");
+		} else {
+			this.#target.setAttribute("aria-placeholder", text);
+		}
 	}
 
 	/** Remove the textarea or detach the EditContext. Listeners go with the host's signal. */
@@ -310,6 +359,15 @@ export class Input {
 			return;
 		}
 
+		if (!this.#editable && !readOnlyKey(event)) {
+			// WebKit treats Backspace outside editable text as Back.
+			if (event.key === "Backspace") {
+				event.preventDefault();
+			}
+
+			return;
+		}
+
 		if (this.#host.wasm.keyDown(event.key, modifiers(event))) {
 			event.preventDefault();
 			this.#changed(event);
@@ -344,6 +402,12 @@ export class Input {
 
 	/** Text input through the textarea: typed text and edits without a key binding (as from soft keyboards). */
 	#beforeInput(event: InputEvent): void {
+		// Chromium still sends text input to a read-only textarea.
+		if (!this.#editable) {
+			event.preventDefault();
+			return;
+		}
+
 		if (this.#composing || event.inputType === "insertCompositionText") {
 			return;
 		}
@@ -493,8 +557,10 @@ export class Input {
 		this.#host.wasm.pointerUp();
 	}
 
-	#copy(event: ClipboardEvent, cut: boolean): void {
+	#copy(event: ClipboardEvent, requestedCut: boolean): void {
 		const wasm = this.#host.wasm;
+		// Cutting from a read-only document copies.
+		const cut = requestedCut && this.#editable;
 		const [html, text] = cut ? wasm.cutSelection() : wasm.copySelection();
 
 		if (
@@ -515,7 +581,7 @@ export class Input {
 	#paste(event: ClipboardEvent): void {
 		const data = event.clipboardData;
 
-		if (data === null) {
+		if (data === null || !this.#editable) {
 			return;
 		}
 
@@ -544,7 +610,7 @@ export class Input {
 		this.#droppedHere = false;
 		event.dataTransfer.setData("text/html", html);
 		event.dataTransfer.setData("text/plain", text);
-		event.dataTransfer.effectAllowed = "copyMove";
+		event.dataTransfer.effectAllowed = this.#editable ? "copyMove" : "copy";
 	}
 
 	#dragEnd(event: DragEvent): void {
@@ -561,7 +627,8 @@ export class Input {
 	}
 
 	#dragOver(event: DragEvent): void {
-		if (event.dataTransfer === null) {
+		// Without `preventDefault`, the browser refuses the drop.
+		if (event.dataTransfer === null || !this.#editable) {
 			return;
 		}
 
@@ -574,7 +641,7 @@ export class Input {
 	#drop(event: DragEvent): void {
 		const data = event.dataTransfer;
 
-		if (data === null) {
+		if (data === null || !this.#editable) {
 			return;
 		}
 
@@ -649,6 +716,16 @@ export class Input {
 function modifiers(event: KeyboardEvent): number {
 	return (event.shiftKey ? SHIFT : 0) | (event.ctrlKey ? CTRL : 0) |
 		(event.altKey ? ALT : 0) | (event.metaKey ? META : 0);
+}
+
+/** Whether a read-only editor handles `event`: navigation, and select all. */
+function readOnlyKey(event: KeyboardEvent): boolean {
+	const command = detectPlatform(navigator) === "apple"
+		? event.metaKey
+		: event.ctrlKey;
+
+	return NAVIGATION_KEYS.has(event.key) ||
+		(command && event.key.toLowerCase() === "a");
 }
 
 /** Whether a drop copies rather than moves: Option on Apple platforms, Ctrl elsewhere. */

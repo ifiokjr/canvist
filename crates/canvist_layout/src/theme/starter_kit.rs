@@ -449,18 +449,8 @@ fn mark_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<MarkRule> {
 }
 
 fn embed_rules(palette: &Palette) -> Vec<EmbedRule> {
-	vec![
+	let mut rules = vec![
 		EmbedRule::new("hardBreak", EmbedStyle::LineBreak),
-		EmbedRule::new(
-			"mention",
-			EmbedStyle::Label {
-				attr: Arc::from("label"),
-				prefix: Arc::from("@"),
-				patch: TextPatch::new()
-					.color(palette.accent)
-					.background(palette.accent_wash),
-			},
-		),
 		EmbedRule::new(
 			"inlineImage",
 			EmbedStyle::Box {
@@ -468,5 +458,32 @@ fn embed_rules(palette: &Palette) -> Vec<EmbedRule> {
 				height: REM,
 			},
 		),
-	]
+	];
+
+	if cfg!(feature = "theme-extensions") {
+		rules.extend([
+			EmbedRule::new(
+				"mention",
+				EmbedStyle::Label {
+					attr: Arc::from("label"),
+					prefix: Arc::from("@"),
+					patch: TextPatch::new()
+						.color(palette.accent)
+						.background(palette.accent_wash),
+					fallback: Some(Arc::from("id")),
+				},
+			),
+			EmbedRule::new(
+				"emoji",
+				EmbedStyle::Label {
+					attr: Arc::from("emoji"),
+					prefix: Arc::from(""),
+					patch: TextPatch::new(),
+					fallback: Some(Arc::from("name")),
+				},
+			),
+		]);
+	}
+
+	rules
 }

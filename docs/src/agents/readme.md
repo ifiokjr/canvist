@@ -145,14 +145,23 @@ function schema(type: ValueSpec): Record<string, unknown> {
 				: { type: "string" };
 		case "nullable":
 			return { anyOf: [schema(type.of), { type: "null" }] };
+		case "list":
+			return { type: "array", items: schema(type.of) };
+		case "record":
+			return {
+				type: "object",
+				properties: Object.fromEntries(
+					type.fields.map((field) => [field.name, schema(field.type)]),
+				),
+			};
 	}
 }
 
-// One tool per command the engine registered.
-const tools = engine.extensions.flatMap((extension) =>
+// One tool per command the engine registered. `metadata()` carries the descriptions.
+const tools = engine.metadata().flatMap((extension) =>
 	extension.commands.map((command) => ({
 		name: command.name,
-		description: command.doc,
+		description: command.doc ?? command.name,
 		input_schema: {
 			type: "object",
 			properties: Object.fromEntries(
@@ -163,7 +172,7 @@ const tools = engine.extensions.flatMap((extension) =>
 	}))
 );
 console.log(tools.map((tool) => tool.name).join(", "));
-// setParagraph, toggleBold, setBold, unsetBold, toggleHeading, setHeading
+// setParagraph, toggleHeading, setHeading, toggleBold, setBold, unsetBold
 
 // Run a tool call from the model. It arrives as JSON, so the engine checks it at runtime,
 // and errors go back to the model as text it can act on.
@@ -185,7 +194,7 @@ function runTool(call: string): string {
 console.log(runTool('{ "name": "setHeading", "input": { "level": 1 } }'));
 // done
 console.log(runTool('{ "name": "setHeading", "input": { "level": 9 } }'));
-// error invalidArgs: invalid arguments for `setHeading`: `level` must be IntRange { min: 1, max: 6 }
+// error invalidArgs: invalid arguments for `setHeading`: `level` must be an integer from 1 to 6
 console.log(runTool('{ "name": "toggleItalic", "input": {} }'));
 // error unknownName: no command or query is named `toggleItalic`
 ```

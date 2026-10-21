@@ -4,7 +4,8 @@
  * `CanvistEditor` renders an editor; `useCanvistEditor` gives you the
  * editor itself, and `useEditorState` keeps a ref in step with something
  * read from the editor. Commands, queries, and plugin APIs are typed from
- * the extensions and plugins you pass, as in `@canvist/web`.
+ * the extensions and plugins you pass, as in `@canvist/web`. `BubbleMenu`
+ * and `FloatingMenu` keep their slot next to the selection.
  *
  * ```ts
  * const { element, editor } = useCanvistEditor({
@@ -26,11 +27,18 @@ import {
 	type StarterKit,
 } from "@canvist/web";
 import {
+	bubbleMenu,
+	floatingMenu,
+	type Menu,
+	type MenuOptions,
+} from "@canvist/web/menus";
+import {
 	defineComponent,
 	h,
 	onBeforeUnmount,
 	onMounted,
 	type Ref,
+	type SetupContext,
 	type ShallowRef,
 	shallowRef,
 	watch,
@@ -124,7 +132,10 @@ export function useEditorState<E extends Extensions, P extends Plugins, T>(
 	return state;
 }
 
-/** Props for {@link CanvistEditor}: the editor's options, read once. */
+/**
+ * Props for {@link CanvistEditor}: the editor's options, read once except
+ * `editable` and `placeholder`, which follow the props.
+ */
 export interface CanvistEditorProps<E extends Extensions, P extends Plugins>
 	extends EditorOptions<E, P> {
 	/**
@@ -148,6 +159,8 @@ const OPTION_PROPS = [
 	"input",
 	"label",
 	"platform",
+	"editable",
+	"placeholder",
 ] as const satisfies readonly (keyof EditorOptions<Extensions, Plugins>)[];
 
 /**
@@ -165,6 +178,14 @@ export const CanvistEditor = defineComponent(
 		const { html, ...options } = props;
 		const { element, editor } = useCanvistEditor<E, P>(options);
 
+		watch(
+			[editor, () => props.editable, () => props.placeholder],
+			([current, editable, placeholder]) => {
+				current?.setEditable(editable ?? true);
+				current?.setPlaceholder(placeholder ?? "");
+			},
+		);
+
 		watch(editor, (current, _previous, onCleanup) => {
 			if (current === null) {
 				return;
@@ -180,3 +201,73 @@ export const CanvistEditor = defineComponent(
 	},
 	{ props: ["html", ...OPTION_PROPS], emits: ["ready", "update"] },
 );
+
+/** Props for {@link BubbleMenu} and {@link FloatingMenu}. */
+export interface MenuProps<E extends Extensions, P extends Plugins>
+	extends MenuOptions<E, P> {
+	/** The editor to follow; the menu stays hidden while it is `null`. */
+	readonly editor: Editor<E, P> | null;
+}
+
+type Attach = <E extends Extensions, P extends Plugins>(
+	editor: Editor<E, P>,
+	element: HTMLElement,
+	options: MenuOptions<E, P>,
+) => Menu;
+
+/** A component that keeps its default slot where `attach` places it. */
+function followingMenu(attach: Attach) {
+	return defineComponent(
+		<E extends Extensions, P extends Plugins>(
+			props: MenuProps<E, P>,
+			{ slots }: SetupContext,
+		) => {
+			const element = shallowRef<HTMLElement | null>(null);
+
+			watch(
+				[
+					() => props.editor,
+					element,
+					() => props.placement,
+					() => props.offset,
+					() => props.padding,
+					() => props.shouldShow,
+				],
+				(
+					[editor, current, placement, offset, padding, shouldShow],
+					_,
+					onCleanup,
+				) => {
+					if (editor === null || current === null) {
+						return;
+					}
+
+					const menu = attach(editor, current, {
+						...(placement === undefined ? {} : { placement }),
+						...(offset === undefined ? {} : { offset }),
+						...(padding === undefined ? {} : { padding }),
+						...(shouldShow === undefined ? {} : { shouldShow }),
+					});
+					onCleanup(() => menu.destroy());
+				},
+				{ flush: "post" },
+			);
+
+			return () =>
+				h("div", { ref: element, hidden: true }, slots["default"]?.());
+		},
+		{ props: ["editor", "placement", "offset", "padding", "shouldShow"] },
+	);
+}
+
+/**
+ * A menu over selected text, as `bubbleMenu` from `@canvist/web/menus`
+ * places it. Pressing inside it keeps the editor's focus and selection.
+ */
+export const BubbleMenu = followingMenu(bubbleMenu);
+
+/**
+ * A menu beside the caret on an empty line, as `floatingMenu` from
+ * `@canvist/web/menus` places it.
+ */
+export const FloatingMenu = followingMenu(floatingMenu);

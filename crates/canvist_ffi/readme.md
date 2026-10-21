@@ -20,8 +20,32 @@
 
 # canvist_ffi
 
-The native binding surface for canvist's iOS and Android packages. It exports an `EditorHandle` through [UniFFI](https://mozilla.github.io/uniffi-rs/), which the `Canvist` Swift package and the Kotlin library wrap. It isn't published on its own.
+The canvist editor for iOS and Android. It exports an `Editor` through [UniFFI](https://mozilla.github.io/uniffi-rs/) to the `Canvist` Swift package and the `canvist-android` Kotlin library. It isn't published on its own.
 
-**The handle is a placeholder for now.** It holds plain text, which proves the native build and test pipelines end to end. The v2 editor engine replaces it behind the same handle. Flutter and Dart don't use this crate: they bind [`canvist_headless`](../canvist_headless) through `flutter_rust_bridge`.
+An `Editor` is the whole engine without a UI:
 
-See [the native toolchain guide](../../docs/internal/native-toolchain.md) for building and testing on iOS and Android.
+- a [`canvist_headless`](../canvist_headless) document with the StarterKit's commands, input rules, history, and key bindings;
+- its [`canvist_layout`](../canvist_layout) layout, with text measured by the platform (`CoreTextMeasurer` on iOS, `PaintMeasurer` on Android);
+- frames that hand the platform a display list to paint, and only what changed;
+- the text model `UITextInput` and `InputConnection` expect: the document as one UTF-16 string, with marked text for IME composition, geometry for carets, selection handles, and candidate windows, and lines and blocks for screen readers;
+- Yjs collaboration, through updates or the y-sync protocol.
+
+Commands are typed: `crates/canvist_ffi/tests/handles.rs` generates Swift and Kotlin handles (`kit.heading.toggleHeading(level: 2)`) from the same metadata the Rust commands check their arguments against.
+
+```rust
+use std::sync::Arc;
+
+use canvist_ffi::DocFormat;
+use canvist_ffi::Editor;
+use canvist_ffi::EditorOptions;
+use canvist_ffi::testing::FixedPlatformMeasurer;
+
+let editor = Editor::new(EditorOptions::starter_kit(), Arc::new(FixedPlatformMeasurer::default()))?;
+editor.load(DocFormat::Markdown, "Hello")?;
+editor.select(5, 5)?;
+editor.insert_text(" world")?;
+assert_eq!(editor.export(DocFormat::Markdown), "Hello world");
+# Ok::<(), canvist_ffi::CanvistError>(())
+```
+
+Flutter and Dart don't use this crate: they bind `canvist_headless` through `flutter_rust_bridge`. See [the native toolchain guide](../../docs/internal/native-toolchain.md) for building and testing on iOS and Android.

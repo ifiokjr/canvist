@@ -6,11 +6,14 @@
 		<title>canvist editing tests</title>
 		<style>
 			body { margin: 0; background: white; }
-			#host { width: 480px; margin: 24px; }
+			#host { width: 480px; margin: 120px 24px 24px 160px; }
+			.menu { display: flex; gap: 4px; padding: 4px; background: #222; border-radius: 6px; }
 		</style>
 	</head>
 	<body>
 		<div id="host"></div>
+		<div id="bubble" class="menu" role="toolbar" aria-label="Formatting" hidden><button type="button">Bold</button></div>
+		<div id="floating" class="menu" role="toolbar" aria-label="Insert" hidden><button type="button">Heading</button></div>
 		<script type="module" src="./editing.ts"></script>
 	</body>
 </html>

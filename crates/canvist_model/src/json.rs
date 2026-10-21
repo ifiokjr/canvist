@@ -178,6 +178,7 @@ fn value_to_json(value: &Value) -> Json {
 		Value::Float(value) => Json::from(*value),
 		Value::String(value) => Json::String(value.to_string()),
 		Value::Array(values) => Json::Array(values.iter().map(value_to_json).collect()),
+		Value::Map(map) => Json::Object(attrs_to_json(map)),
 	}
 }
 
@@ -312,8 +313,7 @@ fn attrs_from_json(attrs: Option<&Json>) -> Attrs {
 		.collect()
 }
 
-/// Convert JSON to an attribute value. Nested objects are not representable
-/// yet and become `Null`; none of TipTap's built-in extensions use them.
+/// Convert JSON to an attribute value; objects become maps.
 fn value_from_json(value: &Json) -> Value {
 	match value {
 		Json::Bool(value) => Value::Bool(*value),
@@ -325,6 +325,7 @@ fn value_from_json(value: &Json) -> Value {
 		}
 		Json::String(value) => Value::from(value.as_str()),
 		Json::Array(values) => Value::Array(values.iter().map(value_from_json).collect()),
-		Json::Null | Json::Object(_) => Value::Null,
+		Json::Object(_) => Value::from(attrs_from_json(Some(value))),
+		Json::Null => Value::Null,
 	}
 }

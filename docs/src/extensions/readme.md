@@ -235,6 +235,74 @@ console.log(doc.export("html"));
 // <h1 style="text-align: center">Title</h1>
 ```
 
+## Mentions, hashtags, and emoji
+
+Mentions, hashtags, and emoji share one suggestion system, like TipTap's Suggestion utility and Remirror's suggesters. Typing the trigger character (`@`, `#`, or `:`) after a space or at the start of a line starts a suggestion. While it's active, a query reports the trigger and what you've typed since, and you show your own popup at the caret with the matches. Picking one runs a command that replaces the trigger and query, then adds a space. Escape, or the dismiss command, hides the suggestion until the trigger is typed again. Suggestions never start in code blocks.
+
+### Mention
+
+People, teams, or anything else with an id. It adds TipTap's `mention` embed with `id`, `label`, and `mentionSuggestionChar` attributes, drawn as `@label`. Backspace straight after a mention turns it back into `@`, so the suggestion opens again. HTML uses TipTap's `<span data-type="mention">`; Markdown and plain text write `@label`.
+
+| Commands                                                    | Queries             | Keys                  |
+| ----------------------------------------------------------- | ------------------- | --------------------- |
+| `insertMention({ id, label? })`, `dismissMentionSuggestion` | `mentionSuggestion` | `Escape`, `Backspace` |
+
+`mentionSuggestion` answers `{ char, query }` while a mention is suggested, or `null`. In Rust, `Mention { char: '+', allow_spaces: true }` changes the trigger and allows `@Ada Lovelace`.
+
+```ts
+import { createEngine, mention } from "@canvist/headless";
+
+const doc = (await createEngine([mention])).create();
+doc.typeText("Thanks @ad");
+console.log(JSON.stringify(doc.query.mentionSuggestion()));
+// {"char":"@","query":"ad"}
+doc.commands.insertMention({ id: "7", label: "Ada" });
+doc.typeText("!");
+console.log(doc.export("text"));
+// Thanks @Ada !
+```
+
+### Hashtag
+
+Tags such as `#rust`, marked as you type. Neither TipTap nor Remirror has one. It adds a `hashtag` mark with the tag (without `#`) in its `tag` attribute. A tag is marked when you type the space or punctuation after it, and when you paste it. `#` at the start of a line still makes a heading.
+
+| Commands                                             | Queries                         | Keys     |
+| ---------------------------------------------------- | ------------------------------- | -------- |
+| `insertHashtag({ tag })`, `dismissHashtagSuggestion` | `hashtagSuggestion`, `hashtags` | `Escape` |
+
+`hashtags` lists every tag in the document, sorted, for a tag cloud or a filter.
+
+```ts
+import { createEngine, hashtag } from "@canvist/headless";
+
+const doc = (await createEngine([hashtag])).create();
+doc.typeText("Loving #rust and #wasm today");
+console.log(doc.query.hashtags().join(", "));
+// rust, wasm
+```
+
+### Emoji
+
+GitHub's 1,870 emoji and their shortcodes. Typing a known `:shortcode:` inserts the emoji. It adds TipTap's `emoji` embed, with the shortcode in `name` and, in canvist, the emoji itself in `emoji`, so every platform draws it without looking it up. A TipTap document without `emoji` shows `:name:`. HTML uses TipTap's `<span data-type="emoji">`; Markdown and plain text write the emoji.
+
+| Commands                                       | Queries                                             | Keys     | Typing        |
+| ---------------------------------------------- | --------------------------------------------------- | -------- | ------------- |
+| `setEmoji({ name })`, `dismissEmojiSuggestion` | `emojiSuggestion`, `searchEmoji({ query, limit? })` | `Escape` | `:shortcode:` |
+
+`searchEmoji` returns up to `limit` (10 by default) `{ name, emoji }` matches, shortcodes starting with the query first.
+
+```ts
+import { createEngine, emoji } from "@canvist/headless";
+
+const doc = (await createEngine([emoji])).create();
+doc.typeText("Shipped :rocket: :tad");
+console.log(doc.query.searchEmoji({ query: "tad", limit: 1 })[0].emoji);
+// 🎉
+doc.commands.setEmoji({ name: "tada" });
+console.log(doc.export("text"));
+// Shipped 🚀 🎉
+```
+
 ## Blocks
 
 ### Heading
@@ -473,7 +541,6 @@ console.log(doc.query.placeholder());
 
 These extensions are planned, in roughly this order. Each will follow the same pattern: typed commands, queries, and TipTap-compatible JSON.
 
-- **Mentions, hashtags, and emoji,** on one shared suggestion system.
 - **Images, details, callouts, and math,** plus video, audio, and file attachments.
 - **Tables:** merged cells, header rows and columns, and cell navigation.
 - **Find and replace, table of contents, comments, and drag handles.**

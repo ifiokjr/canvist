@@ -88,54 +88,65 @@ console.log(describe(doc));
 
 ## Render it in your UI
 
-The same descriptions drive real buttons. Here they are as plain DOM buttons, with a Markdown preview standing in for the editor surface until the canvas editor ships for the web:
+The same descriptions drive real buttons. Here they are as plain DOM buttons over a `@canvist/web` editor, refreshed through `subscribe`, which calls back after every edit, selection change, and focus change:
 
 ```ts no_run
-import { bold, createEngine, italic } from "@canvist/headless";
+import { bold, createEditor, italic } from "@canvist/web";
 
-const engine = await createEngine([bold, italic]);
-const doc = engine.parse("markdown", "Select some text, then press a button.");
-doc.selectAll();
-
+const element = document.querySelector<HTMLElement>("#editor")!;
 const toolbar = document.querySelector<HTMLElement>("#toolbar")!;
-const preview = document.querySelector<HTMLElement>("#preview")!;
+const editor = await createEditor(element, {
+	extensions: [bold, italic],
+	content: {
+		format: "markdown",
+		input: "Select some text, then press a button.",
+	},
+});
 
 const buttons = [
 	{
 		label: "B",
-		run: () => doc.commands.toggleBold(),
-		can: () => doc.can.toggleBold(),
-		active: () => doc.query.isBold(),
+		run: () => editor.commands.toggleBold(),
+		can: () => editor.can.toggleBold(),
+		active: () => editor.query.isBold(),
 	},
 	{
 		label: "I",
-		run: () => doc.commands.toggleItalic(),
-		can: () => doc.can.toggleItalic(),
-		active: () => doc.query.isItalic(),
+		run: () => editor.commands.toggleItalic(),
+		can: () => editor.can.toggleItalic(),
+		active: () => editor.query.isItalic(),
 	},
 ];
 
+const elements = buttons.map((button) => {
+	const element = document.createElement("button");
+	element.type = "button";
+	element.textContent = button.label;
+	element.addEventListener("click", () => {
+		button.run();
+		editor.focus();
+	});
+	return element;
+});
+toolbar.replaceChildren(...elements);
+
 function refresh(): void {
-	toolbar.replaceChildren(
-		...buttons.map((button) => {
-			const element = document.createElement("button");
-			element.textContent = button.label;
-			element.disabled = !button.can();
-			element.setAttribute("aria-pressed", String(button.active()));
-			element.addEventListener("click", () => {
-				button.run();
-				refresh();
-			});
-			return element;
-		}),
-	);
-	preview.textContent = doc.export("markdown");
+	buttons.forEach((button, index) => {
+		const element = elements[index]!;
+		element.disabled = !editor.editable || !button.can();
+		element.setAttribute("aria-pressed", String(button.active()));
+	});
 }
 
+editor.subscribe(refresh);
 refresh();
 ```
 
 Use `aria-pressed` for toggle buttons, so screen readers announce their state.
+
+## Menus over the selection
+
+A toolbar can also float: `bubbleMenu` from `@canvist/web/menus` keeps an element over selected text, and `floatingMenu` beside an empty line, as TipTap's menus do. React and Vue have `BubbleMenu` and `FloatingMenu` components. See [the web quick start](../quick-start/web.md#6-menus-that-follow-the-selection).
 
 ## Dropdowns and dialogs
 
