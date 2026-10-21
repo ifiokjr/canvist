@@ -29,6 +29,7 @@ use crate::style::StyleId;
 use crate::style::Styles;
 use crate::style::attr;
 use crate::style::attr_px;
+use crate::style::line_height;
 use crate::text::slice;
 use crate::theme::AttrBinding;
 use crate::theme::EmbedStyle;
@@ -434,6 +435,9 @@ fn binding_css(binding: &AttrBinding, mark: &Mark) -> Option<String> {
 				.filter(|size| *size > 0.0)
 				.map(|size| format!("font-size:{}px;", num(size)))
 		}
+		AttrBinding::LineHeight(key) => {
+			line_height(&mark.attrs, key).map(|height| format!("line-height:{};", num(height)))
+		}
 	}
 }
 
@@ -655,6 +659,9 @@ fn patch_css(patch: &TextPatch) -> String {
 		patch
 			.letter_spacing
 			.map(|spacing| format!("letter-spacing:{}px;", num(spacing))),
+		patch
+			.baseline_shift
+			.map(|em| format!("vertical-align:{}em;", num(em))),
 	];
 	let mut css: String = declarations.into_iter().flatten().collect();
 

@@ -108,7 +108,7 @@ canvist_editor = { path = "./crates/canvist_editor", version = "0.1.0" }
 canvist_extensions = { path = "./crates/canvist_extensions", version = "0.1.0" }
 canvist_ffi = { path = "./crates/canvist_ffi", version = "0.1.0" }
 canvist_headless = { path = "./crates/canvist_headless", version = "0.1.0" }
-canvist_layout = { path = "./crates/canvist_layout", version = "0.1.0" }
+canvist_layout = { path = "./crates/canvist_layout", version = "0.1.0", default-features = false }
 canvist_model = { path = "./crates/canvist_model", version = "0.1.0" }
 canvist_paint = { path = "./crates/canvist_paint", version = "0.1.0" }
 canvist_render = { path = "./crates/canvist_render", version = "0.1.0" }

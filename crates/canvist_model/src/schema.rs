@@ -121,6 +121,10 @@ pub struct MarkSpec {
 	/// Other mark types that cannot coexist with this one. A mark always
 	/// excludes other instances of its own type.
 	pub excludes: Vec<Arc<str>>,
+	/// Mark types this one excludes when the schema has them, such as
+	/// subscript and superscript, which an app may register one without the
+	/// other.
+	pub excludes_registered: Vec<Arc<str>>,
 	/// Default attributes.
 	pub attrs: Attrs,
 }
@@ -133,6 +137,7 @@ impl MarkSpec {
 			name: name.into(),
 			inclusive: true,
 			excludes: Vec::new(),
+			excludes_registered: Vec::new(),
 			attrs: Attrs::new(),
 		}
 	}
@@ -148,6 +153,14 @@ impl MarkSpec {
 	#[must_use]
 	pub fn excludes(mut self, names: &[&str]) -> Self {
 		self.excludes = names.iter().map(|&name| name.into()).collect();
+		self
+	}
+
+	/// Declare mark types this mark excludes if they are registered. Unlike
+	/// [`MarkSpec::excludes`], a missing name is not an error.
+	#[must_use]
+	pub fn excludes_registered(mut self, names: &[&str]) -> Self {
+		self.excludes_registered = names.iter().map(|&name| name.into()).collect();
 		self
 	}
 
@@ -176,6 +189,48 @@ impl EmbedSpec {
 		Self {
 			name: name.into(),
 			attrs: Attrs::new(),
+		}
+	}
+
+	/// Replace the default attributes.
+	#[must_use]
+	pub fn attrs(mut self, attrs: Attrs) -> Self {
+		self.attrs = attrs;
+		self
+	}
+}
+
+/// Attributes one extension adds to types another registers, like TipTap's
+/// global attributes: text alignment on paragraphs and headings, or a
+/// colour on the `textStyle` mark.
+#[derive(Clone, Debug)]
+struct SharedAttrs {
+	/// The block or mark type names that receive the attributes. Names the
+	/// schema lacks are skipped.
+	types: Vec<Arc<str>>,
+	/// The attributes, with their defaults.
+	attrs: Attrs,
+}
+
+impl SharedAttrs {
+	fn new(types: &[&str], attrs: Attrs) -> Self {
+		Self {
+			types: types.iter().map(|&name| name.into()).collect(),
+			attrs,
+		}
+	}
+
+	/// Add the attributes to `target` if `name` is one of the types,
+	/// keeping defaults the type already declares.
+	fn extend(&self, name: &Arc<str>, target: &mut Attrs) {
+		if !self.types.contains(name) {
+			return;
+		}
+
+		for (key, value) in self.attrs.iter() {
+			if target.get(key).is_none() {
+				target.set(key, value.clone());
+			}
 		}
 	}
 }
@@ -266,6 +321,8 @@ pub struct SchemaBuilder {
 	marks: Vec<MarkSpec>,
 	embeds: Vec<EmbedSpec>,
 	root: Vec<Arc<str>>,
+	block_attrs: Vec<SharedAttrs>,
+	mark_attrs: Vec<SharedAttrs>,
 }
 
 impl SchemaBuilder {
@@ -306,8 +363,42 @@ impl SchemaBuilder {
 		self
 	}
 
+	/// Add `attrs` to the block types named in `types`, whichever extension
+	/// registers them and in whatever order. Types the schema lacks are
+	/// skipped, and a default the type declares itself wins.
+	#[must_use]
+	pub fn block_attrs(mut self, types: &[&str], attrs: Attrs) -> Self {
+		self.block_attrs.push(SharedAttrs::new(types, attrs));
+		self
+	}
+
+	/// Add `attrs` to the mark types named in `types`, as
+	/// [`SchemaBuilder::block_attrs`] does for blocks.
+	#[must_use]
+	pub fn mark_attrs(mut self, types: &[&str], attrs: Attrs) -> Self {
+		self.mark_attrs.push(SharedAttrs::new(types, attrs));
+		self
+	}
+
+	/// Fold the shared attributes into the specs they name.
+	fn share_attrs(&mut self) {
+		for shared in &self.block_attrs {
+			for spec in &mut self.blocks {
+				shared.extend(&spec.name, &mut spec.attrs);
+			}
+		}
+
+		for shared in &self.mark_attrs {
+			for spec in &mut self.marks {
+				shared.extend(&spec.name, &mut spec.attrs);
+			}
+		}
+	}
+
 	/// Resolve every name and validate the schema.
-	pub fn build(self) -> Result<Schema, SchemaError> {
+	pub fn build(mut self) -> Result<Schema, SchemaError> {
+		self.share_attrs();
+
 		let block_names = index_names("block", self.blocks.iter().map(|spec| &spec.name))?;
 		let mark_names = index_names("mark", self.marks.iter().map(|spec| &spec.name))?;
 		let embed_names = index_names("embed", self.embeds.iter().map(|spec| &spec.name))?;
@@ -465,6 +556,12 @@ fn resolve_mark(
 		excludes.push(MarkTypeId(*other));
 	}
 
+	let registered = spec
+		.excludes_registered
+		.iter()
+		.filter_map(|name| names.get(name));
+	excludes.extend(registered.map(|&other| MarkTypeId(other)));
+
 	excludes.sort_unstable();
 	excludes.dedup();
 
@@ -599,6 +696,7 @@ impl Schema {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::Value;
 
 	fn sample() -> Schema {
 		Schema::builder()
@@ -664,6 +762,51 @@ mod tests {
 			Err(SchemaError::Duplicate { kind: "block", .. })
 		));
 		assert!(matches!(unknown, Err(SchemaError::Unknown { .. })));
+	}
+
+	#[test]
+	fn shares_attributes_with_the_types_they_name() {
+		let schema = Schema::builder()
+			.block(BlockSpec::text("paragraph"))
+			.block(BlockSpec::text("heading").attrs(Attrs::new().with("level", 1)))
+			.block_attrs(
+				&["paragraph", "heading", "missing"],
+				Attrs::new().with("textAlign", Value::Null).with("level", 9),
+			)
+			.mark(MarkSpec::new("textStyle"))
+			.mark_attrs(&["textStyle"], Attrs::new().with("color", Value::Null))
+			.build()
+			.expect("shared attributes are valid");
+		let paragraph = schema.block_type("paragraph").expect("paragraph exists");
+		let heading = schema.block_type("heading").expect("heading exists");
+		let style = schema.mark_type("textStyle").expect("textStyle exists");
+
+		assert_eq!(
+			schema.block(paragraph).attrs.get("textAlign"),
+			Some(&Value::Null)
+		);
+		assert_eq!(
+			schema.block(heading).attrs.get("level"),
+			Some(&Value::Int(1)),
+			"the type's own default wins"
+		);
+		assert_eq!(schema.mark(style).attrs.get("color"), Some(&Value::Null));
+	}
+
+	#[test]
+	fn excludes_registered_marks_and_skips_missing_ones() {
+		let schema = Schema::builder()
+			.block(BlockSpec::text("paragraph"))
+			.mark(MarkSpec::new("subscript").excludes_registered(&["superscript"]))
+			.mark(MarkSpec::new("superscript").excludes_registered(&["subscript"]))
+			.mark(MarkSpec::new("small").excludes_registered(&["missing"]))
+			.build()
+			.expect("missing names are skipped");
+		let sub = schema.mark_type("subscript").expect("subscript exists");
+		let sup = schema.mark_type("superscript").expect("superscript exists");
+
+		assert_eq!(schema.mark(sub).excludes, [sub, sup]);
+		assert_eq!(schema.mark(sup).excludes, [sub, sup]);
 	}
 
 	#[test]

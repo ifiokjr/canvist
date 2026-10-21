@@ -35,7 +35,11 @@ name = "layout"
 harness = false
 
 [features]
-default = []
+default = ["theme-extensions"]
+# StarterKit theme rules for blocks, marks, and embeds beyond the
+# StarterKit. Without it a host whose schema has none of them carries
+# none of their styles.
+theme-extensions = []
 editor = ["dep:canvist_editor"]
 parley = ["dep:parley"]
 

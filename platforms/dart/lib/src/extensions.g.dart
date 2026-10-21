@@ -3,6 +3,24 @@
 
 part of 'engine.dart';
 
+/// The commands and queries of `backgroundColor`.
+final class BackgroundColorHandle extends ExtensionHandle {
+  BackgroundColorHandle._(super.registration) : super._();
+
+  /// Set the style on the selection, keeping its other styles.
+  ///
+  /// [backgroundColor]: The background colour behind the text, any CSS colour.
+  Command setBackgroundColor({required String backgroundColor}) =>
+      _command('setBackgroundColor', {'backgroundColor': backgroundColor});
+
+  /// Clear the style from the selection.
+  Command unsetBackgroundColor() => _command('unsetBackgroundColor', const {});
+
+  /// The value every selected character shares, or null.
+  Query<String?> backgroundColor() =>
+      _query('backgroundColor', (json) => json == null ? null : json as String);
+}
+
 /// The commands and queries of `blockquote`.
 final class BlockquoteHandle extends ExtensionHandle {
   BlockquoteHandle._(super.registration) : super._();
@@ -85,6 +103,60 @@ final class CodeBlockHandle extends ExtensionHandle {
   );
 }
 
+/// The commands and queries of `color`.
+final class ColorHandle extends ExtensionHandle {
+  ColorHandle._(super.registration) : super._();
+
+  /// Set the style on the selection, keeping its other styles.
+  ///
+  /// [color]: The text colour, any CSS colour such as `#958df1`.
+  Command setColor({required String color}) =>
+      _command('setColor', {'color': color});
+
+  /// Clear the style from the selection.
+  Command unsetColor() => _command('unsetColor', const {});
+
+  /// The value every selected character shares, or null.
+  Query<String?> color() =>
+      _query('color', (json) => json == null ? null : json as String);
+}
+
+/// The commands and queries of `fontFamily`.
+final class FontFamilyHandle extends ExtensionHandle {
+  FontFamilyHandle._(super.registration) : super._();
+
+  /// Set the style on the selection, keeping its other styles.
+  ///
+  /// [fontFamily]: The CSS font family list, such as `Inter, sans-serif`.
+  Command setFontFamily({required String fontFamily}) =>
+      _command('setFontFamily', {'fontFamily': fontFamily});
+
+  /// Clear the style from the selection.
+  Command unsetFontFamily() => _command('unsetFontFamily', const {});
+
+  /// The value every selected character shares, or null.
+  Query<String?> fontFamily() =>
+      _query('fontFamily', (json) => json == null ? null : json as String);
+}
+
+/// The commands and queries of `fontSize`.
+final class FontSizeHandle extends ExtensionHandle {
+  FontSizeHandle._(super.registration) : super._();
+
+  /// Set the style on the selection, keeping its other styles.
+  ///
+  /// [fontSize]: The font size, such as `18px`.
+  Command setFontSize({required String fontSize}) =>
+      _command('setFontSize', {'fontSize': fontSize});
+
+  /// Clear the style from the selection.
+  Command unsetFontSize() => _command('unsetFontSize', const {});
+
+  /// The value every selected character shares, or null.
+  Query<String?> fontSize() =>
+      _query('fontSize', (json) => json == null ? null : json as String);
+}
+
 /// The commands and queries of `hardBreak`.
 final class HardBreakHandle extends ExtensionHandle {
   HardBreakHandle._(super.registration) : super._();
@@ -114,6 +186,33 @@ final class HeadingHandle extends ExtensionHandle {
     'headingLevel',
     (json) => json == null ? null : (json as num).toInt(),
   );
+}
+
+/// The commands and queries of `highlight`.
+final class HighlightHandle extends ExtensionHandle {
+  HighlightHandle._(super.registration) : super._();
+
+  /// Highlight the selection, in a colour or the theme's.
+  ///
+  /// [color]: The highlight colour, such as `#fef08a`, or null for the theme's colour.
+  Command setHighlight({String? color}) =>
+      _command('setHighlight', {'color': ?color});
+
+  /// Remove the selection's highlight in a colour, or highlight it in that colour.
+  ///
+  /// [color]: The highlight colour, such as `#fef08a`, or null for the theme's colour.
+  Command toggleHighlight({String? color}) =>
+      _command('toggleHighlight', {'color': ?color});
+
+  /// Remove highlights from the selection.
+  Command unsetHighlight() => _command('unsetHighlight', const {});
+
+  /// Whether the selection is highlighted.
+  Query<bool> isHighlight() => _query('isHighlight', (json) => json! as bool);
+
+  /// The colour every selected character is highlighted in, or null.
+  Query<String?> highlightColor() =>
+      _query('highlightColor', (json) => json == null ? null : json as String);
 }
 
 /// The commands and queries of `history`.
@@ -150,6 +249,24 @@ final class ItalicHandle extends ExtensionHandle {
 
   /// Whether the mark is active at the selection.
   Query<bool> isItalic() => _query('isItalic', (json) => json! as bool);
+}
+
+/// The commands and queries of `lineHeight`.
+final class LineHeightHandle extends ExtensionHandle {
+  LineHeightHandle._(super.registration) : super._();
+
+  /// Set the style on the selection, keeping its other styles.
+  ///
+  /// [lineHeight]: The line height as a multiple of the font size, such as `1.5`.
+  Command setLineHeight({required String lineHeight}) =>
+      _command('setLineHeight', {'lineHeight': lineHeight});
+
+  /// Clear the style from the selection.
+  Command unsetLineHeight() => _command('unsetLineHeight', const {});
+
+  /// The value every selected character shares, or null.
+  Query<String?> lineHeight() =>
+      _query('lineHeight', (json) => json == null ? null : json as String);
 }
 
 /// The commands and queries of `link`.
@@ -236,6 +353,41 @@ final class StrikeHandle extends ExtensionHandle {
   Query<bool> isStrike() => _query('isStrike', (json) => json! as bool);
 }
 
+/// The commands and queries of `subscript`.
+final class SubscriptHandle extends ExtensionHandle {
+  SubscriptHandle._(super.registration) : super._();
+
+  /// Add the mark to the selection, or remove it if every selected character has it.
+  Command toggleSubscript() => _command('toggleSubscript', const {});
+
+  /// Add the mark to the selection.
+  Command setSubscript() => _command('setSubscript', const {});
+
+  /// Remove the mark from the selection.
+  Command unsetSubscript() => _command('unsetSubscript', const {});
+
+  /// Whether the mark is active at the selection.
+  Query<bool> isSubscript() => _query('isSubscript', (json) => json! as bool);
+}
+
+/// The commands and queries of `superscript`.
+final class SuperscriptHandle extends ExtensionHandle {
+  SuperscriptHandle._(super.registration) : super._();
+
+  /// Add the mark to the selection, or remove it if every selected character has it.
+  Command toggleSuperscript() => _command('toggleSuperscript', const {});
+
+  /// Add the mark to the selection.
+  Command setSuperscript() => _command('setSuperscript', const {});
+
+  /// Remove the mark from the selection.
+  Command unsetSuperscript() => _command('unsetSuperscript', const {});
+
+  /// Whether the mark is active at the selection.
+  Query<bool> isSuperscript() =>
+      _query('isSuperscript', (json) => json! as bool);
+}
+
 /// The commands and queries of `taskList`.
 final class TaskListHandle extends ExtensionHandle {
   TaskListHandle._(super.registration) : super._();
@@ -269,6 +421,14 @@ final class TaskListHandle extends ExtensionHandle {
       _query('isTaskChecked', (json) => json == null ? null : json as bool);
 }
 
+/// The commands and queries of `textStyle`.
+final class TextStyleHandle extends ExtensionHandle {
+  TextStyleHandle._(super.registration) : super._();
+
+  /// Remove text styles whose attributes are all unset.
+  Command removeEmptyTextStyle() => _command('removeEmptyTextStyle', const {});
+}
+
 /// The commands and queries of `trailingNode`.
 final class TrailingNodeHandle extends ExtensionHandle {
   TrailingNodeHandle._(super.registration) : super._();
@@ -289,6 +449,14 @@ final class UnderlineHandle extends ExtensionHandle {
 
   /// Whether the mark is active at the selection.
   Query<bool> isUnderline() => _query('isUnderline', (json) => json! as bool);
+}
+
+/// Registers `backgroundColor`.
+final class BackgroundColorExtension extends Extension<BackgroundColorHandle> {
+  const BackgroundColorExtension._() : super('backgroundColor');
+  @override
+  BackgroundColorHandle _handle(Registration registration) =>
+      BackgroundColorHandle._(registration);
 }
 
 /// Registers `blockquote`.
@@ -329,6 +497,29 @@ final class CodeBlockExtension extends Extension<CodeBlockHandle> {
       CodeBlockHandle._(registration);
 }
 
+/// Registers `color`.
+final class ColorExtension extends Extension<ColorHandle> {
+  const ColorExtension._() : super('color');
+  @override
+  ColorHandle _handle(Registration registration) => ColorHandle._(registration);
+}
+
+/// Registers `fontFamily`.
+final class FontFamilyExtension extends Extension<FontFamilyHandle> {
+  const FontFamilyExtension._() : super('fontFamily');
+  @override
+  FontFamilyHandle _handle(Registration registration) =>
+      FontFamilyHandle._(registration);
+}
+
+/// Registers `fontSize`.
+final class FontSizeExtension extends Extension<FontSizeHandle> {
+  const FontSizeExtension._() : super('fontSize');
+  @override
+  FontSizeHandle _handle(Registration registration) =>
+      FontSizeHandle._(registration);
+}
+
 /// Registers `hardBreak`.
 final class HardBreakExtension extends Extension<HardBreakHandle> {
   const HardBreakExtension._() : super('hardBreak');
@@ -343,6 +534,14 @@ final class HeadingExtension extends Extension<HeadingHandle> {
   @override
   HeadingHandle _handle(Registration registration) =>
       HeadingHandle._(registration);
+}
+
+/// Registers `highlight`.
+final class HighlightExtension extends Extension<HighlightHandle> {
+  const HighlightExtension._() : super('highlight');
+  @override
+  HighlightHandle _handle(Registration registration) =>
+      HighlightHandle._(registration);
 }
 
 /// Registers `history`.
@@ -367,6 +566,14 @@ final class ItalicExtension extends Extension<ItalicHandle> {
   @override
   ItalicHandle _handle(Registration registration) =>
       ItalicHandle._(registration);
+}
+
+/// Registers `lineHeight`.
+final class LineHeightExtension extends Extension<LineHeightHandle> {
+  const LineHeightExtension._() : super('lineHeight');
+  @override
+  LineHeightHandle _handle(Registration registration) =>
+      LineHeightHandle._(registration);
 }
 
 /// Registers `link`.
@@ -400,12 +607,36 @@ final class StrikeExtension extends Extension<StrikeHandle> {
       StrikeHandle._(registration);
 }
 
+/// Registers `subscript`.
+final class SubscriptExtension extends Extension<SubscriptHandle> {
+  const SubscriptExtension._() : super('subscript');
+  @override
+  SubscriptHandle _handle(Registration registration) =>
+      SubscriptHandle._(registration);
+}
+
+/// Registers `superscript`.
+final class SuperscriptExtension extends Extension<SuperscriptHandle> {
+  const SuperscriptExtension._() : super('superscript');
+  @override
+  SuperscriptHandle _handle(Registration registration) =>
+      SuperscriptHandle._(registration);
+}
+
 /// Registers `taskList`.
 final class TaskListExtension extends Extension<TaskListHandle> {
   const TaskListExtension._() : super('taskList');
   @override
   TaskListHandle _handle(Registration registration) =>
       TaskListHandle._(registration);
+}
+
+/// Registers `textStyle`.
+final class TextStyleExtension extends Extension<TextStyleHandle> {
+  const TextStyleExtension._() : super('textStyle');
+  @override
+  TextStyleHandle _handle(Registration registration) =>
+      TextStyleHandle._(registration);
 }
 
 /// Registers `trailingNode`.
@@ -424,8 +655,11 @@ final class UnderlineExtension extends Extension<UnderlineHandle> {
       UnderlineHandle._(registration);
 }
 
-/// Every StarterKit extension, to pass to [EngineBuilder.add].
+/// Every extension, to pass to [EngineBuilder.add].
 abstract final class Extensions {
+  /// The `backgroundColor` extension.
+  static const backgroundColor = BackgroundColorExtension._();
+
   /// The `blockquote` extension.
   static const blockquote = BlockquoteExtension._();
 
@@ -441,11 +675,23 @@ abstract final class Extensions {
   /// The `codeBlock` extension.
   static const codeBlock = CodeBlockExtension._();
 
+  /// The `color` extension.
+  static const color = ColorExtension._();
+
+  /// The `fontFamily` extension.
+  static const fontFamily = FontFamilyExtension._();
+
+  /// The `fontSize` extension.
+  static const fontSize = FontSizeExtension._();
+
   /// The `hardBreak` extension.
   static const hardBreak = HardBreakExtension._();
 
   /// The `heading` extension.
   static const heading = HeadingExtension._();
+
+  /// The `highlight` extension.
+  static const highlight = HighlightExtension._();
 
   /// The `history` extension.
   static const history = HistoryExtension._();
@@ -455,6 +701,9 @@ abstract final class Extensions {
 
   /// The `italic` extension.
   static const italic = ItalicExtension._();
+
+  /// The `lineHeight` extension.
+  static const lineHeight = LineHeightExtension._();
 
   /// The `link` extension.
   static const link = LinkExtension._();
@@ -468,8 +717,17 @@ abstract final class Extensions {
   /// The `strike` extension.
   static const strike = StrikeExtension._();
 
+  /// The `subscript` extension.
+  static const subscript = SubscriptExtension._();
+
+  /// The `superscript` extension.
+  static const superscript = SuperscriptExtension._();
+
   /// The `taskList` extension.
   static const taskList = TaskListExtension._();
+
+  /// The `textStyle` extension.
+  static const textStyle = TextStyleExtension._();
 
   /// The `trailingNode` extension.
   static const trailingNode = TrailingNodeExtension._();
@@ -477,8 +735,8 @@ abstract final class Extensions {
   /// The `underline` extension.
   static const underline = UnderlineExtension._();
 
-  /// Every extension above.
-  static const all = <Extension<ExtensionHandle>>[
+  /// TipTap's StarterKit, which [Engine.starterKit] registers.
+  static const starterKit = <Extension<ExtensionHandle>>[
     blockquote,
     bold,
     bulletList,
@@ -494,6 +752,36 @@ abstract final class Extensions {
     orderedList,
     strike,
     taskList,
+    trailingNode,
+    underline,
+  ];
+
+  /// Every extension above.
+  static const all = <Extension<ExtensionHandle>>[
+    backgroundColor,
+    blockquote,
+    bold,
+    bulletList,
+    code,
+    codeBlock,
+    color,
+    fontFamily,
+    fontSize,
+    hardBreak,
+    heading,
+    highlight,
+    history,
+    horizontalRule,
+    italic,
+    lineHeight,
+    link,
+    listItem,
+    orderedList,
+    strike,
+    subscript,
+    superscript,
+    taskList,
+    textStyle,
     trailingNode,
     underline,
   ];

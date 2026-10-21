@@ -39,6 +39,16 @@ pub fn editor() -> Editor {
 	editor_on(Platform::Other)
 }
 
+/// A StarterKit editor plus `extra` extensions, with Ctrl as `Mod`.
+pub fn editor_with(extra: Vec<std::sync::Arc<dyn canvist_editor::Extension>>) -> Editor {
+	Editor::builder()
+		.extensions(StarterKit::default().extensions())
+		.extensions(extra)
+		.client(1)
+		.build()
+		.expect("the extensions build")
+}
+
 /// Types scripts into an editor, keeping time.
 pub struct Typist {
 	/// The editor being typed into.
@@ -269,4 +279,63 @@ pub fn assert_valid(state: &EditorState) {
 		selection,
 		"the selection is valid"
 	);
+}
+
+/// Panic unless the metadata declares every attribute of every block, mark,
+/// and embed with the schema's default. Several extensions may declare one
+/// node, as the style extensions each add an attribute to `textStyle`, so
+/// the declarations are combined per node first.
+pub fn assert_metadata_matches_schema(editor: &Editor) {
+	use std::collections::HashMap;
+
+	use canvist_editor::Field;
+	use canvist_editor::NodeKind;
+
+	let schema = editor.schema();
+	let mut declared: HashMap<(NodeKind, &str), Vec<&Field>> = HashMap::new();
+
+	for extension in editor.metadata() {
+		for node in &extension.nodes {
+			declared
+				.entry((node.kind, node.name))
+				.or_default()
+				.extend(&node.attrs);
+		}
+	}
+
+	for ((kind, name), attrs) in declared {
+		let defaults = match kind {
+			NodeKind::Block => {
+				&schema
+					.block(schema.block_type(name).expect("blocks exist"))
+					.attrs
+			}
+			NodeKind::Mark => {
+				&schema
+					.mark(schema.mark_type(name).expect("marks exist"))
+					.attrs
+			}
+			NodeKind::Embed => {
+				&schema
+					.embed(schema.embed_type(name).expect("embeds exist"))
+					.attrs
+			}
+		};
+
+		assert_eq!(
+			defaults.len(),
+			attrs.len(),
+			"{name} declares every attribute once"
+		);
+
+		for attr in attrs {
+			let default = defaults.get(attr.name).expect("declared attributes exist");
+			assert_eq!(attr.default.as_ref(), Some(default), "{name}.{}", attr.name);
+			assert!(
+				attr.ty.accepts(default),
+				"{name}.{} default has its type",
+				attr.name
+			);
+		}
+	}
 }

@@ -52,6 +52,13 @@ impl RunStyle {
 	pub(crate) fn line_box(&self) -> (f32, f32) {
 		(self.line_box.above, self.line_box.below)
 	}
+
+	/// [`RunStyle::line_box`] moved by the baseline shift, as CSS moves an
+	/// inline box with `vertical-align`.
+	pub(crate) fn shifted_line_box(&self) -> (f32, f32) {
+		let shift = self.style.baseline_shift;
+		(self.line_box.above + shift, self.line_box.below - shift)
+	}
 }
 
 /// A run of one item on one line, positioned in visual order.
@@ -306,7 +313,7 @@ impl TextLayout {
 			let item = &self.items[piece.item as usize];
 
 			let (item_above, item_below) = match &item.kind {
-				ItemKind::Text { .. } => self.styles[item.style as usize].line_box(),
+				ItemKind::Text { .. } => self.styles[item.style as usize].shifted_line_box(),
 				ItemKind::Embed(embed) => (embed.ascent, embed.descent),
 				ItemKind::Tab | ItemKind::Break => continue,
 			};

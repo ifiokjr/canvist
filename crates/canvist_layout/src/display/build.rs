@@ -299,6 +299,7 @@ impl Builder<'_> {
 		let Some((source, range, style)) = run_source(text, piece) else {
 			return;
 		};
+		let baseline = baseline - style.style.baseline_shift;
 
 		self.list.items.push(DisplayItem::Text(TextRun {
 			block,
@@ -528,7 +529,7 @@ fn piece_background(
 		return None;
 	}
 
-	let baseline = origin.y + line.top + line.baseline;
+	let baseline = origin.y + line.top + line.baseline - run.style.baseline_shift;
 	let rect = Rect::new(
 		origin.x + piece.x,
 		baseline - run.metrics.ascent,

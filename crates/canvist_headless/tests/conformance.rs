@@ -18,10 +18,11 @@ use serde_json::Value as Json;
 use serde_json::json;
 
 /// The optional features this build has.
-const FEATURES: &[&str] = if cfg!(feature = "collab") {
-	&["collab"]
-} else {
-	&[]
+const FEATURES: &[&str] = match (cfg!(feature = "collab"), cfg!(feature = "full")) {
+	(true, true) => &["collab", "extensions"],
+	(true, false) => &["collab"],
+	(false, true) => &["extensions"],
+	(false, false) => &[],
 };
 
 /// Every case in every file runs, and all failures are reported together,
@@ -101,13 +102,91 @@ fn supported(case: &Json) -> bool {
 		.all(|feature| FEATURES.contains(&feature.as_str().unwrap_or_default()))
 }
 
-fn engine() -> Engine<StarterKitHandles> {
-	Engine::starter_kit()
+/// The StarterKit's extension names, which cases listing `extensions` add
+/// to.
+const STARTER_KIT: [&str; 17] = [
+	"heading",
+	"blockquote",
+	"codeBlock",
+	"hardBreak",
+	"horizontalRule",
+	"bulletList",
+	"orderedList",
+	"listItem",
+	"taskList",
+	"bold",
+	"italic",
+	"underline",
+	"strike",
+	"code",
+	"link",
+	"history",
+	"trailingNode",
+];
+
+/// The engine a case runs on: the typed StarterKit, or, for a case that
+/// lists `extensions`, the StarterKit plus those registered by name.
+enum CaseEngine {
+	StarterKit(Engine<StarterKitHandles>),
+	Named(Engine),
+}
+
+impl CaseEngine {
+	fn for_case(case: &Json) -> Result<Self, String> {
+		let Some(extra) = case["extensions"].as_array() else {
+			return Ok(Self::StarterKit(Engine::starter_kit()));
+		};
+		let names: Vec<&str> = STARTER_KIT
+			.into_iter()
+			.chain(extra.iter().filter_map(Json::as_str))
+			.collect();
+
+		Engine::named(&names)
+			.map(Self::Named)
+			.map_err(|error| format!("the extensions do not build: {error}"))
+	}
+
+	fn create(&self) -> Result<Doc, HeadlessError> {
+		match self {
+			Self::StarterKit(engine) => engine.create(),
+			Self::Named(engine) => engine.create(),
+		}
+	}
+
+	fn load_json(&self, json: &Json) -> Result<Doc, HeadlessError> {
+		match self {
+			Self::StarterKit(engine) => engine.from_json(json),
+			Self::Named(engine) => engine.from_json(json),
+		}
+	}
+
+	fn parse(&self, format: Format, input: &str) -> Result<Doc, HeadlessError> {
+		match self {
+			Self::StarterKit(engine) => engine.parse(format, input),
+			Self::Named(engine) => engine.parse(format, input),
+		}
+	}
+
+	fn restore(&self, snapshot: &Snapshot) -> Result<Doc, HeadlessError> {
+		match self {
+			Self::StarterKit(engine) => engine.restore(snapshot),
+			Self::Named(engine) => engine.restore(snapshot),
+		}
+	}
+
+	#[cfg(feature = "collab")]
+	fn join_yjs(&self, state: &[u8], client: u64) -> Result<Doc, HeadlessError> {
+		match self {
+			Self::StarterKit(engine) => engine.from_yjs(state, client),
+			Self::Named(engine) => engine.from_yjs(state, client),
+		}
+	}
 }
 
 fn run_case(case: &Json) -> Result<(), String> {
+	let engine = CaseEngine::for_case(case)?;
 	let input = &case["input"];
-	let loaded = load(input);
+	let loaded = load(&engine, input);
 
 	if let Some(code) = input["error"].as_str() {
 		return expect_error(loaded.map(drop), code, "loading");
@@ -116,39 +195,38 @@ fn run_case(case: &Json) -> Result<(), String> {
 	let mut doc = loaded.map_err(|error| format!("loading failed: {error}"))?;
 
 	for (index, step) in case["steps"].as_array().into_iter().flatten().enumerate() {
-		run_step(&mut doc, step).map_err(|reason| format!("step {index} ({step}): {reason}"))?;
+		run_step(&engine, &mut doc, step)
+			.map_err(|reason| format!("step {index} ({step}): {reason}"))?;
 	}
 
 	check(&doc, &case["expect"]).map_err(|reason| format!("final expectation: {reason}"))
 }
 
-fn load(input: &Json) -> Result<Doc, HeadlessError> {
-	let engine = engine();
-
+fn load(engine: &CaseEngine, input: &Json) -> Result<Doc, HeadlessError> {
 	match input["format"].as_str() {
 		None => engine.create(),
-		Some("json") => engine.from_json(&input["content"]),
-		Some("yjs") => load_yjs(&engine, input),
+		Some("json") => engine.load_json(&input["content"]),
+		Some("yjs") => load_yjs(engine, input),
 		Some(name) => engine.parse(name.parse()?, input["content"].as_str().unwrap_or_default()),
 	}
 }
 
 #[cfg(feature = "collab")]
-fn load_yjs(engine: &Engine<StarterKitHandles>, input: &Json) -> Result<Doc, HeadlessError> {
-	engine.from_yjs(
+fn load_yjs(engine: &CaseEngine, input: &Json) -> Result<Doc, HeadlessError> {
+	engine.join_yjs(
 		&base64(&input["content"]),
 		input["clientId"].as_u64().unwrap_or(1),
 	)
 }
 
 #[cfg(not(feature = "collab"))]
-fn load_yjs(_: &Engine<StarterKitHandles>, _: &Json) -> Result<Doc, HeadlessError> {
+fn load_yjs(_: &CaseEngine, _: &Json) -> Result<Doc, HeadlessError> {
 	unreachable!("cases loading Yjs require `collab`")
 }
 
-fn run_step(doc: &mut Doc, step: &Json) -> Result<(), String> {
+fn run_step(engine: &CaseEngine, doc: &mut Doc, step: &Json) -> Result<(), String> {
 	let Some(code) = step["error"].as_str() else {
-		return apply(doc, step);
+		return apply(engine, doc, step);
 	};
 
 	let before = doc.export(Format::Json);
@@ -175,12 +253,12 @@ fn expect_error(result: Result<(), HeadlessError>, code: &str, what: &str) -> Re
 }
 
 /// Run a step whose outcome must match its expectations.
-fn apply(doc: &mut Doc, step: &Json) -> Result<(), String> {
+fn apply(engine: &CaseEngine, doc: &mut Doc, step: &Json) -> Result<(), String> {
 	match step["op"].as_str() {
 		Some("expect") => return check(doc, step),
-		Some("snapshotRoundTrip") => return round_trip(doc),
+		Some("snapshotRoundTrip") => return round_trip(engine, doc),
 		#[cfg(feature = "collab")]
-		Some("rejoin") => return rejoin(doc, step),
+		Some("rejoin") => return rejoin(engine, doc, step),
 		_ => {}
 	}
 
@@ -265,19 +343,19 @@ fn collab_op(doc: &mut Doc, operation: &str, step: &Json) -> Result<Json, Headle
 }
 
 #[cfg(feature = "collab")]
-fn rejoin(doc: &mut Doc, step: &Json) -> Result<(), String> {
+fn rejoin(engine: &CaseEngine, doc: &mut Doc, step: &Json) -> Result<(), String> {
 	let state = doc.encode_state().map_err(|error| error.to_string())?;
-	*doc = engine()
-		.from_yjs(&state, step["clientId"].as_u64().unwrap_or_default())
+	*doc = engine
+		.join_yjs(&state, step["clientId"].as_u64().unwrap_or_default())
 		.map_err(|error| error.to_string())?;
 	Ok(())
 }
 
-fn round_trip(doc: &mut Doc) -> Result<(), String> {
+fn round_trip(engine: &CaseEngine, doc: &mut Doc) -> Result<(), String> {
 	let text = doc.snapshot().to_json().to_string();
 	let json: Json = serde_json::from_str(&text).map_err(|error| error.to_string())?;
 	let snapshot = Snapshot::from_json(&json).map_err(|error| error.to_string())?;
-	*doc = engine()
+	*doc = engine
 		.restore(&snapshot)
 		.map_err(|error| error.to_string())?;
 	Ok(())

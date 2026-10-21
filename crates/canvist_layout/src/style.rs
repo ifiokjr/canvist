@@ -433,7 +433,21 @@ fn apply_binding(style: &mut TextStyle, binding: &AttrBinding, attrs: &Attrs) {
 			let size = attr_px(attrs, key).filter(|size| *size > 0.0);
 			override_with(&mut style.font.size, size);
 		}
+		AttrBinding::LineHeight(key) => {
+			override_with(&mut style.line_height, line_height(attrs, key));
+		}
 	}
+}
+
+/// A unitless line height attribute, as a number or a numeric string.
+pub(crate) fn line_height(attrs: &Attrs, key: &str) -> Option<f32> {
+	match attrs.get(key)? {
+		Value::Int(value) => Some(*value as f32),
+		Value::Float(value) => Some(*value as f32),
+		Value::String(value) => value.trim().parse().ok(),
+		_ => None,
+	}
+	.filter(|height: &f32| height.is_finite() && *height > 0.0)
 }
 
 /// A `#rrggbb` attribute as a colour.

@@ -24,7 +24,7 @@ gpu = ["dep:vello", "vello/wgpu"]
 
 [dependencies]
 canvist_canvas = { workspace = true }
-canvist_layout = { workspace = true }
+canvist_layout = { workspace = true, features = ["theme-extensions"] }
 canvist_scene = { workspace = true }
 # vello_cpu's glyph runs take glifo's synthetic bold settings.
 glifo = { version = "^0.4", default-features = false, optional = true }
@@ -37,7 +37,7 @@ vello = { version = "^0.11", default-features = false, optional = true }
 vello_cpu = { version = "^0.3", default-features = false, features = ["std", "png", "text", "u8_pipeline"], optional = true }
 
 [dev-dependencies]
-canvist_layout = { workspace = true, features = ["parley"] }
+canvist_layout = { workspace = true, features = ["parley", "theme-extensions"] }
 canvist_model = { workspace = true }
 divan = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }

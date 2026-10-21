@@ -1,0 +1,598 @@
+{
+	"description": "Formatting beyond the StarterKit: subscript, superscript, highlight, and the text style kit, through commands, keys, typing, the formats, and Yjs.",
+	"cases": [
+		{
+			"name": "toggles subscript and superscript, which exclude each other",
+			"requires": ["extensions"],
+			"extensions": ["subscript", "superscript"],
+			"input": { "format": "text", "content": "H2O x2" },
+			"steps": [
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 1 },
+					"head": { "path": [0], "offset": 2 }
+				},
+				{ "op": "run", "command": "toggleSubscript", "applied": true },
+				{ "op": "query", "query": "isSubscript", "expect": true },
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 5 },
+					"head": { "path": [0], "offset": 6 }
+				},
+				{ "op": "press", "key": "Mod-." },
+				{ "op": "query", "query": "isSuperscript", "expect": true },
+				{ "op": "run", "command": "setSubscript", "applied": true },
+				{ "op": "query", "query": "isSuperscript", "expect": false }
+			],
+			"expect": {
+				"html": "<p>H<sub>2</sub>O x<sub>2</sub></p>",
+				"markdown": "H<sub>2</sub>O x<sub>2</sub>"
+			}
+		},
+		{
+			"name": "reads scripts from Markdown's inline tags",
+			"requires": ["extensions"],
+			"extensions": ["subscript", "superscript"],
+			"input": { "format": "markdown", "content": "E=mc<sup>2</sup> and H<sub>2</sub>O" },
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "E=mc" },
+								{ "type": "text", "text": "2", "marks": [{ "type": "superscript" }] },
+								{ "type": "text", "text": " and H" },
+								{ "type": "text", "text": "2", "marks": [{ "type": "subscript" }] },
+								{ "type": "text", "text": "O" }
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "highlights text typed between double equals signs",
+			"requires": ["extensions"],
+			"extensions": ["highlight"],
+			"steps": [{ "op": "typeText", "text": "Read ==this== first" }],
+			"expect": {
+				"html": "<p>Read <mark>this</mark> first</p>",
+				"markdown": "Read ==this== first"
+			}
+		},
+		{
+			"name": "highlights in a colour, recolours, and toggles the same colour off",
+			"requires": ["extensions"],
+			"extensions": ["highlight"],
+			"input": { "format": "text", "content": "word" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setHighlight", "args": { "color": "#fef08a" }, "applied": true },
+				{ "op": "query", "query": "highlightColor", "expect": "#fef08a" },
+				{
+					"op": "expect",
+					"html": "<p><mark data-color=\"#fef08a\" style=\"background-color: #fef08a; color: inherit\">word</mark></p>"
+				},
+				{ "op": "run", "command": "toggleHighlight", "args": { "color": "#fbcfe8" }, "applied": true },
+				{ "op": "query", "query": "highlightColor", "expect": "#fbcfe8" },
+				{ "op": "run", "command": "toggleHighlight", "args": { "color": "#fbcfe8" }, "applied": true },
+				{ "op": "query", "query": "isHighlight", "expect": false },
+				{ "op": "run", "command": "setHighlight", "args": { "color": 7 }, "error": "invalidArgs" }
+			],
+			"expect": { "html": "<p>word</p>" }
+		},
+		{
+			"name": "sets and clears text style attributes independently",
+			"requires": ["extensions"],
+			"extensions": ["textStyle", "color", "fontSize"],
+			"input": { "format": "text", "content": "Warm" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setColor", "args": { "color": "#e8590c" }, "applied": true },
+				{ "op": "run", "command": "setFontSize", "args": { "fontSize": "20px" }, "applied": true },
+				{ "op": "query", "query": "color", "expect": "#e8590c" },
+				{
+					"op": "expect",
+					"html": "<p><span style=\"color: #e8590c; font-size: 20px\">Warm</span></p>"
+				},
+				{ "op": "run", "command": "unsetColor", "applied": true },
+				{ "op": "query", "query": "color", "expect": null },
+				{ "op": "query", "query": "fontSize", "expect": "20px" },
+				{ "op": "run", "command": "setColor", "error": "invalidArgs" },
+				{ "op": "run", "command": "unsetFontSize", "applied": true }
+			],
+			"expect": { "html": "<p>Warm</p>" }
+		},
+		{
+			"name": "reads text styles and highlights from pasted HTML",
+			"requires": ["extensions"],
+			"extensions": ["highlight", "textStyle", "color", "backgroundColor", "fontFamily", "fontSize", "lineHeight"],
+			"input": {
+				"format": "html",
+				"content": "<p><mark data-color=\"#ffc078\">hot</mark> <span style=\"color: #1c7ed6; font-family: Georgia; line-height: 2; background-color: transparent\">cool</span></p>"
+			},
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "hot", "marks": [{ "type": "highlight", "attrs": { "color": "#ffc078" } }] },
+								{ "type": "text", "text": " " },
+								{
+									"type": "text",
+									"text": "cool",
+									"marks": [
+										{
+											"type": "textStyle",
+											"attrs": {
+												"color": "#1c7ed6",
+												"fontFamily": "Georgia",
+												"lineHeight": "2"
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "keeps text style attributes through Yjs",
+			"requires": ["collab", "extensions"],
+			"extensions": ["highlight", "textStyle", "color"],
+			"input": { "format": "markdown", "content": "a ==b== c" },
+			"steps": [
+				{ "op": "share", "clientId": 7 },
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setColor", "args": { "color": "#2f9e44" }, "applied": true },
+				{ "op": "rejoin", "clientId": 8 }
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "a ", "marks": [{ "type": "textStyle", "attrs": { "color": "#2f9e44" } }] },
+								{
+									"type": "text",
+									"text": "b",
+									"marks": [{ "type": "textStyle", "attrs": { "color": "#2f9e44" } }, { "type": "highlight" }]
+								},
+								{ "type": "text", "text": " c", "marks": [{ "type": "textStyle", "attrs": { "color": "#2f9e44" } }] }
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "sets, unsets, and toggles scripts by key and command, and undoes them",
+			"requires": ["extensions"],
+			"extensions": ["subscript", "superscript"],
+			"input": { "format": "text", "content": "x2" },
+			"steps": [
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 1 },
+					"head": { "path": [0], "offset": 2 }
+				},
+				{ "op": "can", "command": "toggleSubscript", "expect": true },
+				{ "op": "press", "key": "Mod-," },
+				{ "op": "query", "query": "isSubscript", "expect": true },
+				{ "op": "expect", "html": "<p>x<sub>2</sub></p>" },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "html": "<p>x2</p>" },
+				{ "op": "redo", "applied": true },
+				{ "op": "expect", "html": "<p>x<sub>2</sub></p>" },
+				{ "op": "run", "command": "unsetSubscript", "applied": true },
+				{ "op": "query", "query": "isSubscript", "expect": false },
+				{ "op": "run", "command": "setSuperscript", "applied": true },
+				{ "op": "expect", "html": "<p>x<sup>2</sup></p>", "markdown": "x<sup>2</sup>" },
+				{ "op": "press", "key": "Mod-." },
+				{ "op": "query", "query": "isSuperscript", "expect": false },
+				{ "op": "run", "command": "toggleSuperscript", "args": { "level": 1 }, "error": "invalidArgs" }
+			],
+			"expect": { "html": "<p>x2</p>" }
+		},
+		{
+			"name": "toggles a theme-coloured highlight with Mod-Shift-h",
+			"requires": ["extensions"],
+			"extensions": ["highlight"],
+			"input": { "format": "text", "content": "word" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "press", "key": "Mod-Shift-h" },
+				{ "op": "query", "query": "isHighlight", "expect": true },
+				{ "op": "query", "query": "highlightColor", "expect": null },
+				{ "op": "expect", "html": "<p><mark>word</mark></p>", "markdown": "==word==" },
+				{ "op": "press", "key": "Mod-Shift-h" },
+				{ "op": "query", "query": "isHighlight", "expect": false }
+			],
+			"expect": { "html": "<p>word</p>" }
+		},
+		{
+			"name": "Backspace right after the highlight input rule undoes it",
+			"requires": ["extensions"],
+			"extensions": ["highlight"],
+			"steps": [
+				{ "op": "typeText", "text": "a ==b==" },
+				{ "op": "expect", "html": "<p>a <mark>b</mark></p>" },
+				{ "op": "press", "key": "Backspace" }
+			],
+			"expect": { "text": "a ==b==", "markdown": "a \\==b\\==" }
+		},
+		{
+			"name": "highlights and font sizes set at a caret apply to the next typed text",
+			"requires": ["extensions"],
+			"extensions": ["highlight", "textStyle", "color", "fontSize"],
+			"input": { "format": "text", "content": "a" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 1 } },
+				{ "op": "run", "command": "setHighlight", "args": { "color": "#fef08a" }, "applied": true },
+				{ "op": "run", "command": "setFontSize", "args": { "fontSize": "24px" }, "applied": true },
+				{ "op": "query", "query": "highlightColor", "expect": "#fef08a" },
+				{ "op": "query", "query": "fontSize", "expect": "24px" },
+				{ "op": "insertText", "text": "b" }
+			],
+			"expect": {
+				"html": "<p>a<span style=\"font-size: 24px\"><mark data-color=\"#fef08a\" style=\"background-color: #fef08a; color: inherit\">b</mark></span></p>"
+			}
+		},
+		{
+			"name": "pastes highlights and scripts as Markdown, HTML, and text",
+			"requires": ["extensions"],
+			"extensions": ["subscript", "superscript", "highlight"],
+			"steps": [
+				{ "op": "paste", "format": "markdown", "content": "x<sup>2</sup> ==hi==" },
+				{ "op": "expect", "html": "<p>x<sup>2</sup> <mark>hi</mark></p>" },
+				{ "op": "selectAll" },
+				{
+					"op": "paste",
+					"format": "html",
+					"content": "<p><mark data-color=\"#fbcfe8\">pink</mark> H<sub>2</sub>O</p>"
+				},
+				{
+					"op": "expect",
+					"markdown": "==pink== H<sub>2</sub>O",
+					"json": {
+						"type": "doc",
+						"content": [
+							{
+								"type": "paragraph",
+								"content": [
+									{ "type": "text", "text": "pink", "marks": [{ "type": "highlight", "attrs": { "color": "#fbcfe8" } }] },
+									{ "type": "text", "text": " H" },
+									{ "type": "text", "text": "2", "marks": [{ "type": "subscript" }] },
+									{ "type": "text", "text": "O" }
+								]
+							}
+						]
+					}
+				},
+				{ "op": "selectAll" },
+				{ "op": "paste", "format": "text", "content": "see ==this== now" }
+			],
+			"expect": { "html": "<p>see <mark>this</mark> now</p>" }
+		},
+		{
+			"name": "reads TipTap JSON with every formatting mark and writes it back",
+			"requires": ["extensions"],
+			"extensions": [
+				"subscript",
+				"superscript",
+				"highlight",
+				"textStyle",
+				"color",
+				"backgroundColor",
+				"fontFamily",
+				"fontSize",
+				"lineHeight"
+			],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "H" },
+								{ "type": "text", "text": "2", "marks": [{ "type": "subscript" }] },
+								{ "type": "text", "text": "O x" },
+								{ "type": "text", "text": "2", "marks": [{ "type": "superscript" }] },
+								{ "type": "text", "text": " " },
+								{ "type": "text", "text": "pink", "marks": [{ "type": "highlight", "attrs": { "color": "#fbcfe8" } }] },
+								{ "type": "text", "text": " " },
+								{
+									"type": "text",
+									"text": "styled",
+									"marks": [
+										{ "type": "bold" },
+										{
+											"type": "textStyle",
+											"attrs": {
+												"color": "#958df1",
+												"backgroundColor": "#fafafa",
+												"fontFamily": "Inter, sans-serif",
+												"fontSize": "18px",
+												"lineHeight": "1.5"
+											}
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"steps": [{ "op": "snapshotRoundTrip" }],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "H" },
+								{ "type": "text", "text": "2", "marks": [{ "type": "subscript" }] },
+								{ "type": "text", "text": "O x" },
+								{ "type": "text", "text": "2", "marks": [{ "type": "superscript" }] },
+								{ "type": "text", "text": " " },
+								{ "type": "text", "text": "pink", "marks": [{ "type": "highlight", "attrs": { "color": "#fbcfe8" } }] },
+								{ "type": "text", "text": " " },
+								{
+									"type": "text",
+									"text": "styled",
+									"marks": [
+										{
+											"type": "textStyle",
+											"attrs": {
+												"color": "#958df1",
+												"backgroundColor": "#fafafa",
+												"fontFamily": "Inter, sans-serif",
+												"fontSize": "18px",
+												"lineHeight": "1.5"
+											}
+										},
+										{ "type": "bold" }
+									]
+								}
+							]
+						}
+					]
+				},
+				"html": "<p>H<sub>2</sub>O x<sup>2</sup> <mark data-color=\"#fbcfe8\" style=\"background-color: #fbcfe8; color: inherit\">pink</mark> <span style=\"color: #958df1; background-color: #fafafa; font-family: Inter, sans-serif; font-size: 18px; line-height: 1.5\"><strong>styled</strong></span></p>",
+				"markdown": "H<sub>2</sub>O x<sup>2</sup> ==pink== **styled**"
+			}
+		},
+		{
+			"name": "writes adjacent highlights in different colours as one Markdown span",
+			"requires": ["extensions"],
+			"extensions": ["highlight"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "a", "marks": [{ "type": "highlight" }] },
+								{ "type": "text", "text": " b", "marks": [{ "type": "highlight", "attrs": { "color": "#fef08a" } }] },
+								{ "type": "text", "text": "c" }
+							]
+						}
+					]
+				}
+			},
+			"expect": { "markdown": "==a b==c" }
+		},
+		{
+			"name": "undoes and redoes text style attributes one command at a time",
+			"requires": ["extensions"],
+			"extensions": ["textStyle", "color", "fontFamily"],
+			"input": { "format": "text", "content": "ink" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setColor", "args": { "color": "#958df1" }, "applied": true },
+				{ "op": "run", "command": "setFontFamily", "args": { "fontFamily": "Georgia" }, "applied": true },
+				{ "op": "expect", "html": "<p><span style=\"color: #958df1; font-family: Georgia\">ink</span></p>" },
+				{ "op": "undo", "applied": true },
+				{ "op": "query", "query": "fontFamily", "expect": null },
+				{ "op": "expect", "html": "<p><span style=\"color: #958df1\">ink</span></p>" },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "html": "<p>ink</p>" },
+				{ "op": "redo", "applied": true },
+				{ "op": "redo", "applied": true },
+				{ "op": "query", "query": "fontFamily", "expect": "Georgia" }
+			],
+			"expect": { "html": "<p><span style=\"color: #958df1; font-family: Georgia\">ink</span></p>" }
+		},
+		{
+			"name": "sets and clears the background colour, font family, and line height",
+			"requires": ["extensions"],
+			"extensions": ["textStyle", "backgroundColor", "fontFamily", "lineHeight"],
+			"input": { "format": "text", "content": "Note" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setBackgroundColor", "args": { "backgroundColor": "#fafafa" }, "applied": true },
+				{ "op": "run", "command": "setFontFamily", "args": { "fontFamily": "Georgia, serif" }, "applied": true },
+				{ "op": "run", "command": "setLineHeight", "args": { "lineHeight": "1.8" }, "applied": true },
+				{ "op": "query", "query": "backgroundColor", "expect": "#fafafa" },
+				{ "op": "query", "query": "fontFamily", "expect": "Georgia, serif" },
+				{ "op": "query", "query": "lineHeight", "expect": "1.8" },
+				{
+					"op": "expect",
+					"html": "<p><span style=\"background-color: #fafafa; font-family: Georgia, serif; line-height: 1.8\">Note</span></p>",
+					"markdown": "Note"
+				},
+				{ "op": "run", "command": "unsetBackgroundColor", "applied": true },
+				{ "op": "run", "command": "unsetFontFamily", "applied": true },
+				{ "op": "query", "query": "backgroundColor", "expect": null },
+				{ "op": "expect", "html": "<p><span style=\"line-height: 1.8\">Note</span></p>" },
+				{ "op": "run", "command": "unsetLineHeight", "applied": true }
+			],
+			"expect": { "html": "<p>Note</p>" }
+		},
+		{
+			"name": "removes text styles left with no attributes",
+			"requires": ["extensions"],
+			"extensions": ["textStyle", "color"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "empty", "marks": [{ "type": "textStyle", "attrs": { "color": null } }] },
+								{ "type": "text", "text": " kept", "marks": [{ "type": "textStyle", "attrs": { "color": "red" } }] }
+							]
+						}
+					]
+				}
+			},
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "removeEmptyTextStyle", "applied": true }
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "empty" },
+								{ "type": "text", "text": " kept", "marks": [{ "type": "textStyle", "attrs": { "color": "red" } }] }
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "reads a word processor's inline font size, line height, and background",
+			"requires": ["extensions"],
+			"extensions": ["textStyle", "backgroundColor", "fontSize", "lineHeight"],
+			"input": {
+				"format": "html",
+				"content": "<p><span style=\"font-size: 18px; line-height: 1.5; background-color: #fff3bf; color: red\">big</span></p>"
+			},
+			"expect": {
+				"html": "<p><span style=\"background-color: #fff3bf; font-size: 18px; line-height: 1.5\">big</span></p>"
+			}
+		},
+		{
+			"name": "rejects bad style arguments with invalidArgs and changes nothing",
+			"requires": ["extensions"],
+			"extensions": ["highlight", "textStyle", "color", "backgroundColor", "fontFamily", "fontSize", "lineHeight"],
+			"input": { "format": "text", "content": "styled" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setFontSize", "args": { "fontSize": 18 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setLineHeight", "error": "invalidArgs" },
+				{ "op": "run", "command": "setBackgroundColor", "args": { "backgroundColor": null }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setFontFamily", "args": { "fontFamily": ["Georgia"] }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setColor", "args": { "color": "red", "shade": 1 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "unsetColor", "args": { "color": "red" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "toggleHighlight", "args": { "color": false }, "error": "invalidArgs" },
+				{ "op": "can", "command": "setFontSize", "args": { "fontSize": 18 }, "expect": false, "error": "invalidArgs" }
+			],
+			"expect": { "html": "<p>styled</p>" }
+		},
+		{
+			"name": "commands and queries of unregistered extensions are unknown names",
+			"requires": ["extensions"],
+			"extensions": ["highlight"],
+			"input": { "format": "text", "content": "x" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setColor", "args": { "color": "red" }, "error": "unknownName" },
+				{ "op": "run", "command": "toggleSubscript", "error": "unknownName" },
+				{ "op": "query", "query": "isSuperscript", "expect": null, "error": "unknownName" },
+				{ "op": "query", "query": "fontSize", "expect": null, "error": "unknownName" }
+			],
+			"expect": { "html": "<p>x</p>" }
+		},
+		{
+			"name": "a style attribute without the textStyle mark fails with an editor error",
+			"requires": ["extensions"],
+			"extensions": ["color"],
+			"input": { "format": "text", "content": "x" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setColor", "args": { "color": "red" }, "error": "editor" },
+				{ "op": "query", "query": "color", "expect": null }
+			],
+			"expect": { "html": "<p>x</p>" }
+		},
+		{
+			"name": "JSON with a formatting mark the engine lacks fails with a schema error",
+			"requires": ["extensions"],
+			"extensions": ["subscript"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [{ "type": "text", "text": "x", "marks": [{ "type": "highlight" }] }]
+						}
+					]
+				},
+				"error": "schema"
+			}
+		},
+		{
+			"name": "keeps scripts and highlight colours through Yjs and snapshots",
+			"requires": ["collab", "extensions"],
+			"extensions": ["subscript", "superscript", "highlight"],
+			"input": { "format": "markdown", "content": "H<sub>2</sub>O x<sup>2</sup>" },
+			"steps": [
+				{ "op": "share", "clientId": 7 },
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setHighlight", "args": { "color": "#fbcfe8" }, "applied": true },
+				{ "op": "takeUpdates", "count": 1 },
+				{ "op": "rejoin", "clientId": 8 },
+				{ "op": "validate", "rejectedBlocks": 0, "waiting": false },
+				{ "op": "snapshotRoundTrip" }
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "H", "marks": [{ "type": "highlight", "attrs": { "color": "#fbcfe8" } }] },
+								{
+									"type": "text",
+									"text": "2",
+									"marks": [{ "type": "subscript" }, { "type": "highlight", "attrs": { "color": "#fbcfe8" } }]
+								},
+								{ "type": "text", "text": "O x", "marks": [{ "type": "highlight", "attrs": { "color": "#fbcfe8" } }] },
+								{
+									"type": "text",
+									"text": "2",
+									"marks": [{ "type": "superscript" }, { "type": "highlight", "attrs": { "color": "#fbcfe8" } }]
+								}
+							]
+						}
+					]
+				},
+				"markdown": "==H<sub>2</sub>O x<sup>2</sup>=="
+			}
+		}
+	]
+}

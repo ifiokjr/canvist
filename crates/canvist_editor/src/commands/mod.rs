@@ -52,6 +52,7 @@ pub use marks::marks_at;
 pub use marks::set_mark;
 pub use marks::toggle_mark;
 pub use marks::unset_mark;
+pub use marks::update_mark_attrs;
 pub use paste::replace_selection;
 pub use select::select_all;
 pub use select::select_blocks;

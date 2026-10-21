@@ -2,6 +2,7 @@
 
 use std::ops::Range;
 
+use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::Document;
 use canvist_model::Mark;
@@ -140,6 +141,67 @@ pub fn unset_mark(state: &mut EditorState, kind: MarkTypeId) -> CommandResult {
 	state.change(EditKind::Formatting, |tr| {
 		for (block, range) in ranges {
 			tr.remove_mark(block, range, kind)?;
+		}
+
+		Ok(true)
+	})
+}
+
+/// A text block, the offset its selected range starts at, and the
+/// `(len, marks)` runs of that range.
+type BlockRuns = (BlockId, u32, Vec<(u32, MarkSet)>);
+
+/// Rewrite the attributes of mark `kind` across the selection, run by run,
+/// so a selection spanning differently styled text keeps each run's other
+/// attributes. `update` receives the run's current attributes (`None` for a
+/// run without the mark) and returns the new ones, or `None` to remove the
+/// mark. At a caret, it rewrites the stored marks instead.
+///
+/// TipTap's `setColor` and `unsetFontSize` work this way: they change one
+/// attribute of the `textStyle` mark and leave the others alone.
+pub fn update_mark_attrs(
+	state: &mut EditorState,
+	kind: MarkTypeId,
+	update: &dyn Fn(Option<&Attrs>) -> Option<Attrs>,
+) -> CommandResult {
+	let ranges = non_empty_ranges(state);
+	let schema = state.schema().clone();
+	let rewrite = |marks: &MarkSet| {
+		let current = marks.get(kind).map(|mark| &mark.attrs);
+
+		match update(current) {
+			Some(attrs) => marks.with(&Mark::with_attrs(kind, attrs), &schema),
+			None => marks.without(kind),
+		}
+	};
+
+	if ranges.is_empty() {
+		let marks = rewrite(&active_marks(state));
+
+		return store_marks(state, marks);
+	}
+
+	let runs: Vec<BlockRuns> = ranges
+		.iter()
+		.filter_map(|(block, range)| {
+			let text = state.doc().inline(*block)?;
+			Some((*block, range.start, text.mark_runs(range.clone()).ok()?))
+		})
+		.collect();
+
+	state.change(EditKind::Formatting, |tr| {
+		for (block, start, runs) in runs {
+			let mut offset = start;
+
+			for (len, marks) in runs {
+				let range = offset..offset + len;
+				offset += len;
+
+				match rewrite(&marks).get(kind) {
+					Some(mark) => tr.add_mark(block, range, mark.clone())?,
+					None => tr.remove_mark(block, range, kind)?,
+				}
+			}
 		}
 
 		Ok(true)

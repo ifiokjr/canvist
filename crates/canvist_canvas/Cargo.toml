@@ -21,7 +21,7 @@ editor = ["dep:canvist_editor", "canvist_layout/editor"]
 
 [dependencies]
 canvist_editor = { workspace = true, optional = true }
-canvist_layout = { workspace = true }
+canvist_layout = { workspace = true, features = ["theme-extensions"] }
 canvist_model = { workspace = true }
 canvist_scene = { workspace = true }
 i_overlay = { version = "^9.1", default-features = false }

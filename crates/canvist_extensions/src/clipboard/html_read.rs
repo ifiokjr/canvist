@@ -326,6 +326,8 @@ fn inline_role(name: &str, attrs: &[(String, String)]) -> Role {
 		"u" => Some("underline"),
 		"s" | "strike" | "del" => Some("strike"),
 		"code" => Some("code"),
+		"sub" if cfg!(feature = "subscript") => Some("subscript"),
+		"sup" if cfg!(feature = "superscript") => Some("superscript"),
 		_ => None,
 	};
 
@@ -341,11 +343,55 @@ fn inline_role(name: &str, attrs: &[(String, String)]) -> Role {
 		marks.push(("link", Attrs::new().with("href", href)));
 	}
 
+	let css = attr(attrs, "style").unwrap_or_default();
+
+	if cfg!(feature = "highlight") && name == "mark" {
+		let color = attr(attrs, "data-color").or_else(|| css_value(css, "background-color"));
+		let attrs = color.map_or_else(Attrs::new, |color| Attrs::new().with("color", color));
+		marks.push(("highlight", attrs));
+	}
+
+	let styles = if cfg!(feature = "text-style") {
+		text_style_attrs(css)
+	} else {
+		Attrs::new()
+	};
+
+	if cfg!(feature = "text-style") && !styles.is_empty() && name != "mark" {
+		marks.push(("textStyle", styles));
+	}
+
 	if marks.is_empty() && tagged.is_none() && name != "span" && name != "a" {
 		return Role::Inline;
 	}
 
 	Role::Marks(marks)
+}
+
+/// The value of CSS `property` in a `style` attribute.
+fn css_value<'a>(style: &'a str, property: &str) -> Option<&'a str> {
+	style.split(';').find_map(|declaration| {
+		let (name, value) = declaration.split_once(':')?;
+		let value = value.trim();
+		(name.trim().eq_ignore_ascii_case(property) && !value.is_empty()).then_some(value)
+	})
+}
+
+/// `textStyle` attributes from a `style` attribute: colour, background,
+/// font family, size, and line height. A transparent background is no
+/// background.
+fn text_style_attrs(style: &str) -> Attrs {
+	let mut attrs = Attrs::new();
+
+	for (attr, property) in super::html_write::TEXT_STYLE_PROPERTIES {
+		let value = css_value(style, property).filter(|value| *value != "transparent");
+
+		if let Some(value) = value {
+			attrs.set(attr, value);
+		}
+	}
+
+	attrs
 }
 
 /// Formatting carried by inline `style` attributes, which word processors
@@ -518,7 +564,13 @@ impl<'s> Reader<'s> {
 
 		let marks = marks
 			.into_iter()
-			.filter_map(|(name, mark_attrs)| self.build.mark(name, mark_attrs))
+			.filter_map(|(name, mark_attrs)| {
+				if name == "textStyle" {
+					self.build.style_mark(name, &mark_attrs)
+				} else {
+					self.build.mark(name, &mark_attrs)
+				}
+			})
 			.collect();
 		self.marks.push((tag, marks));
 	}

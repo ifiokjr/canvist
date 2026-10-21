@@ -29,6 +29,7 @@
 # Extensions
 
 - [Extension catalogue](./extensions/readme.md)
+- [Parity with TipTap and Remirror](./extensions/parity.md)
 - [Build your own editor](./extensions/build-your-own-editor.md)
 
 # Guides

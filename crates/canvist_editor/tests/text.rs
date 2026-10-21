@@ -175,6 +175,41 @@ fn code_excludes_bold_and_set_mark_replaces_attributes() {
 }
 
 #[test]
+fn updating_mark_attributes_rewrites_each_run() {
+	let mut state = state("paragraph: ^{link href=a:ab}cd|");
+	let link = mark(&state, "link").kind;
+	let relink = |current: Option<&Attrs>| current.map(|attrs| attrs.clone().with("href", "b"));
+
+	commands::update_mark_attrs(&mut state, link, &relink).expect("relink");
+	assert_eq!(
+		render(&state),
+		"paragraph: ^{link href=b:ab}cd|",
+		"unlinked runs stay unlinked"
+	);
+
+	let everywhere = |_: Option<&Attrs>| Some(Attrs::new().with("href", "x"));
+	commands::update_mark_attrs(&mut state, link, &everywhere).expect("link all");
+	assert_eq!(render(&state), "paragraph: ^{link href=x:abcd}|");
+
+	commands::update_mark_attrs(&mut state, link, &|_| None).expect("unlink");
+	assert_eq!(render(&state), "paragraph: ^abcd|");
+}
+
+#[test]
+fn updating_mark_attributes_at_a_caret_changes_the_stored_marks() {
+	let mut state = state("paragraph: ab|");
+	let link = mark(&state, "link").kind;
+
+	commands::update_mark_attrs(&mut state, link, &|_| Some(Attrs::new().with("href", "x")))
+		.expect("store");
+	let stored = state.stored_marks().expect("stored marks");
+	assert_eq!(
+		stored.get(link).and_then(|mark| mark.attrs.get("href")),
+		Some(&canvist_model::Value::from("x"))
+	);
+}
+
+#[test]
 fn mark_commands_do_nothing_on_atomic_selections() {
 	let mut state = state("horizontalRule @\nparagraph: x");
 	let bold = mark(&state, "bold");

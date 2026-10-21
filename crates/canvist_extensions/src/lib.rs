@@ -34,6 +34,24 @@
 //! | [`History`]        | `history`         | `Mod-z`, `Mod-Shift-z`, `Mod-y`         |
 //! | [`TrailingNode`]   | `trailing-node`   | A trailing paragraph                    |
 //!
+//! Beyond the StarterKit, each behind its own feature (`full` enables
+//! them all):
+//!
+//! | Extension           | Feature            | Adds                                     |
+//! | ------------------- | ------------------ | ---------------------------------------- |
+//! | [`Subscript`]       | `subscript`        | `subscript`, `Mod-,`                     |
+//! | [`Superscript`]     | `superscript`      | `superscript`, `Mod-.`                   |
+//! | [`Highlight`]       | `highlight`        | `highlight`, `==text==`, `Mod-Shift-h`   |
+//! | [`TextStyle`]       | `text-style`       | `textStyle`, the mark styles live on     |
+//! | [`Color`]           | `color`            | `textStyle.color`                        |
+//! | [`BackgroundColor`] | `background-color` | `textStyle.backgroundColor`              |
+//! | [`FontFamily`]      | `font-family`      | `textStyle.fontFamily`                   |
+//! | [`FontSize`]        | `font-size`        | `textStyle.fontSize`                     |
+//! | [`LineHeight`]      | `line-height`      | `textStyle.lineHeight`                   |
+//!
+//! `docs/src/extensions/parity.md` compares the whole set with Remirror and
+//! TipTap.
+//!
 //! # Example
 //!
 //! ```
@@ -72,6 +90,8 @@ mod hard_break;
 
 #[cfg(feature = "heading")]
 mod heading;
+#[cfg(feature = "highlight")]
+mod highlight;
 #[cfg(feature = "history")]
 mod history;
 #[cfg(feature = "horizontal-rule")]
@@ -88,7 +108,9 @@ mod lists;
 	feature = "italic",
 	feature = "underline",
 	feature = "strike",
-	feature = "code"
+	feature = "code",
+	feature = "subscript",
+	feature = "superscript"
 ))]
 mod marks;
 #[cfg(feature = "ordered-list")]
@@ -99,6 +121,8 @@ mod resolve;
 mod starter_kit;
 #[cfg(feature = "task-list")]
 mod task_list;
+#[cfg(feature = "text-style")]
+mod text_style;
 #[cfg(feature = "trailing-node")]
 mod trailing_node;
 
@@ -124,6 +148,10 @@ pub use heading::Heading;
 pub use heading::HeadingHandle;
 #[cfg(feature = "heading")]
 pub use heading::HeadingLevel;
+#[cfg(feature = "highlight")]
+pub use highlight::Highlight;
+#[cfg(feature = "highlight")]
+pub use highlight::HighlightHandle;
 #[cfg(feature = "history")]
 pub use history::History;
 #[cfg(feature = "history")]
@@ -151,11 +179,17 @@ pub use marks::Italic;
 	feature = "italic",
 	feature = "underline",
 	feature = "strike",
-	feature = "code"
+	feature = "code",
+	feature = "subscript",
+	feature = "superscript"
 ))]
 pub use marks::MarkHandle;
 #[cfg(feature = "strike")]
 pub use marks::Strike;
+#[cfg(feature = "subscript")]
+pub use marks::Subscript;
+#[cfg(feature = "superscript")]
+pub use marks::Superscript;
 #[cfg(feature = "underline")]
 pub use marks::Underline;
 #[cfg(feature = "ordered-list")]
@@ -171,5 +205,21 @@ pub use starter_kit::StarterKitHandles;
 pub use task_list::TaskList;
 #[cfg(feature = "task-list")]
 pub use task_list::TaskListHandle;
+#[cfg(feature = "background-color")]
+pub use text_style::BackgroundColor;
+#[cfg(feature = "color")]
+pub use text_style::Color;
+#[cfg(feature = "font-family")]
+pub use text_style::FontFamily;
+#[cfg(feature = "font-size")]
+pub use text_style::FontSize;
+#[cfg(feature = "line-height")]
+pub use text_style::LineHeight;
+#[cfg(feature = "text-style")]
+pub use text_style::StyleAttrHandle;
+#[cfg(feature = "text-style")]
+pub use text_style::TextStyle;
+#[cfg(feature = "text-style")]
+pub use text_style::TextStyleHandle;
 #[cfg(feature = "trailing-node")]
 pub use trailing_node::TrailingNode;

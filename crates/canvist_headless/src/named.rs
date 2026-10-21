@@ -1,9 +1,9 @@
-//! StarterKit extensions registered by name, for bindings.
+//! Extensions registered by name, for bindings.
 //!
 //! Schema items are compiled in (architecture Decision 7), so a binding
-//! carries every StarterKit extension and its host language chooses which
-//! ones an engine registers. The names are the extension names in the
-//! metadata.
+//! carries every StarterKit extension, plus every other extension with the
+//! `full` feature, and its host language chooses which ones an engine
+//! registers. The names are the extension names in the metadata.
 
 use canvist_editor::BaseKeymap;
 use canvist_editor::EditorBuilder;
@@ -36,8 +36,8 @@ use crate::HeadlessError;
 /// and Backspace undoing an input rule.
 const ALWAYS: [&str; 4] = ["doc", "paragraph", "baseKeymap", "undoInputRule"];
 
-/// Extensions an engine may register.
-const OPTIONAL: [&str; 17] = [
+/// StarterKit extensions an engine may register.
+const STARTER_KIT: [&str; 17] = [
 	"heading",
 	"blockquote",
 	"codeBlock",
@@ -57,9 +57,35 @@ const OPTIONAL: [&str; 17] = [
 	"trailingNode",
 ];
 
+/// Extensions beyond the StarterKit, compiled with the `full` feature.
+#[cfg(feature = "full")]
+const EXTRA: [&str; 9] = [
+	"subscript",
+	"superscript",
+	"highlight",
+	"textStyle",
+	"color",
+	"backgroundColor",
+	"fontFamily",
+	"fontSize",
+	"lineHeight",
+];
+
+#[cfg(not(feature = "full"))]
+const EXTRA: [&str; 0] = [];
+
 /// Marks inline code excludes when they are registered, as the StarterKit
 /// does.
-const EXCLUDED_BY_CODE: [&str; 5] = ["bold", "italic", "underline", "strike", "link"];
+const EXCLUDED_BY_CODE: [&str; 8] = [
+	"bold",
+	"italic",
+	"underline",
+	"strike",
+	"link",
+	"subscript",
+	"superscript",
+	"highlight",
+];
 
 /// A validated set of extension names.
 #[derive(Clone, Debug)]
@@ -70,19 +96,24 @@ struct Extensions {
 impl Extensions {
 	/// Check `names` against the extensions this build has.
 	fn parse(names: &[String]) -> Result<Self, EditorError> {
+		for name in names {
+			let name = name.as_str();
+
+			if !(ALWAYS.contains(&name) || STARTER_KIT.contains(&name) || EXTRA.contains(&name)) {
+				return Err(EditorError::UnknownName(name.to_owned()));
+			}
+		}
+
+		// Register in one fixed order, whatever order the names came in.
+		// Marks nest and serialize in registration order, so without this
+		// the same names build different schemas: Dart's alphabetical
+		// `Extensions.all` would write `<mark><sub>` where TypeScript writes
+		// `<sub><mark>`. Taking the known names in order, rather than
+		// sorting the given ones, keeps a sort out of every binary.
 		let mut found = Vec::new();
 
-		for name in names {
-			if ALWAYS.contains(&name.as_str()) {
-				continue;
-			}
-
-			let known = OPTIONAL
-				.iter()
-				.find(|known| **known == name)
-				.ok_or_else(|| EditorError::UnknownName(name.clone()))?;
-
-			if !found.contains(known) {
+		for known in STARTER_KIT.iter().chain(EXTRA.iter()) {
+			if names.iter().any(|name| name == known) {
 				found.push(*known);
 			}
 		}
@@ -169,9 +200,59 @@ impl Extensions {
 					.collect();
 				builder.add(Code { excludes });
 			}
-			_ => unreachable!("`Extensions::parse` admits only known names"),
+			_ => register_extra(builder, name),
 		}
 	}
+}
+
+/// Register one of the extensions beyond the StarterKit.
+#[cfg(feature = "full")]
+fn register_extra(builder: &mut EditorBuilder, name: &str) {
+	use canvist_extensions::BackgroundColor;
+	use canvist_extensions::Color;
+	use canvist_extensions::FontFamily;
+	use canvist_extensions::FontSize;
+	use canvist_extensions::Highlight;
+	use canvist_extensions::LineHeight;
+	use canvist_extensions::Subscript;
+	use canvist_extensions::Superscript;
+	use canvist_extensions::TextStyle;
+
+	match name {
+		"subscript" => {
+			builder.add(Subscript);
+		}
+		"superscript" => {
+			builder.add(Superscript);
+		}
+		"highlight" => {
+			builder.add(Highlight::default());
+		}
+		"textStyle" => {
+			builder.add(TextStyle);
+		}
+		"color" => {
+			builder.add(Color);
+		}
+		"backgroundColor" => {
+			builder.add(BackgroundColor);
+		}
+		"fontFamily" => {
+			builder.add(FontFamily);
+		}
+		"fontSize" => {
+			builder.add(FontSize);
+		}
+		"lineHeight" => {
+			builder.add(LineHeight);
+		}
+		_ => unreachable!("`Extensions::parse` admits only known names"),
+	}
+}
+
+#[cfg(not(feature = "full"))]
+fn register_extra(_builder: &mut EditorBuilder, _name: &str) {
+	unreachable!("`Extensions::parse` admits only known names");
 }
 
 impl Engine {

@@ -10,6 +10,7 @@ use canvist_model::Embed;
 use canvist_model::InlineText;
 use canvist_model::Mark;
 use canvist_model::MarkSet;
+use canvist_model::MarkTypeId;
 use canvist_model::Schema;
 use canvist_model::TreeContent;
 
@@ -86,9 +87,32 @@ impl<'s> Builder<'s> {
 		leaf.then(|| BlockTree::leaf(self.id(), kind))
 	}
 
-	/// A mark of type `name`, if the schema has one.
-	pub(super) fn mark(&self, name: &str, attrs: Attrs) -> Option<Mark> {
-		Some(Mark::with_attrs(self.schema.mark_type(name)?, attrs))
+	/// A mark of type `name`, if the schema has one, keeping only the
+	/// attributes the type declares. Unset attributes stay absent, as they
+	/// are on marks made by commands and typing, so equal marks compare
+	/// equal.
+	pub(super) fn mark(&self, name: &str, attrs: &Attrs) -> Option<Mark> {
+		let kind = self.schema.mark_type(name)?;
+		Some(Mark::with_attrs(kind, self.declared(kind, attrs)))
+	}
+
+	/// A mark that only means its attributes, such as `textStyle`: `None`
+	/// unless at least one attribute is one the type declares, so pasting a
+	/// styled `<span>` into an editor without colours adds nothing.
+	pub(super) fn style_mark(&self, name: &str, attrs: &Attrs) -> Option<Mark> {
+		let kind = self.schema.mark_type(name)?;
+		let kept = self.declared(kind, attrs);
+		(!kept.is_empty()).then(|| Mark::with_attrs(kind, kept))
+	}
+
+	/// The attributes in `attrs` that `kind` declares.
+	fn declared(&self, kind: MarkTypeId, attrs: &Attrs) -> Attrs {
+		let declared = &self.schema.mark(kind).attrs;
+		attrs
+			.iter()
+			.filter(|(key, _)| declared.get(key).is_some())
+			.map(|(key, value)| (key, value.clone()))
+			.collect()
 	}
 
 	/// A hard break carrying `marks`, if the schema has one.

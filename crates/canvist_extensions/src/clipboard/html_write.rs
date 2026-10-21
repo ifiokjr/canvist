@@ -13,7 +13,8 @@ use super::tree::HARD_BREAK;
 
 /// Serialize a slice to HTML: `<p>`, `<h1>`–`<h6>`, `<blockquote>`,
 /// `<pre><code>`, `<ul>`, `<ol>`, `<li>`, `<hr>`, and inline `<strong>`,
-/// `<em>`, `<u>`, `<s>`, `<code>`, `<a>`, and `<br>`. Task lists use
+/// `<em>`, `<u>`, `<s>`, `<code>`, `<a>`, `<sub>`, `<sup>`, `<mark>`,
+/// `<span style>` for text styles, and `<br>`. Task lists use
 /// TipTap's `data-type` and `data-checked` attributes. Unknown blocks are
 /// written as `<div data-type>` around their content.
 #[must_use]
@@ -135,8 +136,53 @@ fn mark_tags(schema: &Schema, mark: &Mark) -> (String, &'static str) {
 				.unwrap_or_default();
 			(format!("<a href=\"{}\">", escape(href)), "</a>")
 		}
+		"subscript" => ("<sub>".to_owned(), "</sub>"),
+		"superscript" => ("<sup>".to_owned(), "</sup>"),
+		"highlight" => (highlight_tag(&mark.attrs), "</mark>"),
+		"textStyle" => (text_style_tag(&mark.attrs), "</span>"),
 		other => (format!("<span data-mark=\"{}\">", escape(other)), "</span>"),
 	}
+}
+
+/// `<mark>`, with TipTap's `data-color` and inline background when the
+/// highlight has a colour.
+fn highlight_tag(attrs: &Attrs) -> String {
+	match attrs.get("color").and_then(Value::as_str) {
+		Some(color) => {
+			let color = escape(color);
+			format!(
+				"<mark data-color=\"{color}\" style=\"background-color: {color}; color: inherit\">"
+			)
+		}
+		None => "<mark>".to_owned(),
+	}
+}
+
+/// The CSS properties of `textStyle` attributes, in the order TipTap writes
+/// them.
+pub(super) const TEXT_STYLE_PROPERTIES: [(&str, &str); 5] = [
+	("color", "color"),
+	("backgroundColor", "background-color"),
+	("fontFamily", "font-family"),
+	("fontSize", "font-size"),
+	("lineHeight", "line-height"),
+];
+
+/// `<span>` with a `style` declaration per set `textStyle` attribute.
+fn text_style_tag(attrs: &Attrs) -> String {
+	let declarations: Vec<String> = TEXT_STYLE_PROPERTIES
+		.iter()
+		.filter_map(|(attr, property)| {
+			let value = attrs.get(attr)?.as_str()?;
+			Some(format!("{property}: {value}"))
+		})
+		.collect();
+
+	if declarations.is_empty() {
+		return "<span>".to_owned();
+	}
+
+	format!("<span style=\"{}\">", escape(&declarations.join("; ")))
 }
 
 fn write_inline(schema: &Schema, text: &InlineText, html: &mut String) {
