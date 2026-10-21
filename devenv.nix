@@ -307,6 +307,7 @@ in
         monostyle check packages/canvist-vue --fail-under 90
         monostyle check packages/canvist-canvas --fail-under 90
         monostyle check platforms/dart --fail-under 90
+        monostyle check platforms/flutter --fail-under 90
         monostyle check services/cloud --fail-under 90
         monostyle check tools/footage --fail-under 90
         monostyle check tools/bench --fail-under 90

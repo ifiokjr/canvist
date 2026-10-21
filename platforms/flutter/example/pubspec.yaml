@@ -18,6 +18,22 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+  patrol: ^4.10.0
 
 flutter:
   uses-material-design: true
+  # The font server rendering measures with, so tests can compare the editor
+  # with it pixel for pixel. SIL Open Font License: see the .txt beside it.
+  fonts:
+    - family: Atkinson Hyperlegible
+      fonts:
+        - asset: assets/fonts/AtkinsonHyperlegible-Regular.ttf
+
+# Patrol runs `patrol_test/` on devices with native automation: the real
+# keyboard, system dialogs, and screenshots of what the device draws.
+patrol:
+  app_name: canvist
+  android:
+    package_name: io.github.ifiokjr.canvist.canvist_flutter_example
+  ios:
+    bundle_id: io.github.ifiokjr.canvist.canvistFlutterExample

@@ -83,6 +83,64 @@ jobs:
           test "$(curl --silent -X POST 'localhost:8799/convert?from=markdown&to=html' -d '# Hi')" = '<h1>Hi</h1>'
           kill %1
 
+  flutter:
+    # The editor widget: analysis, widget tests, and golden tests against
+    # server rendering, on the host. Integration tests on devices run in
+    # `native.yml`.
+    name: flutter (${{ matrix.os }})
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    env:
+      CANVIST_PERF_SLACK: "3"
+    defaults:
+      run:
+        working-directory: platforms/flutter
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain
+        working-directory: platforms/dart/rust
+        run: rustup toolchain install
+
+      - name: cache the build hook's cargo output
+        uses: actions/cache@v4
+        with:
+          path: platforms/flutter/.dart_tool/hooks_runner
+          key: flutter-hooks-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'platforms/dart/rust/**') }}
+          restore-keys: flutter-hooks-${{ runner.os }}-
+
+      - name: setup flutter
+        uses: kuhnroyal/flutter-fvm-config-action/setup@v3
+        with:
+          path: platforms/flutter/.fvmrc
+
+      - name: install dependencies
+        run: flutter pub get
+
+      - name: format
+        run: dart format --output=none --set-exit-if-changed lib test example/lib example/integration_test example/patrol_test
+
+      - name: analyze
+        run: flutter analyze --fatal-infos
+
+      - name: widget and golden tests
+        run: flutter test --reporter expanded
+
+      - name: keep golden mismatches
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssr-golden-${{ matrix.os }}
+          path: platforms/flutter/build/ssr_golden
+          if-no-files-found: ignore
+
   publish:
     # Both packages as pub.dev would receive them. `pub publish --dry-run`
     # validates each archive, and the `canvist` archive is then built and

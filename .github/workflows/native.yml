@@ -37,7 +37,7 @@ concurrency:
 jobs:
   apple:
     name: ios (simulator)
-    timeout-minutes: 60
+    timeout-minutes: 90
     runs-on: macos-latest
     steps:
       - name: checkout repository
@@ -55,6 +55,12 @@ jobs:
         uses: kuhnroyal/flutter-fvm-config-action/setup@v3
         with:
           path: platforms/flutter/.fvmrc
+
+      # `platforms/flutter/test.sh` runs the Patrol suites with Patrol's CLI.
+      - name: install patrol cli
+        run: |
+          dart pub global activate patrol_cli 4.8.0
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
 
       # Per-step timeouts make a hung simulator or emulator fail fast with logs
       # instead of running into the job timeout.
@@ -75,10 +81,12 @@ jobs:
           node tools/bench/size.ts compare --head "$RUNNER_TEMP/sizes.json" --title "native size: iOS"
 
       - name: test flutter on ios
-        timeout-minutes: 20
+        timeout-minutes: 45
         run: platforms/flutter/test.sh
         env:
           CANVIST_FLUTTER_PLATFORMS: ios
+          # Debug builds on a shared runner's simulator.
+          CANVIST_PERF_SLACK: "3"
 
       - name: upload xcresult
         if: failure()
@@ -89,7 +97,7 @@ jobs:
 
   android:
     name: android (emulator)
-    timeout-minutes: 60
+    timeout-minutes: 90
     # Pinned: `ubuntu-latest` moves to 26.04 from 2026-10-19 and the emulator
     # setup (KVM, x86_64 image) is only verified on 24.04.
     runs-on: ubuntu-24.04
@@ -127,6 +135,12 @@ jobs:
         with:
           path: platforms/flutter/.fvmrc
 
+      # `platforms/flutter/test.sh` runs the Patrol suites with Patrol's CLI.
+      - name: install patrol cli
+        run: |
+          dart pub global activate patrol_cli 4.8.0
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
       - name: check flutter_rust_bridge bindings are up to date
         timeout-minutes: 15
         working-directory: platforms/dart
@@ -150,7 +164,7 @@ jobs:
           node tools/bench/size.ts compare --head "$RUNNER_TEMP/sizes.json" --title "native size: Android"
 
       - name: test on emulator
-        timeout-minutes: 35
+        timeout-minutes: 60
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -158,4 +172,6 @@ jobs:
           target: default
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot-save -gpu swiftshader_indirect
-          script: platforms/android/test.sh && CANVIST_FLUTTER_PLATFORMS=android platforms/flutter/test.sh
+          # A software-rendered emulator running a debug build: the keystroke
+          # budget gets generous slack.
+          script: platforms/android/test.sh && CANVIST_FLUTTER_PLATFORMS=android CANVIST_PERF_SLACK=6 platforms/flutter/test.sh

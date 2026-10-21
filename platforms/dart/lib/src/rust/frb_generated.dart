@@ -1565,7 +1565,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_box_autoadd_view_rect,
-          decodeErrorData: null,
+          decodeErrorData: sse_decode_canvist_failure,
         ),
         constMeta: kCrateApiViewCanvistViewCaretRectConstMeta,
         argValues: [that],
@@ -2328,7 +2328,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_opt_box_autoadd_view_selection_ends,
-          decodeErrorData: null,
+          decodeErrorData: sse_decode_canvist_failure,
         ),
         constMeta: kCrateApiViewCanvistViewSelectionEndsConstMeta,
         argValues: [that],
@@ -4586,8 +4586,9 @@ class CanvistViewImpl extends RustOpaque implements CanvistView {
   bool cancelComposition() =>
       RustLib.instance.api.crateApiViewCanvistViewCancelComposition(that: this);
 
-  /// The caret's rectangle, or `None` when the selection is not a caret
-  /// or the caret's block is not laid out.
+  /// The caret's rectangle, or `None` when the selection is not a caret.
+  /// Lays out the caret's block if it never was, so a host can scroll to a
+  /// caret far outside the viewport.
   ViewRect? caretRect() =>
       RustLib.instance.api.crateApiViewCanvistViewCaretRect(that: this);
 
@@ -4746,8 +4747,8 @@ class CanvistViewImpl extends RustOpaque implements CanvistView {
   ViewRect? selectionBounds() =>
       RustLib.instance.api.crateApiViewCanvistViewSelectionBounds(that: this);
 
-  /// Where the selection's ends are, or `None` for a block selection or
-  /// ends outside the laid-out area.
+  /// Where the selection's ends are, or `None` for a block selection.
+  /// Lays out the blocks they are in, as [`CanvistView::caret_rect`] does.
   ViewSelectionEnds? selectionEnds() =>
       RustLib.instance.api.crateApiViewCanvistViewSelectionEnds(that: this);
 

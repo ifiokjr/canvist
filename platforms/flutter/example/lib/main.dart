@@ -1,118 +1,168 @@
 import 'package:canvist_flutter/canvist_flutter.dart';
 import 'package:flutter/material.dart';
 
+import 'keys.dart';
+import 'peers.dart';
+import 'toolbar.dart';
+
+/// The document the app opens with.
+const welcome = '''# Welcome to canvist
+
+This editor is painted from a **Rust** layout: every line you see was broken by canvist's core and measured by Flutter's own text engine.
+
+## Try it
+
+- Select text and make it **bold**, *italic*, or `code`
+- Type `## ` at the start of a line for a heading
+- Start a line with `- [ ] ` for a task
+
+Your list:
+
+- [x] Lay out text in Rust
+- [ ] Write something of your own
+
+> Turn on *Two peers* to edit one document from two places at once.''';
+
 Future<void> main() async {
-  final (:engine, :kit) = await Engine.starterKit();
+  WidgetsFlutterBinding.ensureInitialized();
+  final (:engine, :kit) = await Engine.starterKit(
+    platform: CanvistController.keyPlatform,
+  );
   runApp(CanvistExampleApp(engine: engine, kit: kit));
 }
 
 class CanvistExampleApp extends StatelessWidget {
-  const CanvistExampleApp({super.key, required this.engine, required this.kit});
+  const CanvistExampleApp({
+    super.key,
+    required this.engine,
+    required this.kit,
+    this.markdown = welcome,
+  });
 
   final Engine engine;
   final StarterKitHandles kit;
 
+  /// The document to open.
+  final String markdown;
+
   @override
   Widget build(BuildContext context) {
+    const seed = Color(0xFF3B2CF5);
+
     return MaterialApp(
-      title: 'Canvist',
-      theme: ThemeData(colorSchemeSeed: Colors.indigo),
-      home: EditorScreen(engine: engine, kit: kit),
+      title: 'canvist',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(colorSchemeSeed: seed),
+      darkTheme: ThemeData(colorSchemeSeed: seed, brightness: Brightness.dark),
+      home: EditorScreen(engine: engine, kit: kit, markdown: markdown),
     );
   }
 }
 
-/// Appends text to a Rust-owned canvist document and shows it as Markdown.
+/// One document in an editor with a toolbar, or shared by two peers.
 class EditorScreen extends StatefulWidget {
-  const EditorScreen({super.key, required this.engine, required this.kit});
+  const EditorScreen({
+    super.key,
+    required this.engine,
+    required this.kit,
+    required this.markdown,
+  });
 
   final Engine engine;
   final StarterKitHandles kit;
+  final String markdown;
 
   @override
   State<EditorScreen> createState() => _EditorScreenState();
 }
 
 class _EditorScreenState extends State<EditorScreen> {
-  late final Doc _doc = widget.engine.create();
-  final _draft = TextEditingController();
-  String _markdown = '';
+  late final CanvistController _controller = CanvistController(
+    engine: widget.engine,
+    doc: widget.engine.parse(Format.markdown, widget.markdown),
+  );
+  Peers? _peers;
 
   @override
   void dispose() {
-    _draft.dispose();
-    _doc.dispose();
+    _peers?.dispose();
+    _controller
+      ..dispose()
+      ..doc.dispose();
     super.dispose();
   }
 
-  void _append() {
-    final text = _draft.text;
-
-    if (text.isEmpty) {
-      return;
-    }
-
-    final end = _doc.export(Format.text).length;
-    _doc
-      ..select(Position([0], end))
-      ..insertText(text);
-    setState(() => _markdown = _doc.export(Format.markdown));
-    _draft.clear();
+  void _togglePeers(bool on) {
+    setState(() {
+      if (on) {
+        _peers = Peers.join(_controller);
+      } else {
+        _peers?.dispose();
+        _peers = null;
+      }
+    });
   }
 
-  void _toggleBold() {
-    _doc
-      ..selectAll()
-      ..run(widget.kit.bold.toggleBold());
-    setState(() => _markdown = _doc.export(Format.markdown));
+  void _showMarkdown() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: SelectableText(
+          _controller.export(Format.markdown),
+          key: Keys.markdown,
+          style: const TextStyle(fontFamily: 'monospace', height: 1.5),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final peers = _peers;
+    final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Canvist')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          TextField(
-            key: const Key('draft'),
-            controller: _draft,
-            decoration: const InputDecoration(
-              labelText: 'Text',
-              border: OutlineInputBorder(),
-            ),
-            onSubmitted: (_) => _append(),
+      appBar: AppBar(
+        title: const Text('canvist'),
+        actions: [
+          const Text('Two peers'),
+          Switch(
+            key: Keys.peers,
+            value: peers != null,
+            onChanged: _togglePeers,
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              ListenableBuilder(
-                listenable: _draft,
-                builder: (context, _) => FilledButton(
-                  key: const Key('append'),
-                  onPressed: _draft.text.isEmpty ? null : _append,
-                  child: const Text('Append'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton(
-                key: const Key('bold'),
-                onPressed: _markdown.isEmpty ? null : _toggleBold,
-                child: const Text('Bold'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text('Document as Markdown (from Rust)', style: theme.textTheme.labelLarge),
-          const SizedBox(height: 8),
-          Text(
-            _markdown.isEmpty ? 'Empty' : _markdown,
-            key: const Key('document'),
-            style: theme.textTheme.bodyLarge,
+          IconButton(
+            key: Keys.export,
+            tooltip: 'Show Markdown',
+            icon: const Icon(Icons.data_object),
+            onPressed: _showMarkdown,
           ),
         ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            EditorToolbar(controller: _controller, kit: widget.kit),
+            const Divider(height: 1),
+            Expanded(
+              child: peers == null
+                  ? CanvistEditor(
+                      key: Keys.editor,
+                      controller: _controller,
+                      autofocus: true,
+                      padding: const EdgeInsets.all(24),
+                      semanticsLabel: 'Document',
+                    )
+                  : PeersView(
+                      peers: peers,
+                      you: colors.primary,
+                      peer: colors.tertiary,
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

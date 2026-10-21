@@ -8,8 +8,8 @@ import 'canvist.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `argb`, `block_selection`, `blocks_start`, `byte_offset`, `caret`, `clipboard_formats`, `composition_selection`, `display_options`, `display`, `edit`, `extended`, `head_block`, `item`, `lock`, `lock`, `new`, `parse_json`, `plain_offset`, `plain_point`, `point_at`, `rect`, `render`, `selection_is_collapsed`, `selection_points`, `state`, `sync`, `theme`, `unit_around`, `utf16`, `word_around`
-// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Drag`, `Unit`, `ViewState`
+// These functions are ignored because they are not marked as `pub`: `argb`, `block_selection`, `blocks_start`, `byte_offset`, `caret`, `clipboard_formats`, `composition_selection`, `display_options`, `display`, `edit`, `extended`, `head_block`, `history_key`, `item`, `lay_out_point`, `lock`, `lock`, `new`, `parse_json`, `plain_offset`, `plain_point`, `point_at`, `rect`, `render`, `selection_is_collapsed`, `selection_points`, `state`, `sync`, `theme`, `unit_around`, `utf16`, `word_around`
+// These types are ignored because they are neither used by any `pub` functions nor (for structs and enums) marked `#[frb(unignore)]`: `Drag`, `History`, `Unit`, `ViewState`
 // These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `from`
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>>
@@ -17,8 +17,9 @@ abstract class CanvistView implements RustOpaqueInterface {
   /// Remove the preedit and end the composition.
   bool cancelComposition();
 
-  /// The caret's rectangle, or `None` when the selection is not a caret
-  /// or the caret's block is not laid out.
+  /// The caret's rectangle, or `None` when the selection is not a caret.
+  /// Lays out the caret's block if it never was, so a host can scroll to a
+  /// caret far outside the viewport.
   ViewRect? caretRect();
 
   /// Commit the composition as `text`.
@@ -122,8 +123,8 @@ abstract class CanvistView implements RustOpaqueInterface {
   /// The smallest rectangle around the selection.
   ViewRect? selectionBounds();
 
-  /// Where the selection's ends are, or `None` for a block selection or
-  /// ends outside the laid-out area.
+  /// Where the selection's ends are, or `None` for a block selection.
+  /// Lays out the blocks they are in, as [`CanvistView::caret_rect`] does.
   ViewSelectionEnds? selectionEnds();
 
   /// The document's plain text and selection, for accessibility.

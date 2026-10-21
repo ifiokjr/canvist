@@ -22,6 +22,7 @@ use canvist_headless::canvist_editor::Editor;
 use canvist_headless::canvist_editor::Env;
 use canvist_headless::canvist_editor::KeyPress;
 use canvist_headless::canvist_editor::Modifiers;
+use canvist_headless::canvist_editor::Platform;
 use canvist_headless::canvist_editor::Slice;
 use canvist_headless::canvist_editor::command;
 use canvist_headless::canvist_editor::commands;
@@ -490,7 +491,15 @@ impl CanvistView {
 			alt,
 			meta,
 		};
-		self.edit(|editor, env| editor.handle_key(KeyPress::new(key, modifiers), env))
+
+		// The document lock must be released before undoing, which takes it.
+		let history = history_key(&lock(&self.doc), key, modifiers);
+
+		match history {
+			Some(History::Undo) => self.undo(),
+			Some(History::Redo) => self.redo(),
+			None => self.edit(|editor, env| editor.handle_key(KeyPress::new(key, modifiers), env)),
+		}
 	}
 
 	/// Replace the selection with `text` as typing does: input rules apply.
@@ -727,6 +736,18 @@ impl CanvistView {
 	/// Run the command an extension registered as `name`, with JSON `args`.
 	#[frb(sync)]
 	pub fn run(&self, name: &str, args: &str) -> Result<bool> {
+		// A shared document undoes only this peer's changes, through the
+		// shared history, never the editor's own.
+		let shared = lock(&self.doc).is_shared();
+
+		if shared {
+			match name {
+				"undo" => return self.undo(),
+				"redo" => return self.redo(),
+				_ => {}
+			}
+		}
+
 		let args = parse_json(args)?;
 		let command = lock(&self.doc).command_named(name, &args)?;
 		self.edit(|editor, env| editor.run(&command, env))
@@ -754,30 +775,40 @@ impl CanvistView {
 		Ok(redone)
 	}
 
-	/// The caret's rectangle, or `None` when the selection is not a caret
-	/// or the caret's block is not laid out.
+	/// The caret's rectangle, or `None` when the selection is not a caret.
+	/// Lays out the caret's block if it never was, so a host can scroll to a
+	/// caret far outside the viewport.
 	#[frb(sync)]
-	pub fn caret_rect(&self) -> Option<ViewRect> {
+	pub fn caret_rect(&self) -> Result<Option<ViewRect>> {
 		let (mut state, mut doc) = self.lock();
 		state.sync(&mut doc);
-		let caret = caret(&doc)?;
-		state.layout.caret_rect(caret).map(ViewRect::from)
+		let Some(caret) = caret(&doc) else {
+			return Ok(None);
+		};
+		state.lay_out_point(&doc, caret.point)?;
+		Ok(state.layout.caret_rect(caret).map(ViewRect::from))
 	}
 
-	/// Where the selection's ends are, or `None` for a block selection or
-	/// ends outside the laid-out area.
+	/// Where the selection's ends are, or `None` for a block selection.
+	/// Lays out the blocks they are in, as [`CanvistView::caret_rect`] does.
 	#[frb(sync)]
-	pub fn selection_ends(&self) -> Option<ViewSelectionEnds> {
+	pub fn selection_ends(&self) -> Result<Option<ViewSelectionEnds>> {
 		let (mut state, mut doc) = self.lock();
 		state.sync(&mut doc);
-		let range = position::text_range(doc.document(), doc.selection())?;
+		let Some(range) = position::text_range(doc.document(), doc.selection()) else {
+			return Ok(None);
+		};
+		state.lay_out_point(&doc, range.from)?;
+		state.lay_out_point(&doc, range.to)?;
 		let rect = |point| state.layout.caret_rect(Caret::new(point));
 
-		Some(ViewSelectionEnds {
-			start: rect(range.from)?.into(),
-			end: rect(range.to)?.into(),
-			collapsed: range.is_empty(),
-		})
+		Ok(rect(range.from).zip(rect(range.to)).map(|(start, end)| {
+			ViewSelectionEnds {
+				start: start.into(),
+				end: end.into(),
+				collapsed: range.is_empty(),
+			}
+		}))
 	}
 
 	/// The smallest rectangle around the selection.
@@ -894,6 +925,26 @@ impl ViewState {
 		}
 	}
 
+	/// Lay out the block holding `point` if it has only an estimated height.
+	fn lay_out_point(&mut self, doc: &Doc, point: Point) -> Result<()> {
+		if self.layout.caret_rect(Caret::new(point)).is_some() {
+			return Ok(());
+		}
+
+		let Some(rect) = self.layout.block_rect(point.block) else {
+			return Ok(());
+		};
+		self.layout
+			.ensure(
+				doc.document(),
+				&mut self.measurer,
+				rect.y,
+				rect.y + rect.height,
+			)
+			.map(drop)
+			.map_err(|error| render(&error))
+	}
+
 	/// The model point at document coordinates `(x, y)`.
 	fn point_at(&self, x: f32, y: f32) -> Option<Point> {
 		self.layout.hit_test(x, y).map(|caret| caret.point)
@@ -943,6 +994,32 @@ impl ViewState {
 			items,
 			background: argb(chrome.background),
 		}
+	}
+}
+
+/// Which way through the history a key goes.
+enum History {
+	Undo,
+	Redo,
+}
+
+/// The history key `key` with `modifiers` is on a shared document, where
+/// undo must go through the shared history: `Mod-z` undoes, `Mod-Shift-z`
+/// and `Mod-y` redo, as the history extension binds them.
+fn history_key(doc: &Doc, key: &str, modifiers: Modifiers) -> Option<History> {
+	let primary = match doc.editor().platform() {
+		Platform::Apple => modifiers.meta && !modifiers.ctrl,
+		Platform::Other => modifiers.ctrl && !modifiers.meta,
+	};
+
+	if !doc.is_shared() || !primary || modifiers.alt {
+		return None;
+	}
+
+	match (key.to_ascii_lowercase().as_str(), modifiers.shift) {
+		("z", false) => Some(History::Undo),
+		("z", true) | ("y", false) => Some(History::Redo),
+		_ => None,
 	}
 }
 

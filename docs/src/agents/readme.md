@@ -13,7 +13,7 @@ canvist hasn't had its first release, and several platforms are still coming. Do
 | Rust                                                  | `cargo add canvist_headless --git https://github.com/canvist/canvist`                                  | Yes           |
 | Node, Deno, Bun, Workers                              | Build `packages/canvist-headless` and install the tarball ([how](../quick-start/server-typescript.md)) | Yes           |
 | Dart                                                  | Git dependency on `platforms/dart` ([how](../quick-start/server-dart.md))                              | Yes           |
-| Flutter                                               | Git dependency on `platforms/flutter`: engine only, no editor widget yet                               | Engine only   |
+| Flutter                                               | Git dependency on `platforms/flutter`: `CanvistEditor` ([how](../quick-start/flutter.md))              | Yes           |
 | Browser editor                                        | `createEditor` from the [web preview](../quick-start/web.md)                                           | Preview       |
 | React, Vue, iOS, Android, desktop, React Native, Lynx | None                                                                                                   | No            |
 
