@@ -1,0 +1,57 @@
+[package]
+name = "canvist_desktop"
+version.workspace = true
+authors.workspace = true
+categories = ["gui", "text-editors", "accessibility", "rendering"]
+documentation = "https://docs.rs/canvist_desktop"
+edition.workspace = true
+homepage.workspace = true
+include = ["src/**/*.rs", "Cargo.toml", "readme.md", "license"]
+keywords = ["text-editor", "rich-text", "winit", "vello", "accesskit"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "The canvist rich-text editor for macOS, Windows, and Linux: a winit component painted with vello, with IME, clipboard, and AccessKit accessibility"
+
+[features]
+default = ["winit"]
+# The window host: winit events, a vello surface on wgpu, the system
+# clipboard, and the AccessKit platform adapter. Without it the crate is the
+# headless editor core, which still lays out, paints to PNG, and builds the
+# accessibility tree.
+winit = ["dep:winit", "dep:accesskit_winit", "dep:arboard", "dep:pollster", "dep:vello", "canvist_paint/gpu"]
+# Collaborate over Yjs: share the document and speak y-sync.
+collab = ["canvist_headless/collab"]
+
+[dependencies]
+accesskit = { version = "^0.25", default-features = false }
+accesskit_winit = { version = "^0.34", default-features = false, features = ["accesskit_unix", "async-io", "rwh_06"], optional = true }
+arboard = { version = "^3.7", default-features = false, optional = true }
+canvist_headless = { workspace = true, features = ["starter-kit"] }
+canvist_layout = { workspace = true, features = ["editor", "parley"] }
+canvist_paint = { workspace = true, features = ["cpu"] }
+# Turns on system font discovery for the parley that canvist_layout and
+# canvist_paint share: CoreText, DirectWrite, or fontconfig (loaded at run
+# time, so building needs no fontconfig headers).
+fontique = { version = "^0.12", default-features = false, features = ["system", "fontconfig-dlopen"] }
+kurbo = { workspace = true, features = ["std"] }
+pollster = { version = "^0.4", default-features = false, optional = true }
+rustc-hash = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+unicode-segmentation = { workspace = true }
+vello = { version = "^0.11", default-features = false, features = ["wgpu_default"], optional = true }
+winit = { version = "^0.30", default-features = false, features = ["rwh_06", "x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"], optional = true }
+
+[dev-dependencies]
+canvist_headless = { workspace = true, features = ["ssr", "starter-kit"] }
+divan = { workspace = true }
+png = { version = "^0.18", default-features = false }
+proptest = { workspace = true, features = ["std"] }
+
+[[bench]]
+name = "desktop"
+harness = false
+
+[lints]
+workspace = true

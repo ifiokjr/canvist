@@ -208,6 +208,8 @@ in
         cargo nextest run -p canvist_collab --features scene
         # Painting backends are opt-in features.
         cargo nextest run -p canvist_paint --features cpu,gpu
+        # Desktop collaboration is an opt-in feature.
+        cargo nextest run -p canvist_desktop --all-features
       '';
       description = "Run cargo tests with nextest.";
       binary = "bash";
@@ -296,6 +298,7 @@ in
         monostyle check crates/canvist_headless_wasm --fail-under 90
         monostyle check packages/canvist-headless --fail-under 90
         monostyle check crates/canvist_web --fail-under 90
+        monostyle check crates/canvist_desktop --fail-under 90
         monostyle check packages/canvist-web --fail-under 90
         monostyle check packages/canvist-react --fail-under 90
         monostyle check packages/canvist-vue --fail-under 90

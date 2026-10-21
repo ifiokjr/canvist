@@ -152,6 +152,12 @@ path = "crates/canvist_canvas"
 [package.canvist_paint]
 path = "crates/canvist_paint"
 
+# The editor for macOS, Windows, and Linux: winit, vello, and AccessKit.
+[package.canvist_desktop]
+path = "crates/canvist_desktop"
+# Waits for the owner's placeholder publish, which trusted publishing needs.
+publish = { enabled = false }
+
 # The canvas in the browser. It ships inside the `@canvist/canvas` demo and is
 # never published on its own.
 [package.canvist_canvas_wasm]
@@ -250,6 +256,7 @@ packages = [
 	"canvist_canvas_wasm",
 	"canvist_collab",
 	"canvist_core",
+	"canvist_desktop",
 	"canvist_editor",
 	"canvist_extensions",
 	"canvist_ffi",
