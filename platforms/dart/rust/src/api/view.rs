@@ -974,7 +974,7 @@ impl ViewState {
 
 	/// `list` for the host, with the composition underlined.
 	fn display(&self, doc: &Doc, list: &DisplayList) -> ViewDisplay {
-		let mut items: Vec<ViewItem> = list.items.iter().map(item).collect();
+		let mut items: Vec<ViewItem> = list.items.iter().map(|entry| item(list, entry)).collect();
 		let chrome = self.theme.chrome();
 
 		if let Some(selection) = composition_selection(doc) {
@@ -1034,7 +1034,7 @@ fn history_key(doc: &Doc, key: &str, modifiers: Modifiers) -> Option<History> {
 }
 
 /// A display item for the host.
-pub(crate) fn item(item: &DisplayItem) -> ViewItem {
+pub(crate) fn item(list: &DisplayList, item: &DisplayItem) -> ViewItem {
 	match item {
 		DisplayItem::Rect {
 			rect,
@@ -1089,7 +1089,7 @@ pub(crate) fn item(item: &DisplayItem) -> ViewItem {
 			..
 		} => {
 			ViewItem {
-				points: points.to_vec(),
+				points: list.stroke_points(points).to_vec(),
 				line_width: *width,
 				..ViewItem::rect(ViewItemKind::Stroke, item.bounds(), *color)
 			}

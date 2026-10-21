@@ -83,7 +83,7 @@ pub fn to_svg(list: &DisplayList) -> String {
 				width,
 				color,
 				..
-			} => stroke_element(&mut out, points, *width, *color),
+			} => stroke_element(&mut out, list.stroke_points(points), *width, *color),
 			DisplayItem::Slot {
 				kind, block, rect, ..
 			} => slot(&mut out, kind, &block.to_string(), rect),

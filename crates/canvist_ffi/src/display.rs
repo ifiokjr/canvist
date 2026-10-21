@@ -178,10 +178,13 @@ pub struct Frame {
 
 /// The display list as records, naming slots from `doc`'s schema.
 pub(crate) fn items(list: &DisplayList, doc: &Document) -> Vec<DisplayItem> {
-	list.items.iter().map(|item| record(item, doc)).collect()
+	list.items
+		.iter()
+		.map(|item| record(list, item, doc))
+		.collect()
 }
 
-fn record(item: &LayoutItem, doc: &Document) -> DisplayItem {
+fn record(list: &DisplayList, item: &LayoutItem, doc: &Document) -> DisplayItem {
 	match item {
 		LayoutItem::Rect {
 			rect,
@@ -220,13 +223,14 @@ fn record(item: &LayoutItem, doc: &Document) -> DisplayItem {
 			points,
 			width,
 			color,
+			bounds,
 			..
 		} => {
 			DisplayItem::Stroke {
-				points: points.to_vec(),
+				points: list.stroke_points(points).to_vec(),
 				width: *width,
 				color: (*color).into(),
-				bounds: item.bounds().into(),
+				bounds: (*bounds).into(),
 			}
 		}
 		LayoutItem::Slot {
@@ -291,20 +295,29 @@ mod tests {
 			.build()
 			.expect("valid schema");
 		let doc = Document::new(Arc::new(schema), 1);
+		let bounds = Rect::new(-0.25, 0.75, 4.5, 4.5);
 		let item = LayoutItem::Stroke {
-			points: Arc::from([1.0, 2.0, 3.0, 4.0]),
+			points: 2..6,
 			width: 2.5,
 			color: Color::rgb(10, 20, 30),
+			bounds,
 			block: BlockId::new(1, 0),
+		};
+		let list = DisplayList {
+			fonts: Vec::new(),
+			items: vec![item.clone()],
+			bounds,
+			animated: false,
+			points: vec![9.0, 9.0, 1.0, 2.0, 3.0, 4.0],
 		};
 
 		assert_eq!(
-			record(&item, &doc),
+			record(&list, &item, &doc),
 			DisplayItem::Stroke {
 				points: vec![1.0, 2.0, 3.0, 4.0],
 				width: 2.5,
 				color: Color::rgb(10, 20, 30).into(),
-				bounds: Rect::new(-0.25, 0.75, 4.5, 4.5).into(),
+				bounds: bounds.into(),
 			}
 		);
 	}

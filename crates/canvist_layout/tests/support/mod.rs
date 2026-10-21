@@ -193,7 +193,8 @@ fn describe_item(list: &DisplayList, item: &DisplayItem) -> String {
 			color,
 			..
 		} => {
-			let points: Vec<String> = points
+			let points: Vec<String> = list
+				.stroke_points(points)
 				.chunks_exact(2)
 				.map(|point| format!("{},{}", r(point[0]), r(point[1])))
 				.collect();

@@ -130,6 +130,7 @@ impl<'a> Builder<'a> {
 				items: Vec::new(),
 				bounds,
 				animated: false,
+				points: Vec::new(),
 			},
 			time: options.time,
 			foreground: Vec::new(),
@@ -253,15 +254,20 @@ impl Builder<'_> {
 		let scale = content.width / INK_WIDTH;
 
 		for stroke in &drawing.strokes {
-			let points: Arc<[f32]> = stroke
-				.points
-				.chunks_exact(2)
-				.flat_map(|point| [content.x + point[0] * scale, content.y + point[1] * scale])
-				.collect();
+			let start = self.list.points.len() as u32;
+			self.list.points.extend(
+				stroke
+					.points
+					.chunks_exact(2)
+					.flat_map(|point| [content.x + point[0] * scale, content.y + point[1] * scale]),
+			);
+			let points = start..self.list.points.len() as u32;
+			let width = stroke.width.unwrap_or(width) * scale;
 
 			self.list.items.push(DisplayItem::Stroke {
+				bounds: stroke_bounds(self.list.stroke_points(&points), width),
 				points,
-				width: stroke.width.unwrap_or(width) * scale,
+				width,
 				color: stroke.color.unwrap_or(color),
 				block: row.block,
 			});
@@ -734,6 +740,31 @@ fn run_source<'a>(
 		}
 		ItemKind::Tab | ItemKind::Break => None,
 	}
+}
+
+/// The box around a stroke's points, widened by half its width.
+#[cfg(feature = "ink")]
+fn stroke_bounds(points: &[f32], width: f32) -> Rect {
+	let (mut left, mut top, mut right, mut bottom) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+
+	for point in points.chunks_exact(2) {
+		left = left.min(point[0]);
+		right = right.max(point[0]);
+		top = top.min(point[1]);
+		bottom = bottom.max(point[1]);
+	}
+
+	if left > right {
+		return Rect::default();
+	}
+
+	let half = width / 2.0;
+	Rect::new(
+		left - half,
+		top - half,
+		right - left + width,
+		bottom - top + width,
+	)
 }
 
 /// Where the glyphs of a moving piece sit: its block, text, line, row

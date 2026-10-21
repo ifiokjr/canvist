@@ -290,7 +290,11 @@ impl CanvistDoc {
 					}
 				})
 				.collect(),
-			items: list.items.iter().map(crate::api::view::item).collect(),
+			items: list
+				.items
+				.iter()
+				.map(|item| crate::api::view::item(&list, item))
+				.collect(),
 			background: crate::api::view::argb(theme.chrome().background),
 		})
 	}

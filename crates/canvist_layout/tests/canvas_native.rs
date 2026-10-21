@@ -36,7 +36,9 @@ fn strokes(list: &canvist_layout::DisplayList) -> Vec<(Vec<f32>, f32)> {
 		.iter()
 		.filter_map(|item| {
 			match item {
-				DisplayItem::Stroke { points, width, .. } => Some((points.to_vec(), *width)),
+				DisplayItem::Stroke { points, width, .. } => {
+					Some((list.stroke_points(points).to_vec(), *width))
+				}
 				_ => None,
 			}
 		})

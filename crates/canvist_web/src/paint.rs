@@ -273,7 +273,7 @@ impl Painter {
 		self.fill_surface(background);
 
 		for item in &list.items {
-			self.item(item, top);
+			self.item(list, item, top);
 		}
 	}
 
@@ -293,7 +293,7 @@ impl Painter {
 			let bounds = inflate(item.bounds(), overhang);
 
 			if rects.iter().any(|rect| rect.intersects(&bounds)) {
-				self.item(item, top);
+				self.item(list, item, top);
 			}
 		}
 
@@ -335,7 +335,7 @@ impl Painter {
 		);
 	}
 
-	fn item(&mut self, item: &DisplayItem, top: f32) {
+	fn item(&mut self, list: &DisplayList, item: &DisplayItem, top: f32) {
 		self.drawn += 1;
 
 		match item {
@@ -364,7 +364,7 @@ impl Painter {
 				width,
 				color,
 				..
-			} => self.stroke(points, top, *width, *color),
+			} => self.stroke(list.stroke_points(points), top, *width, *color),
 			DisplayItem::Decoration {
 				x,
 				y,

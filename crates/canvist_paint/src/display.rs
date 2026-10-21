@@ -113,7 +113,7 @@ fn paint_item<P: Painter + ?Sized>(
 			// A drawing keeps its own ink, whatever fill a text frame sets.
 			paint_stroke(
 				painter,
-				points,
+				list.stroke_points(points),
 				*width,
 				convert::layout_color(*color),
 				style,

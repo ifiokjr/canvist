@@ -203,6 +203,7 @@ fn split_layers(
 			items,
 			bounds,
 			animated: list.animated,
+			points: list.points.clone(),
 		}
 	};
 	let blocks = doc
