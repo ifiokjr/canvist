@@ -32,15 +32,21 @@ define="--dart-define=CANVIST_PERF_SLACK=${CANVIST_PERF_SLACK:-1}"
 if [ "${1:-}" = "--on-device" ]; then
 	device="$2"
 	cd "$flutter_dir/example"
-	# A busy emulator raises "isn't responding" dialogs over the app, which
-	# swallow the native taps and swipes Patrol sends. Hide them.
+	mkdir -p build
 	if command -v adb >/dev/null && adb devices | grep -q "^${device}[[:space:]]"; then
+		# A busy emulator raises "isn't responding" dialogs over the app,
+		# which swallow the native taps and swipes Patrol sends. Hide them.
 		adb -s "$device" shell settings put global hide_error_dialogs 1
+		# The device's log is the only record of a crash once the emulator
+		# stops: keep it for the job to upload.
+		adb -s "$device" logcat -c
+		adb -s "$device" logcat -v time >build/logcat.txt 2>&1 &
+		logcat=$!
+		trap 'kill "$logcat" 2>/dev/null' EXIT
 	fi
 	# Flutter installs, launches, and waits for the app's VM service with no
 	# timeout, so a stalled simulator prints nothing. Keep the verbose log,
 	# which names the last command Flutter ran, and show progress from it.
-	mkdir -p build
 	log="build/flutter-test.log"
 	progress='^([0-9]+:[0-9]{2} [+~-]|PERF )|Xcode build done|executing: .*simctl (install|launch) |Waiting for VM Service|VM Service URL on device'
 	if ! "${flutter[@]}" test "$entrypoint" "$define" -d "$device" --verbose 2>&1 |

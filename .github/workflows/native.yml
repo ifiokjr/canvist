@@ -100,16 +100,19 @@ jobs:
           xcrun simctl list devices booted
           grep -E 'executing:|Waiting for VM Service|VM Service URL' build/flutter-test.log | tail -n 15 || true
           xcrun simctl get_app_container booted io.github.ifiokjr.canvist.canvistFlutterExample || true
-          xcrun simctl spawn booted log show --last 60m --style compact \
-            --predicate 'process == "Runner"' | tail -n 60 || true
+          xcrun simctl spawn booted log show --last 90m --style compact \
+            --predicate 'process == "Runner"' >build/runner.log || true
+          grep -E '\(Flutter\)|VM service' build/runner.log | tail -n 20 || true
           pgrep -fl simctl || true
 
-      - name: upload flutter log
+      - name: upload flutter logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-flutter-test-log
-          path: platforms/flutter/example/build/flutter-test.log
+          name: ios-flutter-logs
+          path: |
+            platforms/flutter/example/build/flutter-test.log
+            platforms/flutter/example/build/runner.log
 
       - name: upload xcresult
         if: failure()
@@ -198,3 +201,15 @@ jobs:
           # A software-rendered emulator running a debug build: the keystroke
           # budget gets generous slack.
           script: platforms/android/test.sh && CANVIST_FLUTTER_PLATFORMS=android CANVIST_PERF_SLACK=6 platforms/flutter/test.sh
+
+      # A test that vanishes from Patrol's summary died with the app: its
+      # crash is in the device log and Gradle's report.
+      - name: upload device logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-device-logs
+          path: |
+            platforms/flutter/example/build/logcat.txt
+            platforms/flutter/example/build/flutter-test.log
+            platforms/flutter/example/build/app/reports/androidTests
