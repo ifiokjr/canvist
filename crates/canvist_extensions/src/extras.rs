@@ -36,5 +36,8 @@ pub fn extras() -> Vec<Arc<dyn Extension>> {
 		Arc::new(crate::Typography::default()),
 		Arc::new(crate::CharacterCount::default()),
 		Arc::new(crate::Placeholder::default()),
+		Arc::new(crate::Mention::default()),
+		Arc::new(crate::Hashtag),
+		Arc::new(crate::Emoji),
 	]
 }

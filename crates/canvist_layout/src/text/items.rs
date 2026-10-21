@@ -443,18 +443,13 @@ impl Builder<'_> {
 				let height = attr_px(&embed.attrs, "height").unwrap_or(*height);
 				DraftEmbed::sized(embed.kind, (width, height))
 			}
-			Some(EmbedStyle::Label {
-				attr,
-				prefix,
-				patch,
-			}) => {
-				let value = embed.attrs.get(attr).and_then(canvist_model::Value::as_str);
+			Some(label @ EmbedStyle::Label { patch, .. }) => {
 				let mut label_style = style.clone();
 				patch.apply(&mut label_style);
 
 				let label = Label {
 					style: self.style(label_style, context.cache),
-					text: Arc::from(format!("{prefix}{}", value.unwrap_or_default())),
+					text: Arc::from(label.label_text(&embed.attrs).unwrap_or_default()),
 				};
 				DraftEmbed::labelled(embed.kind, label)
 			}

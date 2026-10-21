@@ -66,13 +66,13 @@ The comparison was made against TipTap `@tiptap/core` 3.30.3 and Remirror 3.0.3 
 
 ## Inline nodes and suggestions
 
-| Feature             | TipTap               | Remirror              | JSON                                  | canvist         | Notes                                                                                                                    |
-| ------------------- | -------------------- | --------------------- | ------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Suggestion engine   | `@tiptap/suggestion` | `prosemirror-suggest` | —                                     | **Planned**     | One engine for every trigger: a query reports the active trigger, its text, and its range, and the host draws the popup. |
-| Mention             | Mention              | MentionAtomExtension  | `mention`                             | **Planned**     | TipTap's atom with `id`, `label`, and `mentionSuggestionChar`. Remirror's mark form isn't planned.                       |
-| Hashtag             | —                    | —                     | `hashtag`                             | **Planned**     | Neither has one; `#tag` becomes a mark as you type.                                                                      |
-| Emoji               | Emoji                | EmojiExtension        | `emoji`                               | **Planned**     | TipTap's `name` attribute and `:shortcode:` rule. Remirror stores the character in `code`.                               |
-| Variables and slots | Pro                  | —                     | `variable`, `blockSlot`, `inlineSlot` | **Not planned** | Template features for a later product, not the editor core.                                                              |
+| Feature             | TipTap               | Remirror              | JSON                                  | canvist         | Notes                                                                                                                                                                              |
+| ------------------- | -------------------- | --------------------- | ------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Suggestion engine   | `@tiptap/suggestion` | `prosemirror-suggest` | —                                     | **Yes**         | Shared by mentions, hashtags, and emoji: a `…Suggestion` query reports the trigger and query, a command inserts the pick, Escape dismisses. The host draws the popup at the caret. |
+| Mention             | Mention              | MentionAtomExtension  | `mention`                             | **Yes**         | TipTap's atom with `id`, `label`, and `mentionSuggestionChar`. Backspace after a mention reopens it. Remirror's mark form isn't planned.                                           |
+| Hashtag             | —                    | —                     | `hashtag`                             | **Yes**         | Neither has one: a `hashtag` mark with a `tag`, marked as you type and paste, plus a `hashtags` query.                                                                             |
+| Emoji               | Emoji                | EmojiExtension        | `emoji`                               | **Yes**         | TipTap's `name` attribute and `:shortcode:` rule, with GitHub's 1,870 emoji. canvist also stores the character in `emoji`. Emoticons and pasted shortcodes aren't converted yet.   |
+| Variables and slots | Pro                  | —                     | `variable`, `blockSlot`, `inlineSlot` | **Not planned** | Template features for a later product, not the editor core.                                                                                                                        |
 
 ## Editing behaviour
 

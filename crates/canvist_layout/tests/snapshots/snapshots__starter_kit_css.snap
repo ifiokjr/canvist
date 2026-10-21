@@ -38,3 +38,4 @@ expression: "html.css.replace('}', \"}\\n\")"
 .cv-doc .cv-m-subscript{font-size:0.75em;vertical-align:-0.25em;}
 .cv-doc .cv-m-superscript{font-size:0.75em;vertical-align:0.5em;}
 .cv-doc .cv-e-mention{color:#6a00f5;background-color:#eeeeff;}
+.cv-doc .cv-e-emoji{}

@@ -26,10 +26,11 @@ pub(crate) fn to_any(value: &Value) -> Any {
 		Value::Float(value) => Any::Number(Number::Float(*value)),
 		Value::String(value) => Any::String(value.clone()),
 		Value::Array(values) => Any::Array(values.iter().map(to_any).collect()),
+		Value::Map(map) => attrs_to_any(map),
 	}
 }
 
-/// Convert a Yjs value to a model value, or `None` for maps, buffers, and
+/// Convert a Yjs value to a model value, or `None` for buffers and
 /// `undefined`, which the model cannot represent.
 pub(crate) fn from_any(any: &Any) -> Option<Value> {
 	let value = match any {
@@ -42,7 +43,12 @@ pub(crate) fn from_any(any: &Any) -> Option<Value> {
 			let values: Option<Vec<Value>> = values.iter().map(from_any).collect();
 			Value::from(values?)
 		}
-		Any::Undefined | Any::Buffer(_) | Any::Map(_) => return None,
+		Any::Map(entries) => {
+			Value::from(attrs_from(
+				entries.iter().map(|(key, value)| (key.as_str(), value)),
+			))
+		}
+		Any::Undefined | Any::Buffer(_) => return None,
 	};
 
 	Some(value)
@@ -235,6 +241,11 @@ mod tests {
 			Value::Float(2.0),
 			Value::from("text"),
 			Value::from(vec![Value::Int(1), Value::from("two")]),
+			Value::from(
+				Attrs::new()
+					.with("x", 4)
+					.with("nested", Attrs::new().with("y", "z")),
+			),
 		];
 
 		for value in values {

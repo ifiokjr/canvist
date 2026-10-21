@@ -400,7 +400,10 @@ fn inline(schema: &Schema, text: &InlineText) -> String {
 				writer.write("\\\n", &[], true);
 			}
 
-			Some(_) => {}
+			Some(embed) => {
+				let text = super::tree::embed_text(schema, embed);
+				writer.write(&text, run.marks.as_slice(), false);
+			}
 			None => writer.write(run.text, run.marks.as_slice(), false),
 		}
 	}

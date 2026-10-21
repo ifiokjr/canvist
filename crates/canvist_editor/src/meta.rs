@@ -34,6 +34,12 @@ pub enum ValueType {
 	OneOf(Vec<&'static str>),
 	/// The inner type or null.
 	Nullable(Box<ValueType>),
+	/// A list of values of the inner type, such as the headings of a table
+	/// of contents.
+	List(Box<ValueType>),
+	/// A map with these fields, such as an active suggestion's trigger and
+	/// query. Bindings generate a typed record from it.
+	Record(Vec<Field>),
 }
 
 impl ValueType {
@@ -41,6 +47,12 @@ impl ValueType {
 	#[must_use]
 	pub fn nullable(inner: Self) -> Self {
 		Self::Nullable(Box::new(inner))
+	}
+
+	/// A list of values of the inner type.
+	#[must_use]
+	pub fn list(inner: Self) -> Self {
+		Self::List(Box::new(inner))
 	}
 
 	/// Whether `value` has this type.
@@ -55,6 +67,10 @@ impl ValueType {
 			(Self::IntRange { min, max }, Value::Int(number)) => (min..=max).contains(&number),
 			(Self::OneOf(options), Value::String(text)) => options.contains(&&**text),
 			(Self::Nullable(inner), value) => inner.accepts(value),
+			(Self::List(inner), Value::Array(items)) => {
+				items.iter().all(|item| inner.accepts(item))
+			}
+			(Self::Record(fields), Value::Map(map)) => accepts_record(fields, map),
 			_ => false,
 		}
 	}
@@ -74,6 +90,14 @@ impl ValueType {
 					.map_or(Value::Null, |&option| Value::from(option))
 			}
 			Self::Nullable(inner) => inner.sample(),
+			Self::List(inner) => Value::from(vec![inner.sample()]),
+			Self::Record(fields) => {
+				let map: canvist_model::Attrs = fields
+					.iter()
+					.map(|field| (field.name, field.ty.sample()))
+					.collect();
+				Value::from(map)
+			}
 		}
 	}
 
@@ -88,8 +112,52 @@ impl ValueType {
 			Self::String => json!({ "type": "string" }),
 			Self::OneOf(options) => json!({ "type": "string", "enum": options }),
 			Self::Nullable(inner) => json!({ "type": "nullable", "of": inner.to_json() }),
+			Self::List(inner) => json!({ "type": "list", "of": inner.to_json() }),
+			Self::Record(fields) => {
+				let fields: Vec<Json> = fields.iter().map(Field::to_json).collect();
+				json!({ "type": "record", "fields": fields })
+			}
 		}
 	}
+}
+
+/// A short description for error messages, such as `an integer from 1 to
+/// 6`. Written by hand rather than derived: `Debug` would format the
+/// floats in fields' defaults, which pulls float formatting into every
+/// WebAssembly build.
+impl std::fmt::Display for ValueType {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Bool => f.write_str("a boolean"),
+			Self::Int => f.write_str("an integer"),
+			Self::IntRange { min, max } => write!(f, "an integer from {min} to {max}"),
+			Self::Float => f.write_str("a number"),
+			Self::String => f.write_str("a string"),
+			Self::OneOf(options) => write!(f, "one of {}", options.join(", ")),
+			Self::Nullable(inner) => write!(f, "{inner} or null"),
+			Self::List(inner) => write!(f, "a list, each item {inner}"),
+			Self::Record(fields) => {
+				let names: Vec<&str> = fields.iter().map(|field| field.name).collect();
+				write!(f, "a record of {}", names.join(", "))
+			}
+		}
+	}
+}
+
+/// Whether `map` has every field of a record, each of its type, and no
+/// others. A field with a default may be missing.
+fn accepts_record(fields: &[Field], map: &canvist_model::Attrs) -> bool {
+	let known = map
+		.iter()
+		.all(|(key, _)| fields.iter().any(|field| field.name == key));
+
+	known
+		&& fields.iter().all(|field| {
+			match map.get(field.name) {
+				Some(value) => field.ty.accepts(value),
+				None => field.default.is_some(),
+			}
+		})
 }
 
 /// An attribute value as JSON.
@@ -102,6 +170,17 @@ pub fn value_to_json(value: &Value) -> Json {
 		Value::Float(number) => json!(number),
 		Value::String(text) => Json::String(text.to_string()),
 		Value::Array(items) => Json::Array(items.iter().map(value_to_json).collect()),
+		Value::Map(map) => {
+			// Inserting one key at a time, rather than collecting, keeps the
+			// stable sort a collected `BTreeMap` needs out of every binary.
+			let mut object = serde_json::Map::new();
+
+			for (key, value) in map.iter() {
+				object.insert(key.to_owned(), value_to_json(value));
+			}
+
+			Json::Object(object)
+		}
 	}
 }
 
@@ -294,6 +373,15 @@ mod tests {
 	use super::*;
 
 	#[test]
+	fn describes_types_for_error_messages() {
+		let level = ValueType::nullable(ValueType::IntRange { min: 1, max: 6 });
+		let tags = ValueType::list(ValueType::OneOf(vec!["a", "b"]));
+
+		assert_eq!(level.to_string(), "an integer from 1 to 6 or null");
+		assert_eq!(tags.to_string(), "a list, each item one of a, b");
+	}
+
+	#[test]
 	fn checks_values_against_types() {
 		let level = ValueType::IntRange { min: 1, max: 6 };
 		let language = ValueType::nullable(ValueType::String);
@@ -307,6 +395,22 @@ mod tests {
 		assert!(align.accepts(&Value::from("left")));
 		assert!(!align.accepts(&Value::from("middle")));
 		assert!(ValueType::Float.accepts(&Value::Int(2)));
+
+		let names = ValueType::list(ValueType::String);
+		assert!(names.accepts(&Value::from(vec![Value::from("a")])));
+		assert!(!names.accepts(&Value::from(vec![Value::Int(1)])));
+
+		let record = ValueType::Record(vec![
+			Field::required("query", ValueType::String, "The text."),
+			Field::optional("count", ValueType::Int, 0, "How many."),
+		]);
+		let query = canvist_model::Attrs::new().with("query", "ad");
+		assert!(
+			record.accepts(&Value::from(query.clone())),
+			"defaults may be left out"
+		);
+		assert!(!record.accepts(&Value::from(query.with("extra", 1))));
+		assert!(!record.accepts(&Value::from(canvist_model::Attrs::new())));
 	}
 
 	#[test]
@@ -319,6 +423,11 @@ mod tests {
 			ValueType::String,
 			ValueType::OneOf(vec!["a"]),
 			ValueType::nullable(ValueType::Int),
+			ValueType::list(ValueType::String),
+			ValueType::Record(vec![
+				Field::required("query", ValueType::String, "The text."),
+				Field::optional("count", ValueType::Int, 0, "How many."),
+			]),
 		];
 
 		for ty in types {

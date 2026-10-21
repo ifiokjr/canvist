@@ -21,6 +21,9 @@ pub enum Value {
 	String(Arc<str>),
 	/// A shared, immutable list, e.g. table column widths.
 	Array(Arc<[Value]>),
+	/// A shared, immutable map of named values, e.g. an image's crop box or
+	/// a query's structured answer.
+	Map(Arc<Attrs>),
 }
 
 impl Value {
@@ -42,6 +45,24 @@ impl Value {
 		}
 	}
 
+	/// The map payload, if this is a map.
+	#[must_use]
+	pub fn as_map(&self) -> Option<&Attrs> {
+		match self {
+			Self::Map(map) => Some(map),
+			_ => None,
+		}
+	}
+
+	/// The list payload, if this is a list.
+	#[must_use]
+	pub fn as_array(&self) -> Option<&[Self]> {
+		match self {
+			Self::Array(items) => Some(items),
+			_ => None,
+		}
+	}
+
 	/// The boolean payload, if this is a boolean.
 	#[must_use]
 	pub fn as_bool(&self) -> Option<bool> {
@@ -55,6 +76,12 @@ impl Value {
 impl From<Vec<Value>> for Value {
 	fn from(value: Vec<Value>) -> Self {
 		Self::Array(value.into())
+	}
+}
+
+impl From<Attrs> for Value {
+	fn from(value: Attrs) -> Self {
+		Self::Map(Arc::new(value))
 	}
 }
 

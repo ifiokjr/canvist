@@ -145,6 +145,56 @@ final class ColorHandle extends ExtensionHandle {
       _query('color', (json) => json == null ? null : json as String);
 }
 
+/// The commands and queries of `emoji`.
+final class EmojiHandle extends ExtensionHandle {
+  EmojiHandle._(super.registration) : super._();
+
+  /// Replace the emoji suggestion, or insert at the caret, with the emoji for a shortcode.
+  ///
+  /// [name]: The shortcode, such as `smile`.
+  Command setEmoji({required String name}) =>
+      _command('setEmoji', {'name': name});
+
+  /// Stop suggesting emoji until another `:` is typed.
+  Command dismissEmojiSuggestion() =>
+      _command('dismissEmojiSuggestion', const {});
+
+  /// The trigger character and the query typed after it, while an emoji is suggested.
+  Query<({String char, String query})?> emojiSuggestion() => _query(
+    'emojiSuggestion',
+    (json) => json == null
+        ? null
+        : switch (json as Map<String, Object?>) {
+            final map0 => (
+              char: map0['char']! as String,
+              query: map0['query']! as String,
+            ),
+          },
+  );
+
+  /// Emoji whose shortcode contains the query, those starting with it first.
+  ///
+  /// [query]: What to look for, such as `smi`.
+  ///
+  /// [limit]: The most matches to return.
+  Query<List<({String name, String emoji})>> searchEmoji({
+    required String query,
+    int? limit,
+  }) => _query(
+    'searchEmoji',
+    (json) => [
+      for (final item0 in json! as List<Object?>)
+        switch (item0! as Map<String, Object?>) {
+          final map1 => (
+            name: map1['name']! as String,
+            emoji: map1['emoji']! as String,
+          ),
+        },
+    ],
+    {'query': query, 'limit': ?limit},
+  );
+}
+
 /// The commands and queries of `fontFamily`.
 final class FontFamilyHandle extends ExtensionHandle {
   FontFamilyHandle._(super.registration) : super._();
@@ -187,6 +237,40 @@ final class HardBreakHandle extends ExtensionHandle {
 
   /// Insert a line break at the selection.
   Command setHardBreak() => _command('setHardBreak', const {});
+}
+
+/// The commands and queries of `hashtag`.
+final class HashtagHandle extends ExtensionHandle {
+  HashtagHandle._(super.registration) : super._();
+
+  /// Replace the hashtag suggestion, or insert at the caret, with `#tag` and a space.
+  ///
+  /// [tag]: The tag, with or without `#`.
+  Command insertHashtag({required String tag}) =>
+      _command('insertHashtag', {'tag': tag});
+
+  /// Stop suggesting hashtags until another `#` is typed.
+  Command dismissHashtagSuggestion() =>
+      _command('dismissHashtagSuggestion', const {});
+
+  /// The trigger character and the query typed after it, while a hashtag is suggested.
+  Query<({String char, String query})?> hashtagSuggestion() => _query(
+    'hashtagSuggestion',
+    (json) => json == null
+        ? null
+        : switch (json as Map<String, Object?>) {
+            final map0 => (
+              char: map0['char']! as String,
+              query: map0['query']! as String,
+            ),
+          },
+  );
+
+  /// Every tag in the document, sorted, without `#`.
+  Query<List<String>> hashtags() => _query(
+    'hashtags',
+    (json) => [for (final item0 in json! as List<Object?>) item0! as String],
+  );
 }
 
 /// The commands and queries of `heading`.
@@ -323,6 +407,36 @@ final class ListItemHandle extends ExtensionHandle {
 
   /// Lift the selected items one level.
   Command liftListItem() => _command('liftListItem', const {});
+}
+
+/// The commands and queries of `mention`.
+final class MentionHandle extends ExtensionHandle {
+  MentionHandle._(super.registration) : super._();
+
+  /// Replace the mention suggestion, or insert at the caret, with a mention and a space.
+  ///
+  /// [id]: What the mention points at.
+  ///
+  /// [label]: The text shown after the trigger character.
+  Command insertMention({required String id, String? label}) =>
+      _command('insertMention', {'id': id, 'label': ?label});
+
+  /// Stop suggesting mentions until another trigger character is typed.
+  Command dismissMentionSuggestion() =>
+      _command('dismissMentionSuggestion', const {});
+
+  /// The trigger character and the query typed after it, while a mention is suggested.
+  Query<({String char, String query})?> mentionSuggestion() => _query(
+    'mentionSuggestion',
+    (json) => json == null
+        ? null
+        : switch (json as Map<String, Object?>) {
+            final map0 => (
+              char: map0['char']! as String,
+              query: map0['query']! as String,
+            ),
+          },
+  );
 }
 
 /// The commands and queries of `orderedList`.
@@ -580,6 +694,13 @@ final class ColorExtension extends Extension<ColorHandle> {
   ColorHandle _handle(Registration registration) => ColorHandle._(registration);
 }
 
+/// Registers `emoji`.
+final class EmojiExtension extends Extension<EmojiHandle> {
+  const EmojiExtension._() : super('emoji');
+  @override
+  EmojiHandle _handle(Registration registration) => EmojiHandle._(registration);
+}
+
 /// Registers `fontFamily`.
 final class FontFamilyExtension extends Extension<FontFamilyHandle> {
   const FontFamilyExtension._() : super('fontFamily');
@@ -602,6 +723,14 @@ final class HardBreakExtension extends Extension<HardBreakHandle> {
   @override
   HardBreakHandle _handle(Registration registration) =>
       HardBreakHandle._(registration);
+}
+
+/// Registers `hashtag`.
+final class HashtagExtension extends Extension<HashtagHandle> {
+  const HashtagExtension._() : super('hashtag');
+  @override
+  HashtagHandle _handle(Registration registration) =>
+      HashtagHandle._(registration);
 }
 
 /// Registers `heading`.
@@ -665,6 +794,14 @@ final class ListItemExtension extends Extension<ListItemHandle> {
   @override
   ListItemHandle _handle(Registration registration) =>
       ListItemHandle._(registration);
+}
+
+/// Registers `mention`.
+final class MentionExtension extends Extension<MentionHandle> {
+  const MentionExtension._() : super('mention');
+  @override
+  MentionHandle _handle(Registration registration) =>
+      MentionHandle._(registration);
 }
 
 /// Registers `orderedList`.
@@ -781,6 +918,9 @@ abstract final class Extensions {
   /// The `color` extension.
   static const color = ColorExtension._();
 
+  /// The `emoji` extension.
+  static const emoji = EmojiExtension._();
+
   /// The `fontFamily` extension.
   static const fontFamily = FontFamilyExtension._();
 
@@ -789,6 +929,9 @@ abstract final class Extensions {
 
   /// The `hardBreak` extension.
   static const hardBreak = HardBreakExtension._();
+
+  /// The `hashtag` extension.
+  static const hashtag = HashtagExtension._();
 
   /// The `heading` extension.
   static const heading = HeadingExtension._();
@@ -813,6 +956,9 @@ abstract final class Extensions {
 
   /// The `listItem` extension.
   static const listItem = ListItemExtension._();
+
+  /// The `mention` extension.
+  static const mention = MentionExtension._();
 
   /// The `orderedList` extension.
   static const orderedList = OrderedListExtension._();
@@ -878,9 +1024,11 @@ abstract final class Extensions {
     code,
     codeBlock,
     color,
+    emoji,
     fontFamily,
     fontSize,
     hardBreak,
+    hashtag,
     heading,
     highlight,
     history,
@@ -889,6 +1037,7 @@ abstract final class Extensions {
     lineHeight,
     link,
     listItem,
+    mention,
     orderedList,
     placeholder,
     strike,

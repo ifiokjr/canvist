@@ -193,11 +193,8 @@ const OPERATIONS: Record<string, Operation> = {
 	paste: (doc, step) => doc.paste(step.format as Format, String(step.content)),
 	run: (doc, step) => doc.run(command(step), args(step) as never),
 	can: (doc, step) => doc.canRun(command(step), args(step) as never),
-	query: (doc, step) => {
-		assert.equal(args(step), undefined, "fixture queries take no arguments");
-
-		return doc.ask(String(step.query) as QueryName<Kit>) as Json;
-	},
+	query: (doc, step) =>
+		doc.ask(String(step.query) as QueryName<Kit>, args(step) as never) as Json,
 	undo: (doc) => doc.undo(),
 	redo: (doc) => doc.redo(),
 	share: (doc, step) => {

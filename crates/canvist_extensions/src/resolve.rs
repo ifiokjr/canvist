@@ -18,6 +18,8 @@ use canvist_editor::EditorState;
 use canvist_editor::position;
 use canvist_model::BlockId;
 use canvist_model::BlockTypeId;
+#[cfg(any(feature = "emoji", feature = "mention"))]
+use canvist_model::EmbedTypeId;
 use canvist_model::MarkTypeId;
 use canvist_model::Selection;
 use canvist_model::Value;
@@ -38,6 +40,16 @@ pub(crate) fn mark(
 	name: &'static str,
 ) -> Result<MarkTypeId, EditorError> {
 	canvist_editor::mark_type(state.schema(), extension, name)
+}
+
+/// The embed type `name`, which extension `extension` needs.
+#[cfg(any(feature = "emoji", feature = "mention"))]
+pub(crate) fn embed(
+	state: &EditorState,
+	extension: &'static str,
+	name: &'static str,
+) -> Result<EmbedTypeId, EditorError> {
+	canvist_editor::embed_type(state.schema(), extension, name)
 }
 
 /// The block holding the selection head (or the first selected block).

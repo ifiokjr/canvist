@@ -376,6 +376,7 @@ fn render_value(value: &Value) -> String {
 		Value::Float(number) => number.to_string(),
 		Value::String(text) => text.to_string(),
 		Value::Array(items) => format!("{items:?}"),
+		Value::Map(map) => format!("{map:?}"),
 	}
 }
 

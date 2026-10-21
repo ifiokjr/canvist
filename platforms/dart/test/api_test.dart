@@ -75,6 +75,26 @@ void main() {
     expect(doc.export(Format.markdown), '==H<sub>2</sub>O==');
   });
 
+  test('queries answer typed records and lists', () async {
+    final builder = EngineBuilder();
+    final mention = builder.add(Extensions.mention);
+    final emoji = builder.add(Extensions.emoji);
+    final engine = await builder.build();
+    final doc = engine.create()..typeText('Hi @ad');
+
+    final suggestion = doc.query(mention.mentionSuggestion());
+    expect(suggestion?.char, '@');
+    expect(suggestion?.query, 'ad');
+
+    final found = doc.query(emoji.searchEmoji(query: 'tada', limit: 1));
+    expect(found.single.emoji, '🎉');
+    expect(found.single.name, 'tada');
+
+    doc.run(mention.insertMention(id: '7', label: 'Ada'));
+    expect(doc.query(mention.mentionSuggestion()), isNull);
+    expect(doc.export(Format.text), 'Hi @Ada ');
+  });
+
   test('a handle from one engine is refused by another', () async {
     final (:engine, kit: _) = await Engine.starterKit();
     final other = EngineBuilder();

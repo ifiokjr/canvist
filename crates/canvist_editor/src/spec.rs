@@ -48,7 +48,7 @@ impl<'a> Args<'a> {
 		for field in fields {
 			match (given.get(field.name), &field.default) {
 				(Some(value), _) if !field.ty.accepts(value) => {
-					return Err(invalid(format!("`{}` must be {:?}", field.name, field.ty)));
+					return Err(invalid(format!("`{}` must be {}", field.name, field.ty)));
 				}
 				(None, None) => return Err(invalid(format!("`{}` is required", field.name))),
 				_ => {}
