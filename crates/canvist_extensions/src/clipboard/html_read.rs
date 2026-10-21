@@ -284,8 +284,10 @@ const BOUNDARIES: [&str; 22] = [
 /// A text block's attributes from its `style`: TipTap's text alignment.
 fn text_block_attrs(attrs: &[(String, String)]) -> Attrs {
 	let style = attr(attrs, "style").unwrap_or_default();
+	// CSS keywords ignore ASCII case: `TEXT-ALIGN: Center` is centred.
+	let align = css_value(style, "text-align").map(str::to_ascii_lowercase);
 
-	match css_value(style, "text-align") {
+	match align.as_deref() {
 		Some(align @ ("left" | "center" | "right" | "justify")) if cfg!(feature = "text-align") => {
 			Attrs::new().with("textAlign", align)
 		}

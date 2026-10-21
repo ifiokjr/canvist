@@ -178,8 +178,22 @@ pub struct TypographyHandle {
 	_registration: Registration,
 }
 
+/// Whether the typed text would be inline code, where typography never
+/// runs, as in TipTap: `i--` and `a->b` are code, not prose.
+fn in_inline_code(state: &EditorState) -> bool {
+	state
+		.schema()
+		.mark_type("code")
+		.is_some_and(|code| commands::active_marks(state).get(code).is_some())
+}
+
 /// Replace capture group 1 of `found` (or the whole match) with `output`,
-/// keeping any typed text after the group, such as the space after `1/2`.
+/// keeping the rest of what was typed, such as the space after `1/2`.
+///
+/// The match runs over the text before the caret followed by the typed
+/// text, which is not in the document yet. Typing one character puts the
+/// group partly before the caret; inserting a string such as `" ->"` at
+/// once can put it wholly inside the typed text.
 fn replace(state: &mut EditorState, found: &RuleMatch, output: &str) -> CommandResult {
 	let Some(target) = found
 		.groups
@@ -190,18 +204,29 @@ fn replace(state: &mut EditorState, found: &RuleMatch, output: &str) -> CommandR
 	else {
 		return Ok(None);
 	};
+
+	if in_inline_code(state) {
+		return Ok(None);
+	}
+
 	let block = found.block;
-	let removed_end = target.end.min(found.caret);
-	let kept_typed = target.end <= found.caret;
-	let marks = commands::marks_at(state.doc(), Point::new(block, target.start));
+	let caret = found.caret;
+	let start = target.start.min(caret);
+	let removed_end = target.end.min(caret);
+	// The typed text before and after the group.
+	let typed_head = &found.typed[..(target.start.saturating_sub(caret) as usize)];
+	let typed_tail = &found.typed[(target.end.saturating_sub(caret) as usize)..];
+	let replacement = format!("{typed_head}{output}");
+	let marks = commands::marks_at(state.doc(), Point::new(block, start));
 
 	state.change(EditKind::InputRule, |tr| {
-		tr.delete_text(block, target.start..removed_end)?;
-		let mut end = tr.insert_text(Point::new(block, target.start), output, marks.clone())?;
+		tr.delete_text(block, start..removed_end)?;
+		let mut end = tr.insert_text(Point::new(block, start), &replacement, marks.clone())?;
 
-		if kept_typed {
-			let typed_at = Point::new(block, end.offset + found.caret - removed_end);
-			end = tr.insert_text(typed_at, &found.typed, marks)?;
+		if !typed_tail.is_empty() {
+			// Document text between the group and the caret stays put.
+			let typed_at = Point::new(block, end.offset + caret - removed_end);
+			end = tr.insert_text(typed_at, typed_tail, marks)?;
 		}
 
 		tr.set_selection(Selection::caret(end));

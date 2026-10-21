@@ -84,6 +84,200 @@
 				{ "op": "query", "query": "placeholder", "expect": null }
 			],
 			"expect": { "text": "hi" }
+		},
+		{
+			"name": "every alignment has a key, a command, and a query, and undoes",
+			"requires": ["extensions"],
+			"extensions": ["textAlign"],
+			"input": { "format": "text", "content": "Body" },
+			"steps": [
+				{ "op": "press", "key": "Mod-Shift-l" },
+				{ "op": "query", "query": "textAlign", "expect": "left" },
+				{ "op": "press", "key": "Mod-Shift-e" },
+				{ "op": "query", "query": "textAlign", "expect": "center" },
+				{ "op": "press", "key": "Mod-Shift-r" },
+				{ "op": "query", "query": "textAlign", "expect": "right" },
+				{ "op": "press", "key": "Mod-Shift-j" },
+				{ "op": "query", "query": "textAlign", "expect": "justify" },
+				{ "op": "expect", "html": "<p style=\"text-align: justify\">Body</p>", "markdown": "Body" },
+				{ "op": "undo", "applied": true },
+				{ "op": "query", "query": "textAlign", "expect": "right" },
+				{ "op": "redo", "applied": true },
+				{ "op": "can", "command": "setTextAlign", "args": { "alignment": "justify" }, "expect": false },
+				{ "op": "can", "command": "unsetTextAlign", "expect": true },
+				{ "op": "run", "command": "unsetTextAlign", "applied": true },
+				{ "op": "run", "command": "unsetTextAlign", "applied": false },
+				{ "op": "run", "command": "toggleTextAlign", "args": { "alignment": "center" }, "applied": true },
+				{ "op": "query", "query": "textAlign", "expect": "center" }
+			],
+			"expect": { "html": "<p style=\"text-align: center\">Body</p>" }
+		},
+		{
+			"name": "rejects alignments it does not know and arguments it does not take",
+			"requires": ["extensions"],
+			"extensions": ["textAlign"],
+			"input": { "format": "text", "content": "Body" },
+			"steps": [
+				{ "op": "run", "command": "setTextAlign", "error": "invalidArgs" },
+				{ "op": "run", "command": "setTextAlign", "args": { "alignment": "Center" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setTextAlign", "args": { "alignment": 2 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "toggleTextAlign", "args": { "alignment": "start" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "unsetTextAlign", "args": { "alignment": "left" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setCharacterLimit", "args": { "limit": 1 }, "error": "unknownName" },
+				{ "op": "query", "query": "placeholder", "expect": null, "error": "unknownName" }
+			],
+			"expect": { "html": "<p>Body</p>" }
+		},
+		{
+			"name": "code blocks have no alignment to set",
+			"requires": ["extensions"],
+			"extensions": ["textAlign"],
+			"input": { "format": "markdown", "content": "```\ncode\n```" },
+			"steps": [
+				{ "op": "can", "command": "setTextAlign", "args": { "alignment": "center" }, "expect": false },
+				{ "op": "run", "command": "setTextAlign", "args": { "alignment": "center" }, "applied": false },
+				{ "op": "query", "query": "textAlign", "expect": null }
+			],
+			"expect": { "html": "<pre><code>code</code></pre>" }
+		},
+		{
+			"name": "reads TipTap JSON alignment and writes it back",
+			"requires": ["extensions"],
+			"extensions": ["textAlign"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{ "type": "heading", "attrs": { "level": 1, "textAlign": "right" }, "content": [{ "type": "text", "text": "Title" }] },
+						{ "type": "paragraph", "attrs": { "textAlign": "justify" }, "content": [{ "type": "text", "text": "Body" }] },
+						{ "type": "paragraph", "attrs": { "textAlign": "left" }, "content": [{ "type": "text", "text": "Left" }] }
+					]
+				}
+			},
+			"steps": [{ "op": "snapshotRoundTrip" }],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{ "type": "heading", "attrs": { "level": 1, "textAlign": "right" }, "content": [{ "type": "text", "text": "Title" }] },
+						{ "type": "paragraph", "attrs": { "textAlign": "justify" }, "content": [{ "type": "text", "text": "Body" }] },
+						{ "type": "paragraph", "attrs": { "textAlign": "left" }, "content": [{ "type": "text", "text": "Left" }] }
+					]
+				},
+				"html": "<h1 style=\"text-align: right\">Title</h1><p style=\"text-align: justify\">Body</p><p style=\"text-align: left\">Left</p>",
+				"markdown": "# Title\n\nBody\n\nLeft"
+			}
+		},
+		{
+			"name": "HTML alignment ignores case and drops unknown values",
+			"requires": ["extensions"],
+			"extensions": ["textAlign"],
+			"input": {
+				"format": "html",
+				"content": "<p style=\"TEXT-ALIGN: Center\">a</p><p style=\"text-align: sideways\">b</p>"
+			},
+			"expect": { "html": "<p style=\"text-align: center\">a</p><p>b</p>" }
+		},
+		{
+			"name": "keeps alignment through Yjs",
+			"requires": ["collab", "extensions"],
+			"extensions": ["textAlign"],
+			"input": { "format": "markdown", "content": "# Title\n\nBody" },
+			"steps": [
+				{ "op": "share", "clientId": 7 },
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "setTextAlign", "args": { "alignment": "center" }, "applied": true },
+				{ "op": "takeUpdates", "count": 1 },
+				{ "op": "rejoin", "clientId": 8 },
+				{ "op": "validate", "rejectedBlocks": 0, "waiting": false }
+			],
+			"expect": { "html": "<h1 style=\"text-align: center\">Title</h1><p style=\"text-align: center\">Body</p>" }
+		},
+		{
+			"name": "typography rewrites every symbol it knows",
+			"requires": ["extensions"],
+			"extensions": ["typography"],
+			"steps": [
+				{ "op": "typeText", "text": "a... <- <-> (tm) (sm) (r) +/- != << >> 1/4 3/4 2*3 x^3 'q' " }
+			],
+			"expect": { "text": "a… ← ↔ ™ ℠ ® ± ≠ « » ¼ ¾ 2×3 x³ ‘q’ " }
+		},
+		{
+			"name": "typography leaves inline code, pasted text, and inserted text alone",
+			"requires": ["extensions"],
+			"extensions": ["typography"],
+			"steps": [
+				{ "op": "press", "key": "Mod-e" },
+				{ "op": "typeText", "text": "i-- a->b" },
+				{ "op": "press", "key": "Mod-e" },
+				{ "op": "paste", "format": "text", "content": " -- " },
+				{ "op": "insertText", "text": "(c)" }
+			],
+			"expect": { "markdown": "`i-- a->b` -- (c)" }
+		},
+		{
+			"name": "undo reverts a typography rule together with its keystroke",
+			"requires": ["extensions"],
+			"extensions": ["typography"],
+			"steps": [
+				{ "op": "typeText", "text": "a->" },
+				{ "op": "expect", "text": "a→" },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "text": "a-" }
+			]
+		},
+		{
+			"name": "a character limit refuses pastes past it and lifts with null",
+			"requires": ["extensions"],
+			"extensions": ["characterCount"],
+			"steps": [
+				{ "op": "run", "command": "setCharacterLimit", "args": { "limit": 5 }, "applied": true },
+				{ "op": "typeText", "text": "abc" },
+				{ "op": "paste", "format": "markdown", "content": "**def**" },
+				{ "op": "expect", "text": "abc" },
+				{ "op": "paste", "format": "html", "content": "<p>d</p><p>e</p>" },
+				{ "op": "query", "query": "characters", "expect": 5 },
+				{ "op": "query", "query": "words", "expect": 2 },
+				{ "op": "run", "command": "setCharacterLimit", "args": { "limit": 4294967296 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setCharacterLimit", "args": { "limit": "5" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setCharacterLimit", "error": "invalidArgs" },
+				{ "op": "run", "command": "setCharacterLimit", "args": { "limit": 0 }, "applied": true },
+				{ "op": "typeText", "text": "x" },
+				{ "op": "query", "query": "characterLimit", "expect": 0 },
+				{ "op": "run", "command": "setCharacterLimit", "args": { "limit": 4294967295 }, "applied": true },
+				{ "op": "query", "query": "characterLimit", "expect": 4294967295 }
+			],
+			"expect": { "text": "abcd\ne" }
+		},
+		{
+			"name": "counts graphemes, not code units, and leaves out hard breaks",
+			"requires": ["extensions"],
+			"extensions": ["characterCount"],
+			"input": { "format": "html", "content": "<p>👍🏽 é<br>two</p>" },
+			"steps": [
+				{ "op": "query", "query": "characters", "expect": 6 },
+				{ "op": "query", "query": "words", "expect": 3 }
+			]
+		},
+		{
+			"name": "placeholders show only at a caret in an empty block",
+			"requires": ["extensions"],
+			"extensions": ["placeholder"],
+			"input": { "format": "markdown", "content": "Full\n\n- item" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 4 } },
+				{ "op": "query", "query": "placeholder", "expect": null },
+				{ "op": "press", "key": "Enter" },
+				{ "op": "query", "query": "placeholder", "expect": "Write something …" },
+				{ "op": "run", "command": "setPlaceholder", "args": { "placeholder": "" }, "applied": true },
+				{ "op": "query", "query": "placeholder", "expect": "" },
+				{ "op": "run", "command": "setPlaceholder", "args": { "placeholder": null }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setPlaceholder", "error": "invalidArgs" },
+				{ "op": "selectAll" },
+				{ "op": "query", "query": "placeholder", "expect": null }
+			],
+			"expect": { "markdown": "Full\n\n- item" }
 		}
 	]
 }
