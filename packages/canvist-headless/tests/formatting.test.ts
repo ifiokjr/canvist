@@ -24,7 +24,7 @@ import {
 	subscript,
 	superscript,
 	textStyle,
-} from "../src/mod.ts";
+} from "../src/full.ts";
 import { comparable } from "./descriptors.ts";
 
 const formatting = [

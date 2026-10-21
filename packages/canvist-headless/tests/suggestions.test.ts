@@ -17,7 +17,7 @@ import {
 	hashtag,
 	isCanvistError,
 	mention,
-} from "../src/mod.ts";
+} from "../src/full.ts";
 
 const atoms = [mention, hashtag, emoji] as const;
 

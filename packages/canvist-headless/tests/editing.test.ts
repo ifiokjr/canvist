@@ -20,7 +20,7 @@ import {
 	starterKit,
 	textAlign,
 	typography,
-} from "../src/mod.ts";
+} from "../src/full.ts";
 import { comparable } from "./descriptors.ts";
 
 const editing = [textAlign, typography, characterCount, placeholder] as const;
