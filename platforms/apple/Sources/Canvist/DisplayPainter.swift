@@ -43,7 +43,7 @@ final class DisplayPainter {
         switch item {
         case .fill(let bounds, let color, let radius, _):
             fill(Self.rect(bounds).offsetBy(dx: origin.x, dy: origin.y), color: UIColor(color), radius: radius)
-        case .text(let text, let font, let x, let baseline, _, let color, let letterSpacing, _):
+        case .text(let text, let font, let x, let baseline, _, let color, let letterSpacing, _, _):
             let key = LineKey(text: text, font: font, color: color, letterSpacing: letterSpacing)
             drawText(key, at: CGPoint(x: CGFloat(x) + origin.x, y: CGFloat(baseline) + origin.y), in: context)
         case .line(let kind, let x, let y, let width, let thickness, let color):
@@ -158,7 +158,7 @@ final class DisplayPainter {
         switch item {
         case .fill(let bounds, _, _, _), .checkbox(let bounds, _), .slot(let bounds, _):
             return rect(bounds)
-        case .text(_, _, let x, let baseline, let width, _, _, _):
+        case .text(_, _, let x, let baseline, let width, _, _, _, _):
             // Text runs carry their baseline, not their line box; a generous
             // band around it covers ascenders, descenders, and accents.
             let reach = CGFloat(width) + Self.glyphOverhang * 2
