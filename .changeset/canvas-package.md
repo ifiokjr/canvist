@@ -1,6 +1,7 @@
 ---
 "@canvist/canvas": feat
 canvist_canvas_wasm: feat
+"@canvist/headless": fix
 ---
 
 # Package `@canvist/canvas` for npm, starting from your own scene
