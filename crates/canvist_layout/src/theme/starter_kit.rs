@@ -459,7 +459,7 @@ fn embed_rules(palette: &Palette) -> Vec<EmbedRule> {
 				patch: TextPatch::new()
 					.color(palette.accent)
 					.background(palette.accent_wash),
-				fallback: None,
+				fallback: Some(Arc::from("id")),
 			},
 		),
 		EmbedRule::new(

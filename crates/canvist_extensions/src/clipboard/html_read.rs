@@ -777,7 +777,12 @@ impl<'s> Reader<'s> {
 			}
 			"mention" if cfg!(feature = "mention") && attrs.get("label").is_none() => {
 				let label: String = shown.chars().skip(1).collect();
-				attrs.set("label", label);
+				// A mention without a label shows its id, which is not a label.
+				let id = attrs.get("id").and_then(Value::as_str);
+
+				if id != Some(label.as_str()) {
+					attrs.set("label", label);
+				}
 			}
 			_ => {}
 		}

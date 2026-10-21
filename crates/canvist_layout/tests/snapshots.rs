@@ -421,6 +421,8 @@ fn placeholders_draw_faded_in_empty_blocks_only() {
 	assert!(!runs.iter().any(|run| run.text() == "Hidden"));
 }
 
+// The extension theme rules are behind `theme-extensions`.
+#[cfg(feature = "theme-extensions")]
 #[test]
 fn emoji_draw_their_character_or_their_shortcode() {
 	let schema = canvist_model::Schema::builder()
