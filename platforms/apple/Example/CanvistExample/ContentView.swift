@@ -1,12 +1,12 @@
 import Canvist
 import SwiftUI
 
-/// Appends text to a Rust-owned document and renders what Rust returns.
+/// Types into a Rust-owned document and shows what Rust exports.
 struct ContentView: View {
-    @State private var editor = EditorHandle()
     @State private var draft = ""
     @State private var document = ""
     @State private var failure: String?
+    @State private var editor = Result { try Editor(options: defaultEditorOptions(), measurer: CoreTextMeasurer()) }
 
     var body: some View {
         NavigationStack {
@@ -24,6 +24,7 @@ struct ContentView: View {
                     Text(document.isEmpty ? "Empty" : document)
                         .foregroundStyle(document.isEmpty ? .secondary : .primary)
                         .accessibilityIdentifier("document")
+
                     if let failure {
                         Text(failure)
                             .foregroundStyle(.red)
@@ -31,7 +32,7 @@ struct ContentView: View {
                 }
 
                 Section {
-                    LabeledContent("Rust core", value: editor.version())
+                    LabeledContent("Rust core", value: coreVersion())
                 }
             }
             .navigationTitle("Canvist")
@@ -41,10 +42,11 @@ struct ContentView: View {
     private func append() {
         guard !draft.isEmpty else { return }
         do {
-            // The placeholder core counts offsets in Unicode scalar values.
-            let end = UInt32(document.unicodeScalars.count)
-            try editor.insertText(offset: end, text: draft)
-            document = editor.text()
+            let editor = try editor.get()
+            let end = editor.textLength()
+            _ = try editor.select(anchor: end, head: end)
+            _ = try editor.insertText(text: draft)
+            document = editor.export(format: .markdown)
             draft = ""
             failure = nil
         } catch {

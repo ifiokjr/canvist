@@ -1014,7 +1014,13 @@ dependencies = [
 name = "canvist_ffi"
 version = "0.1.0"
 dependencies = [
+ "canvist_headless",
+ "canvist_layout",
+ "divan",
+ "rustc-hash 2.1.1",
+ "serde_json",
  "thiserror 2.0.18",
+ "unicode-segmentation",
  "uniffi",
 ]
 

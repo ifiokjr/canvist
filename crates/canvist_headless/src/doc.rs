@@ -323,6 +323,29 @@ impl Doc {
 		self.finish(update.as_ref())
 	}
 
+	/// Whether [`Doc::undo`] has anything to undo: this peer's own changes
+	/// on a shared document, every change otherwise.
+	#[must_use]
+	pub fn can_undo(&self) -> bool {
+		#[cfg(feature = "collab")]
+		if let Some(binding) = &self.shared {
+			return binding.can_undo();
+		}
+
+		self.editor.can_undo()
+	}
+
+	/// Whether [`Doc::redo`] has anything to redo.
+	#[must_use]
+	pub fn can_redo(&self) -> bool {
+		#[cfg(feature = "collab")]
+		if let Some(binding) = &self.shared {
+			return binding.can_redo();
+		}
+
+		self.editor.can_redo()
+	}
+
 	/// Change the document through the editor with an interactive host's
 	/// clock and line navigator, and return the update so the host can lay
 	/// out again.

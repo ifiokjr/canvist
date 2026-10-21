@@ -7,4 +7,4 @@ local.properties
 
 # Produced by `build.sh`.
 /canvist/src/main/jniLibs/
-/canvist/src/main/kotlin/
+/canvist/src/main/kotlin/io/github/ifiokjr/canvist/canvist_ffi.kt

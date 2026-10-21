@@ -300,6 +300,7 @@ in
         monostyle check crates/canvist_web --fail-under 90
         monostyle check crates/canvist_desktop --fail-under 90
         monostyle check examples/desktop --fail-under 90
+        monostyle check crates/canvist_ffi --fail-under 90
         monostyle check packages/canvist-web --fail-under 90
         monostyle check packages/canvist-react --fail-under 90
         monostyle check packages/canvist-vue --fail-under 90
