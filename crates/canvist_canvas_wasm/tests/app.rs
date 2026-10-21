@@ -176,9 +176,9 @@ fn peers_given_the_same_scene_share_its_state() -> TestResult {
 	let mut ada = App::with_scene(2, &scene)?;
 	let grace = App::with_scene(3, &scene)?;
 
-	assert_eq!(ada.encode_state(), grace.encode_state());
 	assert!(scene_json(&ada).contains("Card"));
-	// Merging a peer that started from the same scene changes nothing.
+	// Merging a peer that started from the same scene changes nothing. The
+	// encoded bytes may still differ: yrs writes map entries in hash order.
 	assert!(!ada.apply_update(&grace.encode_state())?);
 	assert_eq!(scene_json(&ada), scene_json(&grace));
 	Ok(())
