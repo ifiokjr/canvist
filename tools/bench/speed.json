@@ -56,6 +56,10 @@
 				"cpu",
 				"gpu"
 			]
+		},
+		{
+			"package": "canvist_desktop",
+			"bench": "desktop"
 		}
 	]
 }
