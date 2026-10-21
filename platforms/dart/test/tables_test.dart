@@ -55,6 +55,15 @@ Map<String, Object?> cell(
 };
 
 void main() {
+  describesTheMetadata();
+  runsTypedHandles();
+  reportsErrors();
+  readsTipTapJson();
+  convergesWithPeers();
+}
+
+/// The metadata describes the table extension.
+void describesTheMetadata() {
   test('the metadata describes every table command, query, and node', () async {
     final (:engine, table: _) = await tables();
     final extension = engine.metadata.cast<Map<String, Object?>>().firstWhere(
@@ -72,7 +81,10 @@ void main() {
     expect(names('queries'), ['tableCell']);
     expect(names('nodes'), ['table', 'tableRow', 'tableCell', 'tableHeader']);
   });
+}
 
+/// Typed handles run, check, and query table commands.
+void runsTypedHandles() {
   test('typed handles run, check, and query table commands', () async {
     final (:engine, :table) = await tables();
     final doc = engine.create();
@@ -137,7 +149,10 @@ void main() {
     expect(doc.run(table.deleteTable()), isTrue);
     expect(doc.query(table.tableCell()), isNull);
   });
+}
 
+/// Invalid arguments and missing extensions fail with stable codes.
+void reportsErrors() {
   test('invalid table arguments fail with invalidArgs', () async {
     final (:engine, :table) = await tables();
     final doc = engine.create()..run(table.insertTable(rows: 1, cols: 1));
@@ -180,7 +195,10 @@ void main() {
     );
     expect(() => doc.run(other.table.insertTable()), throwsArgumentError);
   });
+}
 
+/// TipTap JSON with merged cells reads and writes back.
+void readsTipTapJson() {
   test(
     'TipTap JSON with merged cells reads and writes back unchanged',
     () async {
@@ -229,7 +247,10 @@ void main() {
       ));
     },
   );
+}
 
+/// Peers editing one table converge.
+void convergesWithPeers() {
   test('peers changing a table while others type converge', () async {
     final first = await tables();
     final second = await tables(client: 2);
