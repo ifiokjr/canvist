@@ -349,11 +349,25 @@ fn details_open(line: &str) -> Option<bool> {
 }
 
 /// A `<details>` block as GitHub writes it: an optional `<summary>` line,
-/// then Markdown content, through the closing `</details>`.
+/// then Markdown content, through the `</details>` that closes it, past
+/// those of details nested inside.
 fn details(build: &mut Builder<'_>, lines: &[&str], open: bool) -> (usize, Vec<BlockTree>) {
+	let mut depth = 0_usize;
 	let close = lines[1..]
 		.iter()
-		.position(|line| line.trim() == "</details>")
+		.position(|line| {
+			if details_open(line).is_some() {
+				depth += 1;
+			} else if line.trim() == "</details>" {
+				if depth == 0 {
+					return true;
+				}
+
+				depth -= 1;
+			}
+
+			false
+		})
 		.map_or(lines.len(), |index| index + 1);
 	let inner = &lines[1..close.min(lines.len())];
 	let summary_text = inner.first().and_then(|line| {
@@ -366,9 +380,16 @@ fn details(build: &mut Builder<'_>, lines: &[&str], open: bool) -> (usize, Vec<B
 	} else {
 		inner
 	};
-	let summary_inline = parse_inline(build, summary_text.unwrap_or_default());
+	// The summary line is HTML, as the writer escapes it, not Markdown.
+	let summary_text = super::html_read::decode(summary_text.unwrap_or_default());
+	let summary_inline = InlineText::plain(&summary_text, MarkSet::empty());
 	let summary = build.text("detailsSummary", Attrs::new(), summary_inline);
-	let content = blocks(build, body);
+	let mut content = blocks(build, body);
+
+	if content.is_empty() {
+		content.push(build.text("paragraph", Attrs::new(), InlineText::new()));
+	}
+
 	let content = build.container("detailsContent", &Attrs::new(), content);
 	let children = std::iter::once(summary).chain(content).collect();
 	let used = (close + 1).min(lines.len());

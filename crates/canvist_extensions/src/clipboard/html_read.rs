@@ -184,7 +184,7 @@ fn attr_value(source: &str) -> (String, &str) {
 }
 
 /// Decode character references.
-fn decode(text: &str) -> String {
+pub(super) fn decode(text: &str) -> String {
 	let mut decoded = String::with_capacity(text.len());
 	let mut rest = text;
 
@@ -344,7 +344,14 @@ fn role(name: &str, attrs: &[(String, String)], parent: Option<&'static str>) ->
 			Role::Container("detailsContent", Attrs::new())
 		}
 		"div" if cfg!(feature = "callout") && (attr(attrs, "data-callout-type").is_some()) => {
-			let kind = attr(attrs, "data-callout-type").unwrap_or("info");
+			// An unknown type reads as the default, as the theme draws it.
+			let kind = attr(attrs, "data-callout-type")
+				.filter(|kind| {
+					super::markdown_write::ALERTS
+						.iter()
+						.any(|(known, _)| known == kind)
+				})
+				.unwrap_or("info");
 			Role::Container("callout", Attrs::new().with("type", kind))
 		}
 		"div" if cfg!(feature = "mathematics") && (data_type == Some("block-math")) => {
@@ -591,6 +598,37 @@ fn heavy(value: &str) -> bool {
 	}
 }
 
+/// Whether any compiled leaf is an element with a closing tag, whose end
+/// must not close the container around it. The StarterKit's only leaf,
+/// `<hr>`, is void.
+const CLOSED_LEAVES: bool = cfg!(any(
+	feature = "audio",
+	feature = "file",
+	feature = "mathematics",
+	feature = "twitch",
+	feature = "youtube"
+));
+
+/// Whether `tag` is a void element, which has no closing tag.
+fn is_void(tag: &str) -> bool {
+	matches!(
+		tag,
+		"area"
+			| "base"
+			| "br"
+			| "col"
+			| "embed"
+			| "hr"
+			| "img"
+			| "input"
+			| "link"
+			| "meta"
+			| "source"
+			| "track"
+			| "wbr"
+	)
+}
+
 /// An open container.
 struct Frame {
 	tag: String,
@@ -627,6 +665,10 @@ struct Reader<'s> {
 	/// Open inline tags and the marks each applies.
 	marks: Vec<(String, Vec<Mark>)>,
 	atom: Option<OpenAtom>,
+	/// The tags of open leaf elements that have a closing tag, such as
+	/// `<div data-type="block-math">`, so their `</div>` never closes the
+	/// container around them.
+	leaves: Vec<String>,
 }
 
 impl<'s> Reader<'s> {
@@ -644,6 +686,7 @@ impl<'s> Reader<'s> {
 			text: None,
 			marks: Vec::new(),
 			atom: None,
+			leaves: Vec::new(),
 		}
 	}
 
@@ -688,6 +731,10 @@ impl<'s> Reader<'s> {
 				self.end_text();
 				let leaf = self.build.leaf(name, &leaf_attrs);
 				self.children().extend(leaf);
+
+				if CLOSED_LEAVES && !is_void(&tag) {
+					self.leaves.push(tag);
+				}
 			}
 			Role::Break => self.line_break(),
 			Role::Atom(name, attrs) => {
@@ -736,6 +783,12 @@ impl<'s> Reader<'s> {
 	fn close(&mut self, tag: &str) {
 		if self.atom.as_ref().is_some_and(|atom| atom.tag == tag) {
 			self.finish_atom();
+
+			return;
+		}
+
+		if CLOSED_LEAVES && let Some(index) = self.leaves.iter().rposition(|open| open == tag) {
+			self.leaves.truncate(index);
 
 			return;
 		}

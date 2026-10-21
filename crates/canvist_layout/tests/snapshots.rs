@@ -483,6 +483,7 @@ fn details(open: bool) -> Document {
 	.expect("valid JSON")
 }
 
+#[cfg(feature = "theme-extensions")]
 fn texts(doc: &Document) -> Vec<String> {
 	let layout = layout(doc, 320.0);
 	let list = layout.display_list(&DisplayOptions::viewport(0.0, layout.height()));
@@ -498,6 +499,8 @@ fn texts(doc: &Document) -> Vec<String> {
 		.collect()
 }
 
+// The extension theme rules are behind `theme-extensions`.
+#[cfg(feature = "theme-extensions")]
 #[test]
 fn closed_details_show_only_their_summary() {
 	assert_eq!(texts(&details(false)).concat(), "▸Summary");

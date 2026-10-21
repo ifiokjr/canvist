@@ -106,8 +106,46 @@ impl<'s> Builder<'s> {
 			return children;
 		};
 		let attrs = with_defaults(&self.schema.block(kind).attrs, attrs);
+		let children = if cfg!(feature = "details") && name == "details" {
+			self.details_children(children)
+		} else {
+			children
+		};
 
 		vec![BlockTree::container(self.id(), kind, children).with_attrs(attrs)]
+	}
+
+	/// The children of a details in TipTap's shape: a summary, empty if
+	/// there is none, then one content block holding everything else, or
+	/// an empty paragraph, as a browser shows a `<details>` whatever it
+	/// holds.
+	fn details_children(&mut self, children: Vec<BlockTree>) -> Vec<BlockTree> {
+		let (Some(summary), Some(content)) = (
+			self.schema.block_type("detailsSummary"),
+			self.schema.block_type("detailsContent"),
+		) else {
+			return children;
+		};
+		let mut children = children.into_iter().peekable();
+		let first = children
+			.next_if(|child| child.kind == summary)
+			.unwrap_or_else(|| self.text("detailsSummary", Attrs::new(), InlineText::new()));
+		let mut rest: Vec<BlockTree> = children
+			.flat_map(|child| {
+				match child.content {
+					TreeContent::Blocks(blocks) if child.kind == content => blocks,
+					_ => vec![child],
+				}
+			})
+			.collect();
+
+		if rest.is_empty() {
+			rest.push(self.text("paragraph", Attrs::new(), InlineText::new()));
+		}
+
+		let mut fitted = vec![first];
+		fitted.extend(self.container("detailsContent", &Attrs::new(), rest));
+		fitted
 	}
 
 	/// An atomic block of type `name` with `attrs` (those the type

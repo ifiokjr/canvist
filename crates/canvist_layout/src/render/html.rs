@@ -245,6 +245,12 @@ impl Writer<'_> {
 		}
 
 		self.out.push('"');
+
+		// Only the extensions' blocks need ARIA beyond their tags.
+		if cfg!(feature = "theme-extensions") {
+			self.accessibility(block);
+		}
+
 		attribute(&mut self.out, "data-id", &block.id().to_string());
 
 		if matches!(block.content(), Content::Inline(_)) {
@@ -303,6 +309,42 @@ impl Writer<'_> {
 			if checked { " checked" } else { "" },
 			num(top)
 		);
+	}
+
+	/// ARIA for blocks whose meaning only their look carries: a callout is
+	/// a note whose type only its colour shows, and a block formula is an
+	/// empty slot the host typesets, so it is labelled with its LaTeX.
+	fn accessibility(&mut self, block: &Block) {
+		let doc = self.doc;
+		let schema = doc.schema();
+		let defaults = &schema.block(block.kind()).attrs;
+		let string = |key| attr(block.attrs(), defaults, key).and_then(Value::as_str);
+
+		match &*schema.block(block.kind()).name {
+			"callout" => {
+				attribute(&mut self.out, "role", "note");
+				let label = match string("type") {
+					Some("blank") => None,
+					Some("warning") => Some("Warning"),
+					Some("error") => Some("Error"),
+					Some("success") => Some("Success"),
+					_ => Some("Info"),
+				};
+
+				if let Some(label) = label {
+					attribute(&mut self.out, "aria-label", label);
+				}
+			}
+			"blockMath" => {
+				attribute(&mut self.out, "role", "math");
+				attribute(
+					&mut self.out,
+					"aria-label",
+					string("latex").unwrap_or_default(),
+				);
+			}
+			_ => {}
+		}
 	}
 
 	fn inline(&mut self, inline: &InlineText, base: &TextStyle) {

@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4b5b0f10a1c29a837d32cfe85f4788c5dbc5f68fee774e94e15b8419e9d9a64e # shrinks to blocks = [Object {"attrs": Object {"type": String("info")}, "content": Array [Object {"attrs": Object {"type": String("info")}, "content": Array [Object {"attrs": Object {"latex": String("a")}, "type": String("blockMath")}], "type": String("callout")}, Object {"content": Array [Object {"text": String("a"), "type": String("text")}], "type": String("paragraph")}], "type": String("callout")}]
+cc bcfceaa92936b4a4cb1154777eeedd491c49f06d9ba7174601bd1bb6d34692e7 # shrinks to actions = [Run("toggleCallout", [("type", String("info"))]), Type(":::warning "), Run("insertBlockMath", [("latex", String("x^2"))]), Type("a")]
+cc 5649c5c5bc2d3b342ee5bf4d49fb587f5b2b780653cf6885d3342308baca1470 # shrinks to actions = [Run("toggleCallout", [("type", String("info"))]), Press("ArrowDown"), Run("setDetails", []), Press("Shift-ArrowLeft"), Type("a")]

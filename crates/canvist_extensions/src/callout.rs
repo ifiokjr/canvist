@@ -105,9 +105,24 @@ impl CalloutHandle {
 	/// The type of the callout around the selection, if there is one.
 	#[must_use]
 	pub fn kind(self, state: &EditorState) -> Option<CalloutType> {
-		resolve::attr_around(state, CALLOUT, "type")
-			.and_then(|value| value.as_str().and_then(CalloutType::from_name))
+		type_around(state).and_then(CalloutType::from_name)
 	}
+}
+
+/// The type of the callout around the selection, if there is one. A
+/// missing type, or one this extension does not know, which JSON or a
+/// collaborator may carry, reads as `info`, as the theme draws it.
+fn type_around(state: &EditorState) -> Option<&'static str> {
+	let callout = resolve::around(state, CALLOUT)?;
+	let attrs = state.doc().block(callout)?.attrs();
+	let named = attrs.get("type").and_then(Value::as_str);
+
+	Some(
+		TYPES
+			.into_iter()
+			.find(|kind| Some(*kind) == named)
+			.unwrap_or("info"),
+	)
 }
 
 fn toggle(kind: &'static str) -> Command {
@@ -190,7 +205,7 @@ impl Extension for Callout {
 			"calloutType",
 			"The type of the callout around the selection, or null outside one.",
 			ValueType::nullable(ValueType::OneOf(TYPES.to_vec())),
-			|state, _| Ok(resolve::attr_around(state, CALLOUT, "type").unwrap_or(Value::Null)),
+			|state, _| Ok(type_around(state).map_or(Value::Null, Value::from)),
 		)])
 	}
 
