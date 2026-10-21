@@ -120,3 +120,21 @@ export function resolveColor(scope: Element, expression: string): string {
 	probe.remove();
 	return color;
 }
+
+const darkQuery = matchMedia("(prefers-color-scheme: dark)");
+
+/** The site's colour scheme: pinned by `data-theme`, or the system's. */
+export function colorScheme(): "light" | "dark" {
+	const pinned = document.documentElement.dataset["theme"];
+	if (pinned === "light" || pinned === "dark") return pinned;
+	return darkQuery.matches ? "dark" : "light";
+}
+
+/**
+ * Calls `callback` whenever the colour scheme may have changed: the theme
+ * toggle pinned one, or the system switched.
+ */
+export function onColorSchemeChange(callback: () => void): void {
+	document.addEventListener("canvist:theme", callback);
+	darkQuery.addEventListener("change", callback);
+}

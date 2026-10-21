@@ -1,16 +1,39 @@
-# Docker reads this file for builds that use website/Dockerfile.
+# Docker reads this file for builds that use website/Dockerfile. The last
+# matching line wins, and a line matches everything under a directory it
+# names, so the exclusions that cut across directories come last.
+
+# The Rust workspace builds the canvist packages (the crates and Cargo
+# files); the site reads the docs, the brand assets, and crate and package
+# readmes. Everything else in the repository stays out.
+/*
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!crates
+!docs
+!assets
+!packages
+!website
+docs/*
+!docs/src
+assets/*
+!assets/brand
+packages/*
+!packages/*/README.md
+!packages/*/readme.md
+!packages/canvist-headless
+!packages/canvist-web
+
+# Installs and build output from a local checkout: the image makes its own.
 **/node_modules
 **/target
-**/.git
+packages/*/dist
+packages/*/wasm
+packages/*/wasm-*
 website/dist
 website/.astro
 website/test-results
 website/playwright-report
-
-# From crates and packages the site needs only the readmes and the v1 engine.
-crates/**
-!crates/*/readme.md
-packages/**
-!packages/*/README.md
-!packages/canvist/src/**
-!packages/canvist/wasm/**
+website/lighthouse-reports
+website/perf-reports
+website/.lighthouseci
