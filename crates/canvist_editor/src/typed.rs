@@ -152,14 +152,17 @@ impl Editor {
 	pub fn can(&mut self, command: &Command, env: &mut Env<'_>) -> Result<bool, EditorError> {
 		let mut history = self.detached_history(true);
 		let last_rule = self.last_rule.as_ref();
+		let registry = &self.registry;
 
 		self.state.dry_run(|state| {
-			command(&mut Context {
+			let update = command(&mut Context {
 				state,
 				history: &mut history,
 				lines: env.lines(),
 				last_rule,
-			})
+			})?;
+
+			Ok(update.filter(|update| registry.allows(state, update)))
 		})
 	}
 
@@ -203,19 +206,13 @@ impl Editor {
 	/// What every registered extension adds, in registration order.
 	#[must_use]
 	pub fn metadata(&self) -> &[ExtensionMeta] {
-		&self.registry.metadata
+		self.registry.metadata(self.state.schema())
 	}
 
 	/// [`Editor::metadata`] as JSON, the input for binding generators.
 	#[must_use]
 	pub fn metadata_json(&self) -> Json {
-		Json::Array(
-			self.registry
-				.metadata
-				.iter()
-				.map(ExtensionMeta::to_json)
-				.collect(),
-		)
+		Json::Array(self.metadata().iter().map(ExtensionMeta::to_json).collect())
 	}
 }
 

@@ -192,6 +192,9 @@ pub struct DisplayOptions {
 	pub caret: Option<Caret>,
 	/// Extra highlighted ranges, such as search results, with their colours.
 	pub highlights: Vec<(Selection, Color)>,
+	/// Placeholder text for empty text blocks, such as "Write something …",
+	/// drawn at the block's start in its text colour, faded.
+	pub placeholders: Vec<(BlockId, Arc<str>)>,
 }
 
 impl DisplayOptions {
@@ -223,6 +226,13 @@ impl DisplayOptions {
 	#[must_use]
 	pub fn highlight(mut self, range: Selection, color: Color) -> Self {
 		self.highlights.push((range, color));
+		self
+	}
+
+	/// Show `text` in `block` while it is empty.
+	#[must_use]
+	pub fn placeholder(mut self, block: BlockId, text: &str) -> Self {
+		self.placeholders.push((block, Arc::from(text)));
 		self
 	}
 }

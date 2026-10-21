@@ -2,31 +2,14 @@
 //! and text styles, typed, run as commands, and round-tripped through the
 //! clipboard formats.
 
-#![cfg(all(
-	feature = "clipboard",
-	feature = "highlight",
-	feature = "subscript",
-	feature = "superscript",
-	feature = "text-style-kit"
-))]
+#![cfg(feature = "full")]
 
 mod support;
 
-use std::sync::Arc;
 use std::time::Duration;
 
 use canvist_editor::Editor;
 use canvist_editor::Env;
-use canvist_editor::Extension;
-use canvist_extensions::BackgroundColor;
-use canvist_extensions::Color;
-use canvist_extensions::FontFamily;
-use canvist_extensions::FontSize;
-use canvist_extensions::Highlight;
-use canvist_extensions::LineHeight;
-use canvist_extensions::Subscript;
-use canvist_extensions::Superscript;
-use canvist_extensions::TextStyle;
 use canvist_extensions::clipboard;
 use canvist_model::Attrs;
 use canvist_model::Value;
@@ -34,22 +17,8 @@ use serde_json::Value as Json;
 use serde_json::json;
 use support::Typist;
 
-fn extras() -> Vec<Arc<dyn Extension>> {
-	vec![
-		Arc::new(Subscript),
-		Arc::new(Superscript),
-		Arc::new(Highlight::default()),
-		Arc::new(TextStyle),
-		Arc::new(Color),
-		Arc::new(BackgroundColor),
-		Arc::new(FontFamily),
-		Arc::new(FontSize),
-		Arc::new(LineHeight),
-	]
-}
-
 fn typist(script: &str) -> Typist {
-	let mut typist = Typist::with(support::editor_with(extras()));
+	let mut typist = Typist::with(support::editor_with(canvist_extensions::extras()));
 	typist.type_script(script);
 	typist
 }

@@ -58,6 +58,7 @@ pub use select::select_all;
 pub use select::select_blocks;
 pub use select::select_parent;
 pub use select::set_selection;
+pub use select::set_setting;
 pub use slice::Slice;
 pub use slice::slice_selection;
 pub use split::split_block;

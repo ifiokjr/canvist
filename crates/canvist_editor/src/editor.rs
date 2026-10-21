@@ -1,6 +1,7 @@
 //! The editor: state, history, and the behaviour extensions contribute.
 
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use canvist_model::BlockTree;
@@ -27,6 +28,8 @@ use crate::InputRule;
 use crate::KeyPress;
 use crate::Keymap;
 use crate::LineNavigator;
+use crate::NodeKind;
+use crate::NodeMeta;
 use crate::Origin;
 use crate::ParagraphNavigator;
 use crate::PasteRule;
@@ -36,6 +39,7 @@ use crate::RuleInput;
 use crate::Slice;
 use crate::UndoHistory;
 use crate::Update;
+use crate::UpdateFilter;
 use crate::commands;
 use crate::context::AppliedRule;
 use crate::position;
@@ -97,10 +101,23 @@ pub(crate) struct Registry {
 	keymap: Keymap,
 	input_rules: Vec<InputRule>,
 	paste_rules: Vec<PasteRule>,
+	/// Every extension's update filters, in registration order.
+	update_filters: Vec<UpdateFilter>,
 	pub(crate) commands: FxHashMap<&'static str, CommandSpec>,
 	pub(crate) queries: FxHashMap<&'static str, QuerySpec>,
-	pub(crate) metadata: Vec<ExtensionMeta>,
+	/// The command and query names each extension registered, in
+	/// registration order.
+	names: Vec<RegisteredNames>,
+	/// What the extensions add, built on first use, so hosts that never
+	/// read it, such as the browser editor, neither build nor compile it.
+	metadata: OnceLock<Vec<ExtensionMeta>>,
 	code_blocks: Vec<BlockTypeId>,
+}
+
+/// The names one extension registered.
+struct RegisteredNames {
+	commands: Vec<&'static str>,
+	queries: Vec<&'static str>,
 }
 
 impl Registry {
@@ -119,6 +136,9 @@ impl Registry {
 			registry.describe(extension.as_ref(), schema)?;
 			registry.input_rules.extend(extension.input_rules(schema)?);
 			registry.paste_rules.extend(extension.paste_rules(schema)?);
+			registry
+				.update_filters
+				.extend(extension.update_filters(schema)?);
 			registry.code_blocks.extend(extension.code_blocks(schema)?);
 		}
 
@@ -126,18 +146,56 @@ impl Registry {
 		Ok(registry)
 	}
 
+	/// What every extension adds, in registration order: the nodes the
+	/// schema has, and the commands and queries it registered.
+	pub(crate) fn metadata(&self, schema: &Schema) -> &[ExtensionMeta] {
+		self.metadata.get_or_init(|| {
+			self.extensions
+				.iter()
+				.zip(&self.names)
+				.map(|(extension, names)| {
+					ExtensionMeta {
+						name: extension.name(),
+						nodes: extension
+							.nodes()
+							.into_iter()
+							.filter(|node| has_node(schema, node))
+							.collect(),
+						commands: names
+							.commands
+							.iter()
+							.filter_map(|name| self.commands.get(name))
+							.map(|spec| spec.meta().clone())
+							.collect(),
+						queries: names
+							.queries
+							.iter()
+							.filter_map(|name| self.queries.get(name))
+							.map(|spec| spec.meta().clone())
+							.collect(),
+					}
+				})
+				.collect()
+		})
+	}
+
+	/// Whether every update filter lets `update` stand.
+	pub(crate) fn allows(&self, state: &EditorState, update: &Update) -> bool {
+		self.update_filters
+			.iter()
+			.all(|allows| allows(state, update))
+	}
+
 	/// Register an extension's commands and queries by name, refusing
-	/// names another extension already took, and record its metadata.
+	/// names another extension already took.
 	fn describe(&mut self, extension: &dyn Extension, schema: &Schema) -> Result<(), EditorError> {
 		let commands = extension.commands(schema)?;
 		let queries = extension.queries(schema)?;
 		let taken = |name: &str| EditorError::DuplicateName(name.to_owned());
 
-		self.metadata.push(ExtensionMeta {
-			name: extension.name(),
-			nodes: extension.nodes(),
-			commands: commands.iter().map(|spec| spec.meta().clone()).collect(),
-			queries: queries.iter().map(|spec| spec.meta().clone()).collect(),
+		self.names.push(RegisteredNames {
+			commands: commands.iter().map(|spec| spec.meta().name).collect(),
+			queries: queries.iter().map(|spec| spec.meta().name).collect(),
 		});
 
 		for spec in commands {
@@ -566,6 +624,17 @@ impl Editor {
 			update
 		};
 
+		if update.origin == Origin::Local && !self.registry.allows(&self.state, &update) {
+			self.state.apply_steps(
+				update.commit.undo_steps(),
+				update.kind,
+				Origin::History,
+				Some(update.selection_before),
+			)?;
+
+			return Ok(None);
+		}
+
 		self.history.record(&update, now);
 		Ok(Some(update))
 	}
@@ -582,6 +651,17 @@ impl Editor {
 		}
 
 		Ok(update)
+	}
+}
+
+/// Whether the schema has the type `node` describes. Extensions that add
+/// attributes to other extensions' types, such as text alignment, declare
+/// every type they could extend; the metadata keeps the ones that exist.
+fn has_node(schema: &Schema, node: &NodeMeta) -> bool {
+	match node.kind {
+		NodeKind::Block => schema.block_type(node.name).is_some(),
+		NodeKind::Mark => schema.mark_type(node.name).is_some(),
+		NodeKind::Embed => schema.embed_type(node.name).is_some(),
 	}
 }
 

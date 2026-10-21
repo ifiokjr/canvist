@@ -93,6 +93,9 @@ fn write_text_block(
 				.to_string();
 			html.push_str("<h");
 			html.push_str(&level);
+			if cfg!(feature = "text-align") {
+				html.push_str(&align_style(attrs));
+			}
 			html.push('>');
 			write_inline(schema, text, html);
 			html.push_str("</h");
@@ -113,11 +116,25 @@ fn write_text_block(
 			html.push_str("</code></pre>");
 		}
 		_ => {
-			html.push_str("<p>");
+			html.push_str("<p");
+			if cfg!(feature = "text-align") {
+				html.push_str(&align_style(attrs));
+			}
+			html.push('>');
 			write_inline(schema, text, html);
 			html.push_str("</p>");
 		}
 	}
+}
+
+/// A ` style="text-align: …"` attribute for an aligned block, as TipTap
+/// writes it, or nothing.
+fn align_style(attrs: &Attrs) -> String {
+	attrs
+		.get("textAlign")
+		.and_then(Value::as_str)
+		.map(|align| format!(" style=\"text-align: {}\"", escape(align)))
+		.unwrap_or_default()
 }
 
 /// The opening and closing tags for one mark.

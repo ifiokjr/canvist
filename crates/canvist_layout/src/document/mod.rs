@@ -401,6 +401,8 @@ impl DocumentLayout {
 			.styles
 			.resolve(block, row.parent_kind, row.parent_style);
 		row.rev = block.rev();
+		row.direction = rows::direction(doc, block);
+		row.align = rows::align(doc, block);
 
 		if style != row.style {
 			anchors.push(id);
@@ -574,6 +576,7 @@ impl DocumentLayout {
 				base: &style.text,
 				inline,
 				direction: row.direction,
+				align: row.align,
 				width: content_width(style, row.width),
 				previous: row.previous.take(),
 			};

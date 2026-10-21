@@ -31,6 +31,7 @@ use canvist_editor::Slice;
 use canvist_editor::UndoHistory;
 use canvist_editor::UndoInputRule;
 use canvist_editor::Update;
+use canvist_editor::UpdateFilter;
 use canvist_editor::ValueType;
 use canvist_editor::VerticalDirection;
 use canvist_editor::VerticalMotion;
@@ -797,5 +798,132 @@ fn remote_changes_elsewhere_keep_the_vertical_goal() {
 	assert_eq!(
 		render(editor.state()),
 		"paragraph: abcd\nparagraph: x\nparagraph: Zwx|yz"
+	);
+}
+
+/// Refuses any document longer than `max` bytes of text, and keeps that
+/// limit in a setting so commands can change it.
+struct MaxLength {
+	max: i64,
+}
+
+impl Extension for MaxLength {
+	fn name(&self) -> &'static str {
+		"maxLength"
+	}
+
+	fn update_filters(&self, _schema: &Schema) -> Result<Vec<UpdateFilter>, EditorError> {
+		let default = self.max;
+
+		Ok(vec![Box::new(
+			move |state: &EditorState, _update: &Update| {
+				let max = state
+					.settings()
+					.get("maxLength")
+					.and_then(canvist_model::Value::as_int)
+					.unwrap_or(default);
+				(state.doc().plain_text().len() as i64) <= max
+			},
+		)])
+	}
+}
+
+fn limited(outline: &str, max: i64) -> Editor {
+	let mut selection = None;
+	let mut editor = Editor::builder()
+		.extension(TestKit)
+		.extension(BaseKeymap)
+		.extension(MaxLength { max })
+		.build_with(|schema, _client| {
+			let (doc, marked) = support::parse(&schema, outline);
+			selection = marked;
+			Ok(doc)
+		})
+		.expect("editor builds");
+
+	if let Some(selection) = selection {
+		editor.select(selection, &mut at(0)).expect("select");
+	}
+
+	editor
+}
+
+#[test]
+fn extensions_can_refuse_an_update() {
+	let mut editor = limited("paragraph: ab|", 3);
+
+	assert!(editor.insert_text("c", &mut at(1)).expect("type").is_some());
+	assert_eq!(
+		editor.insert_text("d", &mut at(2)).expect("type"),
+		None,
+		"refused"
+	);
+	assert_eq!(render(editor.state()), "paragraph: abc|");
+	assert!(
+		editor.can_undo(),
+		"the accepted keystroke is still in history"
+	);
+
+	editor.undo(&mut at(3)).expect("undo");
+	assert_eq!(
+		render(editor.state()),
+		"paragraph: ab|",
+		"the refused one never was"
+	);
+}
+
+#[test]
+fn can_reports_what_an_extension_would_refuse() {
+	let mut editor = limited("paragraph: abc|", 3);
+	let type_d = command(|state| commands::insert_text(state, "d"));
+
+	assert!(!editor.can(&type_d, &mut at(1)).expect("can"));
+	assert_eq!(render(editor.state()), "paragraph: abc|");
+}
+
+#[test]
+fn settings_change_through_commands_and_survive_dry_runs() {
+	let mut editor = limited("paragraph: abc|", 3);
+	let raise =
+		command(|state| commands::set_setting(state, "maxLength", canvist_model::Value::Int(5)));
+
+	assert!(editor.can(&raise, &mut at(1)).expect("can"));
+	assert_eq!(
+		editor.state().settings().get("maxLength"),
+		None,
+		"dry runs change nothing"
+	);
+
+	let update = editor
+		.run(&raise, &mut at(2))
+		.expect("run")
+		.expect("applies");
+	assert!(!update.doc_changed());
+	assert_eq!(
+		editor.state().settings().get("maxLength"),
+		Some(&canvist_model::Value::Int(5))
+	);
+	assert_eq!(
+		editor.run(&raise, &mut at(3)).expect("run"),
+		None,
+		"already set"
+	);
+	assert!(editor.insert_text("d", &mut at(4)).expect("type").is_some());
+	assert_eq!(
+		render(editor.state()),
+		"paragraph: abcd|",
+		"the raised limit applies"
+	);
+}
+
+#[test]
+fn rules_look_back_safely_over_multibyte_text() {
+	// Each `€` is three bytes, so a 64-byte look-back starts mid-character.
+	let mut editor = editor("paragraph: |");
+	type_text(&mut editor, &format!("{} **bold**", "€".repeat(30)), 1);
+
+	assert_eq!(
+		render(editor.state()),
+		format!("paragraph: {} {{bold:bold}}|", "€".repeat(30))
 	);
 }

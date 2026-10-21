@@ -4,6 +4,7 @@
 use std::ops::Deref;
 use std::ops::DerefMut;
 
+use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::Commit;
 use canvist_model::MarkSet;
@@ -20,7 +21,7 @@ use crate::Composition;
 /// undoes in one step while a format change always undoes on its own.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EditKind {
-	/// Only the selection or stored marks changed.
+	/// Only the selection, stored marks, or editor settings changed.
 	Selection,
 	/// Text was typed.
 	Typing,
@@ -157,6 +158,8 @@ pub(crate) struct Effects {
 	pub(crate) composition: Override<Option<Composition>>,
 	pub(crate) goal: Option<f32>,
 	pub(crate) affinity: Option<Affinity>,
+	/// Editor settings to change.
+	pub(crate) settings: Attrs,
 }
 
 impl Effects {
@@ -169,6 +172,7 @@ impl Effects {
 			composition: Override::Default,
 			goal: None,
 			affinity: None,
+			settings: Attrs::new(),
 		}
 	}
 }
@@ -216,6 +220,13 @@ impl<'doc> EditorTransaction<'doc> {
 	/// the document or selection changes.
 	pub fn set_stored_marks(&mut self, marks: Option<MarkSet>) {
 		self.effects.stored_marks = Override::Set(marks);
+	}
+
+	/// Change an editor setting, such as a character limit an extension
+	/// reads back with [`EditorState::settings`](crate::EditorState::settings).
+	/// Settings are not part of the document, its history, or collaboration.
+	pub fn set_setting(&mut self, key: &str, value: impl Into<canvist_model::Value>) {
+		self.effects.settings.set(key, value);
 	}
 
 	/// Set or clear the IME composition. Without it, an active composition

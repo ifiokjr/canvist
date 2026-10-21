@@ -35,7 +35,7 @@
 //! | [`TrailingNode`]   | `trailing-node`   | A trailing paragraph                    |
 //!
 //! Beyond the StarterKit, each behind its own feature (`full` enables
-//! them all):
+//! them all, and [`extras`] lists them):
 //!
 //! | Extension           | Feature            | Adds                                     |
 //! | ------------------- | ------------------ | ---------------------------------------- |
@@ -48,6 +48,10 @@
 //! | [`FontFamily`]      | `font-family`      | `textStyle.fontFamily`                   |
 //! | [`FontSize`]        | `font-size`        | `textStyle.fontSize`                     |
 //! | [`LineHeight`]      | `line-height`      | `textStyle.lineHeight`                   |
+//! | [`TextAlign`]       | `text-align`       | `textAlign`, `Mod-Shift-l`/`e`/`r`/`j`   |
+//! | [`Typography`]      | `typography`       | Smart quotes, dashes, arrows, fractions  |
+//! | [`CharacterCount`]  | `character-count`  | Character and word counts, a limit       |
+//! | [`Placeholder`]     | `placeholder`      | Hint text in empty blocks                |
 //!
 //! `docs/src/extensions/parity.md` compares the whole set with Remirror and
 //! TipTap.
@@ -80,10 +84,14 @@
 mod blockquote;
 #[cfg(feature = "bullet-list")]
 mod bullet_list;
+#[cfg(feature = "character-count")]
+mod character_count;
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
 #[cfg(feature = "code-block")]
 mod code_block;
+#[cfg(feature = "full")]
+mod extras;
 
 #[cfg(feature = "hard-break")]
 mod hard_break;
@@ -115,16 +123,22 @@ mod lists;
 mod marks;
 #[cfg(feature = "ordered-list")]
 mod ordered_list;
+#[cfg(feature = "placeholder")]
+mod placeholder;
 
 mod paragraph;
 mod resolve;
 mod starter_kit;
 #[cfg(feature = "task-list")]
 mod task_list;
+#[cfg(feature = "text-align")]
+mod text_align;
 #[cfg(feature = "text-style")]
 mod text_style;
 #[cfg(feature = "trailing-node")]
 mod trailing_node;
+#[cfg(feature = "typography")]
+mod typography;
 
 #[cfg(feature = "blockquote")]
 pub use blockquote::Blockquote;
@@ -134,10 +148,16 @@ pub use blockquote::BlockquoteHandle;
 pub use bullet_list::BulletList;
 #[cfg(feature = "bullet-list")]
 pub use bullet_list::BulletListHandle;
+#[cfg(feature = "character-count")]
+pub use character_count::CharacterCount;
+#[cfg(feature = "character-count")]
+pub use character_count::CharacterCountHandle;
 #[cfg(feature = "code-block")]
 pub use code_block::CodeBlock;
 #[cfg(feature = "code-block")]
 pub use code_block::CodeBlockHandle;
+#[cfg(feature = "full")]
+pub use extras::extras;
 #[cfg(feature = "hard-break")]
 pub use hard_break::HardBreak;
 #[cfg(feature = "hard-break")]
@@ -199,12 +219,22 @@ pub use ordered_list::OrderedListHandle;
 pub use paragraph::Document;
 pub use paragraph::Paragraph;
 pub use paragraph::ParagraphHandle;
+#[cfg(feature = "placeholder")]
+pub use placeholder::Placeholder;
+#[cfg(feature = "placeholder")]
+pub use placeholder::PlaceholderHandle;
 pub use starter_kit::StarterKit;
 pub use starter_kit::StarterKitHandles;
 #[cfg(feature = "task-list")]
 pub use task_list::TaskList;
 #[cfg(feature = "task-list")]
 pub use task_list::TaskListHandle;
+#[cfg(feature = "text-align")]
+pub use text_align::Alignment;
+#[cfg(feature = "text-align")]
+pub use text_align::TextAlign;
+#[cfg(feature = "text-align")]
+pub use text_align::TextAlignHandle;
 #[cfg(feature = "background-color")]
 pub use text_style::BackgroundColor;
 #[cfg(feature = "color")]
@@ -223,3 +253,7 @@ pub use text_style::TextStyle;
 pub use text_style::TextStyleHandle;
 #[cfg(feature = "trailing-node")]
 pub use trailing_node::TrailingNode;
+#[cfg(feature = "typography")]
+pub use typography::Typography;
+#[cfg(feature = "typography")]
+pub use typography::TypographyHandle;

@@ -14,16 +14,7 @@ use canvist_editor::Editor;
 use canvist_editor::Env;
 use canvist_editor::Extension;
 use canvist_editor::KeyPress;
-use canvist_extensions::BackgroundColor;
-use canvist_extensions::Color;
-use canvist_extensions::FontFamily;
-use canvist_extensions::FontSize;
-use canvist_extensions::Highlight;
-use canvist_extensions::LineHeight;
 use canvist_extensions::StarterKit;
-use canvist_extensions::Subscript;
-use canvist_extensions::Superscript;
-use canvist_extensions::TextStyle;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::BlockTree;
@@ -48,17 +39,7 @@ fn main() {
 /// The StarterKit plus every other extension.
 fn extensions() -> Vec<Arc<dyn Extension>> {
 	let mut extensions = StarterKit::default().extensions();
-	extensions.extend([
-		Arc::new(Subscript) as Arc<dyn Extension>,
-		Arc::new(Superscript),
-		Arc::new(Highlight::default()),
-		Arc::new(TextStyle),
-		Arc::new(Color),
-		Arc::new(BackgroundColor),
-		Arc::new(FontFamily),
-		Arc::new(FontSize),
-		Arc::new(LineHeight),
-	]);
+	extensions.extend(canvist_extensions::extras());
 	extensions
 }
 
