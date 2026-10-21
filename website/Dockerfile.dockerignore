@@ -2,9 +2,10 @@
 # matching line wins, and a line matches everything under a directory it
 # names, so the exclusions that cut across directories come last.
 
-# The Rust workspace builds the canvist packages (the crates and Cargo
-# files); the site reads the docs, the brand assets, and crate and package
-# readmes. Everything else in the repository stays out.
+# The Rust workspace builds the canvist packages (the crates, the Cargo
+# files, and the manifests of every workspace member, which Cargo reads
+# even to build one crate); the site reads the docs, the brand assets, and
+# crate and package readmes. Everything else in the repository stays out.
 /*
 !Cargo.toml
 !Cargo.lock
@@ -14,8 +15,23 @@
 !assets
 !packages
 !website
+!examples
+!platforms
+!services
+!tools
 docs/*
 !docs/src
+!docs/Cargo.toml
+examples/*
+!examples/desktop
+platforms/*
+!platforms/dart
+platforms/dart/*
+!platforms/dart/rust
+services/*
+!services/cloud
+tools/*
+!tools/footage
 assets/*
 !assets/brand
 packages/*

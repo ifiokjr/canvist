@@ -27,6 +27,13 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 WORKDIR /repo
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./
 COPY crates crates
+# Cargo reads every workspace member's manifest, even to build one crate.
+COPY docs/Cargo.toml docs/Cargo.toml
+COPY docs/src/lib.rs docs/src/lib.rs
+COPY examples/desktop examples/desktop
+COPY platforms/dart/rust platforms/dart/rust
+COPY services/cloud services/cloud
+COPY tools/footage tools/footage
 COPY packages/canvist-headless packages/canvist-headless
 COPY packages/canvist-web packages/canvist-web
 # The site uses each package's `dist` and WebAssembly; their own
