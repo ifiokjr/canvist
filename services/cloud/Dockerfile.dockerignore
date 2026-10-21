@@ -9,8 +9,9 @@
 !docs/src/lib.rs
 !platforms/dart/rust/
 !services/cloud/
-# A workspace member: Cargo reads its manifest even when it builds only
-# canvist_cloud.
+# Workspace members outside crates/: Cargo reads their manifests even when
+# it builds only canvist_cloud.
+!examples/desktop/
 !tools/footage/
 **/target/
 **/node_modules/
