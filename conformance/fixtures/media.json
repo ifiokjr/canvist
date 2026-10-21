@@ -40,7 +40,7 @@
 				{ "op": "run", "command": "insertFile", "args": { "url": "r.pdf", "fileName": "Report", "fileSize": 2048 }, "applied": true }
 			],
 			"expect": {
-				"html": "<div data-youtube-video=\"\"><iframe src=\"https://www.youtube.com/embed/x\"></iframe></div><audio src=\"song.mp3\" controls loop></audio><div data-type=\"file\" data-url=\"r.pdf\" data-file-name=\"Report\" data-file-size=\"2048\"></div><p></p>"
+				"html": "<div data-youtube-video=\"\"><iframe title=\"YouTube video\" src=\"https://www.youtube.com/embed/x\"></iframe></div><audio src=\"song.mp3\" controls loop></audio><div data-type=\"file\" data-url=\"r.pdf\" data-file-name=\"Report\" data-file-size=\"2048\"></div><p></p>"
 			}
 		},
 		{
@@ -52,7 +52,145 @@
 				"content": "<div data-youtube-video><iframe src=\"https://www.youtube-nocookie.com/embed/a\" width=\"400\" height=\"300\"></iframe></div><div data-twitch-video><iframe src=\"https://player.twitch.tv/?channel=b\"></iframe></div>"
 			},
 			"expect": {
-				"html": "<div data-youtube-video=\"\"><iframe src=\"https://www.youtube-nocookie.com/embed/a\" width=\"400\" height=\"300\"></iframe></div><div data-twitch-video=\"\"><iframe src=\"https://player.twitch.tv/?channel=b\" width=\"640\" height=\"480\"></iframe></div>"
+				"html": "<div data-youtube-video=\"\"><iframe title=\"YouTube video\" src=\"https://www.youtube-nocookie.com/embed/a\" width=\"400\" height=\"300\"></iframe></div><div data-twitch-video=\"\"><iframe title=\"Twitch video\" src=\"https://player.twitch.tv/?channel=b\" width=\"640\" height=\"480\"></iframe></div>"
+			}
+		},
+		{
+			"name": "undoes and redoes an inserted image",
+			"requires": ["extensions"],
+			"extensions": ["image"],
+			"input": { "format": "text", "content": "ab" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 1 } },
+				{ "op": "can", "command": "setImage", "args": { "src": "x.png" }, "expect": true },
+				{ "op": "run", "command": "setImage", "args": { "src": "x.png", "alt": "X" }, "applied": true },
+				{
+					"op": "expect",
+					"html": "<p>a</p><img src=\"x.png\" alt=\"X\"><p>b</p>",
+					"selection": { "anchor": { "path": [2], "offset": 0 }, "head": { "path": [2], "offset": 0 } }
+				},
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "html": "<p>ab</p>" },
+				{ "op": "redo", "applied": true }
+			],
+			"expect": { "html": "<p>a</p><img src=\"x.png\" alt=\"X\"><p>b</p>", "markdown": "a\n\n![X](x.png)\n\nb" }
+		},
+		{
+			"name": "typing image syntax inserts an image and Backspace restores the syntax",
+			"requires": ["extensions"],
+			"extensions": ["image"],
+			"steps": [
+				{ "op": "typeText", "text": "![A cat](cat.png \"Meow\")" },
+				{ "op": "expect", "html": "<img src=\"cat.png\" alt=\"A cat\" title=\"Meow\"><p></p>" },
+				{ "op": "press", "key": "Backspace" },
+				{ "op": "expect", "text": "![A cat](cat.png \"Meow\")" },
+				{ "op": "undo", "applied": true }
+			],
+			"expect": { "markdown": "![A cat](cat.png \"Meow\")" }
+		},
+		{
+			"name": "media commands reject invalid arguments and unknown sites",
+			"requires": ["extensions"],
+			"extensions": ["image", "youtube", "twitch", "audio", "file"],
+			"steps": [
+				{ "op": "run", "command": "setImage", "args": { "src": null }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setImage", "args": { "src": "a.png", "width": "wide" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setYoutubeVideo", "args": { "src": "https://youtu.be/x", "start": "0:30" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setAudio", "args": { "src": "a.mp3", "loop": 1 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "insertFile", "args": { "fileName": "r.pdf" }, "error": "invalidArgs" },
+				{ "op": "can", "command": "setYoutubeVideo", "args": { "src": "javascript:alert('youtube')" }, "expect": false },
+				{ "op": "run", "command": "setYoutubeVideo", "args": { "src": "javascript:alert('youtube')" }, "applied": false },
+				{ "op": "run", "command": "setYoutubeVideo", "args": { "src": "https://youtube.com.example.com/x" }, "applied": false },
+				{ "op": "run", "command": "setTwitchVideo", "args": { "src": "https://www.youtube.com/embed/x" }, "applied": false },
+				{ "op": "run", "command": "setTwitchVideo", "args": { "src": "https://clips.twitch.tv/a" }, "applied": true }
+			],
+			"expect": { "html": "<div data-twitch-video=\"\"><iframe title=\"Twitch video\" src=\"https://clips.twitch.tv/a\"></iframe></div><p></p>" }
+		},
+		{
+			"name": "media commands are unknown without their extensions",
+			"steps": [
+				{ "op": "run", "command": "setImage", "args": { "src": "a.png" }, "error": "unknownName" },
+				{ "op": "run", "command": "insertFile", "args": { "url": "r.pdf" }, "error": "unknownName" },
+				{ "op": "paste", "format": "html", "content": "<p>a</p><img src=\"cat.png\"><audio src=\"a.mp3\"></audio><p>b</p>" }
+			],
+			"expect": { "html": "<p>a</p><p>b</p>" }
+		},
+		{
+			"name": "drops iframes from other sites when reading HTML",
+			"requires": ["extensions"],
+			"extensions": ["youtube", "twitch"],
+			"input": {
+				"format": "html",
+				"content": "<p>x</p><div data-youtube-video><iframe src=\"javascript:alert('youtube')\"></iframe></div><div data-twitch-video><iframe src=\"https://evil.example/twitch.tv\"></iframe></div><iframe src=\"https://notyoutube.com/embed/x\"></iframe>"
+			},
+			"expect": { "html": "<p>x</p>" }
+		},
+		{
+			"name": "reads TipTap JSON media and writes each format",
+			"requires": ["extensions"],
+			"extensions": ["image", "youtube", "audio", "file"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{ "type": "image", "attrs": { "src": "a.png", "alt": "Say \"hi\" & wave", "width": 10.5 } },
+						{ "type": "youtube", "attrs": { "src": "javascript:alert(1)" } },
+						{ "type": "audio", "attrs": { "src": "a.mp3", "controls": false, "muted": true } },
+						{ "type": "file", "attrs": { "url": "r.pdf" } },
+						{ "type": "paragraph" }
+					]
+				}
+			},
+			"expect": {
+				"html": "<img src=\"a.png\" alt=\"Say &quot;hi&quot; &amp; wave\" width=\"10.5\"><div data-youtube-video=\"\"><iframe title=\"YouTube video\"></iframe></div><audio src=\"a.mp3\" muted></audio><div data-type=\"file\" data-url=\"r.pdf\"></div><p></p>",
+				"markdown": "![Say \"hi\" & wave](a.png)\n\n[a.mp3](a.mp3)\n\n[r.pdf](r.pdf)",
+				"text": ""
+			}
+		},
+		{
+			"name": "pastes HTML media into a paragraph",
+			"requires": ["extensions"],
+			"extensions": ["image", "audio", "file"],
+			"input": { "format": "text", "content": "ab" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 1 } },
+				{
+					"op": "paste",
+					"format": "html",
+					"content": "<img src=\"a.png\" alt=\"A\"><audio src=\"s.mp3\" controls></audio><div data-type=\"file\" data-url=\"r.pdf\" data-file-name=\"R\"></div>"
+				},
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "html": "<p>ab</p>" },
+				{ "op": "redo", "applied": true }
+			],
+			"expect": {
+				"html": "<p>a</p><img src=\"a.png\" alt=\"A\"><audio src=\"s.mp3\" controls></audio><div data-type=\"file\" data-url=\"r.pdf\" data-file-name=\"R\" data-file-size=\"0\"></div><p>b</p>"
+			}
+		},
+		{
+			"name": "keeps media attributes through Yjs and snapshots",
+			"requires": ["collab", "extensions"],
+			"extensions": ["image", "twitch", "file"],
+			"steps": [
+				{ "op": "share", "clientId": 5 },
+				{ "op": "run", "command": "setImage", "args": { "src": "a.png", "width": 320.5, "height": 240 }, "applied": true },
+				{ "op": "run", "command": "setTwitchVideo", "args": { "src": "https://twitch.tv/a", "autoplay": true }, "applied": true },
+				{ "op": "run", "command": "insertFile", "args": { "url": "r.pdf", "fileSize": 2048 }, "applied": true },
+				{ "op": "rejoin", "clientId": 6 },
+				{ "op": "validate", "rejectedBlocks": 0, "waiting": false },
+				{ "op": "snapshotRoundTrip" }
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{ "type": "image", "attrs": { "height": 240, "src": "a.png", "width": 320.5 } },
+						{ "type": "twitch", "attrs": { "autoplay": true, "src": "https://twitch.tv/a" } },
+						{ "type": "file", "attrs": { "fileSize": 2048, "url": "r.pdf" } },
+						{ "type": "paragraph" }
+					]
+				}
 			}
 		}
 	]

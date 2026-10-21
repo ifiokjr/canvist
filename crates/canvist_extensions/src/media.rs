@@ -137,6 +137,36 @@ struct MediaDef {
 	attrs: &'static [MediaAttr],
 }
 
+/// The video block that can embed `src`: `youtube` for an `http(s)://` or
+/// `//` URL on YouTube's hosts, `twitch` for one on Twitch's, and `None`
+/// for anything else, such as another site or a `javascript:` URL, which
+/// must never reach an `<iframe>`. TipTap's video commands refuse such
+/// URLs too.
+pub(crate) fn video_kind(src: &str) -> Option<&'static str> {
+	let lower = src.trim().to_ascii_lowercase();
+	let rest = ["https://", "http://", "//"]
+		.into_iter()
+		.find_map(|scheme| lower.strip_prefix(scheme))?;
+	let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+	let host = authority.rsplit('@').next().unwrap_or_default();
+	let host = host.split(':').next().unwrap_or_default();
+	let on = |domain: &str| {
+		host.strip_suffix(domain)
+			.is_some_and(|subdomain| subdomain.is_empty() || subdomain.ends_with('.'))
+	};
+
+	if ["youtube.com", "youtube-nocookie.com", "youtu.be"]
+		.into_iter()
+		.any(on)
+	{
+		Some("youtube")
+	} else if on("twitch.tv") {
+		Some("twitch")
+	} else {
+		None
+	}
+}
+
 /// Typed access to a media extension such as [`Image`].
 #[derive(Clone, Copy, Debug)]
 pub struct MediaHandle {
@@ -156,8 +186,15 @@ impl MediaHandle {
 impl MediaDef {
 	/// The command inserting `src` with `attrs`. Attributes the type lacks
 	/// are dropped, and so are ones equal to their default, since an absent
-	/// attribute is its default.
+	/// attribute is its default. A video whose `src` is not on its site
+	/// does not apply.
 	fn insert(&'static self, src: &str, attrs: &Attrs) -> Command {
+		let is_video = matches!(self.name, "youtube" | "twitch");
+
+		if is_video && video_kind(src) != Some(self.name) {
+			return command(|_| Ok(None));
+		}
+
 		let source = self.attrs[0].name;
 		let mut attrs: Attrs = attrs
 			.iter()

@@ -91,8 +91,17 @@ fn media(name: &str, attrs: &Attrs) -> String {
 				.unwrap_or_default();
 			format!("![{}]({}{title})", escape(text("alt")), text("src"))
 		}
+		// A video that is not on its site was never embeddable; HTML drops
+		// its source too.
+		"youtube" | "twitch" if super::html_read::video_kind(text("src")) != Some(name) => {
+			String::new()
+		}
 		"youtube" | "twitch" | "audio" => format!("[{0}]({0})", text("src")),
-		"file" => format!("[{}]({})", escape(text("fileName")), text("url")),
+		"file" => {
+			// A link needs text to be read, and to be read back at all.
+			let name = Some(text("fileName")).filter(|name| !name.is_empty());
+			format!("[{}]({})", escape(name.unwrap_or(text("url"))), text("url"))
+		}
 		_ => String::new(),
 	}
 }

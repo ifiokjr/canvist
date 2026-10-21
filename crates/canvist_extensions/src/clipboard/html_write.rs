@@ -78,14 +78,14 @@ fn write_media(name: &str, attrs: &Attrs, html: &mut String) -> bool {
 		}
 		"youtube" if cfg!(feature = "youtube") => {
 			(
-				"<div data-youtube-video=\"\"><iframe",
+				"<div data-youtube-video=\"\"><iframe title=\"YouTube video\"",
 				&[("src", "src"), ("width", "width"), ("height", "height")],
 				"></iframe></div>",
 			)
 		}
 		"twitch" if cfg!(feature = "twitch") => {
 			(
-				"<div data-twitch-video=\"\"><iframe",
+				"<div data-twitch-video=\"\"><iframe title=\"Twitch video\"",
 				&[("src", "src"), ("width", "width"), ("height", "height")],
 				"></iframe></div>",
 			)
@@ -120,6 +120,14 @@ fn write_media(name: &str, attrs: &Attrs, html: &mut String) -> bool {
 			}
 			_ => continue,
 		};
+
+		// A video's source becomes a frame, so only its own site's URLs do.
+		let is_video = matches!(name, "youtube" | "twitch");
+
+		if is_video && *key == "src" && super::html_read::video_kind(&value) != Some(name) {
+			continue;
+		}
+
 		html.push(' ');
 		html.push_str(attribute);
 		html.push_str("=\"");

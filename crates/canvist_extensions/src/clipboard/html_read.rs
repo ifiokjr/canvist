@@ -391,16 +391,20 @@ fn audio_attrs(attrs: &[(String, String)]) -> Attrs {
 /// An `<iframe>` showing a YouTube or Twitch video, as TipTap writes them;
 /// other iframes carry nothing to keep.
 fn iframe_role(attrs: &[(String, String)]) -> Role {
-	let src = attr(attrs, "src").unwrap_or_default();
-	let video = if src.contains("youtube") || src.contains("youtu.be") {
-		"youtube"
-	} else if src.contains("twitch.tv") {
-		"twitch"
-	} else {
+	let Some(video) = attr(attrs, "src").and_then(video_kind) else {
 		return Role::Inline;
 	};
 
 	Role::Leaf(video, media_attrs(attrs, VIDEO_ATTRIBUTES))
+}
+
+#[cfg(any(feature = "youtube", feature = "twitch"))]
+pub(super) use crate::media::video_kind;
+
+/// Without the video extensions, no iframe is a video.
+#[cfg(not(any(feature = "youtube", feature = "twitch")))]
+pub(super) fn video_kind(_src: &str) -> Option<&'static str> {
+	None
 }
 
 /// The `data-` attributes TipTap writes on inline atoms, and the attributes
