@@ -21,6 +21,9 @@ default = []
 # Canvas scenes: a second, larger module (`@canvist/headless/scene`), so the
 # document module stays small.
 scene = ["canvist_headless/scene"]
+# Server-side rendering: a third module (`@canvist/headless/ssr`) that renders
+# HTML, CSS, and SVG with parley and its own fonts.
+ssr = ["canvist_headless/ssr"]
 
 [dependencies]
 canvist_headless = { workspace = true, features = ["collab", "full"] }

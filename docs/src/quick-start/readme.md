@@ -6,20 +6,20 @@ Every platform runs the same Rust core, so documents, extensions, and commands b
 
 ## What's available today
 
-| Platform                         | Package                            | Status                               | Quick start                                |
-| -------------------------------- | ---------------------------------- | ------------------------------------ | ------------------------------------------ |
-| Server: Rust                     | `canvist_headless`                 | Available                            | [Rust](./server-rust.md)                   |
-| Server: Node, Deno, Bun, Workers | `@canvist/headless`                | Available                            | [TypeScript](./server-typescript.md)       |
-| Server: Dart                     | `canvist`                          | Available                            | [Dart](./server-dart.md)                   |
-| Server-side rendering            | `canvist_headless` (`ssr` feature) | Available in Rust; JavaScript soon   | [SSR](./ssr.md)                            |
-| Flutter                          | `canvist_flutter`                  | Engine available; editor widget soon | [Flutter](./flutter.md)                    |
-| Web                              | `@canvist/web`                     | Preview                              | [Web](./web.md)                            |
-| React                            | `@canvist/react`                   | Preview                              | [React](./react.md)                        |
-| Vue                              | `@canvist/vue`                     | Preview                              | [Vue](./vue.md)                            |
-| iOS                              | `Canvist` Swift package            | Coming soon                          | [iOS](./ios.md)                            |
-| Android                          | `canvist-android`                  | Coming soon                          | [Android](./android.md)                    |
-| macOS, Windows, Linux            | `canvist_desktop`                  | Coming soon                          | [Desktop](./desktop.md)                    |
-| React Native and Lynx            | `@canvist/react-native`            | Coming soon                          | [React Native and Lynx](./react-native.md) |
+| Platform                         | Package                                                     | Status                               | Quick start                                |
+| -------------------------------- | ----------------------------------------------------------- | ------------------------------------ | ------------------------------------------ |
+| Server: Rust                     | `canvist_headless`                                          | Available                            | [Rust](./server-rust.md)                   |
+| Server: Node, Deno, Bun, Workers | `@canvist/headless`                                         | Available                            | [TypeScript](./server-typescript.md)       |
+| Server: Dart                     | `canvist`                                                   | Available                            | [Dart](./server-dart.md)                   |
+| Server-side rendering            | `@canvist/headless/ssr`, `canvist_headless` (`ssr` feature) | Available                            | [SSR](./ssr.md)                            |
+| Flutter                          | `canvist_flutter`                                           | Engine available; editor widget soon | [Flutter](./flutter.md)                    |
+| Web                              | `@canvist/web`                                              | Preview                              | [Web](./web.md)                            |
+| React                            | `@canvist/react`                                            | Preview                              | [React](./react.md)                        |
+| Vue                              | `@canvist/vue`                                              | Preview                              | [Vue](./vue.md)                            |
+| iOS                              | `Canvist` Swift package                                     | Coming soon                          | [iOS](./ios.md)                            |
+| Android                          | `canvist-android`                                           | Coming soon                          | [Android](./android.md)                    |
+| macOS, Windows, Linux            | `canvist_desktop`                                           | Coming soon                          | [Desktop](./desktop.md)                    |
+| React Native and Lynx            | `@canvist/react-native`                                     | Coming soon                          | [React Native and Lynx](./react-native.md) |
 
 **Available** means the package works and its tests run on every change. canvist hasn't had its first release yet, so every quick start shows how to install from GitHub, and the registry command for after the release.
 

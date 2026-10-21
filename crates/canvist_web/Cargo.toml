@@ -18,7 +18,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 canvist_headless = { workspace = true, features = ["starter-kit"] }
-canvist_layout = { workspace = true, features = ["editor"] }
+canvist_layout = { workspace = true, features = ["editor", "json"] }
 js-sys = { workspace = true, features = ["std"] }
 rustc-hash = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }

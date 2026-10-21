@@ -211,6 +211,27 @@ export interface DocJson<E extends Extensions> {
 /** A format documents are read from and written to. */
 export type Format = "json" | "html" | "markdown" | "text";
 
+/**
+ * The StarterKit theme's options. The browser editor (`@canvist/web`) and
+ * the server renderer (`@canvist/headless/ssr`) take the same ones, and
+ * must be given the same values for server-rendered HTML to hydrate
+ * without moving.
+ */
+export interface ThemeOptions {
+	/** Light or dark colours. Default `"light"`. */
+	readonly scheme?: "light" | "dark";
+	/** The CSS `font-family` list for body text and headings. */
+	readonly bodyFamily?: string;
+	/** The CSS `font-family` list for code. */
+	readonly codeFamily?: string;
+	/** The body font size in pixels. Default 16. */
+	readonly size?: number;
+	/** The body line height as a multiple of the font size. Default 1.5. */
+	readonly lineHeight?: number;
+	/** CSS `letter-spacing` of body text, in pixels. Default 0. */
+	readonly letterSpacing?: number;
+}
+
 /** A point in a text block: a path from the root and a UTF-16 offset. */
 export interface Position {
 	readonly path: readonly number[];

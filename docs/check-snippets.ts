@@ -187,6 +187,7 @@ async function checkTypeScript(
 				"@canvist/headless": `${headless}/src/mod.ts`,
 				"@canvist/headless/extensions":
 					`${headless}/src/extensions.generated.ts`,
+				"@canvist/headless/ssr": `${headless}/src/ssr.ts`,
 				"@canvist/web": `${web}/src/mod.ts`,
 				"@canvist/web/fonts": `${web}/src/fonts.ts`,
 				// Workers import the module through their bundler; it is a WebAssembly.Module.

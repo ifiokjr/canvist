@@ -80,7 +80,7 @@ Calling `editor.plugins.fonts` without registering the plugin is a type error, a
 
 ## Render the same fonts on your server
 
-Server-rendered HTML wraps where the editor does only when both lay out text with the same font files. Declare the faces in the page with `fontFaceCss`, which runs anywhere, and load the same files into your server's renderer:
+Server-rendered HTML wraps where the editor does only when both lay out text with the same font files. Declare the faces in the page with `fontFaceCss`, which runs anywhere, and give your server's renderer the same theme. The browser lays the HTML out with those faces, so HTML needs no fonts on the server; SVG images are laid out on the server, so register the same files there:
 
 ```ts no_run
 import { fontFaceCss, type FontSource } from "@canvist/web/fonts";
@@ -93,6 +93,26 @@ const faces: FontSource[] = [{
 const css = fontFaceCss(faces);
 // @font-face{font-family:"Inter";src:url("/fonts/Inter.ttf");font-weight:100 900;font-display:swap}
 ```
+
+On a JavaScript server, with [`@canvist/headless/ssr`](../quick-start/ssr.md):
+
+```ts no_run
+import { createRenderer } from "@canvist/headless/ssr";
+import { readFile } from "node:fs/promises";
+
+const renderer = await createRenderer({
+	// The same options the browser editor's `theme` sets.
+	theme: { bodyFamily: "Inter, system-ui, sans-serif" },
+	// The same file the page serves, for SVG. The renderer reads TrueType
+	// and OpenType, not WOFF2.
+	fonts: [await readFile("public/fonts/Inter.ttf")],
+});
+const { html, css } = renderer.html({ format: "markdown", input: "Hello" }, {
+	width: 640,
+});
+```
+
+In Rust:
 
 ```rust
 use std::sync::Arc;

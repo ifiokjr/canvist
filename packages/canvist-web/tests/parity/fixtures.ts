@@ -16,8 +16,8 @@ import type {
 	MarkJson,
 	Registered,
 	StarterKit,
+	ThemeOptions,
 } from "@canvist/headless";
-import type { ThemeOptions } from "../../src/editor.ts";
 
 type Kit = Registered<StarterKit>;
 type Block = BlockJson<Kit>;

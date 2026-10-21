@@ -132,7 +132,7 @@ impl CommandSpec {
 		Self {
 			meta: CommandMeta {
 				name,
-				doc,
+				doc: crate::meta::doc(doc),
 				args: Vec::new(),
 			},
 			build: Arc::new(build),
@@ -197,7 +197,7 @@ impl QuerySpec {
 		Self {
 			meta: QueryMeta {
 				name,
-				doc,
+				doc: crate::meta::doc(doc),
 				args: Vec::new(),
 				returns,
 			},

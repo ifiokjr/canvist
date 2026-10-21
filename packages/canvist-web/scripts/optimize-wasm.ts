@@ -5,7 +5,9 @@
  * the module smaller raw but larger gzipped (374 KB against 355 KB
  * unoptimized), because inlined copies compress worse than calls. These
  * passes optimize without inlining, which measured smallest gzipped:
- * `-O3` 337.0 KB, `-O2` 337.7 KB, `-Os` 337.1 KB, `-Oz` 338.2 KB. `--low-memory-unused` and `--zero-filled-memory` are safe for
+ * `-O3` 337.0 KB, `-O2` 337.7 KB, `-Os` 337.1 KB, `-Oz` 338.2 KB, and
+ * `--converge` (repeat until nothing shrinks) saves another 0.4 KB.
+ * `--low-memory-unused` and `--zero-filled-memory` are safe for
  * Rust's wasm32 output, which never reads below 1 KiB and starts with
  * zeroed memory.
  *
@@ -26,6 +28,7 @@ execFileSync(wasmOpt, [
 	"-o",
 	module,
 	"-O3",
+	"--converge",
 	// No inlining of any kind: see above.
 	"--flexible-inline-max-function-size=0",
 	"--always-inline-max-function-size=0",

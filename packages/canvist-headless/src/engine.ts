@@ -28,6 +28,11 @@ export type Registered<E extends Extensions> = readonly [...typeof core, ...E];
 /** The extensions of TipTap's StarterKit. */
 export type StarterKit = typeof starterKit;
 
+/** A document to start from: text in a format, or ProseMirror JSON. */
+export type Content<E extends Extensions> =
+	| { readonly format: Format; readonly input: string }
+	| DocJson<Registered<E>>;
+
 /** Options for {@link createEngine}. */
 export interface EngineOptions {
 	/** The client block ids are allocated under; collaborating peers need distinct ones. Default 1. */

@@ -65,7 +65,7 @@ To serve the module yourself, pass its URL as `wasm` in the options.
 
 ## 4. Hydrate server-rendered HTML
 
-canvist's [server renderer](./ssr.md) sends the document as HTML that wraps exactly where the editor does. Render it into the editor's element, and `createEditor` reads the document from it. It keeps the HTML on screen until your fonts have loaded, then swaps in the canvas in one frame, so nothing moves:
+canvist's [server renderer](./ssr.md) (`@canvist/headless/ssr`) sends the document as HTML that wraps exactly where the editor does. Render it into the editor's element, and `createEditor` reads the document from it. It keeps the HTML on screen until your fonts have loaded, then swaps in the canvas in one frame, so nothing moves:
 
 ```ts no_run
 import { createEditor } from "@canvist/web";
@@ -86,11 +86,10 @@ The server and the browser must lay text out with the same font files. [Fonts an
 
 ## Run the examples
 
-`examples/web` in the repository has a plain page, React, Vue, and a server-rendered page, each with a Playwright test:
+`examples/web` in the repository has a plain page, React, Vue, and two server-rendered pages (plain and React), each with a Playwright test:
 
 ```sh
 cd examples/web
 npm install
-npm run ssr   # renders ssr.html with the Rust renderer
-npm run dev
+npm run dev   # http://localhost:5180
 ```

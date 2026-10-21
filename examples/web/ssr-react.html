@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width">
+		<title>canvist: server-rendered React</title>
+		<link rel="stylesheet" href="/src/page.css">
+		<link rel="preload" href="/fonts/inter-variable.ttf" as="font" type="font/ttf" crossorigin>
+		<style>
+			@font-face { font-family: "Inter"; src: url("/fonts/inter-variable.ttf"); font-weight: 100 900; font-display: block; }
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>Server-rendered React</h1>
+			<div id="app"><!-- react:app --></div>
+		</main>
+		<script id="props" type="application/json"><!-- react:props --></script>
+		<script type="module" src="/src/ssr-react/client.tsx"></script>
+	</body>
+</html>

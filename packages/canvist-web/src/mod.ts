@@ -24,6 +24,7 @@ export type {
 	CommandName,
 	CommandParams,
 	Commands,
+	Content,
 	DocJson,
 	ErrorCode,
 	ExtensionDescriptor,
@@ -37,11 +38,11 @@ export type {
 	Range,
 	Registered,
 	StarterKit,
+	ThemeOptions,
 } from "@canvist/headless";
 export * from "@canvist/headless/extensions";
 export {
 	borderScale,
-	type Content,
 	createEditor,
 	detectBreaks,
 	Editor,
@@ -52,7 +53,6 @@ export {
 	type InputLatency,
 	type LineBreaks,
 	pixelGrid,
-	type ThemeOptions,
 } from "./editor.ts";
 export { familyName, FontWatcher } from "./font-watcher.ts";
 export { type InputMode, usesEditContext } from "./input.ts";

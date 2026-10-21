@@ -17,6 +17,7 @@
  */
 export {
 	type CanvistError,
+	type Content,
 	createEngine,
 	Doc,
 	Engine,
