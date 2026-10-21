@@ -16,9 +16,14 @@ use canvist_editor::Env;
 use canvist_extensions::Alignment;
 use canvist_extensions::Audio;
 use canvist_extensions::BackgroundColor;
+use canvist_extensions::Callout;
+use canvist_extensions::CalloutHandle;
+use canvist_extensions::CalloutType;
 use canvist_extensions::CharacterCount;
 use canvist_extensions::CharacterCountHandle;
 use canvist_extensions::Color;
+use canvist_extensions::Details;
+use canvist_extensions::DetailsHandle;
 use canvist_extensions::Emoji;
 use canvist_extensions::EmojiHandle;
 use canvist_extensions::File;
@@ -31,6 +36,8 @@ use canvist_extensions::HighlightHandle;
 use canvist_extensions::Image;
 use canvist_extensions::LineHeight;
 use canvist_extensions::MarkHandle;
+use canvist_extensions::Mathematics;
+use canvist_extensions::MathematicsHandle;
 use canvist_extensions::MediaHandle;
 use canvist_extensions::Mention;
 use canvist_extensions::MentionHandle;
@@ -75,6 +82,9 @@ struct Extras {
 	twitch: MediaHandle,
 	audio: MediaHandle,
 	file: MediaHandle,
+	details: DetailsHandle,
+	callout: CalloutHandle,
+	math: MathematicsHandle,
 }
 
 /// The StarterKit plus every other extension, built through the typed path.
@@ -102,6 +112,9 @@ fn full() -> (Editor, Extras) {
 		twitch: builder.add(Twitch),
 		audio: builder.add(Audio),
 		file: builder.add(File),
+		details: builder.add(Details),
+		callout: builder.add(Callout),
+		math: builder.add(Mathematics),
 	};
 	builder.add(Typography::default());
 
@@ -325,6 +338,48 @@ fn typed_handles_and_named_commands_agree() {
 		"insertFile",
 		&Attrs::new().with("url", "r.pdf").with("fileName", "r.pdf"),
 	);
+	same_as_named(|kit| kit.details.set(), "setDetails", &none);
+	same_as_named(
+		|kit| kit.callout.toggle(CalloutType::Success),
+		"toggleCallout",
+		&Attrs::new().with("type", "success"),
+	);
+	same_as_named(
+		|kit| kit.math.insert_inline("x^2"),
+		"insertInlineMath",
+		&Attrs::new().with("latex", "x^2"),
+	);
+	same_as_named(
+		|kit| kit.math.insert_block("x^2"),
+		"insertBlockMath",
+		&Attrs::new().with("latex", "x^2"),
+	);
+}
+
+#[test]
+fn block_handles_read_their_queries() {
+	let (mut typist, kit) = typed_with("note");
+	let editor = &mut typist.editor;
+
+	assert_eq!(kit.details.is_open(editor.state()), None);
+	assert_eq!(kit.callout.kind(editor.state()), None);
+
+	editor
+		.run(&kit.callout.toggle(CalloutType::Warning), &mut env())
+		.expect("callout");
+	editor
+		.run(&kit.callout.set_type(CalloutType::Error), &mut env())
+		.expect("type");
+	assert_eq!(kit.callout.kind(editor.state()), Some(CalloutType::Error));
+
+	editor.run(&kit.details.set(), &mut env()).expect("details");
+	assert_eq!(kit.details.is_open(editor.state()), Some(true));
+	editor
+		.run(&kit.details.toggle_open(), &mut env())
+		.expect("toggle");
+	assert_eq!(kit.details.is_open(editor.state()), Some(false));
+	editor.run(&kit.details.unset(), &mut env()).expect("unset");
+	assert_eq!(kit.details.is_open(editor.state()), None);
 }
 
 #[test]

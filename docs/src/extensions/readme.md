@@ -430,6 +430,69 @@ console.log(doc.export("markdown"));
 // ![A cat](cat.png)
 ```
 
+### Details
+
+A summary that opens and closes the content below it, like HTML's `<details>`. Adds the `details` block, with an `open` attribute, holding a `detailsSummary` text block and a `detailsContent` block. The canvas draws a closed one as its summary beside a `▸` and lays out none of its content.
+
+| Commands                                          | Queries       | Keys                                     |
+| ------------------------------------------------- | ------------- | ---------------------------------------- |
+| `setDetails`, `unsetDetails`, `toggleDetailsOpen` | `detailsOpen` | `Enter` in the summary opens the content |
+
+`setDetails` wraps the selected blocks and puts the caret in the empty summary. HTML uses TipTap's markup, `<details><summary>` with `<div data-type="detailsContent">`, and Markdown writes the `<details>` HTML GitHub renders.
+
+```ts
+import { createEngine, details } from "@canvist/headless/full";
+
+const doc = (await createEngine([details])).create();
+doc.insertText("The butler did it.");
+doc.commands.setDetails();
+doc.insertText("Spoiler");
+doc.commands.toggleDetailsOpen();
+console.log(doc.query.detailsOpen());
+// false
+```
+
+### Callout
+
+A tinted box for notes, tips, warnings, and errors. Adds the `callout` block with a `type`: `info` (the default), `warning`, `error`, `success`, or `blank`. Typing `:::warning` at the start of a line makes one.
+
+| Commands                                               | Queries       |
+| ------------------------------------------------------ | ------------- |
+| `toggleCallout({ type? })`, `setCalloutType({ type })` | `calloutType` |
+
+HTML writes `<div data-callout-type="warning">`. Markdown writes GitHub's alerts and reads them back: `info` is `[!NOTE]`, `success` is `[!TIP]`, `blank` is `[!IMPORTANT]`, `warning` is `[!WARNING]`, and `error` is `[!CAUTION]`.
+
+```ts
+import { callout, createEngine } from "@canvist/headless/full";
+
+const doc = (await createEngine([callout])).create();
+doc.insertText("Mind the gap");
+doc.commands.toggleCallout({ type: "warning" });
+console.log(doc.export("markdown"));
+// > [!WARNING]
+// > Mind the gap
+```
+
+### Mathematics
+
+LaTeX formulas, inline as the `inlineMath` embed and on their own line as the `blockMath` block, each holding its source in `latex`. Typing `$$x^2$$` inserts an inline formula, and `$$$x^2$$$` alone on a line a block one. The canvas draws inline LaTeX as its source in a tinted box and reserves a slot for block formulas, so your app can typeset them with KaTeX or MathJax.
+
+| Commands                                                    |
+| ----------------------------------------------------------- |
+| `insertInlineMath({ latex })`, `insertBlockMath({ latex })` |
+
+HTML uses TipTap's `<span data-type="inline-math">` and `<div data-type="block-math">`, with the source in `data-latex`. Markdown writes `$x^2$` and `$$` blocks and reads them back; a price such as `$5` stays text.
+
+```ts
+import { createEngine, mathematics } from "@canvist/headless/full";
+
+const doc = (await createEngine([mathematics])).create();
+doc.insertText("Area ");
+doc.commands.insertInlineMath({ latex: "\\pi r^2" });
+console.log(doc.export("markdown"));
+// Area $\pi r^2$
+```
+
 ## Lists
 
 Lists need list items. Adding `bulletList` or `orderedList` adds `listItem` for you.
@@ -569,7 +632,6 @@ console.log(doc.query.placeholder());
 
 These extensions are planned, in roughly this order. Each will follow the same pattern: typed commands, queries, and TipTap-compatible JSON.
 
-- **Details, callouts, and math.**
 - **Tables:** merged cells, header rows and columns, and cell navigation.
 - **Find and replace, table of contents, comments, and drag handles.**
 

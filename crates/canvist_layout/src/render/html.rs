@@ -115,12 +115,20 @@ impl Writer<'_> {
 	fn children(&mut self, parent: Option<&Block>, parent_style: Option<StyleId>, lists: usize) {
 		let doc = self.doc;
 		let marker = parent_style.and_then(|style| self.styles.get(style).marker);
+		let open = parent.is_none_or(|parent| crate::document::is_open(doc, parent));
+		let shown = if open { usize::MAX } else { 1 };
 		let mut previous_after = None;
 
-		for &id in doc.children(parent.map(Block::id)) {
+		for (index, &id) in doc
+			.children(parent.map(Block::id))
+			.iter()
+			.enumerate()
+			.take(shown)
+		{
 			let Some(block) = doc.block(id) else {
 				continue;
 			};
+			let marker = marker.filter(|&kind| kind != MarkerKind::Disclosure || index == 0);
 
 			let style = self
 				.styles
@@ -128,7 +136,14 @@ impl Writer<'_> {
 			let resolved = self.styles.get(style);
 			let margin = previous_after.map_or(0.0, |after: f32| after.max(resolved.space_before));
 			previous_after = Some(resolved.space_after);
-			let marker = marker.map(|kind| (kind, lists.saturating_sub(1)));
+			let marker = marker.map(|kind| {
+				let depth = if kind == MarkerKind::Disclosure {
+					usize::from(open)
+				} else {
+					lists.saturating_sub(1)
+				};
+				(kind, depth)
+			});
 			self.block(block, style, margin, marker, lists);
 		}
 	}
@@ -224,10 +239,18 @@ impl Writer<'_> {
 				MarkerKind::Bullet => write!(self.out, " cv-mk cv-mk-b{}", depth % bullets),
 				MarkerKind::Ordered => write!(self.out, " cv-mk cv-mk-o"),
 				MarkerKind::Task => write!(self.out, " cv-mk-t"),
+				// For a disclosure, the depth slot carries whether it is open.
+				MarkerKind::Disclosure => write!(self.out, " cv-mk cv-mk-d{depth}"),
 			};
 		}
 
 		self.out.push('"');
+
+		// Only the extensions' blocks need ARIA beyond their tags.
+		if cfg!(feature = "theme-extensions") {
+			self.accessibility(block);
+		}
+
 		attribute(&mut self.out, "data-id", &block.id().to_string());
 
 		if matches!(block.content(), Content::Inline(_)) {
@@ -286,6 +309,42 @@ impl Writer<'_> {
 			if checked { " checked" } else { "" },
 			num(top)
 		);
+	}
+
+	/// ARIA for blocks whose meaning only their look carries: a callout is
+	/// a note whose type only its colour shows, and a block formula is an
+	/// empty slot the host typesets, so it is labelled with its LaTeX.
+	fn accessibility(&mut self, block: &Block) {
+		let doc = self.doc;
+		let schema = doc.schema();
+		let defaults = &schema.block(block.kind()).attrs;
+		let string = |key| attr(block.attrs(), defaults, key).and_then(Value::as_str);
+
+		match &*schema.block(block.kind()).name {
+			"callout" => {
+				attribute(&mut self.out, "role", "note");
+				let label = match string("type") {
+					Some("blank") => None,
+					Some("warning") => Some("Warning"),
+					Some("error") => Some("Error"),
+					Some("success") => Some("Success"),
+					_ => Some("Info"),
+				};
+
+				if let Some(label) = label {
+					attribute(&mut self.out, "aria-label", label);
+				}
+			}
+			"blockMath" => {
+				attribute(&mut self.out, "role", "math");
+				attribute(
+					&mut self.out,
+					"aria-label",
+					string("latex").unwrap_or_default(),
+				);
+			}
+			_ => {}
+		}
 	}
 
 	fn inline(&mut self, inline: &InlineText, base: &TextStyle) {
@@ -636,6 +695,15 @@ fn marker_css(css: &mut String, theme: &Theme) {
 		 nowrap;{color}}}.cv-doc .cv-mk-o{{counter-increment:cv-n}}.cv-doc \
 		 .cv-mk-o::before{{content:counter(cv-n) \".\"}}"
 	);
+
+	for open in [false, true] {
+		let _ = write!(
+			css,
+			".cv-doc .cv-mk-d{}::before{{content:\"{}\"}}",
+			usize::from(open),
+			crate::document::disclosure(open)
+		);
+	}
 
 	for (index, bullet) in markers.bullets.iter().enumerate() {
 		let _ = write!(

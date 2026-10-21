@@ -1,0 +1,938 @@
+{
+	"description": "Block extensions: details, callouts, and math.",
+	"cases": [
+		{
+			"name": "wraps a block in details, opens, and closes it",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"details"
+			],
+			"steps": [
+				{
+					"op": "typeText",
+					"text": "Hidden"
+				},
+				{
+					"op": "query",
+					"query": "detailsOpen",
+					"expect": null
+				},
+				{
+					"op": "run",
+					"command": "setDetails",
+					"applied": true
+				},
+				{
+					"op": "typeText",
+					"text": "Spoiler"
+				},
+				{
+					"op": "query",
+					"query": "detailsOpen",
+					"expect": true
+				},
+				{
+					"op": "run",
+					"command": "toggleDetailsOpen",
+					"applied": true
+				},
+				{
+					"op": "query",
+					"query": "detailsOpen",
+					"expect": false
+				},
+				{
+					"op": "press",
+					"key": "Enter"
+				},
+				{
+					"op": "query",
+					"query": "detailsOpen",
+					"expect": true
+				}
+			],
+			"expect": {
+				"html": "<details open><summary>Spoiler</summary><div data-type=\"detailsContent\"><p>Hidden</p></div></details><p></p>",
+				"markdown": "<details open>\n<summary>Spoiler</summary>\n\nHidden\n\n</details>"
+			}
+		},
+		{
+			"name": "reads TipTap details from HTML",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"details"
+			],
+			"input": {
+				"format": "html",
+				"content": "<details><summary>Title</summary><div data-type=\"detailsContent\"><p>Body</p></div></details>"
+			},
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "details",
+							"attrs": {
+								"open": false
+							},
+							"content": [
+								{
+									"type": "detailsSummary",
+									"content": [
+										{
+											"type": "text",
+											"text": "Title"
+										}
+									]
+								},
+								{
+									"type": "detailsContent",
+									"content": [
+										{
+											"type": "paragraph",
+											"content": [
+												{
+													"type": "text",
+													"text": "Body"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "toggles a callout and changes its type",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"callout"
+			],
+			"steps": [
+				{
+					"op": "typeText",
+					"text": "Careful"
+				},
+				{
+					"op": "run",
+					"command": "toggleCallout",
+					"args": {
+						"type": "warning"
+					},
+					"applied": true
+				},
+				{
+					"op": "query",
+					"query": "calloutType",
+					"expect": "warning"
+				},
+				{
+					"op": "run",
+					"command": "setCalloutType",
+					"args": {
+						"type": "error"
+					},
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "setCalloutType",
+					"args": {
+						"type": "purple"
+					},
+					"error": "invalidArgs"
+				},
+				{
+					"op": "query",
+					"query": "calloutType",
+					"expect": "error"
+				}
+			],
+			"expect": {
+				"html": "<div data-callout-type=\"error\"><p>Careful</p></div><p></p>",
+				"markdown": "> [!CAUTION]\n> Careful"
+			}
+		},
+		{
+			"name": "reads GitHub alerts from Markdown as callouts",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"callout"
+			],
+			"input": {
+				"format": "markdown",
+				"content": "> [!TIP]\n> Try this"
+			},
+			"expect": {
+				"html": "<div data-callout-type=\"success\"><p>Try this</p></div>"
+			}
+		},
+		{
+			"name": "types inline and block formulas",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"mathematics"
+			],
+			"steps": [
+				{
+					"op": "typeText",
+					"text": "Area $$\\pi r^2$$"
+				},
+				{
+					"op": "press",
+					"key": "Enter"
+				},
+				{
+					"op": "typeText",
+					"text": "$$$E = mc^2$$$"
+				}
+			],
+			"expect": {
+				"html": "<p>Area <span data-type=\"inline-math\" data-latex=\"\\pi r^2\">$\\pi r^2$</span></p><div data-type=\"block-math\" data-latex=\"E = mc^2\"></div><p></p>",
+				"markdown": "Area $\\pi r^2$\n\n$$\nE = mc^2\n$$"
+			}
+		},
+		{
+			"name": "inserts formulas by command and reads them from Markdown",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"mathematics"
+			],
+			"input": {
+				"format": "markdown",
+				"content": "It costs $5 and $x$\n\n$$\na^2\n$$"
+			},
+			"steps": [
+				{
+					"op": "run",
+					"command": "insertBlockMath",
+					"error": "invalidArgs"
+				}
+			],
+			"expect": {
+				"html": "<p>It costs $5 and <span data-type=\"inline-math\" data-latex=\"x\">$x$</span></p><div data-type=\"block-math\" data-latex=\"a^2\"></div>"
+			}
+		},
+		{
+			"name": "Backspace right after an input rule undoes it",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"callout",
+				"mathematics"
+			],
+			"steps": [
+				{
+					"op": "typeText",
+					"text": ":::warning "
+				},
+				{
+					"op": "query",
+					"query": "calloutType",
+					"expect": "warning"
+				},
+				{
+					"op": "press",
+					"key": "Backspace"
+				},
+				{
+					"op": "query",
+					"query": "calloutType",
+					"expect": null
+				},
+				{
+					"op": "expect",
+					"html": "<p>:::warning </p>"
+				},
+				{
+					"op": "selectAll"
+				},
+				{
+					"op": "deleteSelection"
+				},
+				{
+					"op": "typeText",
+					"text": "a $$x$$"
+				},
+				{
+					"op": "expect",
+					"html": "<p>a <span data-type=\"inline-math\" data-latex=\"x\">$x$</span></p>"
+				},
+				{
+					"op": "press",
+					"key": "Backspace"
+				}
+			],
+			"expect": {
+				"html": "<p>a $$x$$</p>"
+			}
+		},
+		{
+			"name": "undoes and redoes block commands one call at a time",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"details",
+				"callout",
+				"mathematics"
+			],
+			"input": {
+				"format": "markdown",
+				"content": "Hidden"
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 6
+					}
+				},
+				{
+					"op": "run",
+					"command": "setDetails",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "toggleDetailsOpen",
+					"applied": true
+				},
+				{
+					"op": "undo",
+					"applied": true
+				},
+				{
+					"op": "query",
+					"query": "detailsOpen",
+					"expect": true
+				},
+				{
+					"op": "undo",
+					"applied": true
+				},
+				{
+					"op": "expect",
+					"html": "<p>Hidden</p>"
+				},
+				{
+					"op": "redo",
+					"applied": true
+				},
+				{
+					"op": "expect",
+					"html": "<details open><summary></summary><div data-type=\"detailsContent\"><p>Hidden</p></div></details><p></p>"
+				},
+				{
+					"op": "undo",
+					"applied": true
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 6
+					}
+				},
+				{
+					"op": "run",
+					"command": "toggleCallout",
+					"args": {
+						"type": "error"
+					},
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "insertInlineMath",
+					"args": {
+						"latex": "x^2"
+					},
+					"applied": true
+				},
+				{
+					"op": "undo",
+					"applied": true
+				},
+				{
+					"op": "expect",
+					"markdown": "> [!CAUTION]\n> Hidden"
+				},
+				{
+					"op": "undo",
+					"applied": true
+				},
+				{
+					"op": "undo",
+					"applied": false
+				}
+			],
+			"expect": {
+				"markdown": "Hidden"
+			}
+		},
+		{
+			"name": "reports which block commands apply without changing anything",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"details",
+				"callout",
+				"mathematics"
+			],
+			"steps": [
+				{
+					"op": "typeText",
+					"text": "Plain"
+				},
+				{
+					"op": "can",
+					"command": "setDetails",
+					"expect": true
+				},
+				{
+					"op": "can",
+					"command": "unsetDetails",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "toggleDetailsOpen",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "toggleCallout",
+					"expect": true
+				},
+				{
+					"op": "can",
+					"command": "setCalloutType",
+					"args": {
+						"type": "info"
+					},
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "insertInlineMath",
+					"args": {
+						"latex": "x"
+					},
+					"expect": true
+				},
+				{
+					"op": "can",
+					"command": "insertBlockMath",
+					"args": {
+						"latex": "x"
+					},
+					"expect": true
+				},
+				{
+					"op": "can",
+					"command": "toggleCallout",
+					"args": {
+						"type": "purple"
+					},
+					"error": "invalidArgs"
+				},
+				{
+					"op": "run",
+					"command": "setDetails",
+					"applied": true
+				},
+				{
+					"op": "can",
+					"command": "toggleCallout",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "unsetDetails",
+					"expect": true
+				}
+			],
+			"expect": {
+				"html": "<details open><summary></summary><div data-type=\"detailsContent\"><p>Plain</p></div></details><p></p>"
+			}
+		},
+		{
+			"name": "Backspace and Delete never join a summary or its content away",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"details"
+			],
+			"input": {
+				"format": "markdown",
+				"content": "Before\n\n<details open>\n<summary>Sum</summary>\n\nBody\n\n</details>"
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							1,
+							0
+						],
+						"offset": 3
+					}
+				},
+				{
+					"op": "press",
+					"key": "Delete"
+				},
+				{
+					"op": "expect",
+					"selection": {
+						"anchor": {
+							"path": [
+								1,
+								1,
+								0
+							],
+							"offset": 0
+						},
+						"head": {
+							"path": [
+								1,
+								1,
+								0
+							],
+							"offset": 0
+						}
+					}
+				},
+				{
+					"op": "press",
+					"key": "Backspace"
+				},
+				{
+					"op": "expect",
+					"selection": {
+						"anchor": {
+							"path": [
+								1,
+								0
+							],
+							"offset": 3
+						},
+						"head": {
+							"path": [
+								1,
+								0
+							],
+							"offset": 3
+						}
+					}
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 6
+					}
+				},
+				{
+					"op": "press",
+					"key": "Delete"
+				},
+				{
+					"op": "expect",
+					"selection": null
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							1,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "press",
+					"key": "Backspace"
+				}
+			],
+			"expect": {
+				"markdown": "Before\n\nSum\n\nBody"
+			}
+		},
+		{
+			"name": "reads TipTap JSON blocks and writes them back unchanged",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"details",
+				"callout",
+				"mathematics"
+			],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "details",
+							"attrs": {
+								"open": true
+							},
+							"content": [
+								{
+									"type": "detailsSummary",
+									"content": [
+										{
+											"type": "text",
+											"text": "Title"
+										}
+									]
+								},
+								{
+									"type": "detailsContent",
+									"content": [
+										{
+											"type": "callout",
+											"attrs": {
+												"type": "warning"
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "Careful"
+														}
+													]
+												}
+											]
+										}
+									]
+								}
+							]
+						},
+						{
+							"type": "paragraph",
+							"content": [
+								{
+									"type": "text",
+									"text": "Area "
+								},
+								{
+									"type": "inlineMath",
+									"attrs": {
+										"latex": "\\pi r^2"
+									}
+								}
+							]
+						},
+						{
+							"type": "blockMath",
+							"attrs": {
+								"latex": "E = mc^2"
+							}
+						}
+					]
+				}
+			},
+			"steps": [
+				{
+					"op": "snapshotRoundTrip"
+				}
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "details",
+							"attrs": {
+								"open": true
+							},
+							"content": [
+								{
+									"type": "detailsSummary",
+									"content": [
+										{
+											"type": "text",
+											"text": "Title"
+										}
+									]
+								},
+								{
+									"type": "detailsContent",
+									"content": [
+										{
+											"type": "callout",
+											"attrs": {
+												"type": "warning"
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "Careful"
+														}
+													]
+												}
+											]
+										}
+									]
+								}
+							]
+						},
+						{
+							"type": "paragraph",
+							"content": [
+								{
+									"type": "text",
+									"text": "Area "
+								},
+								{
+									"type": "inlineMath",
+									"attrs": {
+										"latex": "\\pi r^2"
+									}
+								}
+							]
+						},
+						{
+							"type": "blockMath",
+							"attrs": {
+								"latex": "E = mc^2"
+							}
+						}
+					]
+				},
+				"markdown": "<details open>\n<summary>Title</summary>\n\n> [!WARNING]\n> Careful\n\n</details>\n\nArea $\\pi r^2$\n\n$$\nE = mc^2\n$$"
+			}
+		},
+		{
+			"name": "pastes HTML details into TipTap's shape and unknown callout types as info",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"details",
+				"callout"
+			],
+			"steps": [
+				{
+					"op": "paste",
+					"format": "html",
+					"content": "<details><p>a</p><p>b</p></details><div data-callout-type=\"purple\"><p>c</p></div>"
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							1,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "query",
+					"query": "calloutType",
+					"expect": "info"
+				}
+			],
+			"expect": {
+				"html": "<details><summary></summary><div data-type=\"detailsContent\"><p>a</p><p>b</p></div></details><div data-callout-type=\"info\"><p>c</p></div><p></p>"
+			}
+		},
+		{
+			"name": "keeps formula sources and summaries through HTML and Markdown escaping",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"details",
+				"mathematics"
+			],
+			"input": {
+				"format": "markdown",
+				"content": "<details>\n<summary>A &amp; B &lt;c&gt;</summary>\n\n<details open>\n<summary>Inner</summary>\n\n$$\nx < \"y\"\n$$\n\n</details>\n\n</details>"
+			},
+			"expect": {
+				"markdown": "<details>\n<summary>A &amp; B &lt;c&gt;</summary>\n\n<details open>\n<summary>Inner</summary>\n\n$$\nx < \"y\"\n$$\n\n</details>\n\n</details>",
+				"html": "<details><summary>A &amp; B &lt;c&gt;</summary><div data-type=\"detailsContent\"><details open><summary>Inner</summary><div data-type=\"detailsContent\"><div data-type=\"block-math\" data-latex=\"x &lt; &quot;y&quot;\"></div></div></details></div></details>"
+			}
+		},
+		{
+			"name": "block commands are unknown without their extensions",
+			"steps": [
+				{
+					"op": "typeText",
+					"text": "x"
+				},
+				{
+					"op": "run",
+					"command": "setDetails",
+					"error": "unknownName"
+				},
+				{
+					"op": "run",
+					"command": "toggleCallout",
+					"error": "unknownName"
+				},
+				{
+					"op": "run",
+					"command": "insertInlineMath",
+					"args": {
+						"latex": "x"
+					},
+					"error": "unknownName"
+				},
+				{
+					"op": "query",
+					"query": "calloutType",
+					"error": "unknownName"
+				}
+			],
+			"expect": {
+				"html": "<p>x</p>"
+			}
+		},
+		{
+			"name": "block attributes survive sharing and a new peer joining",
+			"requires": [
+				"collab",
+				"extensions"
+			],
+			"extensions": [
+				"details",
+				"callout",
+				"mathematics"
+			],
+			"input": {
+				"format": "markdown",
+				"content": "Careful\n\nHidden"
+			},
+			"steps": [
+				{
+					"op": "share",
+					"clientId": 1
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0
+						],
+						"offset": 7
+					}
+				},
+				{
+					"op": "run",
+					"command": "toggleCallout",
+					"args": {
+						"type": "warning"
+					},
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "insertInlineMath",
+					"args": {
+						"latex": "x"
+					},
+					"applied": true
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							1
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "run",
+					"command": "setDetails",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "toggleDetailsOpen",
+					"applied": true
+				},
+				{
+					"op": "rejoin",
+					"clientId": 2
+				},
+				{
+					"op": "validate",
+					"rejectedBlocks": 0,
+					"waiting": false
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "query",
+					"query": "calloutType",
+					"expect": "warning"
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							1,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "query",
+					"query": "detailsOpen",
+					"expect": false
+				}
+			],
+			"expect": {
+				"markdown": "> [!WARNING]\n> Careful$x$\n\n<details>\n<summary></summary>\n\nHidden\n\n</details>"
+			}
+		}
+	]
+}

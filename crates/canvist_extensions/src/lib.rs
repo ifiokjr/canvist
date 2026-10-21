@@ -60,6 +60,9 @@
 //! | [`Twitch`]          | `twitch`           | `twitch`                                 |
 //! | [`Audio`]           | `audio`            | `audio`                                  |
 //! | [`File`]            | `file`             | `file`, an attachment card               |
+//! | [`Details`]         | `details`          | `details`, a summary that opens          |
+//! | [`Callout`]         | `callout`          | `callout`, `:::warning `                 |
+//! | [`Mathematics`]     | `mathematics`      | `inlineMath`, `blockMath`, `$$x$$`       |
 //!
 //! `docs/src/extensions/parity.md` compares the whole set with Remirror and
 //! TipTap.
@@ -92,12 +95,16 @@
 mod blockquote;
 #[cfg(feature = "bullet-list")]
 mod bullet_list;
+#[cfg(feature = "callout")]
+mod callout;
 #[cfg(feature = "character-count")]
 mod character_count;
 #[cfg(feature = "clipboard")]
 pub mod clipboard;
 #[cfg(feature = "code-block")]
 mod code_block;
+#[cfg(feature = "details")]
+mod details;
 #[cfg(feature = "emoji")]
 pub mod emoji;
 #[cfg(feature = "extras")]
@@ -133,6 +140,8 @@ mod lists;
 	feature = "superscript"
 ))]
 mod marks;
+#[cfg(feature = "mathematics")]
+mod math;
 #[cfg(any(
 	feature = "audio",
 	feature = "file",
@@ -172,6 +181,12 @@ pub use blockquote::BlockquoteHandle;
 pub use bullet_list::BulletList;
 #[cfg(feature = "bullet-list")]
 pub use bullet_list::BulletListHandle;
+#[cfg(feature = "callout")]
+pub use callout::Callout;
+#[cfg(feature = "callout")]
+pub use callout::CalloutHandle;
+#[cfg(feature = "callout")]
+pub use callout::CalloutType;
 #[cfg(feature = "character-count")]
 pub use character_count::CharacterCount;
 #[cfg(feature = "character-count")]
@@ -180,6 +195,10 @@ pub use character_count::CharacterCountHandle;
 pub use code_block::CodeBlock;
 #[cfg(feature = "code-block")]
 pub use code_block::CodeBlockHandle;
+#[cfg(feature = "details")]
+pub use details::Details;
+#[cfg(feature = "details")]
+pub use details::DetailsHandle;
 #[cfg(feature = "emoji")]
 pub use emoji::Emoji;
 #[cfg(feature = "emoji")]
@@ -244,6 +263,10 @@ pub use marks::Subscript;
 pub use marks::Superscript;
 #[cfg(feature = "underline")]
 pub use marks::Underline;
+#[cfg(feature = "mathematics")]
+pub use math::Mathematics;
+#[cfg(feature = "mathematics")]
+pub use math::MathematicsHandle;
 #[cfg(feature = "audio")]
 pub use media::Audio;
 #[cfg(feature = "file")]

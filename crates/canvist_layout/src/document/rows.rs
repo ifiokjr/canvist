@@ -341,9 +341,16 @@ impl Flattener<'_> {
 		let parent_kind = parent.map(Block::kind);
 		let marker_kind = parent_style.and_then(|style| self.styles.get(style).marker);
 		let start = parent.map_or(1, |parent| self.int_attr(parent, "start").unwrap_or(1));
+		let open = parent.is_none_or(|parent| is_open(doc, parent));
+		let shown = if open { usize::MAX } else { 1 };
 		let mut previous_after = None;
 
-		for (index, &id) in doc.children(parent.map(Block::id)).iter().enumerate() {
+		for (index, &id) in doc
+			.children(parent.map(Block::id))
+			.iter()
+			.enumerate()
+			.take(shown)
+		{
 			let Some(block) = doc.block(id) else {
 				continue;
 			};
@@ -355,14 +362,22 @@ impl Flattener<'_> {
 				self.pending += to_units(f32::max(after, before));
 			}
 
-			let marker = marker_kind.map(|kind| {
-				Marker {
-					kind,
-					ordinal: start + index as i64,
-					depth: frame.lists.saturating_sub(1),
-					checked: self.bool_attr(block, "checked"),
-				}
-			});
+			let marker = marker_kind
+				.filter(|&kind| kind != MarkerKind::Disclosure || index == 0)
+				.map(|kind| {
+					let checked = if kind == MarkerKind::Disclosure {
+						open
+					} else {
+						self.bool_attr(block, "checked")
+					};
+
+					Marker {
+						kind,
+						ordinal: start + index as i64,
+						depth: frame.lists.saturating_sub(1),
+						checked,
+					}
+				});
 			let placement = Placement {
 				style,
 				parent_kind,
@@ -548,6 +563,14 @@ impl Flattener<'_> {
 			.and_then(Value::as_bool)
 			.unwrap_or(false)
 	}
+}
+
+/// Whether a container shows all its children: unless its `open`
+/// attribute is `false`, when only the first one shows, as a closed
+/// `<details>` shows only its summary.
+pub(crate) fn is_open(doc: &Document, block: &Block) -> bool {
+	let defaults = &doc.schema().block(block.kind()).attrs;
+	attr(block.attrs(), defaults, "open").and_then(Value::as_bool) != Some(false)
 }
 
 /// The paragraph direction a block's `dir` attribute asks for.

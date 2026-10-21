@@ -22,6 +22,8 @@ expression: "html.css.replace('}', \"}\\n\")"
 .cv-doc .cv-mk::before{position:absolute;top:0;right:100%;margin-right:6.4px;white-space:nowrap;}
 .cv-doc .cv-mk-o{counter-increment:cv-n}
 .cv-doc .cv-mk-o::before{content:counter(cv-n) "."}
+.cv-doc .cv-mk-d0::before{content:"▸"}
+.cv-doc .cv-mk-d1::before{content:"▾"}
 .cv-doc .cv-mk-b0::before{content:"•"}
 .cv-doc .cv-mk-b1::before{content:"◦"}
 .cv-doc .cv-mk-b2::before{content:"▪"}
@@ -38,4 +40,5 @@ expression: "html.css.replace('}', \"}\\n\")"
 .cv-doc .cv-m-subscript{font-size:0.75em;vertical-align:-0.25em;}
 .cv-doc .cv-m-superscript{font-size:0.75em;vertical-align:0.5em;}
 .cv-doc .cv-e-mention{color:#6a00f5;background-color:#eeeeff;}
+.cv-doc .cv-e-inlineMath{background-color:#eeeeff;}
 .cv-doc .cv-e-emoji{}

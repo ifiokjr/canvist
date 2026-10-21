@@ -103,6 +103,13 @@ fn write_media(name: &str, attrs: &Attrs, html: &mut String) -> bool {
 				"></div>",
 			)
 		}
+		"blockMath" if cfg!(feature = "mathematics") => {
+			(
+				"<div data-type=\"block-math\"",
+				&[("latex", "data-latex")],
+				"></div>",
+			)
+		}
 		_ => return false,
 	};
 
@@ -179,6 +186,21 @@ fn container_tags(name: &str, attrs: &Attrs) -> (String, &'static str) {
 			}
 		}
 		"listItem" => ("<li>".to_owned(), "</li>"),
+		"details" => {
+			let open = attrs.get("open").and_then(Value::as_bool) == Some(true);
+			let tag = if open { "<details open>" } else { "<details>" };
+			(tag.to_owned(), "</details>")
+		}
+		"detailsContent" if cfg!(feature = "details") => {
+			("<div data-type=\"detailsContent\">".to_owned(), "</div>")
+		}
+		"callout" if cfg!(feature = "callout") => {
+			let kind = attrs.get("type").and_then(Value::as_str).unwrap_or("info");
+			(
+				format!("<div data-callout-type=\"{}\">", escape(kind)),
+				"</div>",
+			)
+		}
 		"taskList" => ("<ul data-type=\"taskList\">".to_owned(), "</ul>"),
 		"taskItem" => {
 			let checked = attrs.get("checked").and_then(Value::as_bool) == Some(true);
@@ -225,6 +247,11 @@ fn write_text_block(
 
 			html.push_str(&escape(&super::tree::plain_text(schema, text)));
 			html.push_str("</code></pre>");
+		}
+		"detailsSummary" if cfg!(feature = "details") => {
+			html.push_str("<summary>");
+			write_inline(schema, text, html);
+			html.push_str("</summary>");
 		}
 		_ => {
 			html.push_str("<p");
@@ -350,20 +377,28 @@ fn write_inline(schema: &Schema, text: &InlineText, html: &mut String) {
 }
 
 /// The `data-` attributes TipTap writes for each embed attribute.
-const EMBED_ATTRIBUTES: [(&str, &str); 5] = [
+const EMBED_ATTRIBUTES: [(&str, &str); 6] = [
 	("id", "data-id"),
 	("label", "data-label"),
 	("mentionSuggestionChar", "data-mention-suggestion-char"),
 	("name", "data-name"),
 	("emoji", "data-emoji"),
+	("latex", "data-latex"),
 ];
 
 /// An inline embed as TipTap writes it, a `<span data-type>` with its
 /// attributes as `data-` attributes and its text inside, such as
 /// `<span data-type="mention" data-id="7" data-label="Ada">@Ada</span>`.
 fn write_embed(schema: &Schema, embed: &Embed, html: &mut String) {
+	let name = &*schema.embed(embed.kind).name;
+	// TipTap's math node writes its type with a hyphen.
+	let data_type = if name == "inlineMath" {
+		"inline-math"
+	} else {
+		name
+	};
 	html.push_str("<span data-type=\"");
-	html.push_str(&escape(&schema.embed(embed.kind).name));
+	html.push_str(&escape(data_type));
 	html.push('"');
 
 	for (attr, data) in EMBED_ATTRIBUTES {

@@ -53,6 +53,8 @@ struct Palette {
 	code_page: Color,
 	code_ink: Color,
 	selection: Color,
+	/// Callout backgrounds and bars: info, success, warning, and error.
+	callouts: [(Color, Color); 4],
 }
 
 const LIGHT: Palette = Palette {
@@ -66,6 +68,12 @@ const LIGHT: Palette = Palette {
 	code_page: Color::rgb(0x2e, 0x2b, 0x29),
 	code_ink: Color::rgb(0xff, 0xff, 0xff),
 	selection: Color::rgba(0x6a, 0x00, 0xf5, 0x33),
+	callouts: [
+		(Color::rgb(0xee, 0xee, 0xff), Color::rgb(0x6a, 0x00, 0xf5)),
+		(Color::rgb(0xe6, 0xf6, 0xea), Color::rgb(0x2b, 0x8a, 0x3e)),
+		(Color::rgb(0xff, 0xf4, 0xdb), Color::rgb(0xe8, 0x59, 0x0c)),
+		(Color::rgb(0xff, 0xe9, 0xe9), Color::rgb(0xc9, 0x2a, 0x2a)),
+	],
 };
 
 const DARK: Palette = Palette {
@@ -79,6 +87,12 @@ const DARK: Palette = Palette {
 	code_page: Color::rgb(0x0d, 0x0c, 0x0b),
 	code_ink: Color::rgb(0xe9, 0xe6, 0xe3),
 	selection: Color::rgba(0xb8, 0x96, 0xff, 0x4d),
+	callouts: [
+		(Color::rgb(0x33, 0x2a, 0x4d), Color::rgb(0xb8, 0x96, 0xff)),
+		(Color::rgb(0x1f, 0x3a, 0x29), Color::rgb(0x69, 0xdb, 0x7c)),
+		(Color::rgb(0x45, 0x34, 0x18), Color::rgb(0xff, 0xa9, 0x4d)),
+		(Color::rgb(0x4a, 0x21, 0x21), Color::rgb(0xff, 0x87, 0x87)),
+	],
 };
 
 /// What [`Theme::starter_kit_with`] varies: the colour scheme, the font
@@ -120,6 +134,8 @@ const BODY_LINE_HEIGHT: f32 = 1.5;
 
 /// The weight of headings and bold text.
 const BOLD: u16 = 700;
+/// The weight of a details summary.
+const SEMIBOLD: u16 = 600;
 /// Headings set tighter than body text, as a multiple of their font size.
 const HEADING_LINE_HEIGHT: f32 = 1.1;
 
@@ -158,6 +174,8 @@ const IMAGE_HEIGHT: f32 = 12.5 * REM;
 const AUDIO_HEIGHT: f32 = 3.5 * REM;
 /// The height of a file attachment card.
 const FILE_HEIGHT: f32 = 4.0 * REM;
+/// The height reserved for a block formula until the host measures it.
+const MATH_HEIGHT: f32 = 3.0 * REM;
 
 /// How one heading level looks. Sizes and spacing are in rem.
 struct HeadingStyle {
@@ -295,18 +313,67 @@ fn block_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<BlockRule>
 
 	if cfg!(feature = "theme-extensions") {
 		rules.extend(media_rules());
+		rules.extend(details_rules());
+		rules.extend(callout_rules(palette));
 	}
 
 	rules
 }
 
 /// Host-drawn media blocks beyond the StarterKit's images.
-fn media_rules() -> [BlockRule; 4] {
+fn media_rules() -> [BlockRule; 5] {
 	[
 		media_rule("youtube", IMAGE_HEIGHT),
 		media_rule("twitch", IMAGE_HEIGHT),
 		media_rule("audio", AUDIO_HEIGHT),
 		media_rule("file", FILE_HEIGHT),
+		media_rule("blockMath", MATH_HEIGHT),
+	]
+}
+
+/// Collapsible details: a disclosure triangle beside the summary, which is
+/// all a closed one shows.
+fn details_rules() -> Vec<BlockRule> {
+	vec![
+		BlockRule::new(
+			"details",
+			BlockPatch::new()
+				.padding(Insets::new(0.0, 0.0, 0.0, LIST_INDENT))
+				.space(PARAGRAPH_SPACE, PARAGRAPH_SPACE)
+				.marker(MarkerKind::Disclosure)
+				.tag("div"),
+		),
+		BlockRule::new(
+			"detailsSummary",
+			BlockPatch::new()
+				.text(TextPatch::new().weight(SEMIBOLD))
+				.tag("div"),
+		),
+		BlockRule::new("detailsContent", BlockPatch::new().tag("div")),
+	]
+}
+
+/// Callouts: a tinted box with a coloured bar, by `type`.
+fn callout_rules(palette: &Palette) -> Vec<BlockRule> {
+	let callout = |(background, bar): (Color, Color)| {
+		BlockPatch::new()
+			.background(background, 0.5 * REM)
+			.border_left(4.0, bar)
+			.padding(Insets::symmetric(0.75 * REM, REM))
+			.space(FIGURE_SPACE, FIGURE_SPACE)
+			.tag("div")
+	};
+	let [info, success, warning, error] = palette.callouts;
+
+	vec![
+		BlockRule::new("callout", callout(info)),
+		BlockRule::new("callout", callout(success)).when("type", "success"),
+		BlockRule::new("callout", callout(warning)).when("type", "warning"),
+		BlockRule::new("callout", callout(error)).when("type", "error"),
+		BlockRule::new("callout", BlockPatch::new().border_left(0.0, palette.rule))
+			.when("type", "blank"),
+		BlockRule::new("paragraph", BlockPatch::new().space(ITEM_SPACE, ITEM_SPACE))
+			.within("callout"),
 	]
 }
 
@@ -502,6 +569,15 @@ fn embed_rules(palette: &Palette) -> Vec<EmbedRule> {
 						.color(palette.accent)
 						.background(palette.accent_wash),
 					fallback: Some(Arc::from("id")),
+				},
+			),
+			EmbedRule::new(
+				"inlineMath",
+				EmbedStyle::Label {
+					attr: Arc::from("latex"),
+					prefix: Arc::from(""),
+					patch: TextPatch::new().background(palette.accent_wash),
+					fallback: None,
 				},
 			),
 			EmbedRule::new(

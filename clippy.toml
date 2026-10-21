@@ -11,4 +11,6 @@ doc-valid-idents = [
 	"Canvas2D",
 	"CommonMark",
 	"YouTube",
+	"KaTeX",
+	"MathJax",
 ]

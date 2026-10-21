@@ -44,5 +44,8 @@ pub fn extras() -> Vec<Arc<dyn Extension>> {
 		Arc::new(crate::Twitch),
 		Arc::new(crate::Audio),
 		Arc::new(crate::File),
+		Arc::new(crate::Details),
+		Arc::new(crate::Callout),
+		Arc::new(crate::Mathematics),
 	]
 }

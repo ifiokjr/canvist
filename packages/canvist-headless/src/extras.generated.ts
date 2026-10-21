@@ -126,6 +126,67 @@ export const mention = {
 	]
 } as const satisfies ExtensionDescriptor;
 
+/** The `details` extension. */
+export const details = {
+	"commands": [
+		/** Wrap the selected blocks in an open details block with an empty summary. */
+		{
+			"args": [],
+			"name": "setDetails"
+		},
+		/** Replace the details around the selection with its summary and content. */
+		{
+			"args": [],
+			"name": "unsetDetails"
+		},
+		/** Open the details around the selection, or close it. */
+		{
+			"args": [],
+			"name": "toggleDetailsOpen"
+		}
+	],
+	"name": "details",
+	"nodes": [
+		{
+			"attrs": [
+				/** Whether the content shows. */
+				{
+					"default": false,
+					"name": "open",
+					"type": {
+						"type": "bool"
+					}
+				}
+			],
+			"kind": "block",
+			"name": "details"
+		},
+		{
+			"attrs": [],
+			"kind": "block",
+			"name": "detailsSummary"
+		},
+		{
+			"attrs": [],
+			"kind": "block",
+			"name": "detailsContent"
+		}
+	],
+	"queries": [
+		/** Whether the details around the selection is open, or null outside one. */
+		{
+			"args": [],
+			"name": "detailsOpen",
+			"returns": {
+				"of": {
+					"type": "bool"
+				},
+				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
 /** The `subscript` extension. */
 export const subscript = {
 	"commands": [
@@ -1514,6 +1575,161 @@ export const file = {
 	"queries": []
 } as const satisfies ExtensionDescriptor;
 
+/** The `callout` extension. */
+export const callout = {
+	"commands": [
+		/** Wrap the selection in a callout, or lift it out of the callout around it. */
+		{
+			"args": [
+				/** The callout type: info, warning, error, success, or blank. */
+				{
+					"default": "info",
+					"name": "type",
+					"type": {
+						"enum": [
+							"info",
+							"warning",
+							"error",
+							"success",
+							"blank"
+						],
+						"type": "string"
+					}
+				}
+			],
+			"name": "toggleCallout"
+		},
+		/** Change the type of the callout around the selection. */
+		{
+			"args": [
+				/** The callout type: info, warning, error, success, or blank. */
+				{
+					"name": "type",
+					"type": {
+						"enum": [
+							"info",
+							"warning",
+							"error",
+							"success",
+							"blank"
+						],
+						"type": "string"
+					}
+				}
+			],
+			"name": "setCalloutType"
+		}
+	],
+	"name": "callout",
+	"nodes": [
+		{
+			"attrs": [
+				/** The callout type: info, warning, error, success, or blank. */
+				{
+					"default": "info",
+					"name": "type",
+					"type": {
+						"enum": [
+							"info",
+							"warning",
+							"error",
+							"success",
+							"blank"
+						],
+						"type": "string"
+					}
+				}
+			],
+			"kind": "block",
+			"name": "callout"
+		}
+	],
+	"queries": [
+		/** The type of the callout around the selection, or null outside one. */
+		{
+			"args": [],
+			"name": "calloutType",
+			"returns": {
+				"of": {
+					"enum": [
+						"info",
+						"warning",
+						"error",
+						"success",
+						"blank"
+					],
+					"type": "string"
+				},
+				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `mathematics` extension. */
+export const mathematics = {
+	"commands": [
+		/** Insert an inline formula at the selection. */
+		{
+			"args": [
+				/** The formula, in LaTeX. */
+				{
+					"name": "latex",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"name": "insertInlineMath"
+		},
+		/** Insert a block formula at the selection. */
+		{
+			"args": [
+				/** The formula, in LaTeX. */
+				{
+					"name": "latex",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"name": "insertBlockMath"
+		}
+	],
+	"name": "mathematics",
+	"nodes": [
+		{
+			"attrs": [
+				/** The formula, in LaTeX. */
+				{
+					"default": "",
+					"name": "latex",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"kind": "embed",
+			"name": "inlineMath"
+		},
+		{
+			"attrs": [
+				/** The formula, in LaTeX. */
+				{
+					"default": "",
+					"name": "latex",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"kind": "block",
+			"name": "blockMath"
+		}
+	],
+	"queries": []
+} as const satisfies ExtensionDescriptor;
+
 /** The `typography` extension. */
 export const typography = {
 	"commands": [],
@@ -1523,7 +1739,7 @@ export const typography = {
 } as const satisfies ExtensionDescriptor;
 
 /** Every extension beyond the StarterKit, which `@canvist/headless/full` compiles in. */
-export const extras = [textStyle, mention, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, image, youtube, twitch, audio, file, typography] as const;
+export const extras = [textStyle, mention, details, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, image, youtube, twitch, audio, file, callout, mathematics, typography] as const;
 
 /** Every optional extension canvist ships, the StarterKit's included. */
 export const allExtensions = [...starterKit, ...extras] as const;

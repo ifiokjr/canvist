@@ -48,10 +48,13 @@ full = ["extras", "emoji-data"]
 # `emoji::load` supplies at runtime.
 extras = [
 	"starter-kit",
+	"callout",
 	"character-count",
+	"details",
 	"emoji",
 	"hashtag",
 	"highlight",
+	"mathematics",
 	"media",
 	"mention",
 	"placeholder",
@@ -74,11 +77,13 @@ background-color = ["text-style"]
 blockquote = []
 bold = []
 bullet-list = ["list-item"]
+callout = []
 character-count = ["dep:unicode-segmentation"]
 clipboard = []
 code = []
 code-block = []
 color = ["text-style"]
+details = []
 emoji = []
 # The gemoji table, compiled in.
 emoji-data = ["emoji"]
@@ -94,6 +99,7 @@ italic = []
 line-height = ["text-style"]
 link = []
 list-item = []
+mathematics = []
 # Images, YouTube and Twitch videos, audio, and file attachments.
 media = ["audio", "file", "image", "twitch", "youtube"]
 audio = []

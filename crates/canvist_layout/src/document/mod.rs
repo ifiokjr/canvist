@@ -14,6 +14,7 @@ pub(crate) use self::rows::Marker;
 pub(crate) use self::rows::Row;
 pub(crate) use self::rows::RowKind;
 pub(crate) use self::rows::Span;
+pub(crate) use self::rows::is_open;
 use crate::BreakOverride;
 use crate::FontId;
 use crate::FontSpec;
@@ -684,6 +685,7 @@ impl DocumentLayout {
 				bullets.get(marker.depth % bullets.len().max(1)).cloned()
 			}
 			MarkerKind::Ordered => Some(Arc::from(format!("{}.", marker.ordinal))),
+			MarkerKind::Disclosure => Some(Arc::from(disclosure(marker.checked))),
 			MarkerKind::Task => None,
 		}
 	}
@@ -775,4 +777,9 @@ impl DocumentLayout {
 /// The content-box width of a row whose border box is `width` wide.
 pub(crate) fn content_width(style: &BlockStyle, width: f32) -> f32 {
 	(width - style.inset_left() - style.inset_right()).max(0.0)
+}
+
+/// The disclosure triangle of an open or closed container.
+pub(crate) const fn disclosure(open: bool) -> &'static str {
+	if open { "▾" } else { "▸" }
 }

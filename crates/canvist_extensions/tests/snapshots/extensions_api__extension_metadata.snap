@@ -156,6 +156,65 @@ expression: editor.metadata_json()
     ]
   },
   {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Wrap the selected blocks in an open details block with an empty summary.",
+        "name": "setDetails"
+      },
+      {
+        "args": [],
+        "doc": "Replace the details around the selection with its summary and content.",
+        "name": "unsetDetails"
+      },
+      {
+        "args": [],
+        "doc": "Open the details around the selection, or close it.",
+        "name": "toggleDetailsOpen"
+      }
+    ],
+    "name": "details",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": false,
+            "doc": "Whether the content shows.",
+            "name": "open",
+            "type": {
+              "type": "bool"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "details"
+      },
+      {
+        "attrs": [],
+        "kind": "block",
+        "name": "detailsSummary"
+      },
+      {
+        "attrs": [],
+        "kind": "block",
+        "name": "detailsContent"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "Whether the details around the selection is open, or null outside one.",
+        "name": "detailsOpen",
+        "returns": {
+          "of": {
+            "type": "bool"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
     "commands": [],
     "name": "doc",
     "nodes": [],
@@ -2182,6 +2241,157 @@ expression: editor.metadata_json()
         ],
         "kind": "block",
         "name": "file"
+      }
+    ],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "default": "info",
+            "doc": "The callout type: info, warning, error, success, or blank.",
+            "name": "type",
+            "type": {
+              "enum": [
+                "info",
+                "warning",
+                "error",
+                "success",
+                "blank"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Wrap the selection in a callout, or lift it out of the callout around it.",
+        "name": "toggleCallout"
+      },
+      {
+        "args": [
+          {
+            "doc": "The callout type: info, warning, error, success, or blank.",
+            "name": "type",
+            "type": {
+              "enum": [
+                "info",
+                "warning",
+                "error",
+                "success",
+                "blank"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Change the type of the callout around the selection.",
+        "name": "setCalloutType"
+      }
+    ],
+    "name": "callout",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": "info",
+            "doc": "The callout type: info, warning, error, success, or blank.",
+            "name": "type",
+            "type": {
+              "enum": [
+                "info",
+                "warning",
+                "error",
+                "success",
+                "blank"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "callout"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The type of the callout around the selection, or null outside one.",
+        "name": "calloutType",
+        "returns": {
+          "of": {
+            "enum": [
+              "info",
+              "warning",
+              "error",
+              "success",
+              "blank"
+            ],
+            "type": "string"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The formula, in LaTeX.",
+            "name": "latex",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Insert an inline formula at the selection.",
+        "name": "insertInlineMath"
+      },
+      {
+        "args": [
+          {
+            "doc": "The formula, in LaTeX.",
+            "name": "latex",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Insert a block formula at the selection.",
+        "name": "insertBlockMath"
+      }
+    ],
+    "name": "mathematics",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": "",
+            "doc": "The formula, in LaTeX.",
+            "name": "latex",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "kind": "embed",
+        "name": "inlineMath"
+      },
+      {
+        "attrs": [
+          {
+            "default": "",
+            "doc": "The formula, in LaTeX.",
+            "name": "latex",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "kind": "block",
+        "name": "blockMath"
       }
     ],
     "queries": []

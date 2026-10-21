@@ -454,3 +454,93 @@ fn emoji_draw_their_character_or_their_shortcode() {
 
 	assert_eq!(texts, ["😄", ":wave:"]);
 }
+
+/// A document with a details block, `open` or closed.
+fn details(open: bool) -> Document {
+	let schema = canvist_model::Schema::builder()
+		.block(canvist_model::BlockSpec::text("paragraph"))
+		.block(
+			canvist_model::BlockSpec::container("details", &["detailsSummary", "detailsContent"])
+				.attrs(canvist_model::Attrs::new().with("open", false)),
+		)
+		.block(canvist_model::BlockSpec::text("detailsSummary").groups(&[]))
+		.block(canvist_model::BlockSpec::container("detailsContent", &["block"]).groups(&[]))
+		.build()
+		.expect("valid schema");
+
+	Document::from_json(
+		Arc::new(schema),
+		1,
+		&json!({ "type": "doc", "content": [{
+			"type": "details",
+			"attrs": { "open": open },
+			"content": [
+				{ "type": "detailsSummary", "content": [{ "type": "text", "text": "Summary" }] },
+				{ "type": "detailsContent", "content": [support::paragraph("Hidden until opened")] }
+			]
+		}] }),
+	)
+	.expect("valid JSON")
+}
+
+#[cfg(feature = "theme-extensions")]
+fn texts(doc: &Document) -> Vec<String> {
+	let layout = layout(doc, 320.0);
+	let list = layout.display_list(&DisplayOptions::viewport(0.0, layout.height()));
+
+	list.items
+		.iter()
+		.filter_map(|item| {
+			match item {
+				canvist_layout::DisplayItem::Text(run) => Some(run.text().to_owned()),
+				_ => None,
+			}
+		})
+		.collect()
+}
+
+// The extension theme rules are behind `theme-extensions`.
+#[cfg(feature = "theme-extensions")]
+#[test]
+fn closed_details_show_only_their_summary() {
+	assert_eq!(texts(&details(false)).concat(), "▸Summary");
+	assert_eq!(
+		texts(&details(true)).concat(),
+		"▾SummaryHidden until opened"
+	);
+
+	let theme = Arc::new(Theme::starter_kit());
+	let closed = to_html(&details(false), &theme, &HtmlOptions::new(320.0));
+	assert!(!closed.html.contains("Hidden"), "{}", closed.html);
+	assert!(closed.html.contains("cv-mk-d0"), "{}", closed.html);
+	assert!(closed.css.contains(".cv-mk-d1::before{content:\"▾\"}"));
+}
+
+#[test]
+fn opening_details_relays_out_like_a_fresh_layout() {
+	let mut doc = details(false);
+	let mut measurer = canvist_layout::FixedMeasurer::new();
+	let mut layout = canvist_layout::DocumentLayout::new(
+		&doc,
+		Arc::new(Theme::starter_kit()),
+		canvist_layout::LayoutOptions::new(320.0),
+	);
+	layout.layout_all(&doc, &mut measurer).expect("measured");
+	let block = doc.children(None)[0];
+	let kind = doc.block(block).expect("details").kind();
+
+	let mut open = doc.transaction();
+	open.set_block(block, kind, canvist_model::Attrs::new().with("open", true))
+		.expect("valid block");
+	let commit = open.commit();
+	layout.apply(&doc, &commit);
+	layout
+		.ensure(&doc, &mut measurer, 0.0, 1000.0)
+		.expect("measured");
+
+	assert_eq!(layout.dump(), support::layout(&doc, 320.0).dump());
+	assert!(
+		layout.dump().contains("\"Hidden \""),
+		"the content is laid out"
+	);
+}

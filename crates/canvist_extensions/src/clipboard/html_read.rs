@@ -184,7 +184,7 @@ fn attr_value(source: &str) -> (String, &str) {
 }
 
 /// Decode character references.
-fn decode(text: &str) -> String {
+pub(super) fn decode(text: &str) -> String {
 	let mut decoded = String::with_capacity(text.len());
 	let mut rest = text;
 
@@ -258,13 +258,12 @@ enum Role {
 	Inline,
 }
 
-const BOUNDARIES: [&str; 22] = [
+const BOUNDARIES: [&str; 20] = [
 	"address",
 	"article",
 	"aside",
 	"body",
 	"dd",
-	"details",
 	"div",
 	"dl",
 	"dt",
@@ -276,7 +275,6 @@ const BOUNDARIES: [&str; 22] = [
 	"main",
 	"nav",
 	"section",
-	"summary",
 	"table",
 	"tbody",
 	"td",
@@ -335,8 +333,39 @@ fn role(name: &str, attrs: &[(String, String)], parent: Option<&'static str>) ->
 			Role::Leaf("file", media_attrs(attrs, FILE_ATTRIBUTES))
 		}
 		"br" => Role::Break,
-		"span" if data_type == Some("mention") => Role::Atom("mention", atom_attrs(attrs)),
-		"span" if data_type == Some("emoji") => Role::Atom("emoji", atom_attrs(attrs)),
+		"details" if cfg!(feature = "details") => {
+			Role::Container(
+				"details",
+				Attrs::new().with("open", attr(attrs, "open").is_some()),
+			)
+		}
+		"summary" => Role::Text("detailsSummary", Attrs::new()),
+		"div" if data_type == Some("detailsContent") => {
+			Role::Container("detailsContent", Attrs::new())
+		}
+		"div" if cfg!(feature = "callout") && (attr(attrs, "data-callout-type").is_some()) => {
+			// An unknown type reads as the default, as the theme draws it.
+			let kind = attr(attrs, "data-callout-type")
+				.filter(|kind| {
+					super::markdown_write::ALERTS
+						.iter()
+						.any(|(known, _)| known == kind)
+				})
+				.unwrap_or("info");
+			Role::Container("callout", Attrs::new().with("type", kind))
+		}
+		"div" if cfg!(feature = "mathematics") && (data_type == Some("block-math")) => {
+			Role::Leaf("blockMath", atom_attrs(attrs))
+		}
+		"span" if cfg!(feature = "mathematics") && (data_type == Some("inline-math")) => {
+			Role::Atom("inlineMath", atom_attrs(attrs))
+		}
+		"span" if cfg!(feature = "mention") && (data_type == Some("mention")) => {
+			Role::Atom("mention", atom_attrs(attrs))
+		}
+		"span" if cfg!(feature = "emoji") && (data_type == Some("emoji")) => {
+			Role::Atom("emoji", atom_attrs(attrs))
+		}
 		_ => inline_role(name, attrs),
 	}
 }
@@ -409,12 +438,13 @@ pub(super) fn video_kind(_src: &str) -> Option<&'static str> {
 
 /// The `data-` attributes TipTap writes on inline atoms, and the attributes
 /// they hold.
-const ATOM_ATTRIBUTES: [(&str, &str); 5] = [
+const ATOM_ATTRIBUTES: [(&str, &str); 6] = [
 	("data-id", "id"),
 	("data-label", "label"),
 	("data-mention-suggestion-char", "mentionSuggestionChar"),
 	("data-name", "name"),
 	("data-emoji", "emoji"),
+	("data-latex", "latex"),
 ];
 
 fn atom_attrs(attrs: &[(String, String)]) -> Attrs {
@@ -568,6 +598,37 @@ fn heavy(value: &str) -> bool {
 	}
 }
 
+/// Whether any compiled leaf is an element with a closing tag, whose end
+/// must not close the container around it. The StarterKit's only leaf,
+/// `<hr>`, is void.
+const CLOSED_LEAVES: bool = cfg!(any(
+	feature = "audio",
+	feature = "file",
+	feature = "mathematics",
+	feature = "twitch",
+	feature = "youtube"
+));
+
+/// Whether `tag` is a void element, which has no closing tag.
+fn is_void(tag: &str) -> bool {
+	matches!(
+		tag,
+		"area"
+			| "base"
+			| "br"
+			| "col"
+			| "embed"
+			| "hr"
+			| "img"
+			| "input"
+			| "link"
+			| "meta"
+			| "source"
+			| "track"
+			| "wbr"
+	)
+}
+
 /// An open container.
 struct Frame {
 	tag: String,
@@ -604,6 +665,10 @@ struct Reader<'s> {
 	/// Open inline tags and the marks each applies.
 	marks: Vec<(String, Vec<Mark>)>,
 	atom: Option<OpenAtom>,
+	/// The tags of open leaf elements that have a closing tag, such as
+	/// `<div data-type="block-math">`, so their `</div>` never closes the
+	/// container around them.
+	leaves: Vec<String>,
 }
 
 impl<'s> Reader<'s> {
@@ -621,6 +686,7 @@ impl<'s> Reader<'s> {
 			text: None,
 			marks: Vec::new(),
 			atom: None,
+			leaves: Vec::new(),
 		}
 	}
 
@@ -665,6 +731,10 @@ impl<'s> Reader<'s> {
 				self.end_text();
 				let leaf = self.build.leaf(name, &leaf_attrs);
 				self.children().extend(leaf);
+
+				if CLOSED_LEAVES && !is_void(&tag) {
+					self.leaves.push(tag);
+				}
 			}
 			Role::Break => self.line_break(),
 			Role::Atom(name, attrs) => {
@@ -713,6 +783,12 @@ impl<'s> Reader<'s> {
 	fn close(&mut self, tag: &str) {
 		if self.atom.as_ref().is_some_and(|atom| atom.tag == tag) {
 			self.finish_atom();
+
+			return;
+		}
+
+		if CLOSED_LEAVES && let Some(index) = self.leaves.iter().rposition(|open| open == tag) {
+			self.leaves.truncate(index);
 
 			return;
 		}

@@ -64,7 +64,8 @@ impl InlineParser<'_, '_> {
 				'`' => self.code_span(rest),
 				'*' | '_' | '~' | '=' => self.emphasis(rest, source),
 				'[' => self.link(rest),
-				'<' => self.tag(rest),
+				'<' if cfg!(any(feature = "subscript", feature = "superscript")) => self.tag(rest),
+				'$' if cfg!(feature = "mathematics") => self.math(rest),
 				_ => None,
 			};
 
@@ -188,6 +189,36 @@ impl InlineParser<'_, '_> {
 		self.with_mark(mark, &Attrs::new(), |parser| parser.parse(&rest[open..end]));
 
 		Some(end + close.len())
+	}
+
+	/// A `$latex$` formula, when the schema has inline math. As in Pandoc,
+	/// the formula cannot start or end with a space and the closing `$`
+	/// cannot come before a digit; it also ends at the next `$`, so prices
+	/// such as `$5 and $6` stay text.
+	fn math(&mut self, rest: &str) -> Option<usize> {
+		let inner = &rest[1..];
+		let opens = inner
+			.chars()
+			.next()
+			.is_some_and(|first| !first.is_whitespace() && first != '$');
+		let close = inner.find('$').filter(|_| opens)?;
+		let before = inner[..close].chars().next_back();
+		let after = inner[close + 1..].chars().next();
+		let closes = before
+			.is_some_and(|character| !character.is_whitespace() && character != '\\')
+			&& !after.is_some_and(|character| character.is_ascii_digit());
+
+		if !closes {
+			return None;
+		}
+
+		let marks = MarkSet::from_marks(self.marks.clone());
+		let attrs = Attrs::new().with("latex", &inner[..close]);
+		let formula = self.build.embed("inlineMath", &attrs, marks)?;
+		self.flush();
+		self.text.append(formula);
+
+		Some(close + 2)
 	}
 
 	/// Run `body` with mark `name` applied, if the schema has it.
