@@ -14,6 +14,7 @@ use canvist_editor::commands;
 use canvist_editor::parse_binding;
 use canvist_editor::value_to_json;
 use canvist_model::Attrs;
+#[cfg(feature = "journal")]
 use canvist_model::Commit;
 use canvist_model::Document;
 use canvist_model::Point;
@@ -58,6 +59,7 @@ pub struct Doc {
 	clock: Duration,
 	/// Every commit that changed the document since the host last took
 	/// them, while [`Doc::record_commits`] is on.
+	#[cfg(feature = "journal")]
 	journal: Option<Vec<Commit>>,
 	#[cfg(feature = "collab")]
 	pub(crate) shared: Option<canvist_collab::Binding>,
@@ -77,6 +79,7 @@ impl Doc {
 		Self {
 			editor,
 			clock: Duration::ZERO,
+			#[cfg(feature = "journal")]
 			journal: None,
 			#[cfg(feature = "collab")]
 			shared: None,
@@ -350,12 +353,14 @@ impl Doc {
 	/// Hosts that make every change through [`Doc::edit`] can apply the
 	/// updates it returns instead, but a host that also lets other code run
 	/// commands, or collaborates, sees only some changes that way.
+	#[cfg(feature = "journal")]
 	pub fn record_commits(&mut self) {
 		self.journal.get_or_insert_with(Vec::new);
 	}
 
 	/// The commits recorded since the last call, oldest first. Empty unless
 	/// [`Doc::record_commits`] is on.
+	#[cfg(feature = "journal")]
 	pub fn take_commits(&mut self) -> Vec<Commit> {
 		self.journal
 			.as_mut()
@@ -364,6 +369,7 @@ impl Doc {
 	}
 
 	/// Note `update` in the journal when it changed the document.
+	#[cfg(feature = "journal")]
 	pub(crate) fn record(&mut self, update: &Update) {
 		if let Some(journal) = &mut self.journal
 			&& update.doc_changed()
@@ -371,6 +377,12 @@ impl Doc {
 			journal.push(update.commit.clone());
 		}
 	}
+
+	/// Without the journal there is nothing to note, and nothing to link
+	/// into hosts that never record, such as the browser editor.
+	#[cfg(not(feature = "journal"))]
+	#[allow(clippy::unused_self, reason = "the journal feature records")]
+	pub(crate) fn record(&mut self, _update: &Update) {}
 
 	/// A fresh environment, one logical second after the last call.
 	pub(crate) fn env(&mut self) -> Env<'static> {

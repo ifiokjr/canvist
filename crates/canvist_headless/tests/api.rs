@@ -258,6 +258,7 @@ fn key_bindings_follow_the_engine_platform() -> Result<(), HeadlessError> {
 	Ok(())
 }
 
+#[cfg(feature = "journal")]
 #[test]
 fn recorded_commits_cover_every_change_a_layout_must_see() -> Result<(), HeadlessError> {
 	let engine = Engine::starter_kit();
@@ -287,7 +288,7 @@ fn recorded_commits_cover_every_change_a_layout_must_see() -> Result<(), Headles
 	Ok(())
 }
 
-#[cfg(feature = "collab")]
+#[cfg(all(feature = "collab", feature = "journal"))]
 #[test]
 fn recorded_commits_include_collaborators_and_the_shared_history() -> Result<(), HeadlessError> {
 	let engine = Engine::starter_kit();
