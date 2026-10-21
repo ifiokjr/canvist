@@ -16,8 +16,13 @@ on:
       - "packages/*/readme.md"
       - "packages/*/README.md"
       - "assets/brand/**"
-      - "packages/canvist/src/**"
-      - "packages/canvist/wasm/**"
+      # The landing page builds the editor it embeds from these.
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "rust-toolchain.toml"
+      - "packages/canvist-headless/**"
+      - "packages/canvist-web/**"
       - ".github/workflows/website.yml"
   pull_request:
     paths: *paths
@@ -31,13 +36,71 @@ defaults:
     working-directory: website
 
 jobs:
+  # The landing page embeds `@canvist/web` and renders its document with
+  # `@canvist/headless/ssr` at build time. Both are built once here, as
+  # `web.yml` builds them, and the jobs that build the site download them.
+  packages:
+    name: build the canvist packages
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
+
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: build @canvist/headless and @canvist/web
+        run: |
+          for package in canvist-headless canvist-web; do
+            (cd "packages/$package" && npm ci && npm run build:wasm && npm run build)
+          done
+
+      - name: upload the built packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvist-packages
+          if-no-files-found: error
+          path: |
+            packages/canvist-headless/dist
+            packages/canvist-headless/wasm*
+            packages/canvist-web/dist
+            packages/canvist-web/wasm*
+
   test:
     name: check, build and test
+    needs: packages
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
+
+      - name: download the built packages
+        uses: actions/download-artifact@v4
+        with:
+          name: canvist-packages
+          path: packages
 
       - name: install deno
         uses: denoland/setup-deno@v2
@@ -51,6 +114,12 @@ jobs:
 
       - name: install dependencies
         run: deno install --frozen
+
+      # Type checking follows the link to packages/canvist-web, which finds
+      # @canvist/headless in its own node_modules.
+      - name: install @canvist/web's dependencies
+        working-directory: packages/canvist-web
+        run: npm ci --ignore-scripts
 
       - name: type check
         run: deno task check
@@ -119,7 +188,8 @@ jobs:
 
   image:
     name: docker image
-    timeout-minutes: 20
+    # The image compiles the editor's WebAssembly from scratch.
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -165,11 +235,18 @@ jobs:
 
   visual:
     name: visual snapshots (macOS)
+    needs: packages
     timeout-minutes: 30
     runs-on: macos-latest
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
+
+      - name: download the built packages
+        uses: actions/download-artifact@v4
+        with:
+          name: canvist-packages
+          path: packages
 
       - name: install deno
         uses: denoland/setup-deno@v2

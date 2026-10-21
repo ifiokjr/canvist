@@ -1,27 +1,25 @@
+import { PIXEL_GHOST_TEXT } from "../lib/pixel-document.ts";
+import { type LiveEditor, loadEditor } from "./engine.ts";
 import {
-	channels,
-	type EditorTheme,
-	type LiveEditor,
-	loadV1Engine,
-} from "./engine.ts";
-import {
+	colorScheme,
+	onColorSchemeChange,
 	prefersReducedMotion,
-	resolveColor,
 	trackVisibility,
 	whenScrollSettles,
 } from "./motion.ts";
 
 /**
- * "Owns every pixel": the v1 engine paints into the page and a readout
- * times each keystroke from its input event to the next painted frame.
+ * "Type into the real engine": the page arrives with the document as
+ * server-rendered HTML, `@canvist/web` takes its place without moving it,
+ * and a readout times each keystroke from its input event to the next
+ * painted frame.
  *
- * The engine loads on its own as the section approaches (unless the visitor
- * asked to save data or reduce motion, when the button loads it), types a
- * sentence by itself, and hands over the moment the visitor clicks in.
+ * The editor loads on its own as the section comes on screen (unless the
+ * visitor asked to save data or reduce motion, when clicking the document
+ * or the button loads it), types a sentence by itself, and hands over the
+ * moment the visitor clicks in.
  */
 
-const GHOST_TEXT =
-	"Every glyph here is laid out and painted by canvist, not the browser. Click in and type.";
 const HISTORY = 48;
 
 type Source = "auto" | "you";
@@ -52,8 +50,10 @@ function afterNextPaint(callback: (paintedAt: number) => void): void {
 	});
 }
 
+const MODIFIERS = new Set(["Shift", "Meta", "Control", "Alt"]);
+
 export function mountPixelDemo(root: HTMLElement): void {
-	const canvas = root.querySelector<HTMLCanvasElement>("#pixel-canvas");
+	const element = root.querySelector<HTMLElement>("[data-pixel-editor]");
 	const paper = root.querySelector<HTMLElement>(".sheet__paper");
 	const start = root.querySelector<HTMLButtonElement>("[data-pixel-start]");
 	const startLabel = root.querySelector<HTMLElement>(
@@ -65,26 +65,16 @@ export function mountPixelDemo(root: HTMLElement): void {
 		p50: root.querySelector<HTMLElement>("[data-pixel-p50]"),
 		source: root.querySelector<HTMLElement>("[data-pixel-source]"),
 	};
-	if (!canvas || !paper || !start || !startLabel || !status) {
+	if (!element || !paper || !start || !startLabel || !status) {
 		throw new Error("Every-pixel section markup is incomplete");
 	}
 
 	const samples: number[] = [];
 	let source: Source = "auto";
 	let editor: LiveEditor | undefined;
-	let loading: Promise<void> | undefined;
+	let loading: Promise<LiveEditor> | undefined;
 	let ghostTimer: number | undefined;
-
-	function theme(): EditorTheme {
-		const caret = resolveColor(root, "var(--accent)");
-		const [r, g, b] = channels(caret);
-		return {
-			background: getComputedStyle(paper as HTMLElement).backgroundColor,
-			text: resolveColor(root, "var(--text)"),
-			caret,
-			selection: `rgba(${r}, ${g}, ${b}, 0.22)`,
-		};
-	}
+	let onScreen = false;
 
 	function format(ms: number): string {
 		return `${ms.toFixed(1)} ms`;
@@ -114,116 +104,123 @@ export function mountPixelDemo(root: HTMLElement): void {
 		ghostTimer = undefined;
 	}
 
+	function handOver(): void {
+		setSource("you");
+		stopGhost();
+	}
+
+	/** The ghost's caret blinks while the section is on screen, until the visitor takes over. */
+	function showGhostCaret(): void {
+		if (source === "auto") editor?.showCaret(onScreen);
+	}
+
 	function ghostType(index = 0): void {
-		if (!editor || source === "you" || index >= GHOST_TEXT.length) return;
-		const char = GHOST_TEXT[index] ?? "";
+		if (!editor || source === "you" || index >= PIXEL_GHOST_TEXT.length) {
+			return;
+		}
+		const char = PIXEL_GHOST_TEXT[index] ?? "";
 		const startedAt = performance.now();
 		editor.type(char);
 		afterNextPaint((paintedAt) => record(paintedAt - startedAt));
 		const pause = char === " "
 			? 70
-			: /[.,]/.test(char)
+			: /[.,:]/.test(char)
 			? 260
 			: 38 + Math.random() * 55;
 		ghostTimer = window.setTimeout(() => ghostType(index + 1), pause);
 	}
 
 	function listenForKeys(): void {
-		// The v1 engine reads keys from its own hidden textarea.
-		document.addEventListener(
+		element?.addEventListener(
 			"keydown",
 			(event) => {
-				if (
-					!(event.target instanceof HTMLTextAreaElement) ||
-					event.target.id !== "canvist-input"
-				) return;
-				if (
-					event.key === "Shift" || event.key === "Meta" ||
-					event.key === "Control" || event.key === "Alt"
-				) return;
-				setSource("you");
-				stopGhost();
+				if (MODIFIERS.has(event.key)) return;
+				handOver();
 				const pressedAt = event.timeStamp;
 				afterNextPaint((paintedAt) => record(paintedAt - pressedAt));
 			},
 			true,
 		);
-		paper?.addEventListener("pointerdown", () => {
-			setSource("you");
-			stopGhost();
-		});
 	}
 
-	async function load(): Promise<void> {
-		if (!canvas) return;
+	async function load(): Promise<LiveEditor> {
+		if (!element) throw new Error("Every-pixel section has no editor");
 		root.dataset["state"] = "loading";
-		if (startLabel) startLabel.textContent = "Loading the editor…";
 		const loaded = performance.now();
+		let live: LiveEditor;
 		try {
-			editor = await loadV1Engine(canvas, theme());
+			live = await loadEditor(element, colorScheme());
 		} catch (error) {
 			root.dataset["state"] = "error";
 			if (startLabel) startLabel.textContent = "Try loading again";
 			if (status) {
 				status.textContent =
-					"The engine didn't load. Check your connection and try again.";
+					"The editor didn't load. Check your connection and try again.";
 			}
 			loading = undefined;
 			throw error;
 		}
+		editor = live;
 		root.dataset["state"] = "ready";
 		root.dataset["loadMs"] = String(Math.round(performance.now() - loaded));
 		listenForKeys();
-		document.addEventListener(
-			"canvist:theme",
-			() => requestAnimationFrame(() => editor?.setTheme(theme())),
-		);
+		onColorSchemeChange(() => void live.setScheme(colorScheme()));
+		live.caretToEnd();
 		if (prefersReducedMotion()) {
 			setSource("you");
-			editor.focus();
-		} else {
+		} else if (source === "auto") {
+			showGhostCaret();
 			ghostType();
 		}
+		return live;
 	}
 
-	function ensureLoaded(): Promise<void> {
+	function ensureLoaded(): Promise<LiveEditor> {
 		loading ??= load();
 		return loading;
 	}
 
-	start.addEventListener("click", () => {
+	/** Loads the editor if it hasn't yet, and gives it to the visitor. */
+	function takeOver(): void {
+		handOver();
+		// Only here, in answer to the visitor: the longer label moves the
+		// button, which counts as a layout shift when nobody asked for it.
+		if (!editor && startLabel) startLabel.textContent = "Loading the editor…";
 		ensureLoaded()
-			.then(() => {
-				setSource("you");
-				stopGhost();
-				editor?.focus();
-			})
+			.then((live) => live.focus())
 			.catch((error: unknown) =>
-				console.warn("canvist v1 engine failed to load", error)
+				console.warn("canvist editor failed to load", error)
 			);
+	}
+
+	start.addEventListener("click", takeOver);
+	// Before the editor has loaded, the document is HTML: pressing it loads
+	// the editor. After, the editor handles the press itself.
+	paper.addEventListener("pointerdown", () => {
+		if (editor) handOver();
+		else takeOver();
 	});
 
-	if (!prefersReducedMotion() && !savesData()) {
-		// Start the engine when the section is on screen and scrolling has
-		// paused: its start-up is main-thread work that would otherwise drop
-		// frames mid-scroll on slower phones. A visitor who scrolls straight
-		// past never pays for it.
-		let onScreen = false;
-		let waiting = false;
-		const attempt = () => {
-			if (waiting || loading !== undefined) return;
-			waiting = true;
-			void whenScrollSettles().then(() => {
-				waiting = false;
-				if (!onScreen) return;
-				ensureLoaded().catch((error: unknown) =>
-					console.warn("canvist v1 engine failed to load", error)
-				);
-			});
-		};
-		trackVisibility(root, (visible) => {
-			onScreen = visible;
-			if (visible) attempt();
+	// Start the editor when the section is on screen and scrolling has
+	// paused: its start-up is main-thread work that would otherwise drop
+	// frames mid-scroll on slower phones. A visitor who scrolls straight past
+	// never pays for it.
+	const loadsItself = !prefersReducedMotion() && !savesData();
+	let waiting = false;
+	const attempt = () => {
+		if (waiting || loading !== undefined) return;
+		waiting = true;
+		void whenScrollSettles().then(() => {
+			waiting = false;
+			if (!onScreen) return;
+			ensureLoaded().catch((error: unknown) =>
+				console.warn("canvist editor failed to load", error)
+			);
 		});
-	}
+	};
+	trackVisibility(root, (visible) => {
+		onScreen = visible;
+		showGhostCaret();
+		if (visible && loadsItself) attempt();
+	});
 }

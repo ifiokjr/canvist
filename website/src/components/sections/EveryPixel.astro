@@ -1,9 +1,21 @@
 ---
+import { readFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 import { findBudget, loadBudgets } from "../../lib/budgets.ts";
 import { repoPath } from "../../lib/paths.ts";
+import { renderPixelDocument } from "../../lib/pixel-render.ts";
 
 // One real number from the repository's budget table, read at build time.
 const keystroke = findBudget(loadBudgets(repoPath("docs/src/guides/performance.md")), "Apply one keystroke");
+
+// The document as HTML, laid out as the editor will paint it. The build
+// bundles the renderer away from its WebAssembly, so read that from the
+// package.
+const pixel = await renderPixelDocument(readFileSync(repoPath("packages/canvist-headless/wasm-ssr/canvist_headless_ssr_bg.wasm")));
+
+// What loading the editor costs, measured from the module the page ships.
+const wasmBytes = gzipSync(readFileSync(repoPath("packages/canvist-web/wasm/canvist_web_bg.wasm"))).byteLength;
+const wasmKb = Math.round(wasmBytes / 10_240) * 10;
 ---
 
 <section class="beat pixel" id="every-pixel" aria-labelledby="pixel-title">
@@ -22,13 +34,14 @@ const keystroke = findBudget(loadBudgets(repoPath("docs/src/guides/performance.m
 		</div>
 
 		<div class="sheet" data-pixel-demo data-state="idle">
-			<div class="sheet__paper">
-				<canvas class="sheet__canvas" id="pixel-canvas" aria-label="canvist editor"></canvas>
-				<div class="sheet__cover" data-pixel-cover>
+			<style is:inline set:html={pixel.css} />
+			<div class="sheet__paper" style={`--pixel-page: light-dark(${pixel.page.light}, ${pixel.page.dark})`}>
+				<div class="sheet__editor" id="pixel-editor" data-pixel-editor set:html={pixel.html} />
+				<div class="sheet__load">
 					<button class="btn" type="button" data-pixel-start>
 						<span data-pixel-start-label>Load the editor</span>
 					</button>
-					<p class="code-label" data-pixel-status>About 420 KB of WebAssembly</p>
+					<p class="code-label" data-pixel-status>About {wasmKb} KB of WebAssembly</p>
 				</div>
 			</div>
 			<p class="readout" aria-live="polite" data-pixel-readout>
@@ -81,38 +94,42 @@ const keystroke = findBudget(loadBudgets(repoPath("docs/src/guides/performance.m
 		gap: var(--s-3);
 	}
 
+	/*
+	 * The sheet is the colour canvist paints behind the document
+	 * (`--pixel-page`, from its stylesheet), so the opaque canvas meets the
+	 * padding without a seam.
+	 */
 	.sheet__paper {
 		position: relative;
 		height: clamp(13rem, 24vw, 19rem);
+		padding: clamp(var(--s-4), 2.4vw, var(--s-5));
 		border-radius: var(--r-2);
-		background: var(--raised);
+		background: var(--pixel-page);
 		box-shadow:
 			0 1px 0 color-mix(in oklab, var(--ink) 8%, transparent),
 			0 24px 48px -32px color-mix(in oklab, var(--paint) 45%, transparent);
 		cursor: text;
 	}
 
-	.sheet__canvas {
-		width: 100%;
+	/* The editor: its width from the sheet, no padding, and its own scrolling. */
+	.sheet__editor {
 		height: 100%;
-		border-radius: inherit;
+		overflow: auto;
+		overscroll-behavior: contain;
 	}
 
-	.sheet__cover {
+	/* Sits over the empty end of the document until the editor has loaded. */
+	.sheet__load {
 		position: absolute;
-		inset: 0;
+		right: clamp(var(--s-4), 2.4vw, var(--s-5));
+		bottom: clamp(var(--s-4), 2.4vw, var(--s-5));
 		display: grid;
-		place-content: center;
-		justify-items: center;
-		gap: var(--s-3);
-		padding: var(--s-5);
-		border-radius: inherit;
-		text-align: center;
-		background: var(--raised);
+		justify-items: end;
+		gap: var(--s-2);
 		color: var(--text-muted);
 	}
 
-	.sheet[data-state="ready"] .sheet__cover {
+	.sheet[data-state="ready"] .sheet__load {
 		display: none;
 	}
 
@@ -136,8 +153,9 @@ const keystroke = findBudget(loadBudgets(repoPath("docs/src/guides/performance.m
 		color: var(--text-muted);
 	}
 
+	/* Wide enough for "123.4 ms", so new numbers never move the labels. */
 	.readout__value {
-		min-width: 5.5ch;
+		min-width: 8ch;
 		font-size: var(--t-small);
 		font-weight: 600;
 	}

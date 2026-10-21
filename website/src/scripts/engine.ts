@@ -1,100 +1,130 @@
+import type { Content, StarterKit } from "@canvist/web";
+import {
+	PIXEL_CONTENT,
+	pixelTheme,
+	type Scheme,
+} from "../lib/pixel-document.ts";
+
 /**
- * The live editor behind "Owns every pixel".
+ * The live editor behind "Type into the real engine": `@canvist/web`,
+ * taking over from the document the page was built with.
  *
- * The section talks to this interface, not to a specific engine, so the v2
- * web host (milestone M3) replaces `loadV1Engine` without touching the page.
+ * The section talks to this interface, so the editor's module (about
+ * 340 KB of WebAssembly, gzipped) loads only when `loadEditor` is called.
  */
 export interface LiveEditor {
-	/** Which engine is painting, for the readout. */
-	readonly label: string;
 	/** Inserts text at the caret, as if typed. */
 	type(text: string): void;
+	/** Puts the caret at the end of the first paragraph. */
+	caretToEnd(): void;
 	focus(): void;
-	setTheme(theme: EditorTheme): void;
-	destroy(): void;
+	/** Shows the caret blinking, as when focused, or hides it. Focus shows it too. */
+	showCaret(on: boolean): void;
+	/** Repaints in the other colour scheme, keeping the document and selection. */
+	setScheme(scheme: Scheme): Promise<void>;
 }
 
-/** Colours as computed CSS colour strings, for example `rgb(59, 44, 245)`. */
-export interface EditorTheme {
-	background: string;
-	text: string;
-	caret: string;
-	selection: string;
-}
+const LABEL = "canvist editor";
 
-export type EngineLoader = (
-	canvas: HTMLCanvasElement,
-	theme: EditorTheme,
-) => Promise<LiveEditor>;
+/**
+ * Starts `@canvist/web` in `element`, which holds the server-rendered
+ * `.cv-doc`, and resolves once the canvas has replaced that HTML.
+ */
+export async function loadEditor(
+	element: HTMLElement,
+	scheme: Scheme,
+): Promise<LiveEditor> {
+	const { createEditor, load } = await import("@canvist/web");
+	// Download and compile first, so creating the editor below runs within
+	// microtasks, with no pause in which the visitor could scroll.
+	await load();
 
-/** A computed CSS colour (`rgb()` or `rgba()`, as browsers serialise them) to channel bytes. */
-export function channels(color: string): [number, number, number, number] {
-	const parts = /rgba?\(([^)]+)\)/.exec(color)?.[1]?.split(/[\s,/]+/).filter(
-		Boolean,
-	).map(Number);
-	if (!parts || parts.length < 3 || parts.some(Number.isNaN)) {
-		throw new Error(`Cannot read colour channels from "${color}"`);
-	}
-	const [r = 0, g = 0, b = 0, a = 1] = parts;
-	return [r, g, b, Math.round(a * 255)];
-}
+	const create = (
+		current: Scheme,
+		content: Content<StarterKit> = PIXEL_CONTENT,
+	) =>
+		keepingFocus(() =>
+			createEditor(element, {
+				content,
+				theme: pixelTheme(current),
+				label: LABEL,
+			})
+		);
+	type PixelEditor = Awaited<ReturnType<typeof create>>;
 
-/** The v1 editor from packages/canvist, compiled to wasm. */
-export const loadV1Engine: EngineLoader = async (canvas, theme) => {
-	const { createEditor, initWasm } = await import(
-		"../../../packages/canvist/src/mod.ts"
-	);
-	// Download and compile first, so creating the editor below runs without
-	// a pause in which the visitor could scroll.
-	await initWasm();
+	let editor: PixelEditor = await create(scheme);
+	let current = scheme;
+	// The canvas stays hidden behind the HTML until the fonts have loaded.
+	await editor.ready();
 
-	const box = canvas.getBoundingClientRect();
-	const dpr = Math.min(devicePixelRatio, 2);
-	canvas.width = Math.round(box.width * dpr);
-	canvas.height = Math.round(box.height * dpr);
-	canvas.getContext("2d")?.scale(dpr, dpr);
-
-	// The v1 editor focuses its hidden textarea when it is created, which
-	// would steal focus (and the scroll position) from whatever the visitor is
-	// doing. With the wasm already initialised, creation finishes within
-	// microtasks, so both can be put back safely: the visitor focuses the
-	// editor by clicking in.
-	const previousFocus = document.activeElement;
-	const previousScroll = { x: scrollX, y: scrollY };
-	const editor = await createEditor(canvas.id, { title: "Owns every pixel" });
-	if (previousFocus instanceof HTMLElement && previousFocus !== document.body) {
-		previousFocus.focus({ preventScroll: true });
-	} else if (document.activeElement instanceof HTMLElement) {
-		document.activeElement.blur();
-	}
-	scrollTo(previousScroll.x, previousScroll.y);
-	editor.setSize(box.width, box.height);
-	editor.setFontSize(20);
-	editor.setWordWrap(true);
-	editor.setHighlightCurrentLine(false);
-
-	const apply = (next: EditorTheme) => {
-		editor.setThemeColor("background", ...channels(next.background));
-		editor.setThemeColor("text", ...channels(next.text));
-		editor.setThemeColor("caret", ...channels(next.caret));
-		editor.setThemeColor("selection", ...channels(next.selection));
-		editor.setCursorColor(...channels(next.caret));
-		editor.render();
+	// The theme is fixed when an editor is created, so a new one takes over
+	// the document, selection, focus, and scroll position.
+	const swap = async (next: Scheme) => {
+		if (next === current) return;
+		current = next;
+		const content = editor.toJson();
+		const selection = editor.selection;
+		const hadFocus = element.contains(document.activeElement);
+		const caretShown = editor.focused;
+		const scrollTop = element.scrollTop;
+		editor.destroy();
+		editor = await create(next, content);
+		if (selection) editor.select(selection.anchor, selection.head);
+		element.scrollTop = scrollTop;
+		if (hadFocus) editor.focus();
+		else editor.setFocused(caretShown);
 	};
-	apply(theme);
+	// One swap at a time: a second must not destroy the editor the first is
+	// replacing.
+	let swapping = Promise.resolve();
 
 	return {
-		label: "v1 engine · wasm",
 		type(text) {
 			editor.insertText(text);
-			editor.render();
+		},
+		caretToEnd() {
+			const [first] = editor.toJson().content ?? [];
+			const inline = first && "content" in first ? first.content ?? [] : [];
+			const offset = inline.reduce(
+				(length, node) => length + ("text" in node ? node.text.length : 0),
+				0,
+			);
+			editor.select({ path: [0], offset });
 		},
 		focus() {
-			canvas.focus();
+			editor.focus();
 		},
-		setTheme: apply,
-		destroy() {
-			editor.destroy();
+		showCaret(on) {
+			editor.setFocused(on);
+		},
+		setScheme(next) {
+			swapping = swapping.then(() => swap(next));
+			return swapping;
 		},
 	};
-};
+}
+
+/**
+ * Runs `start` and then puts focus and the scroll position back as they
+ * were, in case starting the editor moved either: the visitor focuses the
+ * editor by clicking in. `start` must settle within microtasks, so nothing
+ * the visitor does in between is undone.
+ */
+async function keepingFocus<T>(start: () => Promise<T>): Promise<T> {
+	const previousFocus = document.activeElement;
+	const previousScroll = { x: scrollX, y: scrollY };
+	const result = await start();
+	if (document.activeElement !== previousFocus) {
+		if (
+			previousFocus instanceof HTMLElement && previousFocus !== document.body
+		) {
+			previousFocus.focus({ preventScroll: true });
+		} else if (document.activeElement instanceof HTMLElement) {
+			document.activeElement.blur();
+		}
+	}
+	if (scrollX !== previousScroll.x || scrollY !== previousScroll.y) {
+		scrollTo(previousScroll.x, previousScroll.y);
+	}
+	return result;
+}

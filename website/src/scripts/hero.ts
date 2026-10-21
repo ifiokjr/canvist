@@ -1,4 +1,8 @@
-import { prefersReducedMotion, trackVisibility } from "./motion.ts";
+import {
+	colorScheme,
+	prefersReducedMotion,
+	trackVisibility,
+} from "./motion.ts";
 
 /**
  * The hero's Wet Caret. The static lockup is in the HTML; under
@@ -18,12 +22,6 @@ const ARTBOARDS = { light: "Light", dark: "Dark" } as const;
 const RIVE_DEADLINE_MS = 2200;
 
 type StageState = "waiting" | "rive" | "css" | "static";
-
-function theme(): keyof typeof ARTBOARDS {
-	const pinned = document.documentElement.dataset["theme"];
-	if (pinned === "light" || pinned === "dark") return pinned;
-	return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
 
 function idle(callback: () => void): void {
 	if ("requestIdleCallback" in window) {
@@ -67,7 +65,7 @@ export function mountHero(stage: HTMLElement): void {
 		const rive = new Rive({
 			src: RIVE_SRC,
 			canvas: surface,
-			artboard: ARTBOARDS[theme()],
+			artboard: ARTBOARDS[colorScheme()],
 			stateMachine: STATE_MACHINE,
 			layout: new Layout({ fit: Fit.Contain, alignment: Alignment.CenterLeft }),
 			autoplay: true,

@@ -44,9 +44,19 @@ export default defineConfig({
 			"import.meta.env.REPO_ROOT": JSON.stringify(repoRoot),
 		},
 		server: {
-			// The site reads the docs, the brand assets, and the v1 engine
-			// from the rest of the repository.
+			// The site reads the docs and the brand assets from the rest of the
+			// repository, and links the canvist packages from `packages/`.
 			fs: { allow: [repoRoot] },
+		},
+		// `@canvist/web` finds its WebAssembly next to its own modules, and
+		// pre-bundling in development would move the modules away from it.
+		optimizeDeps: {
+			exclude: ["@canvist/web", "@canvist/headless"],
+		},
+		// The packages are linked from `packages/`, where `@canvist/web` links
+		// its own `@canvist/headless`; the site resolves one copy, its own.
+		resolve: {
+			dedupe: ["@canvist/headless"],
 		},
 		build: {
 			assetsInlineLimit: 0,

@@ -55,11 +55,14 @@ async function documentBox(page: Page, element: Locator): Promise<Box> {
 	};
 }
 
-/** The live demos paint changing numbers; mask them so snapshots stay stable. */
+/**
+ * The live demos paint changing numbers; mask them so snapshots stay
+ * stable. Under reduced motion the editor stays unloaded, so its
+ * server-rendered document is in the snapshots.
+ */
 function masks(page: Page) {
 	return [
 		page.locator("[data-pixel-readout]"),
-		page.locator("#pixel-canvas"),
 		page.locator("[data-video-slot] video"),
 	];
 }
