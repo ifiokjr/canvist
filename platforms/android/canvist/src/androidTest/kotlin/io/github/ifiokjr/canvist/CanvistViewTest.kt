@@ -150,7 +150,9 @@ class CanvistViewTest {
         assertTrue(view.items.any { it is DisplayItem.Checkbox })
         val pixels = IntArray(WIDTH * HEIGHT)
         bitmap.getPixels(pixels, 0, WIDTH, 0, 0, WIDTH, HEIGHT)
-        assertTrue("text is painted", pixels.count { it != pixels[0] } > INKED_PIXELS)
+        val inked = pixels.count { it != pixels[0] }
+        val density = view.resources.displayMetrics.density
+        assertTrue("text is painted: $inked pixels of ink", inked > INKED_DP * density * density)
     }
 
     @Test
@@ -211,7 +213,8 @@ class CanvistViewTest {
         const val WIDTH = 1080
         const val HEIGHT = 1920
         const val PARAGRAPHS = 2_000
-        const val INKED_PIXELS = 1_000
+        /** Ink the title and the checkbox cover at the very least, in dp². */
+        const val INKED_DP = 150
         const val KEYSTROKES = 300
         const val P95 = 95
         const val NANOS_PER_MICRO = 1_000.0
