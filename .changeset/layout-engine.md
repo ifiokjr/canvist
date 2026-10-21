@@ -2,7 +2,7 @@
 "canvist_layout": minor
 ---
 
-# Add `canvist_layout`, the v2 layout engine
+# Add `canvist_layout`, the layout engine
 
 - Data-driven `Theme` rules for blocks, marks, and embeds, with a default matching TipTap's StarterKit.
 - A batched `TextMeasurer` trait with a per-(font, segment) cache, a deterministic `FixedMeasurer`, and a `ParleyMeasurer` behind the `parley` feature.

@@ -1,6 +1,6 @@
 /**
  * The end card: free forever, and the hosted services that pay for it, from
- * `docs/src/v2/business.md`.
+ * `docs/src/cloud/readme.md`.
  */
 
 import { spring, useCurrentFrame } from "remotion";
