@@ -7,6 +7,7 @@
 // ignore_for_file: argument_type_not_assignable
 
 import 'api/canvist.dart';
+import 'api/view.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -31,6 +32,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   get rust_arc_decrement_strong_count_CanvistEnginePtr => wire
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine;
 
+  CrossPlatformFinalizerArg
+  get rust_arc_decrement_strong_count_CanvistViewPtr => wire
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView;
+
   @protected
   CanvistDoc
   dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
@@ -40,6 +45,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   CanvistEngine
   dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine(
+    dynamic raw,
+  );
+
+  @protected
+  CanvistView
+  dco_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
     dynamic raw,
   );
 
@@ -56,6 +67,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  CanvistView
+  dco_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    dynamic raw,
+  );
+
+  @protected
   CanvistDoc
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     dynamic raw,
@@ -64,6 +81,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   CanvistEngine
   dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine(
+    dynamic raw,
+  );
+
+  @protected
+  CanvistView
+  dco_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
     dynamic raw,
   );
 
@@ -77,10 +100,40 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DocPosition dco_decode_box_autoadd_doc_position(dynamic raw);
 
   @protected
+  double dco_decode_box_autoadd_f_32(dynamic raw);
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  ViewClipboard dco_decode_box_autoadd_view_clipboard(dynamic raw);
+
+  @protected
+  ViewDisplay dco_decode_box_autoadd_view_display(dynamic raw);
+
+  @protected
+  ViewEditState dco_decode_box_autoadd_view_edit_state(dynamic raw);
+
+  @protected
+  ViewOptions dco_decode_box_autoadd_view_options(dynamic raw);
+
+  @protected
+  ViewRect dco_decode_box_autoadd_view_rect(dynamic raw);
+
+  @protected
+  ViewSelectionEnds dco_decode_box_autoadd_view_selection_ends(dynamic raw);
+
+  @protected
   CanvistFailure dco_decode_canvist_failure(dynamic raw);
 
   @protected
   DocFormat dco_decode_doc_format(dynamic raw);
+
+  @protected
+  DocHtml dco_decode_doc_html(dynamic raw);
+
+  @protected
+  DocPlatform dco_decode_doc_platform(dynamic raw);
 
   @protected
   DocPosition dco_decode_doc_position(dynamic raw);
@@ -90,6 +143,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DocValidation dco_decode_doc_validation(dynamic raw);
+
+  @protected
+  double dco_decode_f_32(dynamic raw);
 
   @protected
   int dco_decode_i_32(dynamic raw);
@@ -113,7 +169,42 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
+  List<ViewFont> dco_decode_list_view_font(dynamic raw);
+
+  @protected
+  List<ViewItem> dco_decode_list_view_item(dynamic raw);
+
+  @protected
+  String? dco_decode_opt_String(dynamic raw);
+
+  @protected
+  double? dco_decode_opt_box_autoadd_f_32(dynamic raw);
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw);
+
+  @protected
+  ViewClipboard? dco_decode_opt_box_autoadd_view_clipboard(dynamic raw);
+
+  @protected
+  ViewDisplay? dco_decode_opt_box_autoadd_view_display(dynamic raw);
+
+  @protected
+  ViewEditState? dco_decode_opt_box_autoadd_view_edit_state(dynamic raw);
+
+  @protected
+  ViewRect? dco_decode_opt_box_autoadd_view_rect(dynamic raw);
+
+  @protected
+  ViewSelectionEnds? dco_decode_opt_box_autoadd_view_selection_ends(
+    dynamic raw,
+  );
+
+  @protected
   List<DocPosition>? dco_decode_opt_list_doc_position(dynamic raw);
+
+  @protected
+  int dco_decode_u_16(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -128,6 +219,39 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt dco_decode_usize(dynamic raw);
 
   @protected
+  ViewClipboard dco_decode_view_clipboard(dynamic raw);
+
+  @protected
+  ViewDisplay dco_decode_view_display(dynamic raw);
+
+  @protected
+  ViewEditState dco_decode_view_edit_state(dynamic raw);
+
+  @protected
+  ViewFont dco_decode_view_font(dynamic raw);
+
+  @protected
+  ViewFrame dco_decode_view_frame(dynamic raw);
+
+  @protected
+  ViewItem dco_decode_view_item(dynamic raw);
+
+  @protected
+  ViewItemKind dco_decode_view_item_kind(dynamic raw);
+
+  @protected
+  ViewOptions dco_decode_view_options(dynamic raw);
+
+  @protected
+  ViewRect dco_decode_view_rect(dynamic raw);
+
+  @protected
+  ViewSelectionEnds dco_decode_view_selection_ends(dynamic raw);
+
+  @protected
+  ViewSemantics dco_decode_view_semantics(dynamic raw);
+
+  @protected
   CanvistDoc
   sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     SseDeserializer deserializer,
@@ -136,6 +260,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   CanvistEngine
   sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  CanvistView
+  sse_decode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
     SseDeserializer deserializer,
   );
 
@@ -152,6 +282,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  CanvistView
+  sse_decode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   CanvistDoc
   sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     SseDeserializer deserializer,
@@ -160,6 +296,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   @protected
   CanvistEngine
   sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  CanvistView
+  sse_decode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
     SseDeserializer deserializer,
   );
 
@@ -173,10 +315,46 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DocPosition sse_decode_box_autoadd_doc_position(SseDeserializer deserializer);
 
   @protected
+  double sse_decode_box_autoadd_f_32(SseDeserializer deserializer);
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  ViewClipboard sse_decode_box_autoadd_view_clipboard(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ViewDisplay sse_decode_box_autoadd_view_display(SseDeserializer deserializer);
+
+  @protected
+  ViewEditState sse_decode_box_autoadd_view_edit_state(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ViewOptions sse_decode_box_autoadd_view_options(SseDeserializer deserializer);
+
+  @protected
+  ViewRect sse_decode_box_autoadd_view_rect(SseDeserializer deserializer);
+
+  @protected
+  ViewSelectionEnds sse_decode_box_autoadd_view_selection_ends(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   CanvistFailure sse_decode_canvist_failure(SseDeserializer deserializer);
 
   @protected
   DocFormat sse_decode_doc_format(SseDeserializer deserializer);
+
+  @protected
+  DocHtml sse_decode_doc_html(SseDeserializer deserializer);
+
+  @protected
+  DocPlatform sse_decode_doc_platform(SseDeserializer deserializer);
 
   @protected
   DocPosition sse_decode_doc_position(SseDeserializer deserializer);
@@ -186,6 +364,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   DocValidation sse_decode_doc_validation(SseDeserializer deserializer);
+
+  @protected
+  double sse_decode_f_32(SseDeserializer deserializer);
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -211,9 +392,50 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
+  List<ViewFont> sse_decode_list_view_font(SseDeserializer deserializer);
+
+  @protected
+  List<ViewItem> sse_decode_list_view_item(SseDeserializer deserializer);
+
+  @protected
+  String? sse_decode_opt_String(SseDeserializer deserializer);
+
+  @protected
+  double? sse_decode_opt_box_autoadd_f_32(SseDeserializer deserializer);
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer);
+
+  @protected
+  ViewClipboard? sse_decode_opt_box_autoadd_view_clipboard(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ViewDisplay? sse_decode_opt_box_autoadd_view_display(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ViewEditState? sse_decode_opt_box_autoadd_view_edit_state(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ViewRect? sse_decode_opt_box_autoadd_view_rect(SseDeserializer deserializer);
+
+  @protected
+  ViewSelectionEnds? sse_decode_opt_box_autoadd_view_selection_ends(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   List<DocPosition>? sse_decode_opt_list_doc_position(
     SseDeserializer deserializer,
   );
+
+  @protected
+  int sse_decode_u_16(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -228,6 +450,41 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   BigInt sse_decode_usize(SseDeserializer deserializer);
 
   @protected
+  ViewClipboard sse_decode_view_clipboard(SseDeserializer deserializer);
+
+  @protected
+  ViewDisplay sse_decode_view_display(SseDeserializer deserializer);
+
+  @protected
+  ViewEditState sse_decode_view_edit_state(SseDeserializer deserializer);
+
+  @protected
+  ViewFont sse_decode_view_font(SseDeserializer deserializer);
+
+  @protected
+  ViewFrame sse_decode_view_frame(SseDeserializer deserializer);
+
+  @protected
+  ViewItem sse_decode_view_item(SseDeserializer deserializer);
+
+  @protected
+  ViewItemKind sse_decode_view_item_kind(SseDeserializer deserializer);
+
+  @protected
+  ViewOptions sse_decode_view_options(SseDeserializer deserializer);
+
+  @protected
+  ViewRect sse_decode_view_rect(SseDeserializer deserializer);
+
+  @protected
+  ViewSelectionEnds sse_decode_view_selection_ends(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ViewSemantics sse_decode_view_semantics(SseDeserializer deserializer);
+
+  @protected
   void
   sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     CanvistDoc self,
@@ -238,6 +495,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void
   sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine(
     CanvistEngine self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_Auto_Owned_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    CanvistView self,
     SseSerializer serializer,
   );
 
@@ -257,6 +521,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void
+  sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    CanvistView self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistDoc(
     CanvistDoc self,
     SseSerializer serializer,
@@ -266,6 +537,13 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void
   sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine(
     CanvistEngine self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void
+  sse_encode_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    CanvistView self,
     SseSerializer serializer,
   );
 
@@ -282,6 +560,48 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_f_32(double self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_view_clipboard(
+    ViewClipboard self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_view_display(
+    ViewDisplay self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_view_edit_state(
+    ViewEditState self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_view_options(
+    ViewOptions self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_view_rect(
+    ViewRect self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_view_selection_ends(
+    ViewSelectionEnds self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_canvist_failure(
     CanvistFailure self,
     SseSerializer serializer,
@@ -291,6 +611,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_doc_format(DocFormat self, SseSerializer serializer);
 
   @protected
+  void sse_encode_doc_html(DocHtml self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_doc_platform(DocPlatform self, SseSerializer serializer);
+
+  @protected
   void sse_encode_doc_position(DocPosition self, SseSerializer serializer);
 
   @protected
@@ -298,6 +624,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_doc_validation(DocValidation self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_f_32(double self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);
@@ -333,10 +662,58 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_list_view_font(List<ViewFont> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_list_view_item(List<ViewItem> self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_String(String? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_f_32(double? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_clipboard(
+    ViewClipboard? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_display(
+    ViewDisplay? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_edit_state(
+    ViewEditState? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_rect(
+    ViewRect? self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_opt_box_autoadd_view_selection_ends(
+    ViewSelectionEnds? self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_opt_list_doc_position(
     List<DocPosition>? self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_u_16(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_u_32(int self, SseSerializer serializer);
@@ -349,6 +726,42 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_usize(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_clipboard(ViewClipboard self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_display(ViewDisplay self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_edit_state(ViewEditState self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_font(ViewFont self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_frame(ViewFrame self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_item(ViewItem self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_item_kind(ViewItemKind self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_options(ViewOptions self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_rect(ViewRect self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_view_selection_ends(
+    ViewSelectionEnds self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_view_semantics(ViewSemantics self, SseSerializer serializer);
 }
 
 // Section: wire_class
@@ -387,6 +800,22 @@ class RustLibWire implements BaseWire {
       .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine(
         ptr,
       );
+
+  void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+        ptr,
+      );
+
+  void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    int ptr,
+  ) => wasmModule
+      .rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+        ptr,
+      );
 }
 
 @JS('wasm_bindgen')
@@ -412,6 +841,16 @@ extension type RustLibWasmModule._(JSObject _) implements JSObject {
 
   external void
   rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistEngine(
+    int ptr,
+  );
+
+  external void
+  rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+    int ptr,
+  );
+
+  external void
+  rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
     int ptr,
   );
 }

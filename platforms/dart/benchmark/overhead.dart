@@ -1,6 +1,7 @@
 /// What a call through flutter_rust_bridge costs, measured on the same
 /// operations as `crates/canvist_headless/tests/perf_budgets.rs`, so the
-/// difference is the binding's overhead.
+/// difference is the binding's overhead, plus an editor view's keystroke to
+/// frame.
 ///
 /// ```sh
 /// dart run benchmark/overhead.dart           # print the numbers
@@ -122,6 +123,37 @@ Future<void> main(List<String> arguments) async {
     100,
     'ms',
   );
+
+  // An editor's keystroke: the edit, then the frame that paints it, laid
+  // out to the viewport. Measurement is cached after the first frame, so
+  // this is the layout, display list, and bridge cost a host pays per key.
+  final viewed = engine.parse(Format.markdown, markdown)
+    ..select(const Position([3], 10));
+  final view = viewed.view(const FixedMeasurer())
+    ..setWidth(720)
+    ..setFocused(true);
+  view.frame(0, 900);
+  var viewTyping = false;
+  _report(
+    'keystroke to frame in a view @10k paragraphs',
+    _perCall(500, () {
+      viewTyping = !viewTyping;
+      viewTyping ? view.insertText('x') : view.keyDown('Backspace');
+
+      if (view.frame(0, 900).display == null) {
+        throw StateError('the keystroke changed nothing on screen');
+      }
+    }),
+    250,
+    'µs',
+  );
+  _report(
+    'frame with nothing changed @10k paragraphs',
+    _perCall(2000, () => view.frame(0, 900)),
+    100,
+    'µs',
+  );
+  view.dispose();
 
   if (arguments.contains('--check') && _failures.isNotEmpty) {
     stderr.writeln('over budget: ${_failures.join(', ')}');

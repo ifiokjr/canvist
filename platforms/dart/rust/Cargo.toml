@@ -1,9 +1,9 @@
 # This crate ships inside the `canvist` pub.dev package, whose build hook
 # compiles it in the pub cache, outside this repository. So it inherits nothing
 # from the Cargo workspace and names the canvist crates by their crates.io
-# release: monochange pins `canvist_headless` to the version every release
-# publishes, and the workspace's `[patch.crates-io]` builds the local sources
-# instead whenever it is compiled here.
+# release: monochange pins `canvist_headless` and `canvist_layout` to the
+# version every release publishes, and the workspace's `[patch.crates-io]`
+# builds the local sources instead whenever it is compiled here.
 [package]
 name = "canvist_dart"
 authors = ["Ifiok Jr. <ifiokotung@gmail.com>"]
@@ -19,9 +19,11 @@ description = "flutter_rust_bridge adapter that exposes canvist_headless to the 
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-canvist_headless = { version = "=0.1.0", default-features = false, features = ["collab", "full"] }
+canvist_headless = { version = "=0.1.0", default-features = false, features = ["collab", "full", "journal", "ssr"] }
+canvist_layout = { version = "=0.1.0", default-features = false, features = ["editor"] }
 flutter_rust_bridge = { version = "=2.13.0" }
 serde_json = { version = "^1", default-features = false, features = ["std"] }
+unicode-segmentation = { version = "^1", default-features = false }
 
 # The workspace's lints, which a standalone manifest cannot inherit.
 [lints.rust]

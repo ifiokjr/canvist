@@ -130,10 +130,13 @@ jobs:
           package="$RUNNER_TEMP/archive/canvist"
           mkdir -p "$package/.cargo"
           git ls-files -z . | xargs -0 cp --parents --target-directory="$package"
-          cat > "$package/.cargo/config.toml" <<TOML
-          [patch.crates-io]
-          canvist_headless = { path = "$GITHUB_WORKSPACE/crates/canvist_headless" }
-          TOML
+          {
+            echo "[patch.crates-io]"
+            for crate in $(grep -o '^canvist_[a-z_]*' rust/Cargo.toml); do
+              echo "$crate = { path = \"$GITHUB_WORKSPACE/crates/$crate\" }"
+            done
+          } > "$package/.cargo/config.toml"
+          cat "$package/.cargo/config.toml"
           cd "$package"
           dart pub get
           # The conformance fixtures live at the repository root, outside the

@@ -23,6 +23,9 @@ starter-kit = ["canvist_extensions/starter-kit"]
 full = ["starter-kit", "canvist_extensions/full"]
 # Act as a Yjs peer: load from Yjs state, merge updates, and serve y-sync.
 collab = ["dep:canvist_collab", "canvist_collab/sync"]
+# Record every commit for hosts that keep a layout of a document they let
+# other code change (`Doc::record_commits`).
+journal = []
 # Render server-side HTML and SVG through canvist_layout, measuring text with
 # parley and the bundled Atkinson Hyperlegible font. Themes can be read from
 # the JSON options `@canvist/web` takes.

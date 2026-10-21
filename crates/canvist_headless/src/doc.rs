@@ -14,6 +14,8 @@ use canvist_editor::commands;
 use canvist_editor::parse_binding;
 use canvist_editor::value_to_json;
 use canvist_model::Attrs;
+#[cfg(feature = "journal")]
+use canvist_model::Commit;
 use canvist_model::Document;
 use canvist_model::Point;
 use canvist_model::Selection;
@@ -55,6 +57,10 @@ pub struct Doc {
 	/// one second, so each is its own undo step and results never depend on
 	/// the wall clock; [`Doc::edit`] moves it to the host's time.
 	clock: Duration,
+	/// Every commit that changed the document since the host last took
+	/// them, while [`Doc::record_commits`] is on.
+	#[cfg(feature = "journal")]
+	journal: Option<Vec<Commit>>,
 	#[cfg(feature = "collab")]
 	pub(crate) shared: Option<canvist_collab::Binding>,
 }
@@ -73,6 +79,8 @@ impl Doc {
 		Self {
 			editor,
 			clock: Duration::ZERO,
+			#[cfg(feature = "journal")]
+			journal: None,
 			#[cfg(feature = "collab")]
 			shared: None,
 		}
@@ -337,6 +345,45 @@ impl Doc {
 		Ok(update)
 	}
 
+	/// Record every commit that changes the document from now on, for a host
+	/// that keeps a layout of it: local calls, collaborators' updates, the
+	/// shared history, and the repairs collaboration makes. Take them with
+	/// [`Doc::take_commits`] and pass each to the layout in order.
+	///
+	/// Hosts that make every change through [`Doc::edit`] can apply the
+	/// updates it returns instead, but a host that also lets other code run
+	/// commands, or collaborates, sees only some changes that way.
+	#[cfg(feature = "journal")]
+	pub fn record_commits(&mut self) {
+		self.journal.get_or_insert_with(Vec::new);
+	}
+
+	/// The commits recorded since the last call, oldest first. Empty unless
+	/// [`Doc::record_commits`] is on.
+	#[cfg(feature = "journal")]
+	pub fn take_commits(&mut self) -> Vec<Commit> {
+		self.journal
+			.as_mut()
+			.map(std::mem::take)
+			.unwrap_or_default()
+	}
+
+	/// Note `update` in the journal when it changed the document.
+	#[cfg(feature = "journal")]
+	pub(crate) fn record(&mut self, update: &Update) {
+		if let Some(journal) = &mut self.journal
+			&& update.doc_changed()
+		{
+			journal.push(update.commit.clone());
+		}
+	}
+
+	/// Without the journal there is nothing to note, and nothing to link
+	/// into hosts that never record, such as the browser editor.
+	#[cfg(not(feature = "journal"))]
+	#[allow(clippy::unused_self, reason = "the journal feature records")]
+	pub(crate) fn record(&mut self, _update: &Update) {}
+
 	/// A fresh environment, one logical second after the last call.
 	pub(crate) fn env(&mut self) -> Env<'static> {
 		self.clock += Duration::from_secs(1);
@@ -348,18 +395,20 @@ impl Doc {
 	#[cfg_attr(
 		not(feature = "collab"),
 		allow(
-			clippy::unused_self,
 			clippy::unnecessary_wraps,
 			reason = "only shared documents pass updates on"
 		)
 	)]
 	fn finish(&mut self, update: Option<&Update>) -> Result<bool, HeadlessError> {
-		#[cfg(feature = "collab")]
-		if let Some(update) = update {
-			self.mirror_local(update)?;
-		}
+		let Some(update) = update else {
+			return Ok(false);
+		};
 
-		Ok(update.is_some())
+		self.record(update);
+		#[cfg(feature = "collab")]
+		self.mirror_local(update)?;
+
+		Ok(true)
 	}
 }
 

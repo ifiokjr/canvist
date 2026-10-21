@@ -940,8 +940,10 @@ name = "canvist_dart"
 version = "0.0.0"
 dependencies = [
  "canvist_headless",
+ "canvist_layout",
  "flutter_rust_bridge",
  "serde_json",
+ "unicode-segmentation",
 ]
 
 [[package]]

@@ -69,14 +69,27 @@ reply.reply.forEach(socket.add);             // and relay reply.broadcast to the
 
 [`example/server.dart`](./example/server.dart) is a `dart:io` server with `POST /convert` and a y-websocket-compatible `/sync/<room>` endpoint.
 
-A typed command costs about 2 µs and a collaborator's keystroke about 3.5 µs, at 10,000 paragraphs. `dart run benchmark/overhead.dart` reproduces the numbers.
+## Server rendering
+
+`toHtml` writes semantic HTML plus a stylesheet that wraps lines exactly where the editor does, and `toSvg` paints the document as the editor would, measured with the bundled Atkinson Hyperlegible font:
+
+```dart
+final (:html, :css) = doc.toHtml(720);
+final svg = doc.toSvg(720);
+```
+
+## Editor views
+
+UI toolkits build on `doc.view(measurer)`: an `EditorView` lays the document out incrementally, says what to paint (`frame`), and takes keys, IME composition, pointer selection, clipboard, and accessibility input. The `TextMeasurer` you pass measures text the way your toolkit paints it; [`canvist_flutter`](../flutter)'s `CanvistEditor` is built this way. `FixedMeasurer` gives predictable layout for tests.
+
+A typed command costs about 2 µs and a collaborator's keystroke about 3.5 µs, at 10,000 paragraphs. A keystroke through a view, laid out and ready to paint, costs about 65 µs. `dart run benchmark/overhead.dart` reproduces the numbers.
 
 <details>
 <summary><strong>Development</strong></summary>
 
 ```sh
 dart pub get
-dart test                                        # conformance, API, and server tests
+dart test                                        # conformance, API, view, and server tests
 dart run tool/generate.dart                      # regenerate the typed handles
 cargo bin flutter_rust_bridge_codegen generate   # after changing rust/src/api
 ```

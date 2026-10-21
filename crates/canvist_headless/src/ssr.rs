@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use canvist_layout::DisplayList;
 use canvist_layout::DisplayOptions;
 use canvist_layout::DocumentLayout;
 use canvist_layout::HtmlDocument;
@@ -81,12 +82,18 @@ impl Renderer {
 
 	/// The whole document as an SVG image `width` pixels wide.
 	pub fn svg(&mut self, doc: &Doc, width: f32) -> Result<String, HeadlessError> {
+		Ok(canvist_layout::to_svg(&self.display_list(doc, width)?))
+	}
+
+	/// The whole document laid out `width` pixels wide, as the display list
+	/// [`Renderer::svg`] paints. Native hosts paint it with their own
+	/// painter to check that their layout matches server rendering.
+	pub fn display_list(&mut self, doc: &Doc, width: f32) -> Result<DisplayList, HeadlessError> {
 		let document = doc.document();
 		let mut layout =
 			DocumentLayout::new(document, self.theme.clone(), LayoutOptions::new(width));
 		layout.layout_all(document, &mut self.measurer)?;
-		let display = layout.display_list(&DisplayOptions::viewport(0.0, layout.height()));
 
-		Ok(canvist_layout::to_svg(&display))
+		Ok(layout.display_list(&DisplayOptions::viewport(0.0, layout.height())))
 	}
 }

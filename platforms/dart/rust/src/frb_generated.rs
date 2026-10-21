@@ -28,6 +28,7 @@
 // Section: imports
 
 use crate::api::canvist::*;
+use crate::api::view::*;
 use flutter_rust_bridge::for_generated::byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 use flutter_rust_bridge::for_generated::{Lifetimeable, Lockable, transform_result_dco};
 use flutter_rust_bridge::{Handler, IntoIntoDart};
@@ -40,7 +41,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
 	default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 152214499;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = 961535426;
 
 // Section: executor
 
@@ -868,6 +869,54 @@ fn wire__crate__api__canvist__CanvistDoc_selection_impl(
 		},
 	)
 }
+fn wire__crate__api__canvist__CanvistDoc_server_display_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistDoc_server_display",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistDoc>,
+			>>::sse_decode(&mut deserializer);
+			let api_width = <f32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::canvist::CanvistDoc::server_display(&*api_that_guard, api_width)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
 fn wire__crate__api__canvist__CanvistDoc_share_impl(
 	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
 	rust_vec_len_: i32,
@@ -1101,6 +1150,104 @@ fn wire__crate__api__canvist__CanvistDoc_take_updates_impl(
 		},
 	)
 }
+fn wire__crate__api__canvist__CanvistDoc_to_html_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistDoc_to_html",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistDoc>,
+			>>::sse_decode(&mut deserializer);
+			let api_width = <f32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>(crate::api::canvist::CanvistDoc::to_html(
+					&*api_that_guard,
+					api_width,
+				))?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__canvist__CanvistDoc_to_svg_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistDoc_to_svg",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistDoc>,
+			>>::sse_decode(&mut deserializer);
+			let api_width = <f32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::canvist::CanvistDoc::to_svg(&*api_that_guard, api_width)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
 fn wire__crate__api__canvist__CanvistDoc_type_text_impl(
 	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
 	rust_vec_len_: i32,
@@ -1236,6 +1383,58 @@ fn wire__crate__api__canvist__CanvistDoc_validate_impl(
 				}
 				let api_that_guard = api_that_guard.unwrap();
 				let output_ok = crate::api::canvist::CanvistDoc::validate(&*api_that_guard)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__canvist__CanvistDoc_view_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistDoc_view",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistDoc>,
+			>>::sse_decode(&mut deserializer);
+			let api_measurer = <usize>::sse_decode(&mut deserializer);
+			let api_options = <crate::api::view::ViewOptions>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::canvist::CanvistDoc::view(
+					&*api_that_guard,
+					api_measurer,
+					api_options,
+				)?;
 				std::result::Result::Ok(output_ok)
 			})())
 		},
@@ -1410,10 +1609,14 @@ fn wire__crate__api__canvist__CanvistEngine_new_impl(
 				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
 			let api_extensions = <Vec<String>>::sse_decode(&mut deserializer);
 			let api_client = <u32>::sse_decode(&mut deserializer);
+			let api_platform = <crate::api::canvist::DocPlatform>::sse_decode(&mut deserializer);
 			deserializer.end();
 			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
-				let output_ok =
-					crate::api::canvist::CanvistEngine::new(api_extensions, api_client)?;
+				let output_ok = crate::api::canvist::CanvistEngine::new(
+					api_extensions,
+					api_client,
+					api_platform,
+				)?;
 				std::result::Result::Ok(output_ok)
 			})())
 		},
@@ -1519,6 +1722,1579 @@ fn wire__crate__api__canvist__CanvistEngine_restore_impl(
 		},
 	)
 }
+fn wire__crate__api__view__CanvistView_cancel_composition_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_cancel_composition",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::view::CanvistView::cancel_composition(&*api_that_guard)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_caret_rect_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_caret_rect",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					Ok::<_, ()>(crate::api::view::CanvistView::caret_rect(&*api_that_guard))?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_commit_composition_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_commit_composition",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_text = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::view::CanvistView::commit_composition(&*api_that_guard, &api_text)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_composition_bounds_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_composition_bounds",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>(crate::api::view::CanvistView::composition_bounds(
+					&*api_that_guard,
+				))?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_copy_selection_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_copy_selection",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::copy_selection(&*api_that_guard)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_cut_selection_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_cut_selection",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::cut_selection(&*api_that_guard)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_edit_state_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_edit_state",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					Ok::<_, ()>(crate::api::view::CanvistView::edit_state(&*api_that_guard))?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_forget_measurements_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_forget_measurements",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>({
+					crate::api::view::CanvistView::forget_measurements(&*api_that_guard);
+				})?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_frame_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_frame",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_top = <f32>::sse_decode(&mut deserializer);
+			let api_height = <f32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::view::CanvistView::frame(&*api_that_guard, api_top, api_height)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_insert_text_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_insert_text",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_text = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::view::CanvistView::insert_text(&*api_that_guard, &api_text)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_is_in_selection_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_is_in_selection",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_x = <f32>::sse_decode(&mut deserializer);
+			let api_y = <f32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>(crate::api::view::CanvistView::is_in_selection(
+					&*api_that_guard,
+					api_x,
+					api_y,
+				))?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_key_down_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_key_down",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_key = <String>::sse_decode(&mut deserializer);
+			let api_shift = <bool>::sse_decode(&mut deserializer);
+			let api_ctrl = <bool>::sse_decode(&mut deserializer);
+			let api_alt = <bool>::sse_decode(&mut deserializer);
+			let api_meta = <bool>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::key_down(
+					&*api_that_guard,
+					&api_key,
+					api_shift,
+					api_ctrl,
+					api_alt,
+					api_meta,
+				)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_move_selection_end_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_move_selection_end",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_start = <bool>::sse_decode(&mut deserializer);
+			let api_x = <f32>::sse_decode(&mut deserializer);
+			let api_y = <f32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::move_selection_end(
+					&*api_that_guard,
+					api_start,
+					api_x,
+					api_y,
+				)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_paste_html_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_paste_html",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_html = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::view::CanvistView::paste_html(&*api_that_guard, &api_html)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_paste_text_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_paste_text",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_text = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::view::CanvistView::paste_text(&*api_that_guard, &api_text)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_pointer_down_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_pointer_down",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_x = <f32>::sse_decode(&mut deserializer);
+			let api_y = <f32>::sse_decode(&mut deserializer);
+			let api_extend = <bool>::sse_decode(&mut deserializer);
+			let api_clicks = <u32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::pointer_down(
+					&*api_that_guard,
+					api_x,
+					api_y,
+					api_extend,
+					api_clicks,
+				)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_pointer_move_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_pointer_move",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_x = <f32>::sse_decode(&mut deserializer);
+			let api_y = <f32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::view::CanvistView::pointer_move(&*api_that_guard, api_x, api_y)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_pointer_up_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_pointer_up",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>({
+					crate::api::view::CanvistView::pointer_up(&*api_that_guard);
+				})?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_redo_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_redo",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::redo(&*api_that_guard)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_replace_text_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_replace_text",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_start = <u32>::sse_decode(&mut deserializer);
+			let api_end = <u32>::sse_decode(&mut deserializer);
+			let api_text = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::replace_text(
+					&*api_that_guard,
+					api_start,
+					api_end,
+					&api_text,
+				)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_run_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_run",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_name = <String>::sse_decode(&mut deserializer);
+			let api_args = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::view::CanvistView::run(&*api_that_guard, &api_name, &api_args)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_select_in_block_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_select_in_block",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_anchor = <u32>::sse_decode(&mut deserializer);
+			let api_head = <u32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::select_in_block(
+					&*api_that_guard,
+					api_anchor,
+					api_head,
+				)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_select_plain_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_select_plain",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_anchor = <u32>::sse_decode(&mut deserializer);
+			let api_head = <u32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::select_plain(
+					&*api_that_guard,
+					api_anchor,
+					api_head,
+				)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_selection_bounds_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_selection_bounds",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>(crate::api::view::CanvistView::selection_bounds(
+					&*api_that_guard,
+				))?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_selection_ends_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_selection_ends",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>(crate::api::view::CanvistView::selection_ends(
+					&*api_that_guard,
+				))?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_semantics_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_semantics",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					Ok::<_, ()>(crate::api::view::CanvistView::semantics(&*api_that_guard))?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_set_caret_on_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_set_caret_on",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_on = <bool>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>({
+					crate::api::view::CanvistView::set_caret_on(&*api_that_guard, api_on);
+				})?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_set_composition_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_set_composition",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_text = <String>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok =
+					crate::api::view::CanvistView::set_composition(&*api_that_guard, &api_text)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_set_focused_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_set_focused",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_focused = <bool>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>({
+					crate::api::view::CanvistView::set_focused(&*api_that_guard, api_focused);
+				})?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_set_options_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_set_options",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_options = <crate::api::view::ViewOptions>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>({
+					crate::api::view::CanvistView::set_options(&*api_that_guard, api_options);
+				})?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_set_width_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_set_width",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			let api_width = <f32>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, ()>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = Ok::<_, ()>({
+					crate::api::view::CanvistView::set_width(&*api_that_guard, api_width);
+				})?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
+fn wire__crate__api__view__CanvistView_undo_impl(
+	ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+	rust_vec_len_: i32,
+	data_len_: i32,
+) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
+	FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+		flutter_rust_bridge::for_generated::TaskInfo {
+			debug_name: "CanvistView_undo",
+			port: None,
+			mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+		},
+		move || {
+			let message = unsafe {
+				flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+					ptr_,
+					rust_vec_len_,
+					data_len_,
+				)
+			};
+			let mut deserializer =
+				flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+			let api_that = <RustOpaqueMoi<
+				flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+			>>::sse_decode(&mut deserializer);
+			deserializer.end();
+			transform_result_sse::<_, crate::api::canvist::CanvistFailure>((move || {
+				let mut api_that_guard = None;
+				let decode_indices_ =
+					flutter_rust_bridge::for_generated::lockable_compute_decode_order(vec![
+						flutter_rust_bridge::for_generated::LockableOrderInfo::new(
+							&api_that, 0, false,
+						),
+					]);
+				for i in decode_indices_ {
+					match i {
+						0 => api_that_guard = Some(api_that.lockable_decode_sync_ref()),
+						_ => unreachable!(),
+					}
+				}
+				let api_that_guard = api_that_guard.unwrap();
+				let output_ok = crate::api::view::CanvistView::undo(&*api_that_guard)?;
+				std::result::Result::Ok(output_ok)
+			})())
+		},
+	)
+}
 
 // Section: related_funcs
 
@@ -1527,6 +3303,9 @@ flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
 );
 flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
 	flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistEngine>
+);
+flutter_rust_bridge::frb_generated_moi_arc_impl_value!(
+	flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>
 );
 
 // Section: dart2rust
@@ -1551,6 +3330,16 @@ impl SseDecode for CanvistEngine {
 	}
 }
 
+impl SseDecode for CanvistView {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut inner = <RustOpaqueMoi<
+			flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>,
+		>>::sse_decode(deserializer);
+		return flutter_rust_bridge::for_generated::rust_auto_opaque_decode_owned(inner);
+	}
+}
+
 impl SseDecode
 	for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistDoc>>
 {
@@ -1563,6 +3352,16 @@ impl SseDecode
 
 impl SseDecode
 	for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistEngine>>
+{
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut inner = <usize>::sse_decode(deserializer);
+		return decode_rust_opaque_moi(inner);
+	}
+}
+
+impl SseDecode
+	for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>>
 {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1612,6 +3411,30 @@ impl SseDecode for crate::api::canvist::DocFormat {
 	}
 }
 
+impl SseDecode for crate::api::canvist::DocHtml {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_html = <String>::sse_decode(deserializer);
+		let mut var_css = <String>::sse_decode(deserializer);
+		return crate::api::canvist::DocHtml {
+			html: var_html,
+			css: var_css,
+		};
+	}
+}
+
+impl SseDecode for crate::api::canvist::DocPlatform {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut inner = <i32>::sse_decode(deserializer);
+		return match inner {
+			0 => crate::api::canvist::DocPlatform::Apple,
+			1 => crate::api::canvist::DocPlatform::Other,
+			_ => unreachable!("Invalid variant for DocPlatform: {}", inner),
+		};
+	}
+}
+
 impl SseDecode for crate::api::canvist::DocPosition {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1647,6 +3470,13 @@ impl SseDecode for crate::api::canvist::DocValidation {
 			rejected_blocks: var_rejectedBlocks,
 			waiting: var_waiting,
 		};
+	}
+}
+
+impl SseDecode for f32 {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		deserializer.cursor.read_f32::<NativeEndian>().unwrap()
 	}
 }
 
@@ -1717,6 +3547,120 @@ impl SseDecode for Vec<u8> {
 	}
 }
 
+impl SseDecode for Vec<crate::api::view::ViewFont> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut len_ = <i32>::sse_decode(deserializer);
+		let mut ans_ = Vec::with_capacity(len_ as usize);
+		for idx_ in 0..len_ {
+			ans_.push(<crate::api::view::ViewFont>::sse_decode(deserializer));
+		}
+		return ans_;
+	}
+}
+
+impl SseDecode for Vec<crate::api::view::ViewItem> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut len_ = <i32>::sse_decode(deserializer);
+		let mut ans_ = Vec::with_capacity(len_ as usize);
+		for idx_ in 0..len_ {
+			ans_.push(<crate::api::view::ViewItem>::sse_decode(deserializer));
+		}
+		return ans_;
+	}
+}
+
+impl SseDecode for Option<String> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		if (<bool>::sse_decode(deserializer)) {
+			return Some(<String>::sse_decode(deserializer));
+		} else {
+			return None;
+		}
+	}
+}
+
+impl SseDecode for Option<f32> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		if (<bool>::sse_decode(deserializer)) {
+			return Some(<f32>::sse_decode(deserializer));
+		} else {
+			return None;
+		}
+	}
+}
+
+impl SseDecode for Option<u32> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		if (<bool>::sse_decode(deserializer)) {
+			return Some(<u32>::sse_decode(deserializer));
+		} else {
+			return None;
+		}
+	}
+}
+
+impl SseDecode for Option<crate::api::view::ViewClipboard> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		if (<bool>::sse_decode(deserializer)) {
+			return Some(<crate::api::view::ViewClipboard>::sse_decode(deserializer));
+		} else {
+			return None;
+		}
+	}
+}
+
+impl SseDecode for Option<crate::api::view::ViewDisplay> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		if (<bool>::sse_decode(deserializer)) {
+			return Some(<crate::api::view::ViewDisplay>::sse_decode(deserializer));
+		} else {
+			return None;
+		}
+	}
+}
+
+impl SseDecode for Option<crate::api::view::ViewEditState> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		if (<bool>::sse_decode(deserializer)) {
+			return Some(<crate::api::view::ViewEditState>::sse_decode(deserializer));
+		} else {
+			return None;
+		}
+	}
+}
+
+impl SseDecode for Option<crate::api::view::ViewRect> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		if (<bool>::sse_decode(deserializer)) {
+			return Some(<crate::api::view::ViewRect>::sse_decode(deserializer));
+		} else {
+			return None;
+		}
+	}
+}
+
+impl SseDecode for Option<crate::api::view::ViewSelectionEnds> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		if (<bool>::sse_decode(deserializer)) {
+			return Some(<crate::api::view::ViewSelectionEnds>::sse_decode(
+				deserializer,
+			));
+		} else {
+			return None;
+		}
+	}
+}
+
 impl SseDecode for Option<Vec<crate::api::canvist::DocPosition>> {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -1727,6 +3671,13 @@ impl SseDecode for Option<Vec<crate::api::canvist::DocPosition>> {
 		} else {
 			return None;
 		}
+	}
+}
+
+impl SseDecode for u16 {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		deserializer.cursor.read_u16::<NativeEndian>().unwrap()
 	}
 }
 
@@ -1753,6 +3704,205 @@ impl SseDecode for usize {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
 		deserializer.cursor.read_u64::<NativeEndian>().unwrap() as _
+	}
+}
+
+impl SseDecode for crate::api::view::ViewClipboard {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_html = <String>::sse_decode(deserializer);
+		let mut var_text = <String>::sse_decode(deserializer);
+		return crate::api::view::ViewClipboard {
+			html: var_html,
+			text: var_text,
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewDisplay {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_fonts = <Vec<crate::api::view::ViewFont>>::sse_decode(deserializer);
+		let mut var_items = <Vec<crate::api::view::ViewItem>>::sse_decode(deserializer);
+		let mut var_background = <u32>::sse_decode(deserializer);
+		return crate::api::view::ViewDisplay {
+			fonts: var_fonts,
+			items: var_items,
+			background: var_background,
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewEditState {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_text = <String>::sse_decode(deserializer);
+		let mut var_anchor = <u32>::sse_decode(deserializer);
+		let mut var_head = <u32>::sse_decode(deserializer);
+		let mut var_composingStart = <Option<u32>>::sse_decode(deserializer);
+		let mut var_composingEnd = <Option<u32>>::sse_decode(deserializer);
+		return crate::api::view::ViewEditState {
+			text: var_text,
+			anchor: var_anchor,
+			head: var_head,
+			composing_start: var_composingStart,
+			composing_end: var_composingEnd,
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewFont {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_family = <String>::sse_decode(deserializer);
+		let mut var_size = <f32>::sse_decode(deserializer);
+		let mut var_weight = <u16>::sse_decode(deserializer);
+		let mut var_italic = <bool>::sse_decode(deserializer);
+		return crate::api::view::ViewFont {
+			family: var_family,
+			size: var_size,
+			weight: var_weight,
+			italic: var_italic,
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewFrame {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_height = <f32>::sse_decode(deserializer);
+		let mut var_shift = <f32>::sse_decode(deserializer);
+		let mut var_laidOut = <u32>::sse_decode(deserializer);
+		let mut var_measured = <u32>::sse_decode(deserializer);
+		let mut var_display = <Option<crate::api::view::ViewDisplay>>::sse_decode(deserializer);
+		return crate::api::view::ViewFrame {
+			height: var_height,
+			shift: var_shift,
+			laid_out: var_laidOut,
+			measured: var_measured,
+			display: var_display,
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewItem {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_kind = <crate::api::view::ViewItemKind>::sse_decode(deserializer);
+		let mut var_x = <f32>::sse_decode(deserializer);
+		let mut var_y = <f32>::sse_decode(deserializer);
+		let mut var_width = <f32>::sse_decode(deserializer);
+		let mut var_height = <f32>::sse_decode(deserializer);
+		let mut var_color = <u32>::sse_decode(deserializer);
+		let mut var_radius = <f32>::sse_decode(deserializer);
+		let mut var_text = <String>::sse_decode(deserializer);
+		let mut var_font = <u32>::sse_decode(deserializer);
+		let mut var_baseline = <f32>::sse_decode(deserializer);
+		let mut var_letterSpacing = <f32>::sse_decode(deserializer);
+		let mut var_rtl = <bool>::sse_decode(deserializer);
+		let mut var_checked = <bool>::sse_decode(deserializer);
+		return crate::api::view::ViewItem {
+			kind: var_kind,
+			x: var_x,
+			y: var_y,
+			width: var_width,
+			height: var_height,
+			color: var_color,
+			radius: var_radius,
+			text: var_text,
+			font: var_font,
+			baseline: var_baseline,
+			letter_spacing: var_letterSpacing,
+			rtl: var_rtl,
+			checked: var_checked,
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewItemKind {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut inner = <i32>::sse_decode(deserializer);
+		return match inner {
+			0 => crate::api::view::ViewItemKind::Background,
+			1 => crate::api::view::ViewItemKind::Border,
+			2 => crate::api::view::ViewItemKind::Rule,
+			3 => crate::api::view::ViewItemKind::Highlight,
+			4 => crate::api::view::ViewItemKind::Selection,
+			5 => crate::api::view::ViewItemKind::Caret,
+			6 => crate::api::view::ViewItemKind::Text,
+			7 => crate::api::view::ViewItemKind::Underline,
+			8 => crate::api::view::ViewItemKind::Strike,
+			9 => crate::api::view::ViewItemKind::Squiggle,
+			10 => crate::api::view::ViewItemKind::Checkbox,
+			11 => crate::api::view::ViewItemKind::Slot,
+			12 => crate::api::view::ViewItemKind::Composition,
+			_ => unreachable!("Invalid variant for ViewItemKind: {}", inner),
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewOptions {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_dark = <bool>::sse_decode(deserializer);
+		let mut var_bodyFamily = <Option<String>>::sse_decode(deserializer);
+		let mut var_codeFamily = <Option<String>>::sse_decode(deserializer);
+		let mut var_size = <Option<f32>>::sse_decode(deserializer);
+		let mut var_lineHeight = <Option<f32>>::sse_decode(deserializer);
+		let mut var_overscan = <f32>::sse_decode(deserializer);
+		return crate::api::view::ViewOptions {
+			dark: var_dark,
+			body_family: var_bodyFamily,
+			code_family: var_codeFamily,
+			size: var_size,
+			line_height: var_lineHeight,
+			overscan: var_overscan,
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewRect {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_x = <f32>::sse_decode(deserializer);
+		let mut var_y = <f32>::sse_decode(deserializer);
+		let mut var_width = <f32>::sse_decode(deserializer);
+		let mut var_height = <f32>::sse_decode(deserializer);
+		return crate::api::view::ViewRect {
+			x: var_x,
+			y: var_y,
+			width: var_width,
+			height: var_height,
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewSelectionEnds {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_start = <crate::api::view::ViewRect>::sse_decode(deserializer);
+		let mut var_end = <crate::api::view::ViewRect>::sse_decode(deserializer);
+		let mut var_collapsed = <bool>::sse_decode(deserializer);
+		return crate::api::view::ViewSelectionEnds {
+			start: var_start,
+			end: var_end,
+			collapsed: var_collapsed,
+		};
+	}
+}
+
+impl SseDecode for crate::api::view::ViewSemantics {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut var_text = <String>::sse_decode(deserializer);
+		let mut var_anchor = <u32>::sse_decode(deserializer);
+		let mut var_head = <u32>::sse_decode(deserializer);
+		return crate::api::view::ViewSemantics {
+			text: var_text,
+			anchor: var_anchor,
+			head: var_head,
+		};
 	}
 }
 
@@ -1796,20 +3946,72 @@ fn pde_ffi_dispatcher_sync_impl(
 		15 => wire__crate__api__canvist__CanvistDoc_select_impl(ptr, rust_vec_len, data_len),
 		16 => wire__crate__api__canvist__CanvistDoc_select_all_impl(ptr, rust_vec_len, data_len),
 		17 => wire__crate__api__canvist__CanvistDoc_selection_impl(ptr, rust_vec_len, data_len),
-		18 => wire__crate__api__canvist__CanvistDoc_share_impl(ptr, rust_vec_len, data_len),
-		19 => wire__crate__api__canvist__CanvistDoc_snapshot_impl(ptr, rust_vec_len, data_len),
-		20 => wire__crate__api__canvist__CanvistDoc_state_vector_impl(ptr, rust_vec_len, data_len),
-		21 => wire__crate__api__canvist__CanvistDoc_sync_start_impl(ptr, rust_vec_len, data_len),
-		22 => wire__crate__api__canvist__CanvistDoc_take_updates_impl(ptr, rust_vec_len, data_len),
-		23 => wire__crate__api__canvist__CanvistDoc_type_text_impl(ptr, rust_vec_len, data_len),
-		24 => wire__crate__api__canvist__CanvistDoc_undo_impl(ptr, rust_vec_len, data_len),
-		25 => wire__crate__api__canvist__CanvistDoc_validate_impl(ptr, rust_vec_len, data_len),
-		26 => wire__crate__api__canvist__CanvistEngine_create_impl(ptr, rust_vec_len, data_len),
-		27 => wire__crate__api__canvist__CanvistEngine_from_yjs_impl(ptr, rust_vec_len, data_len),
-		28 => wire__crate__api__canvist__CanvistEngine_metadata_impl(ptr, rust_vec_len, data_len),
-		29 => wire__crate__api__canvist__CanvistEngine_new_impl(ptr, rust_vec_len, data_len),
-		30 => wire__crate__api__canvist__CanvistEngine_parse_impl(ptr, rust_vec_len, data_len),
-		31 => wire__crate__api__canvist__CanvistEngine_restore_impl(ptr, rust_vec_len, data_len),
+		18 => {
+			wire__crate__api__canvist__CanvistDoc_server_display_impl(ptr, rust_vec_len, data_len)
+		}
+		19 => wire__crate__api__canvist__CanvistDoc_share_impl(ptr, rust_vec_len, data_len),
+		20 => wire__crate__api__canvist__CanvistDoc_snapshot_impl(ptr, rust_vec_len, data_len),
+		21 => wire__crate__api__canvist__CanvistDoc_state_vector_impl(ptr, rust_vec_len, data_len),
+		22 => wire__crate__api__canvist__CanvistDoc_sync_start_impl(ptr, rust_vec_len, data_len),
+		23 => wire__crate__api__canvist__CanvistDoc_take_updates_impl(ptr, rust_vec_len, data_len),
+		24 => wire__crate__api__canvist__CanvistDoc_to_html_impl(ptr, rust_vec_len, data_len),
+		25 => wire__crate__api__canvist__CanvistDoc_to_svg_impl(ptr, rust_vec_len, data_len),
+		26 => wire__crate__api__canvist__CanvistDoc_type_text_impl(ptr, rust_vec_len, data_len),
+		27 => wire__crate__api__canvist__CanvistDoc_undo_impl(ptr, rust_vec_len, data_len),
+		28 => wire__crate__api__canvist__CanvistDoc_validate_impl(ptr, rust_vec_len, data_len),
+		29 => wire__crate__api__canvist__CanvistDoc_view_impl(ptr, rust_vec_len, data_len),
+		30 => wire__crate__api__canvist__CanvistEngine_create_impl(ptr, rust_vec_len, data_len),
+		31 => wire__crate__api__canvist__CanvistEngine_from_yjs_impl(ptr, rust_vec_len, data_len),
+		32 => wire__crate__api__canvist__CanvistEngine_metadata_impl(ptr, rust_vec_len, data_len),
+		33 => wire__crate__api__canvist__CanvistEngine_new_impl(ptr, rust_vec_len, data_len),
+		34 => wire__crate__api__canvist__CanvistEngine_parse_impl(ptr, rust_vec_len, data_len),
+		35 => wire__crate__api__canvist__CanvistEngine_restore_impl(ptr, rust_vec_len, data_len),
+		36 => {
+			wire__crate__api__view__CanvistView_cancel_composition_impl(ptr, rust_vec_len, data_len)
+		}
+		37 => wire__crate__api__view__CanvistView_caret_rect_impl(ptr, rust_vec_len, data_len),
+		38 => {
+			wire__crate__api__view__CanvistView_commit_composition_impl(ptr, rust_vec_len, data_len)
+		}
+		39 => {
+			wire__crate__api__view__CanvistView_composition_bounds_impl(ptr, rust_vec_len, data_len)
+		}
+		40 => wire__crate__api__view__CanvistView_copy_selection_impl(ptr, rust_vec_len, data_len),
+		41 => wire__crate__api__view__CanvistView_cut_selection_impl(ptr, rust_vec_len, data_len),
+		42 => wire__crate__api__view__CanvistView_edit_state_impl(ptr, rust_vec_len, data_len),
+		43 => wire__crate__api__view__CanvistView_forget_measurements_impl(
+			ptr,
+			rust_vec_len,
+			data_len,
+		),
+		44 => wire__crate__api__view__CanvistView_frame_impl(ptr, rust_vec_len, data_len),
+		45 => wire__crate__api__view__CanvistView_insert_text_impl(ptr, rust_vec_len, data_len),
+		46 => wire__crate__api__view__CanvistView_is_in_selection_impl(ptr, rust_vec_len, data_len),
+		47 => wire__crate__api__view__CanvistView_key_down_impl(ptr, rust_vec_len, data_len),
+		48 => {
+			wire__crate__api__view__CanvistView_move_selection_end_impl(ptr, rust_vec_len, data_len)
+		}
+		49 => wire__crate__api__view__CanvistView_paste_html_impl(ptr, rust_vec_len, data_len),
+		50 => wire__crate__api__view__CanvistView_paste_text_impl(ptr, rust_vec_len, data_len),
+		51 => wire__crate__api__view__CanvistView_pointer_down_impl(ptr, rust_vec_len, data_len),
+		52 => wire__crate__api__view__CanvistView_pointer_move_impl(ptr, rust_vec_len, data_len),
+		53 => wire__crate__api__view__CanvistView_pointer_up_impl(ptr, rust_vec_len, data_len),
+		54 => wire__crate__api__view__CanvistView_redo_impl(ptr, rust_vec_len, data_len),
+		55 => wire__crate__api__view__CanvistView_replace_text_impl(ptr, rust_vec_len, data_len),
+		56 => wire__crate__api__view__CanvistView_run_impl(ptr, rust_vec_len, data_len),
+		57 => wire__crate__api__view__CanvistView_select_in_block_impl(ptr, rust_vec_len, data_len),
+		58 => wire__crate__api__view__CanvistView_select_plain_impl(ptr, rust_vec_len, data_len),
+		59 => {
+			wire__crate__api__view__CanvistView_selection_bounds_impl(ptr, rust_vec_len, data_len)
+		}
+		60 => wire__crate__api__view__CanvistView_selection_ends_impl(ptr, rust_vec_len, data_len),
+		61 => wire__crate__api__view__CanvistView_semantics_impl(ptr, rust_vec_len, data_len),
+		62 => wire__crate__api__view__CanvistView_set_caret_on_impl(ptr, rust_vec_len, data_len),
+		63 => wire__crate__api__view__CanvistView_set_composition_impl(ptr, rust_vec_len, data_len),
+		64 => wire__crate__api__view__CanvistView_set_focused_impl(ptr, rust_vec_len, data_len),
+		65 => wire__crate__api__view__CanvistView_set_options_impl(ptr, rust_vec_len, data_len),
+		66 => wire__crate__api__view__CanvistView_set_width_impl(ptr, rust_vec_len, data_len),
+		67 => wire__crate__api__view__CanvistView_undo_impl(ptr, rust_vec_len, data_len),
 		_ => unreachable!(),
 	}
 }
@@ -1842,6 +4044,21 @@ impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<
 
 impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<CanvistEngine>> for CanvistEngine {
 	fn into_into_dart(self) -> FrbWrapper<CanvistEngine> {
+		self.into()
+	}
+}
+
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for FrbWrapper<CanvistView> {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self.0)
+			.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for FrbWrapper<CanvistView> {}
+
+impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<CanvistView>> for CanvistView {
+	fn into_into_dart(self) -> FrbWrapper<CanvistView> {
 		self.into()
 	}
 }
@@ -1887,6 +4104,45 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::canvist::DocFormat>
 	for crate::api::canvist::DocFormat
 {
 	fn into_into_dart(self) -> crate::api::canvist::DocFormat {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::canvist::DocHtml {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.html.into_into_dart().into_dart(),
+			self.css.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::canvist::DocHtml {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::canvist::DocHtml>
+	for crate::api::canvist::DocHtml
+{
+	fn into_into_dart(self) -> crate::api::canvist::DocHtml {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::canvist::DocPlatform {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		match self {
+			Self::Apple => 0.into_dart(),
+			Self::Other => 1.into_dart(),
+			_ => unreachable!(),
+		}
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+	for crate::api::canvist::DocPlatform
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::canvist::DocPlatform>
+	for crate::api::canvist::DocPlatform
+{
+	fn into_into_dart(self) -> crate::api::canvist::DocPlatform {
 		self
 	}
 }
@@ -1954,6 +4210,252 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::canvist::DocValidation>
 		self
 	}
 }
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewClipboard {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.html.into_into_dart().into_dart(),
+			self.text.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+	for crate::api::view::ViewClipboard
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewClipboard>
+	for crate::api::view::ViewClipboard
+{
+	fn into_into_dart(self) -> crate::api::view::ViewClipboard {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewDisplay {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.fonts.into_into_dart().into_dart(),
+			self.items.into_into_dart().into_dart(),
+			self.background.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::view::ViewDisplay {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewDisplay>
+	for crate::api::view::ViewDisplay
+{
+	fn into_into_dart(self) -> crate::api::view::ViewDisplay {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewEditState {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.text.into_into_dart().into_dart(),
+			self.anchor.into_into_dart().into_dart(),
+			self.head.into_into_dart().into_dart(),
+			self.composing_start.into_into_dart().into_dart(),
+			self.composing_end.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+	for crate::api::view::ViewEditState
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewEditState>
+	for crate::api::view::ViewEditState
+{
+	fn into_into_dart(self) -> crate::api::view::ViewEditState {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewFont {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.family.into_into_dart().into_dart(),
+			self.size.into_into_dart().into_dart(),
+			self.weight.into_into_dart().into_dart(),
+			self.italic.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::view::ViewFont {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewFont> for crate::api::view::ViewFont {
+	fn into_into_dart(self) -> crate::api::view::ViewFont {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewFrame {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.height.into_into_dart().into_dart(),
+			self.shift.into_into_dart().into_dart(),
+			self.laid_out.into_into_dart().into_dart(),
+			self.measured.into_into_dart().into_dart(),
+			self.display.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::view::ViewFrame {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewFrame>
+	for crate::api::view::ViewFrame
+{
+	fn into_into_dart(self) -> crate::api::view::ViewFrame {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewItem {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.kind.into_into_dart().into_dart(),
+			self.x.into_into_dart().into_dart(),
+			self.y.into_into_dart().into_dart(),
+			self.width.into_into_dart().into_dart(),
+			self.height.into_into_dart().into_dart(),
+			self.color.into_into_dart().into_dart(),
+			self.radius.into_into_dart().into_dart(),
+			self.text.into_into_dart().into_dart(),
+			self.font.into_into_dart().into_dart(),
+			self.baseline.into_into_dart().into_dart(),
+			self.letter_spacing.into_into_dart().into_dart(),
+			self.rtl.into_into_dart().into_dart(),
+			self.checked.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::view::ViewItem {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewItem> for crate::api::view::ViewItem {
+	fn into_into_dart(self) -> crate::api::view::ViewItem {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewItemKind {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		match self {
+			Self::Background => 0.into_dart(),
+			Self::Border => 1.into_dart(),
+			Self::Rule => 2.into_dart(),
+			Self::Highlight => 3.into_dart(),
+			Self::Selection => 4.into_dart(),
+			Self::Caret => 5.into_dart(),
+			Self::Text => 6.into_dart(),
+			Self::Underline => 7.into_dart(),
+			Self::Strike => 8.into_dart(),
+			Self::Squiggle => 9.into_dart(),
+			Self::Checkbox => 10.into_dart(),
+			Self::Slot => 11.into_dart(),
+			Self::Composition => 12.into_dart(),
+			_ => unreachable!(),
+		}
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+	for crate::api::view::ViewItemKind
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewItemKind>
+	for crate::api::view::ViewItemKind
+{
+	fn into_into_dart(self) -> crate::api::view::ViewItemKind {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewOptions {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.dark.into_into_dart().into_dart(),
+			self.body_family.into_into_dart().into_dart(),
+			self.code_family.into_into_dart().into_dart(),
+			self.size.into_into_dart().into_dart(),
+			self.line_height.into_into_dart().into_dart(),
+			self.overscan.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::view::ViewOptions {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewOptions>
+	for crate::api::view::ViewOptions
+{
+	fn into_into_dart(self) -> crate::api::view::ViewOptions {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewRect {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.x.into_into_dart().into_dart(),
+			self.y.into_into_dart().into_dart(),
+			self.width.into_into_dart().into_dart(),
+			self.height.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::api::view::ViewRect {}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewRect> for crate::api::view::ViewRect {
+	fn into_into_dart(self) -> crate::api::view::ViewRect {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewSelectionEnds {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.start.into_into_dart().into_dart(),
+			self.end.into_into_dart().into_dart(),
+			self.collapsed.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+	for crate::api::view::ViewSelectionEnds
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewSelectionEnds>
+	for crate::api::view::ViewSelectionEnds
+{
+	fn into_into_dart(self) -> crate::api::view::ViewSelectionEnds {
+		self
+	}
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::view::ViewSemantics {
+	fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+		[
+			self.text.into_into_dart().into_dart(),
+			self.anchor.into_into_dart().into_dart(),
+			self.head.into_into_dart().into_dart(),
+		]
+		.into_dart()
+	}
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+	for crate::api::view::ViewSemantics
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::view::ViewSemantics>
+	for crate::api::view::ViewSemantics
+{
+	fn into_into_dart(self) -> crate::api::view::ViewSemantics {
+		self
+	}
+}
 
 impl SseEncode for CanvistDoc {
 	// Codec=Sse (Serialization based), see doc to use other codecs
@@ -1966,6 +4468,13 @@ impl SseEncode for CanvistEngine {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
 		<RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistEngine>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
+	}
+}
+
+impl SseEncode for CanvistView {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>>>::sse_encode(flutter_rust_bridge::for_generated::rust_auto_opaque_encode::<_, MoiArc<_>>(self), serializer);
 	}
 }
 
@@ -1982,6 +4491,17 @@ impl SseEncode
 
 impl SseEncode
 	for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistEngine>>
+{
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		let (ptr, size) = self.sse_encode_raw();
+		<usize>::sse_encode(ptr, serializer);
+		<i32>::sse_encode(size, serializer);
+	}
+}
+
+impl SseEncode
+	for RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>>
 {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2031,6 +4551,30 @@ impl SseEncode for crate::api::canvist::DocFormat {
 	}
 }
 
+impl SseEncode for crate::api::canvist::DocHtml {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<String>::sse_encode(self.html, serializer);
+		<String>::sse_encode(self.css, serializer);
+	}
+}
+
+impl SseEncode for crate::api::canvist::DocPlatform {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<i32>::sse_encode(
+			match self {
+				crate::api::canvist::DocPlatform::Apple => 0,
+				crate::api::canvist::DocPlatform::Other => 1,
+				_ => {
+					unimplemented!("");
+				}
+			},
+			serializer,
+		);
+	}
+}
+
 impl SseEncode for crate::api::canvist::DocPosition {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2053,6 +4597,13 @@ impl SseEncode for crate::api::canvist::DocValidation {
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
 		<u32>::sse_encode(self.rejected_blocks, serializer);
 		<bool>::sse_encode(self.waiting, serializer);
+	}
+}
+
+impl SseEncode for f32 {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		serializer.cursor.write_f32::<NativeEndian>(self).unwrap();
 	}
 }
 
@@ -2113,6 +4664,106 @@ impl SseEncode for Vec<u8> {
 	}
 }
 
+impl SseEncode for Vec<crate::api::view::ViewFont> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<i32>::sse_encode(self.len() as _, serializer);
+		for item in self {
+			<crate::api::view::ViewFont>::sse_encode(item, serializer);
+		}
+	}
+}
+
+impl SseEncode for Vec<crate::api::view::ViewItem> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<i32>::sse_encode(self.len() as _, serializer);
+		for item in self {
+			<crate::api::view::ViewItem>::sse_encode(item, serializer);
+		}
+	}
+}
+
+impl SseEncode for Option<String> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<bool>::sse_encode(self.is_some(), serializer);
+		if let Some(value) = self {
+			<String>::sse_encode(value, serializer);
+		}
+	}
+}
+
+impl SseEncode for Option<f32> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<bool>::sse_encode(self.is_some(), serializer);
+		if let Some(value) = self {
+			<f32>::sse_encode(value, serializer);
+		}
+	}
+}
+
+impl SseEncode for Option<u32> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<bool>::sse_encode(self.is_some(), serializer);
+		if let Some(value) = self {
+			<u32>::sse_encode(value, serializer);
+		}
+	}
+}
+
+impl SseEncode for Option<crate::api::view::ViewClipboard> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<bool>::sse_encode(self.is_some(), serializer);
+		if let Some(value) = self {
+			<crate::api::view::ViewClipboard>::sse_encode(value, serializer);
+		}
+	}
+}
+
+impl SseEncode for Option<crate::api::view::ViewDisplay> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<bool>::sse_encode(self.is_some(), serializer);
+		if let Some(value) = self {
+			<crate::api::view::ViewDisplay>::sse_encode(value, serializer);
+		}
+	}
+}
+
+impl SseEncode for Option<crate::api::view::ViewEditState> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<bool>::sse_encode(self.is_some(), serializer);
+		if let Some(value) = self {
+			<crate::api::view::ViewEditState>::sse_encode(value, serializer);
+		}
+	}
+}
+
+impl SseEncode for Option<crate::api::view::ViewRect> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<bool>::sse_encode(self.is_some(), serializer);
+		if let Some(value) = self {
+			<crate::api::view::ViewRect>::sse_encode(value, serializer);
+		}
+	}
+}
+
+impl SseEncode for Option<crate::api::view::ViewSelectionEnds> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<bool>::sse_encode(self.is_some(), serializer);
+		if let Some(value) = self {
+			<crate::api::view::ViewSelectionEnds>::sse_encode(value, serializer);
+		}
+	}
+}
+
 impl SseEncode for Option<Vec<crate::api::canvist::DocPosition>> {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -2120,6 +4771,13 @@ impl SseEncode for Option<Vec<crate::api::canvist::DocPosition>> {
 		if let Some(value) = self {
 			<Vec<crate::api::canvist::DocPosition>>::sse_encode(value, serializer);
 		}
+	}
+}
+
+impl SseEncode for u16 {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		serializer.cursor.write_u16::<NativeEndian>(self).unwrap();
 	}
 }
 
@@ -2152,6 +4810,141 @@ impl SseEncode for usize {
 	}
 }
 
+impl SseEncode for crate::api::view::ViewClipboard {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<String>::sse_encode(self.html, serializer);
+		<String>::sse_encode(self.text, serializer);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewDisplay {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<Vec<crate::api::view::ViewFont>>::sse_encode(self.fonts, serializer);
+		<Vec<crate::api::view::ViewItem>>::sse_encode(self.items, serializer);
+		<u32>::sse_encode(self.background, serializer);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewEditState {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<String>::sse_encode(self.text, serializer);
+		<u32>::sse_encode(self.anchor, serializer);
+		<u32>::sse_encode(self.head, serializer);
+		<Option<u32>>::sse_encode(self.composing_start, serializer);
+		<Option<u32>>::sse_encode(self.composing_end, serializer);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewFont {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<String>::sse_encode(self.family, serializer);
+		<f32>::sse_encode(self.size, serializer);
+		<u16>::sse_encode(self.weight, serializer);
+		<bool>::sse_encode(self.italic, serializer);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewFrame {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<f32>::sse_encode(self.height, serializer);
+		<f32>::sse_encode(self.shift, serializer);
+		<u32>::sse_encode(self.laid_out, serializer);
+		<u32>::sse_encode(self.measured, serializer);
+		<Option<crate::api::view::ViewDisplay>>::sse_encode(self.display, serializer);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewItem {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<crate::api::view::ViewItemKind>::sse_encode(self.kind, serializer);
+		<f32>::sse_encode(self.x, serializer);
+		<f32>::sse_encode(self.y, serializer);
+		<f32>::sse_encode(self.width, serializer);
+		<f32>::sse_encode(self.height, serializer);
+		<u32>::sse_encode(self.color, serializer);
+		<f32>::sse_encode(self.radius, serializer);
+		<String>::sse_encode(self.text, serializer);
+		<u32>::sse_encode(self.font, serializer);
+		<f32>::sse_encode(self.baseline, serializer);
+		<f32>::sse_encode(self.letter_spacing, serializer);
+		<bool>::sse_encode(self.rtl, serializer);
+		<bool>::sse_encode(self.checked, serializer);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewItemKind {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<i32>::sse_encode(
+			match self {
+				crate::api::view::ViewItemKind::Background => 0,
+				crate::api::view::ViewItemKind::Border => 1,
+				crate::api::view::ViewItemKind::Rule => 2,
+				crate::api::view::ViewItemKind::Highlight => 3,
+				crate::api::view::ViewItemKind::Selection => 4,
+				crate::api::view::ViewItemKind::Caret => 5,
+				crate::api::view::ViewItemKind::Text => 6,
+				crate::api::view::ViewItemKind::Underline => 7,
+				crate::api::view::ViewItemKind::Strike => 8,
+				crate::api::view::ViewItemKind::Squiggle => 9,
+				crate::api::view::ViewItemKind::Checkbox => 10,
+				crate::api::view::ViewItemKind::Slot => 11,
+				crate::api::view::ViewItemKind::Composition => 12,
+				_ => {
+					unimplemented!("");
+				}
+			},
+			serializer,
+		);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewOptions {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<bool>::sse_encode(self.dark, serializer);
+		<Option<String>>::sse_encode(self.body_family, serializer);
+		<Option<String>>::sse_encode(self.code_family, serializer);
+		<Option<f32>>::sse_encode(self.size, serializer);
+		<Option<f32>>::sse_encode(self.line_height, serializer);
+		<f32>::sse_encode(self.overscan, serializer);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewRect {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<f32>::sse_encode(self.x, serializer);
+		<f32>::sse_encode(self.y, serializer);
+		<f32>::sse_encode(self.width, serializer);
+		<f32>::sse_encode(self.height, serializer);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewSelectionEnds {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<crate::api::view::ViewRect>::sse_encode(self.start, serializer);
+		<crate::api::view::ViewRect>::sse_encode(self.end, serializer);
+		<bool>::sse_encode(self.collapsed, serializer);
+	}
+}
+
+impl SseEncode for crate::api::view::ViewSemantics {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<String>::sse_encode(self.text, serializer);
+		<u32>::sse_encode(self.anchor, serializer);
+		<u32>::sse_encode(self.head, serializer);
+	}
+}
+
 #[cfg(not(target_family = "wasm"))]
 mod io {
 	// This file is automatically generated, so please do not edit it.
@@ -2161,6 +4954,7 @@ mod io {
 
 	use super::*;
 	use crate::api::canvist::*;
+	use crate::api::view::*;
 	use flutter_rust_bridge::for_generated::byteorder::{
 		NativeEndian, ReadBytesExt, WriteBytesExt,
 	};
@@ -2198,6 +4992,20 @@ mod io {
 	) {
 		MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistEngine>>::decrement_strong_count(ptr as _);
 	}
+
+	#[unsafe(no_mangle)]
+	pub extern "C" fn frbgen_canvist_rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+		ptr: *const std::ffi::c_void,
+	) {
+		MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>>::increment_strong_count(ptr as _);
+	}
+
+	#[unsafe(no_mangle)]
+	pub extern "C" fn frbgen_canvist_rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+		ptr: *const std::ffi::c_void,
+	) {
+		MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>>::decrement_strong_count(ptr as _);
+	}
 }
 #[cfg(not(target_family = "wasm"))]
 pub use io::*;
@@ -2212,6 +5020,7 @@ mod web {
 
 	use super::*;
 	use crate::api::canvist::*;
+	use crate::api::view::*;
 	use flutter_rust_bridge::for_generated::byteorder::{
 		NativeEndian, ReadBytesExt, WriteBytesExt,
 	};
@@ -2250,6 +5059,20 @@ mod web {
 		ptr: *const std::ffi::c_void,
 	) {
 		MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistEngine>>::decrement_strong_count(ptr as _);
+	}
+
+	#[wasm_bindgen]
+	pub fn rust_arc_increment_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+		ptr: *const std::ffi::c_void,
+	) {
+		MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>>::increment_strong_count(ptr as _);
+	}
+
+	#[wasm_bindgen]
+	pub fn rust_arc_decrement_strong_count_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerCanvistView(
+		ptr: *const std::ffi::c_void,
+	) {
+		MoiArc::<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<CanvistView>>::decrement_strong_count(ptr as _);
 	}
 }
 #[cfg(target_family = "wasm")]

@@ -19,6 +19,9 @@
 //! - With the `collab` feature, a `Doc` is a Yjs peer: it joins from Yjs
 //!   state, merges updates, produces updates and y-sync messages, and checks
 //!   the merged state against its schema.
+//! - With the `journal` feature, a `Doc` records every commit that changes
+//!   it (`Doc::record_commits`), for hosts that keep a layout of a document
+//!   other code changes too.
 //! - With the `ssr` feature, a [`Renderer`] produces the HTML and SVG the
 //!   canvas editor would paint, using `canvist_layout` and `parley`. The
 //!   default build pulls in neither.
