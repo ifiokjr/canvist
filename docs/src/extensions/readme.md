@@ -12,9 +12,9 @@ Every extension below ships today in Rust, TypeScript, and Dart. Names match Tip
 | Rust       | `Engine::new(\|b\| b.add(Bold))`        | `Engine::starter_kit()`  |
 | Dart       | `EngineBuilder()..add(Extensions.bold)` | `Engine.starterKit()`    |
 
-In TypeScript, import each extension by name from `@canvist/headless`. In Rust, import it from `canvist_extensions` (re-exported as `canvist_headless::canvist_extensions`). `Mod` means Cmd on Apple platforms and Ctrl elsewhere.
+In TypeScript, import each StarterKit extension by name from `@canvist/headless`. In Rust, import it from `canvist_extensions` (re-exported as `canvist_headless::canvist_extensions`). `Mod` means Cmd on Apple platforms and Ctrl elsewhere.
 
-Extensions beyond the StarterKit, from [subscript](#subscript-and-superscript) on, each sit behind a Cargo feature of their own, and `full` turns them all on. The TypeScript and Dart packages include every one. The browser editor, `@canvist/web`, includes the StarterKit only for now, to keep its download small.
+Extensions beyond the StarterKit, from [subscript](#subscript-and-superscript) on, each sit behind a Cargo feature of their own, and `full` turns them all on. In TypeScript they live in a second WebAssembly module, `@canvist/headless/full`, so the StarterKit module stays small: import `createEngine` and every extension from there instead, with the same API. The full module loads the emoji table the first time an engine registers `emoji`. The Dart package includes every extension. The browser editor, `@canvist/web`, includes the StarterKit only for now, to keep its download small.
 
 In the **Typing** columns, block shortcuts such as `##`, `-`, and `[ ]` fire when you type a space after them at the start of a line. Mark shortcuts such as `**text**` fire when you type the closing characters.
 
@@ -144,7 +144,7 @@ Text below or above the baseline, smaller than the text around it. Subscript add
 | `toggleSuperscript`, `setSuperscript`, `unsetSuperscript` | `isSuperscript` | `Mod-.` |
 
 ```ts
-import { createEngine, subscript, superscript } from "@canvist/headless";
+import { createEngine, subscript, superscript } from "@canvist/headless/full";
 
 const doc = (await createEngine([subscript, superscript])).parse(
 	"text",
@@ -169,7 +169,7 @@ Text marked like a highlighter pen. Adds the `highlight` mark with a `color` att
 `toggleHighlight` with a colour recolours text highlighted in another colour and removes a highlight in the same colour.
 
 ```ts
-import { createEngine, highlight } from "@canvist/headless";
+import { createEngine, highlight } from "@canvist/headless/full";
 
 const doc = (await createEngine([highlight])).create();
 doc.typeText("Read ==this== first");
@@ -197,7 +197,12 @@ Inline styles, as in TipTap's TextStyleKit. Text style adds the `textStyle` mark
 Values are CSS strings such as `#e8590c`, `Georgia, serif`, `20px`, and `1.5`. Each query returns the value every selected character shares, or `null`. The canvas draws `#rrggbb` colours, pixel sizes, and unitless line heights, and keeps other values in the document as they are.
 
 ```ts
-import { color, createEngine, fontSize, textStyle } from "@canvist/headless";
+import {
+	color,
+	createEngine,
+	fontSize,
+	textStyle,
+} from "@canvist/headless/full";
 
 const doc = (await createEngine([textStyle, color, fontSize])).parse(
 	"text",
@@ -224,7 +229,7 @@ Left, centred, right, and justified text. Text alignment adds a `textAlign` attr
 `alignment` is `left`, `center`, `right`, or `justify`, and `textAlign` answers the alignment every selected block shares, or `null`.
 
 ```ts
-import { createEngine, heading, textAlign } from "@canvist/headless";
+import { createEngine, heading, textAlign } from "@canvist/headless/full";
 
 const doc = (await createEngine([heading, textAlign])).parse(
 	"markdown",
@@ -250,7 +255,7 @@ People, teams, or anything else with an id. It adds TipTap's `mention` embed wit
 `mentionSuggestion` answers `{ char, query }` while a mention is suggested, or `null`. In Rust, `Mention { char: '+', allow_spaces: true }` changes the trigger and allows `@Ada Lovelace`.
 
 ```ts
-import { createEngine, mention } from "@canvist/headless";
+import { createEngine, mention } from "@canvist/headless/full";
 
 const doc = (await createEngine([mention])).create();
 doc.typeText("Thanks @ad");
@@ -273,7 +278,7 @@ Tags such as `#rust`, marked as you type. Neither TipTap nor Remirror has one. I
 `hashtags` lists every tag in the document, sorted, for a tag cloud or a filter.
 
 ```ts
-import { createEngine, hashtag } from "@canvist/headless";
+import { createEngine, hashtag } from "@canvist/headless/full";
 
 const doc = (await createEngine([hashtag])).create();
 doc.typeText("Loving #rust and #wasm today");
@@ -292,7 +297,7 @@ GitHub's 1,870 emoji and their shortcodes. Typing a known `:shortcode:` inserts 
 `searchEmoji` returns up to `limit` (10 by default) `{ name, emoji }` matches, shortcodes starting with the query first.
 
 ```ts
-import { createEngine, emoji } from "@canvist/headless";
+import { createEngine, emoji } from "@canvist/headless/full";
 
 const doc = (await createEngine([emoji])).create();
 doc.typeText("Shipped :rocket: :tad");
@@ -402,6 +407,29 @@ console.log(doc.export("html"));
 // <p>Line one<br>Line two</p>
 ```
 
+### Media
+
+Images, YouTube and Twitch videos, audio, and file attachments, each an atomic block whose attributes say what to show. The canvas reserves a slot for it, sized by its `height` attribute, and your app draws the picture, player, or file card there, the way a TipTap node view would. Each command inserts its block at the caret, as a horizontal rule is inserted.
+
+| Extension | Block     | Command                                                       | Attributes                                          |
+| --------- | --------- | ------------------------------------------------------------- | --------------------------------------------------- |
+| `image`   | `image`   | `setImage({ src, alt?, title?, width?, height? })`            | `src`, `alt`, `title`, `width`, `height`            |
+| `youtube` | `youtube` | `setYoutubeVideo({ src, start?, width?, height? })`           | `src`, `start` (0), `width` (640), `height` (480)   |
+| `twitch`  | `twitch`  | `setTwitchVideo({ src, width?, height?, autoplay?, muted? })` | `src`, `width`, `height`, `autoplay`, `muted`       |
+| `audio`   | `audio`   | `setAudio({ src, controls?, autoplay?, loop?, muted? })`      | `src`, `controls` (on), `autoplay`, `loop`, `muted` |
+| `file`    | `file`    | `insertFile({ url, fileName?, fileType?, fileSize? })`        | `url`, `fileName`, `fileType`, `fileSize`           |
+
+Typing `![alt](src "title")` inserts an image. HTML uses the markup TipTap writes: `<img>`, `<audio>`, and `<iframe>` inside `<div data-youtube-video>` or `<div data-twitch-video>`; files use `<div data-type="file">`. Markdown writes images as `![alt](src "title")` and reads them back; other media become links.
+
+```ts
+import { createEngine, image } from "@canvist/headless/full";
+
+const doc = (await createEngine([image])).create();
+doc.commands.setImage({ src: "cat.png", alt: "A cat" });
+console.log(doc.export("markdown"));
+// ![A cat](cat.png)
+```
+
 ## Lists
 
 Lists need list items. Adding `bulletList` or `orderedList` adds `listItem` for you.
@@ -490,7 +518,7 @@ Smart punctuation as you type, with TipTap's rules plus Remirror's double arrow.
 Fractions, `2x3`, `^2`, and `^3` change when you type the space or punctuation after them: canvist never runs rules on letters and digits, which keeps typing fast. In Rust, `Typography::default().without(&["emDash"]).with_output("laquo", "‹")` turns off or rewords a rule, by TipTap's option names.
 
 ```ts
-import { createEngine, typography } from "@canvist/headless";
+import { createEngine, typography } from "@canvist/headless/full";
 
 const doc = (await createEngine([typography])).create();
 doc.typeText('"Wait" -- it\'s 1/2 done...');
@@ -509,7 +537,7 @@ Counts characters and words, and with a limit, refuses edits that would take the
 `limit` is a number, or `null` for no limit. In Rust, `CharacterCount { limit: Some(280) }` sets the starting limit.
 
 ```ts
-import { characterCount, createEngine } from "@canvist/headless";
+import { characterCount, createEngine } from "@canvist/headless/full";
 
 const doc = (await createEngine([characterCount])).create();
 doc.commands.setCharacterLimit({ limit: 5 });
@@ -529,7 +557,7 @@ Hint text, such as "Write something …", in empty blocks. The placeholder isn't
 `placeholder` answers the text the caret's block shows, or `null`.
 
 ```ts
-import { createEngine, placeholder } from "@canvist/headless";
+import { createEngine, placeholder } from "@canvist/headless/full";
 
 const doc = (await createEngine([placeholder])).create();
 doc.commands.setPlaceholder({ placeholder: "Tell a story" });
@@ -541,7 +569,7 @@ console.log(doc.query.placeholder());
 
 These extensions are planned, in roughly this order. Each will follow the same pattern: typed commands, queries, and TipTap-compatible JSON.
 
-- **Images, details, callouts, and math,** plus video, audio, and file attachments.
+- **Details, callouts, and math.**
 - **Tables:** merged cells, header rows and columns, and cell navigation.
 - **Find and replace, table of contents, comments, and drag handles.**
 

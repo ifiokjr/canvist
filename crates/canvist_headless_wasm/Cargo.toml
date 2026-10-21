@@ -24,9 +24,14 @@ scene = ["canvist_headless/scene"]
 # Server-side rendering: a third module (`@canvist/headless/ssr`) that renders
 # HTML, CSS, and SVG with parley and its own fonts.
 ssr = ["canvist_headless/ssr"]
+# Every extension, for `@canvist/headless/full`: a second module, so the
+# StarterKit module stays small. The emoji table is not compiled in;
+# `loadEmoji` supplies it.
+full = ["canvist_headless/extras", "dep:canvist_extensions"]
 
 [dependencies]
-canvist_headless = { workspace = true, features = ["collab", "full"] }
+canvist_extensions = { workspace = true, optional = true, features = ["emoji"] }
+canvist_headless = { workspace = true, features = ["collab", "starter-kit"] }
 js-sys = { workspace = true, features = ["std"] }
 serde_json = { workspace = true, features = ["std"] }
 wasm-bindgen = { workspace = true, features = ["std"] }

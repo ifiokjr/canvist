@@ -149,6 +149,20 @@ impl Writer<'_> {
 		let resolved = self.styles.get(style).clone();
 		let tag = tag_name(&resolved.tag);
 		self.open_tag(block, style, tag, marker);
+
+		// A host draws a slot's picture into the empty element, so the
+		// element carries the picture's text alternative.
+		if let (Content::Leaf, LeafStyle::Slot { .. }) = (block.content(), resolved.leaf)
+			&& let Some(alt) = block
+				.attrs()
+				.get("alt")
+				.and_then(Value::as_str)
+				.filter(|alt| !alt.is_empty())
+		{
+			attribute(&mut self.out, "role", "img");
+			attribute(&mut self.out, "aria-label", alt);
+		}
+
 		let inline_style = self.inline_style(block, &resolved, margin);
 
 		if !inline_style.is_empty() {

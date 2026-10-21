@@ -16,7 +16,7 @@ Every platform runs the same Rust core, so documents, extensions, and commands b
 | Web                              | `@canvist/web`                                              | Preview     | [Web](./web.md)                            |
 | React                            | `@canvist/react`                                            | Preview     | [React](./react.md)                        |
 | Vue                              | `@canvist/vue`                                              | Preview     | [Vue](./vue.md)                            |
-| iOS                              | `Canvist` Swift package                                     | Coming soon | [iOS](./ios.md)                            |
+| iOS                              | `Canvist` Swift package                                     | Available   | [iOS](./ios.md)                            |
 | Android                          | `canvist-android`                                           | Coming soon | [Android](./android.md)                    |
 | macOS, Windows, Linux            | `canvist_desktop`                                           | Available   | [Desktop](./desktop.md)                    |
 | React Native and Lynx            | `@canvist/react-native`                                     | Coming soon | [React Native and Lynx](./react-native.md) |
@@ -26,6 +26,7 @@ Every platform runs the same Rust core, so documents, extensions, and commands b
 ## Which one do I need?
 
 - **You're processing content on a server:** importing Markdown, cleaning pasted HTML, migrating TipTap JSON, or running a collaboration endpoint. Use the server package for your language.
+- **You're building an iOS app:** use the [`Canvist` Swift package](./ios.md). `CanvistView` is a native UIKit editor, with `CanvistEditor` for SwiftUI.
 - **You're building a desktop app in Rust:** use [`canvist_desktop`](./desktop.md), a native editor component for any winit app.
 - **You're building a Flutter app:** use `canvist_flutter`: `CanvistEditor` is the editor, and the same engine runs on your Dart server.
 - **You want an editor in a web page:** use [`@canvist/web`](./web.md), or its [React](./react.md) and [Vue](./vue.md) bindings. Do server work with `@canvist/headless`.

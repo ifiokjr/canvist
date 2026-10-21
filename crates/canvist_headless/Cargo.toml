@@ -20,7 +20,10 @@ default = ["starter-kit"]
 starter-kit = ["canvist_extensions/starter-kit"]
 # Every extension in canvist_extensions, registrable by name with
 # `Engine::named`, which is how the TypeScript and Dart bindings offer them.
-full = ["starter-kit", "canvist_extensions/full"]
+full = ["extras", "canvist_extensions/full"]
+# `full` without the emoji table, which `canvist_extensions::emoji::load`
+# supplies at runtime.
+extras = ["starter-kit", "canvist_extensions/extras"]
 # Act as a Yjs peer: load from Yjs state, merge updates, and serve y-sync.
 collab = ["dep:canvist_collab", "canvist_collab/sync"]
 # Record every commit for hosts that keep a layout of a document they let

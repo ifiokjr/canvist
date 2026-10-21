@@ -39,13 +39,17 @@ Every number below has a budget, and a test fails the build when an operation go
 | Headless: create a StarterKit document              | < 250 µs                                    | 56 µs                |
 | Headless: apply one Yjs keystroke, 10k paragraphs   | < 20 µs                                     | 2.3 µs               |
 | Headless TypeScript: one command / Yjs update       | < 5 µs / < 30 µs                            | 0.71 µs / 4.6 µs     |
-| Headless TypeScript wasm module, after `wasm-opt`   | < 1,200 KB raw                              | 1,189 KB (488 KB gz) |
+| Headless TypeScript wasm module, after `wasm-opt`   | < 1,400 KB raw                              | 1,223 KB (501 KB gz) |
 | Headless Dart: one command / Yjs update             | < 10 µs / < 30 µs                           | 2.0 µs / 3.5 µs      |
 | Keystroke → paint on the web, p95 ⁴                 | < 8 ms                                      | 0.5 / 2 / 2 ms       |
 | Typing burst: 1,000 key events on the web ⁴         | no crash, no dropped input, ≤ 2 frames late | 1,000 of 1,000       |
 | Open a 10k-paragraph document → first paint         | < 50 ms                                     | layout 0.6 ms        |
-| Desktop: keystroke → frame, 10k paragraphs ⁵        | < 4 ms                                      | 0.14 ms              |
-| Desktop: keystroke → frame, 100 KB paragraph ⁵      | < 4 ms                                      | 0.56 ms              |
+| Native: keystroke → frame in Rust, 10k paragraphs ⁵ | < 200 µs                                    | 35 µs                |
+| Native: IME update → frame, 10k paragraphs ⁵        | < 200 µs                                    | 29 µs                |
+| Native: collaborator's keystroke → frame ⁵          | < 200 µs                                    | 57 µs                |
+| iOS: keystroke → paint, p95 ⁶                       | < 16 ms                                     | 1.2 ms               |
+| Desktop: keystroke → frame, 10k paragraphs ⁷        | < 4 ms                                      | 0.14 ms              |
+| Desktop: keystroke → frame, 100 KB paragraph ⁷      | < 4 ms                                      | 0.56 ms              |
 | Desktop: open 10k paragraphs → first frame          | < 100 ms                                    | 26 ms                |
 | Desktop: typing burst, 1,000 keys with a frame each | no crash, < 1.5 s                           | 0.23 s               |
 | Web bundle (core + StarterKit), gzipped             | < 350 KB                                    | 349.6 KB ³           |
@@ -58,7 +62,11 @@ Every number below has a budget, and a test fails the build when an operation go
 
 ⁴ Chromium / Firefox / WebKit on an Apple silicon Mac, measured by `editor.inputLatency()` in canvist's Playwright tests: from each input event's timestamp until the change is painted on the canvas, in the same task. Firefox and WebKit round timestamps to 1 ms. In the burst, every key is painted in its own task, so none waits for a later frame; the 95th percentile is 0.4 / 3 / 1 ms. The browser's Event Timing API also counts the wait for the next frame, and reports only events that took 16 ms or more, so it can't resolve an 8 ms budget. The tests record its slow entries beside these numbers.
 
-⁵ `canvist_desktop` on an Apple silicon Mac, measured by its `tests/perf_budgets.rs`: handling the key event (the edit, history, and relayout bookkeeping), laying out the viewport, building its display list, and encoding it as a vello scene. The GPU rasterises the scene in parallel.
+⁵ The engine half of keystroke-to-paint on iOS and Android, through the same `Editor` calls the views make, with a phone-sized viewport: the edit, relayout, the display list, and its damage (`crates/canvist_ffi/tests/perf_budgets.rs`). `crates/canvist_ffi/tests/stress.rs` types thousands of random keyboard, input-method, autocorrect, undo, and collaboration inputs and checks that none fails or is lost.
+
+⁶ `CanvistView` on an iPhone 17 Pro simulator, debug build: a character through `UITextInput`, relayout, and Core Graphics painting the damaged area (`CanvistViewTests.testKeystrokeToPaintStaysWithinBudget`). The median is 1 ms.
+
+⁷ `canvist_desktop` on an Apple silicon Mac, measured by its `tests/perf_budgets.rs`: handling the key event (the edit, history, and relayout bookkeeping), laying out the viewport, building its display list, and encoding it as a vello scene. The GPU rasterises the scene in parallel.
 
 ## Regression checks on every pull request
 
@@ -133,4 +141,5 @@ Every number in the table comes from a benchmark in the repository:
 
 ```sh
 cargo bench -p canvist_headless --all-features
+cargo bench -p canvist_ffi                       # native keystroke → frame
 ```

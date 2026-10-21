@@ -10,4 +10,5 @@ doc-valid-idents = [
 	"TypeScript",
 	"Canvas2D",
 	"CommonMark",
+	"YouTube",
 ]

@@ -57,7 +57,7 @@ jobs:
       - name: install dependencies
         run: npm ci
 
-      - name: build both wasm modules
+      - name: build the StarterKit, full, and scene wasm modules
         run: npm run build:wasm
 
       - name: generated types are up to date
@@ -82,3 +82,4 @@ jobs:
           npm init -y > /dev/null && npm pkg set type=module
           npm install --no-audit --no-fund "$RUNNER_TEMP"/canvist-headless-*.tgz
           node --input-type=module -e 'const { createEngine } = await import("@canvist/headless"); const doc = (await createEngine()).parse("markdown", "**ok**"); if (doc.export("html") !== "<p><strong>ok</strong></p>") process.exit(1);'
+          node --input-type=module -e 'const { createEngine, emoji } = await import("@canvist/headless/full"); const doc = (await createEngine([emoji])).create(); doc.typeText(":smile: "); if (doc.export("text") !== "😄 ") process.exit(1);'

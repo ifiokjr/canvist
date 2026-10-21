@@ -67,6 +67,15 @@ pub(crate) fn bytes(chunks: Vec<Vec<u8>>) -> Array {
 		.collect()
 }
 
+/// Give the `emoji` extension its table, the text of `gemoji.txt`, which
+/// this module does not compile in. Returns whether this call loaded it.
+#[cfg(feature = "full")]
+#[wasm_bindgen(js_name = loadEmoji)]
+#[must_use]
+pub fn load_emoji(table: String) -> bool {
+	canvist_extensions::emoji::load(table)
+}
+
 /// A configured set of extensions that creates documents.
 #[wasm_bindgen(js_name = WasmEngine)]
 pub struct WasmEngine {

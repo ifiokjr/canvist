@@ -55,6 +55,11 @@
 //! | [`Mention`]         | `mention`          | `mention`, `@` suggestions               |
 //! | [`Hashtag`]         | `hashtag`          | `hashtag`, `#tag` as you type            |
 //! | [`Emoji`]           | `emoji`            | `emoji`, `:smile:`, `:` suggestions      |
+//! | [`Image`]           | `image`            | `image`, `![alt](src)`                   |
+//! | [`Youtube`]         | `youtube`          | `youtube`                                |
+//! | [`Twitch`]          | `twitch`           | `twitch`                                 |
+//! | [`Audio`]           | `audio`            | `audio`                                  |
+//! | [`File`]            | `file`             | `file`, an attachment card               |
 //!
 //! `docs/src/extensions/parity.md` compares the whole set with Remirror and
 //! TipTap.
@@ -95,7 +100,7 @@ pub mod clipboard;
 mod code_block;
 #[cfg(feature = "emoji")]
 pub mod emoji;
-#[cfg(feature = "full")]
+#[cfg(feature = "extras")]
 mod extras;
 #[cfg(feature = "hashtag")]
 mod hashtag;
@@ -128,6 +133,14 @@ mod lists;
 	feature = "superscript"
 ))]
 mod marks;
+#[cfg(any(
+	feature = "audio",
+	feature = "file",
+	feature = "image",
+	feature = "twitch",
+	feature = "youtube"
+))]
+mod media;
 #[cfg(feature = "mention")]
 mod mention;
 #[cfg(feature = "ordered-list")]
@@ -171,7 +184,7 @@ pub use code_block::CodeBlockHandle;
 pub use emoji::Emoji;
 #[cfg(feature = "emoji")]
 pub use emoji::EmojiHandle;
-#[cfg(feature = "full")]
+#[cfg(feature = "extras")]
 pub use extras::extras;
 #[cfg(feature = "hard-break")]
 pub use hard_break::HardBreak;
@@ -231,6 +244,24 @@ pub use marks::Subscript;
 pub use marks::Superscript;
 #[cfg(feature = "underline")]
 pub use marks::Underline;
+#[cfg(feature = "audio")]
+pub use media::Audio;
+#[cfg(feature = "file")]
+pub use media::File;
+#[cfg(feature = "image")]
+pub use media::Image;
+#[cfg(any(
+	feature = "audio",
+	feature = "file",
+	feature = "image",
+	feature = "twitch",
+	feature = "youtube"
+))]
+pub use media::MediaHandle;
+#[cfg(feature = "twitch")]
+pub use media::Twitch;
+#[cfg(feature = "youtube")]
+pub use media::Youtube;
 #[cfg(feature = "mention")]
 pub use mention::Mention;
 #[cfg(feature = "mention")]

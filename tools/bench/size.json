@@ -179,7 +179,7 @@
 			],
 			"budget": {
 				"raw": 1228800,
-				"gzip": 503000
+				"gzip": 480000
 			}
 		},
 		{
@@ -196,12 +196,34 @@
 			"name": "@canvist/headless JS",
 			"group": "headless",
 			"files": [
-				"packages/canvist-headless/dist/**/*.js",
+				"packages/canvist-headless/dist/{create,engine,extensions.generated,load,mod,scene,scene-types,ssr,types}.js",
 				"packages/canvist-headless/wasm/*.js",
 				"packages/canvist-headless/wasm-scene/*.js"
 			],
 			"budget": {
 				"gzip": 25000
+			}
+		},
+		{
+			"name": "@canvist/headless full wasm",
+			"group": "headless",
+			"files": [
+				"packages/canvist-headless/wasm-full/canvist_headless_full_bg.wasm"
+			],
+			"budget": {
+				"raw": 1433600,
+				"gzip": 600000
+			}
+		},
+		{
+			"name": "@canvist/headless full JS",
+			"group": "headless",
+			"files": [
+				"packages/canvist-headless/dist/{full,extras.generated,gemoji.generated}.js",
+				"packages/canvist-headless/wasm-full/*.js"
+			],
+			"budget": {
+				"gzip": 40000
 			}
 		},
 		{

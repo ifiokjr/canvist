@@ -59,3 +59,13 @@ final class CanvistSelectionRect: UITextSelectionRect {
     override var containsEnd: Bool { last }
     override var isVertical: Bool { false }
 }
+
+extension TextSelection {
+    /// The selected range, start first.
+    public var range: OffsetRange {
+        OffsetRange(start: min(anchor, head), end: max(anchor, head))
+    }
+
+    /// Whether nothing is selected: a caret.
+    public var isCollapsed: Bool { anchor == head }
+}
