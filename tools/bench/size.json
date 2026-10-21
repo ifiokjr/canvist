@@ -165,7 +165,7 @@
 			"name": "@canvist/headless JS",
 			"group": "headless",
 			"files": [
-				"packages/canvist-headless/dist/{create,engine,extensions.generated,load,mod,scene,scene-types,types}.js",
+				"packages/canvist-headless/dist/{create,engine,extensions.generated,load,mod,scene,scene-types,ssr,types}.js",
 				"packages/canvist-headless/wasm/*.js",
 				"packages/canvist-headless/wasm-scene/*.js"
 			],
