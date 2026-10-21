@@ -129,19 +129,19 @@ export const mention = {
 /** The `details` extension. */
 export const details = {
 	"commands": [
+		/** Wrap the selected blocks in an open details block with an empty summary. */
 		{
 			"args": [],
-			"doc": "Wrap the selected blocks in an open details block with an empty summary.",
 			"name": "setDetails"
 		},
+		/** Replace the details around the selection with its summary and content. */
 		{
 			"args": [],
-			"doc": "Replace the details around the selection with its summary and content.",
 			"name": "unsetDetails"
 		},
+		/** Open the details around the selection, or close it. */
 		{
 			"args": [],
-			"doc": "Open the details around the selection, or close it.",
 			"name": "toggleDetailsOpen"
 		}
 	],
@@ -149,9 +149,9 @@ export const details = {
 	"nodes": [
 		{
 			"attrs": [
+				/** Whether the content shows. */
 				{
 					"default": false,
-					"doc": "Whether the content shows.",
 					"name": "open",
 					"type": {
 						"type": "bool"
@@ -173,9 +173,9 @@ export const details = {
 		}
 	],
 	"queries": [
+		/** Whether the details around the selection is open, or null outside one. */
 		{
 			"args": [],
-			"doc": "Whether the details around the selection is open, or null outside one.",
 			"name": "detailsOpen",
 			"returns": {
 				"of": {
@@ -1578,11 +1578,12 @@ export const file = {
 /** The `callout` extension. */
 export const callout = {
 	"commands": [
+		/** Wrap the selection in a callout, or lift it out of the callout around it. */
 		{
 			"args": [
+				/** The callout type: info, warning, error, success, or blank. */
 				{
 					"default": "info",
-					"doc": "The callout type: info, warning, error, success, or blank.",
 					"name": "type",
 					"type": {
 						"enum": [
@@ -1596,13 +1597,13 @@ export const callout = {
 					}
 				}
 			],
-			"doc": "Wrap the selection in a callout, or lift it out of the callout around it.",
 			"name": "toggleCallout"
 		},
+		/** Change the type of the callout around the selection. */
 		{
 			"args": [
+				/** The callout type: info, warning, error, success, or blank. */
 				{
-					"doc": "The callout type: info, warning, error, success, or blank.",
 					"name": "type",
 					"type": {
 						"enum": [
@@ -1616,7 +1617,6 @@ export const callout = {
 					}
 				}
 			],
-			"doc": "Change the type of the callout around the selection.",
 			"name": "setCalloutType"
 		}
 	],
@@ -1624,9 +1624,9 @@ export const callout = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The callout type: info, warning, error, success, or blank. */
 				{
 					"default": "info",
-					"doc": "The callout type: info, warning, error, success, or blank.",
 					"name": "type",
 					"type": {
 						"enum": [
@@ -1645,9 +1645,9 @@ export const callout = {
 		}
 	],
 	"queries": [
+		/** The type of the callout around the selection, or null outside one. */
 		{
 			"args": [],
-			"doc": "The type of the callout around the selection, or null outside one.",
 			"name": "calloutType",
 			"returns": {
 				"of": {
@@ -1669,30 +1669,30 @@ export const callout = {
 /** The `mathematics` extension. */
 export const mathematics = {
 	"commands": [
+		/** Insert an inline formula at the selection. */
 		{
 			"args": [
+				/** The formula, in LaTeX. */
 				{
-					"doc": "The formula, in LaTeX.",
 					"name": "latex",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Insert an inline formula at the selection.",
 			"name": "insertInlineMath"
 		},
+		/** Insert a block formula at the selection. */
 		{
 			"args": [
+				/** The formula, in LaTeX. */
 				{
-					"doc": "The formula, in LaTeX.",
 					"name": "latex",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Insert a block formula at the selection.",
 			"name": "insertBlockMath"
 		}
 	],
@@ -1700,9 +1700,9 @@ export const mathematics = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The formula, in LaTeX. */
 				{
 					"default": "",
-					"doc": "The formula, in LaTeX.",
 					"name": "latex",
 					"type": {
 						"type": "string"
@@ -1714,9 +1714,9 @@ export const mathematics = {
 		},
 		{
 			"attrs": [
+				/** The formula, in LaTeX. */
 				{
 					"default": "",
-					"doc": "The formula, in LaTeX.",
 					"name": "latex",
 					"type": {
 						"type": "string"
