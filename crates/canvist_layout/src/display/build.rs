@@ -393,7 +393,9 @@ impl Builder<'_> {
 	}
 
 	/// Draw a moving piece one grapheme at a time, each where `motion` puts
-	/// it at `time`.
+	/// it at `time`. Kept out of line: inlined, it slows every still piece.
+	#[cold]
+	#[inline(never)]
 	fn kinetic(&mut self, glyphs: &Glyphs<'_>, piece: &Piece, style: &RunStyle, time: f32) {
 		use unicode_segmentation::UnicodeSegmentation;
 
