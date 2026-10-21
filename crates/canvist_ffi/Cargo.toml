@@ -13,12 +13,11 @@ publish = false
 readme = "readme.md"
 repository.workspace = true
 rust-version.workspace = true
-description = "Native (Swift, Kotlin and Dart) binding surface for the canvist canvas editor"
+description = "The canvist editor for iOS and Android: a typed, headless editor with layout, hit testing, a display list to paint, and Yjs collaboration, exported to Swift and Kotlin through UniFFI"
 
 [lib]
 # `staticlib` feeds the iOS XCFramework, `cdylib` feeds Android `jniLibs` and
-# UniFFI's library-mode bindgen, and `lib` lets other Rust adapters (the
-# Flutter bridge) wrap the same handle.
+# UniFFI's library-mode bindgen, and `lib` serves the tests and benchmarks.
 crate-type = ["lib", "staticlib", "cdylib"]
 
 [[bin]]
@@ -31,12 +30,20 @@ required-features = ["bindgen"]
 bindgen = ["uniffi/cli", "uniffi/cargo-metadata"]
 
 [dependencies]
+canvist_headless = { workspace = true, features = ["starter-kit", "collab", "journal"] }
+canvist_layout = { workspace = true, features = ["editor"] }
+rustc-hash = { workspace = true, features = ["std"] }
+serde_json = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
+unicode-segmentation = { workspace = true }
 uniffi = { workspace = true }
+
+[dev-dependencies]
+divan = { workspace = true }
 
 [lints]
 workspace = true
 
 [[bench]]
-name = "round_trip"
+name = "keystroke"
 harness = false

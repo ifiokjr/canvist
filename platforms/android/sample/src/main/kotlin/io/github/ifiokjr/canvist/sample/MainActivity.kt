@@ -22,10 +22,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import io.github.ifiokjr.canvist.EditorException
-import io.github.ifiokjr.canvist.EditorHandle
+import io.github.ifiokjr.canvist.CanvistException
+import io.github.ifiokjr.canvist.DocFormat
+import io.github.ifiokjr.canvist.Editor
+import io.github.ifiokjr.canvist.PaintMeasurer
+import io.github.ifiokjr.canvist.coreVersion
+import io.github.ifiokjr.canvist.defaultEditorOptions
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,10 +44,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Appends text to a Rust-owned document and renders what Rust returns. */
+/** Appends text to a Rust-owned document and renders what Rust exports. */
 @Composable
 fun EditorScreen() {
-    val editor = remember { EditorHandle() }
+    val density = LocalDensity.current.density
+    val editor = remember { Editor(defaultEditorOptions(), PaintMeasurer(density)) }
     DisposableEffect(editor) { onDispose { editor.close() } }
 
     var draft by rememberSaveable { mutableStateOf("") }
@@ -52,13 +58,14 @@ fun EditorScreen() {
     fun append() {
         if (draft.isEmpty()) return
         try {
-            // The placeholder core counts offsets in Unicode scalar values.
-            val end = document.codePointCount(0, document.length).toUInt()
-            editor.insertText(end, draft)
-            document = editor.text()
+            val end = editor.textLength()
+            editor.select(end, end)
+            editor.insertText(draft)
+            document = editor.export(DocFormat.MARKDOWN)
             draft = ""
             failure = null
-        } catch (error: EditorException) {
+
+        } catch (error: CanvistException) {
             failure = error.message
         }
     }
@@ -90,8 +97,9 @@ fun EditorScreen() {
                 modifier = Modifier.testTag("document"),
             )
             failure?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
             Text(
-                "Rust core ${editor.version()}",
+                "Rust core ${coreVersion()}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

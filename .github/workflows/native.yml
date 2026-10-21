@@ -15,8 +15,8 @@ on:
       - ".github/workflows/native.yml"
       - "Cargo.lock"
       - "Cargo.toml"
-      - "crates/canvist_ffi/**"
-      - "crates/canvist_headless/**"
+      # canvist_ffi builds on every core crate.
+      - "crates/**"
       - "platforms/**"
       - "rust-toolchain.toml"
       - "tools/bench/size.json"
