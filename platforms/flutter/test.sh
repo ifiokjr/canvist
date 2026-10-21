@@ -37,7 +37,18 @@ if [ "${1:-}" = "--on-device" ]; then
 	if command -v adb >/dev/null && adb devices | grep -q "^${device}[[:space:]]"; then
 		adb -s "$device" shell settings put global hide_error_dialogs 1
 	fi
-	"${flutter[@]}" test "$entrypoint" "$define" -d "$device"
+	# Flutter installs, launches, and waits for the app's VM service with no
+	# timeout, so a stalled simulator prints nothing. Keep the verbose log,
+	# which names the last command Flutter ran, and show progress from it.
+	mkdir -p build
+	log="build/flutter-test.log"
+	progress='^([0-9]+:[0-9]{2} [+~-]|PERF )|Xcode build done|executing: .*simctl (install|launch) |Waiting for VM Service|VM Service URL on device'
+	if ! "${flutter[@]}" test "$entrypoint" "$define" -d "$device" --verbose 2>&1 |
+		tee "$log" |
+		{ grep --line-buffered -E "$progress" || true; }; then
+		tail -n 200 "$log"
+		exit 1
+	fi
 	patrol test --flutter-command "${flutter[*]}" --target patrol_test -d "$device"
 	exit
 fi

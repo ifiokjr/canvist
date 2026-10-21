@@ -88,6 +88,29 @@ jobs:
           # Debug builds on a shared runner's simulator.
           CANVIST_PERF_SLACK: "3"
 
+      # When the step above stalls, say where: the last commands Flutter ran,
+      # whether the app is installed, and what it logged. A Dart VM service
+      # line in the app's log that Flutter never saw means Flutter's log
+      # stream attached too late; no app log means install or launch hung.
+      - name: diagnose the simulator
+        if: failure()
+        working-directory: platforms/flutter/example
+        run: |
+          set -x
+          xcrun simctl list devices booted
+          grep -E 'executing:|Waiting for VM Service|VM Service URL' build/flutter-test.log | tail -n 15 || true
+          xcrun simctl get_app_container booted io.github.ifiokjr.canvist.canvistFlutterExample || true
+          xcrun simctl spawn booted log show --last 60m --style compact \
+            --predicate 'process == "Runner"' | tail -n 60 || true
+          pgrep -fl simctl || true
+
+      - name: upload flutter log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-flutter-test-log
+          path: platforms/flutter/example/build/flutter-test.log
+
       - name: upload xcresult
         if: failure()
         uses: actions/upload-artifact@v4
