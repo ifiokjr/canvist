@@ -18,10 +18,11 @@ import {
 	kinetic,
 	paragraph,
 } from "../src/full.ts";
+import { comparable } from "./descriptors.ts";
 
 test("ink and kinetic descriptors match what Rust reports", async () => {
 	using engine = await createEngine([ink, kinetic]);
-	const reported = (engine.metadata() as { name: string }[]).filter((entry) =>
+	const reported = comparable(engine.metadata()).filter((entry) =>
 		entry.name === "ink" || entry.name === "kinetic"
 	);
 	const byName = (list: readonly { name: string }[]) =>
@@ -29,7 +30,7 @@ test("ink and kinetic descriptors match what Rust reports", async () => {
 
 	assert.deepEqual(
 		byName(reported),
-		byName(JSON.parse(JSON.stringify([ink, kinetic]))),
+		comparable([ink, kinetic]),
 	);
 	assert.deepEqual(ink.nodes.map((node) => [node.kind, node.name]), [[
 		"block",
