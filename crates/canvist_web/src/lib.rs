@@ -586,6 +586,7 @@ impl WebEditor {
 
 	/// Undo or redo one step through the document's history, which is the
 	/// shared one for a shared document.
+	#[cfg(feature = "collab")]
 	fn history(&mut self, redo: bool) -> JsResult<bool> {
 		let update = self.doc.history_step(redo).map_err(headless)?;
 
@@ -593,6 +594,17 @@ impl WebEditor {
 			self.lay_out(&update.commit);
 			update.doc_changed() || update.selection_changed()
 		}))
+	}
+
+	/// Undo or redo one step through the editor's own history: without
+	/// collaboration nothing is shared.
+	#[cfg(not(feature = "collab"))]
+	fn history(&mut self, redo: bool) -> JsResult<bool> {
+		if redo {
+			self.edit(Editor::redo)
+		} else {
+			self.edit(Editor::undo)
+		}
 	}
 
 	/// Let layout account for `commit`.
