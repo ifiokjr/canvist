@@ -66,7 +66,7 @@ The budgets above are absolute: an operation fails when it takes longer than its
 
 ### `bench / speed`
 
-The check runs every divan benchmark in the crates the pull request can change (model, editor keystrokes, extensions, layout, collaboration, headless, scene, canvas, and paint) on the base and on the head, on one runner, in one job. The base is the commit the pull request merges into, so the comparison shows exactly what the pull request changes.
+The check runs every divan benchmark in the crates the pull request can change (model, editor keystrokes, extensions, layout, collaboration, headless, scene, canvas, paint, and desktop) on the base and on the head, on one runner, in one job. The base is the commit the pull request merges into, so the comparison shows exactly what the pull request changes.
 
 Each bench binary runs five times per side, alternating base and head so that a runner warming up or slowing down affects both. Every run gives one median per benchmark, and a time in the report is the median of those medians. A benchmark **regresses** only when both of these hold:
 
