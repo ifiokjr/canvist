@@ -1733,95 +1733,95 @@ export const mathematics = {
 /** The `findAndReplace` extension. */
 export const findAndReplace = {
 	"commands": [
+		/** Search for a term, or stop searching when it is empty. */
 		{
 			"args": [
+				/** The text to find. */
 				{
-					"doc": "The text to find.",
 					"name": "term",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Search for a term, or stop searching when it is empty.",
 			"name": "setSearchTerm"
 		},
+		/** Match case exactly, or ignore it. */
 		{
 			"args": [
+				/** Whether case must match. */
 				{
-					"doc": "Whether case must match.",
 					"name": "caseSensitive",
 					"type": {
 						"type": "bool"
 					}
 				}
 			],
-			"doc": "Match case exactly, or ignore it.",
 			"name": "setCaseSensitive"
 		},
+		/** Select the next match after the selection, wrapping at the end. */
 		{
 			"args": [],
-			"doc": "Select the next match after the selection, wrapping at the end.",
 			"name": "nextSearchResult"
 		},
+		/** Select the previous match before the selection, wrapping at the start. */
 		{
 			"args": [],
-			"doc": "Select the previous match before the selection, wrapping at the start.",
 			"name": "previousSearchResult"
 		},
+		/** Replace the selected match and select the next, or select the next match. */
 		{
 			"args": [
+				/** The text to put in place of a match. */
 				{
-					"doc": "The text to put in place of a match.",
 					"name": "replacement",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Replace the selected match and select the next, or select the next match.",
 			"name": "replace"
 		},
+		/** Replace every match of the search term. */
 		{
 			"args": [
+				/** The text to put in place of a match. */
 				{
-					"doc": "The text to put in place of a match.",
 					"name": "replacement",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Replace every match of the search term.",
 			"name": "replaceAll"
 		}
 	],
 	"name": "findAndReplace",
 	"nodes": [],
 	"queries": [
+		/** The search term, how many matches it has, and which one is selected, or null when not searching. */
 		{
 			"args": [],
-			"doc": "The search term, how many matches it has, and which one is selected, or null when not searching.",
 			"name": "searchResults",
 			"returns": {
 				"of": {
 					"fields": [
+						/** The search term. */
 						{
-							"doc": "The search term.",
 							"name": "term",
 							"type": {
 								"type": "string"
 							}
 						},
+						/** How many matches there are. */
 						{
-							"doc": "How many matches there are.",
 							"name": "count",
 							"type": {
 								"type": "int"
 							}
 						},
+						/** The index of the selected match, or null. */
 						{
-							"doc": "The index of the selected match, or null.",
 							"name": "current",
 							"type": {
 								"of": {
@@ -1830,8 +1830,8 @@ export const findAndReplace = {
 								"type": "nullable"
 							}
 						},
+						/** Whether case must match. */
 						{
-							"doc": "Whether case must match.",
 							"name": "caseSensitive",
 							"type": {
 								"type": "bool"
@@ -1849,53 +1849,53 @@ export const findAndReplace = {
 /** The `tableOfContents` extension. */
 export const tableOfContents = {
 	"commands": [
+		/** Put the caret at the start of a heading, by its place in the table of contents. */
 		{
 			"args": [
+				/** The heading's place in the table of contents, from zero. */
 				{
-					"doc": "The heading's place in the table of contents, from zero.",
 					"name": "index",
 					"type": {
 						"type": "int"
 					}
 				}
 			],
-			"doc": "Put the caret at the start of a heading, by its place in the table of contents.",
 			"name": "goToHeading"
 		}
 	],
 	"name": "tableOfContents",
 	"nodes": [],
 	"queries": [
+		/** The document's headings in order, with their levels, text, outline numbers, and which one the selection is under. */
 		{
 			"args": [],
-			"doc": "The document's headings in order, with their levels, text, outline numbers, and which one the selection is under.",
 			"name": "tableOfContents",
 			"returns": {
 				"of": {
 					"fields": [
+						/** The heading level, from 1. */
 						{
-							"doc": "The heading level, from 1.",
 							"name": "level",
 							"type": {
 								"type": "int"
 							}
 						},
+						/** The heading's text. */
 						{
-							"doc": "The heading's text.",
 							"name": "text",
 							"type": {
 								"type": "string"
 							}
 						},
+						/** Its outline number, such as `2.1`. */
 						{
-							"doc": "Its outline number, such as `2.1`.",
 							"name": "number",
 							"type": {
 								"type": "string"
 							}
 						},
+						/** Whether the selection is under it. */
 						{
-							"doc": "Whether the selection is under it.",
 							"name": "active",
 							"type": {
 								"type": "bool"
@@ -1913,30 +1913,30 @@ export const tableOfContents = {
 /** The `comments` extension. */
 export const comments = {
 	"commands": [
+		/** Add a thread to the selected text. */
 		{
 			"args": [
+				/** The thread's id, from the host. */
 				{
-					"doc": "The thread's id, from the host.",
 					"name": "threadId",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Add a thread to the selected text.",
 			"name": "setComment"
 		},
+		/** Remove a thread from the whole document. */
 		{
 			"args": [
+				/** The thread's id, from the host. */
 				{
-					"doc": "The thread's id, from the host.",
 					"name": "threadId",
 					"type": {
 						"type": "string"
 					}
 				}
 			],
-			"doc": "Remove a thread from the whole document.",
 			"name": "unsetComment"
 		}
 	],
@@ -1944,9 +1944,9 @@ export const comments = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The ids of the threads on this text. */
 				{
 					"default": [],
-					"doc": "The ids of the threads on this text.",
 					"name": "threads",
 					"type": {
 						"of": {
@@ -1961,9 +1961,9 @@ export const comments = {
 		}
 	],
 	"queries": [
+		/** The threads on the text at the selection head. */
 		{
 			"args": [],
-			"doc": "The threads on the text at the selection head.",
 			"name": "activeComments",
 			"returns": {
 				"of": {
@@ -1972,22 +1972,22 @@ export const comments = {
 				"type": "list"
 			}
 		},
+		/** Every thread in the document, in the order it first appears, with the text it covers. */
 		{
 			"args": [],
-			"doc": "Every thread in the document, in the order it first appears, with the text it covers.",
 			"name": "comments",
 			"returns": {
 				"of": {
 					"fields": [
+						/** The thread's id. */
 						{
-							"doc": "The thread's id.",
 							"name": "threadId",
 							"type": {
 								"type": "string"
 							}
 						},
+						/** The text it covers. */
 						{
-							"doc": "The text it covers.",
 							"name": "text",
 							"type": {
 								"type": "string"
@@ -2005,27 +2005,27 @@ export const comments = {
 /** The `dragHandle` extension. */
 export const dragHandle = {
 	"commands": [
+		/** Move the selected blocks up past their previous sibling. */
 		{
 			"args": [],
-			"doc": "Move the selected blocks up past their previous sibling.",
 			"name": "moveBlockUp"
 		},
+		/** Move the selected blocks down past their next sibling. */
 		{
 			"args": [],
-			"doc": "Move the selected blocks down past their next sibling.",
 			"name": "moveBlockDown"
 		},
+		/** Move the selected blocks to just before a sibling, by its index, as a drop does. */
 		{
 			"args": [
+				/** The sibling to move before, from zero; past the last moves to the end. */
 				{
-					"doc": "The sibling to move before, from zero; past the last moves to the end.",
 					"name": "index",
 					"type": {
 						"type": "int"
 					}
 				}
 			],
-			"doc": "Move the selected blocks to just before a sibling, by its index, as a drop does.",
 			"name": "moveBlocksTo"
 		}
 	],
@@ -2037,19 +2037,19 @@ export const dragHandle = {
 /** The `clearFormatting` extension. */
 export const clearFormatting = {
 	"commands": [
+		/** Remove every mark from the selection. */
 		{
 			"args": [],
-			"doc": "Remove every mark from the selection.",
 			"name": "unsetAllMarks"
 		},
+		/** Turn the selected blocks into plain paragraphs, out of quotes and lists. */
 		{
 			"args": [],
-			"doc": "Turn the selected blocks into plain paragraphs, out of quotes and lists.",
 			"name": "clearNodes"
 		},
+		/** Remove every mark and turn the selected blocks into plain paragraphs. */
 		{
 			"args": [],
-			"doc": "Remove every mark and turn the selected blocks into plain paragraphs.",
 			"name": "clearFormatting"
 		}
 	],
