@@ -122,6 +122,18 @@ pub enum DisplayItem {
 		/// The colour.
 		color: Rgba,
 	},
+	/// A freehand stroke through `points`, drawn as straight segments with
+	/// round caps and joins. One point draws a dot.
+	Stroke {
+		/// The points, as `x, y` pairs in document coordinates.
+		points: Vec<f32>,
+		/// The line width.
+		width: f32,
+		/// The colour.
+		color: Rgba,
+		/// The area the stroke paints, its round caps included.
+		bounds: Bounds,
+	},
 	/// A task list item's checkbox.
 	Checkbox {
 		/// The box.
@@ -204,6 +216,19 @@ fn record(item: &LayoutItem, doc: &Document) -> DisplayItem {
 				color: (*color).into(),
 			}
 		}
+		LayoutItem::Stroke {
+			points,
+			width,
+			color,
+			..
+		} => {
+			DisplayItem::Stroke {
+				points: points.to_vec(),
+				width: *width,
+				color: (*color).into(),
+				bounds: item.bounds().into(),
+			}
+		}
 		LayoutItem::Slot {
 			kind, rect, block, ..
 		} => slot(doc, kind, *block, *rect),
@@ -246,5 +271,41 @@ fn slot(doc: &Document, kind: &SlotKind, block: BlockId, rect: Rect) -> DisplayI
 	DisplayItem::Slot {
 		bounds: rect.into(),
 		name,
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use std::sync::Arc;
+
+	use canvist_headless::canvist_model::BlockSpec;
+	use canvist_headless::canvist_model::Schema;
+	use canvist_layout::Color;
+
+	use super::*;
+
+	#[test]
+	fn an_ink_stroke_keeps_its_points_width_and_colour() {
+		let schema = Schema::builder()
+			.block(BlockSpec::text("paragraph"))
+			.build()
+			.expect("valid schema");
+		let doc = Document::new(Arc::new(schema), 1);
+		let item = LayoutItem::Stroke {
+			points: Arc::from([1.0, 2.0, 3.0, 4.0]),
+			width: 2.5,
+			color: Color::rgb(10, 20, 30),
+			block: BlockId::new(1, 0),
+		};
+
+		assert_eq!(
+			record(&item, &doc),
+			DisplayItem::Stroke {
+				points: vec![1.0, 2.0, 3.0, 4.0],
+				width: 2.5,
+				color: Color::rgb(10, 20, 30).into(),
+				bounds: Rect::new(-0.25, 0.75, 4.5, 4.5).into(),
+			}
+		);
 	}
 }

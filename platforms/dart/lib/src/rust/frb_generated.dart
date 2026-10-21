@@ -2838,6 +2838,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Float32List dco_decode_list_prim_f_32_strict(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as Float32List;
+  }
+
+  @protected
   Uint32List dco_decode_list_prim_u_32_strict(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as Uint32List;
@@ -3026,8 +3032,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ViewItem dco_decode_view_item(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 13)
-      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
+    if (arr.length != 15)
+      throw Exception('unexpected arr length: expect 15 but see ${arr.length}');
     return ViewItem(
       kind: dco_decode_view_item_kind(arr[0]),
       x: dco_decode_f_32(arr[1]),
@@ -3042,6 +3048,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       letterSpacing: dco_decode_f_32(arr[10]),
       rtl: dco_decode_bool(arr[11]),
       checked: dco_decode_bool(arr[12]),
+      points: dco_decode_list_prim_f_32_strict(arr[13]),
+      lineWidth: dco_decode_f_32(arr[14]),
     );
   }
 
@@ -3407,6 +3415,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  Float32List sse_decode_list_prim_f_32_strict(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var len_ = sse_decode_i_32(deserializer);
+    return deserializer.buffer.getFloat32List(len_);
+  }
+
+  @protected
   Uint32List sse_decode_list_prim_u_32_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
@@ -3675,6 +3690,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_letterSpacing = sse_decode_f_32(deserializer);
     var var_rtl = sse_decode_bool(deserializer);
     var var_checked = sse_decode_bool(deserializer);
+    var var_points = sse_decode_list_prim_f_32_strict(deserializer);
+    var var_lineWidth = sse_decode_f_32(deserializer);
     return ViewItem(
       kind: var_kind,
       x: var_x,
@@ -3689,6 +3706,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       letterSpacing: var_letterSpacing,
       rtl: var_rtl,
       checked: var_checked,
+      points: var_points,
+      lineWidth: var_lineWidth,
     );
   }
 
@@ -4053,6 +4072,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_list_prim_f_32_strict(
+    Float32List self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.length, serializer);
+    serializer.buffer.putFloat32List(self);
+  }
+
+  @protected
   void sse_encode_list_prim_u_32_strict(
     Uint32List self,
     SseSerializer serializer,
@@ -4308,6 +4337,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_f_32(self.letterSpacing, serializer);
     sse_encode_bool(self.rtl, serializer);
     sse_encode_bool(self.checked, serializer);
+    sse_encode_list_prim_f_32_strict(self.points, serializer);
+    sse_encode_f_32(self.lineWidth, serializer);
   }
 
   @protected
