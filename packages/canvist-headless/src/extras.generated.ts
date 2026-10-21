@@ -2061,31 +2061,32 @@ export const clearFormatting = {
 /** The `ink` extension. */
 export const ink = {
 	"commands": [
+		/** Insert an empty drawing at the selection. */
 		{
 			"args": [
+				/** The height in drawing units, from 1 to 4000. */
 				{
 					"default": 400,
-					"doc": "The height in drawing units, from 1 to 4000.",
 					"name": "height",
 					"type": {
 						"type": "int"
 					}
 				}
 			],
-			"doc": "Insert an empty drawing at the selection.",
 			"name": "insertInk"
 		},
+		/** Add a stroke to a drawing. */
 		{
 			"args": [
+				/** Which drawing, by its place in `inks`, from zero. */
 				{
-					"doc": "Which drawing, by its place in `inks`, from zero.",
 					"name": "ink",
 					"type": {
 						"type": "int"
 					}
 				},
+				/** `x, y` pairs in drawing units. */
 				{
-					"doc": "`x, y` pairs in drawing units.",
 					"name": "points",
 					"type": {
 						"of": {
@@ -2094,9 +2095,9 @@ export const ink = {
 						"type": "list"
 					}
 				},
+				/** A `#rrggbb` colour, or null for the text colour. */
 				{
 					"default": null,
-					"doc": "A `#rrggbb` colour, or null for the text colour.",
 					"name": "color",
 					"type": {
 						"of": {
@@ -2105,9 +2106,9 @@ export const ink = {
 						"type": "nullable"
 					}
 				},
+				/** The width in drawing units, or null for the theme's. */
 				{
 					"default": null,
-					"doc": "The width in drawing units, or null for the theme's.",
 					"name": "width",
 					"type": {
 						"of": {
@@ -2117,33 +2118,32 @@ export const ink = {
 					}
 				}
 			],
-			"doc": "Add a stroke to a drawing.",
 			"name": "addInkStroke"
 		},
+		/** Remove the last stroke of a drawing. */
 		{
 			"args": [
+				/** Which drawing, by its place in `inks`, from zero. */
 				{
-					"doc": "Which drawing, by its place in `inks`, from zero.",
 					"name": "ink",
 					"type": {
 						"type": "int"
 					}
 				}
 			],
-			"doc": "Remove the last stroke of a drawing.",
 			"name": "undoInkStroke"
 		},
+		/** Remove every stroke of a drawing. */
 		{
 			"args": [
+				/** Which drawing, by its place in `inks`, from zero. */
 				{
-					"doc": "Which drawing, by its place in `inks`, from zero.",
 					"name": "ink",
 					"type": {
 						"type": "int"
 					}
 				}
 			],
-			"doc": "Remove every stroke of a drawing.",
 			"name": "clearInk"
 		}
 	],
@@ -2151,23 +2151,23 @@ export const ink = {
 	"nodes": [
 		{
 			"attrs": [
+				/** The height in drawing units; the width is always 1000. */
 				{
 					"default": 400,
-					"doc": "The height in drawing units; the width is always 1000.",
 					"name": "height",
 					"type": {
 						"type": "int"
 					}
 				},
+				/** The strokes, oldest first. */
 				{
 					"default": [],
-					"doc": "The strokes, oldest first.",
 					"name": "strokes",
 					"type": {
 						"of": {
 							"fields": [
+								/** `x, y` pairs in drawing units. */
 								{
-									"doc": "`x, y` pairs in drawing units.",
 									"name": "points",
 									"type": {
 										"of": {
@@ -2176,9 +2176,9 @@ export const ink = {
 										"type": "list"
 									}
 								},
+								/** A `#rrggbb` colour, or null for the text colour. */
 								{
 									"default": null,
-									"doc": "A `#rrggbb` colour, or null for the text colour.",
 									"name": "color",
 									"type": {
 										"of": {
@@ -2187,9 +2187,9 @@ export const ink = {
 										"type": "nullable"
 									}
 								},
+								/** The width in drawing units, or null for the theme's. */
 								{
 									"default": null,
-									"doc": "The width in drawing units, or null for the theme's.",
 									"name": "width",
 									"type": {
 										"of": {
@@ -2210,22 +2210,22 @@ export const ink = {
 		}
 	],
 	"queries": [
+		/** Every drawing in the document, in order, with its height and how many strokes it has. */
 		{
 			"args": [],
-			"doc": "Every drawing in the document, in order, with its height and how many strokes it has.",
 			"name": "inks",
 			"returns": {
 				"of": {
 					"fields": [
+						/** The height in drawing units. */
 						{
-							"doc": "The height in drawing units.",
 							"name": "height",
 							"type": {
 								"type": "int"
 							}
 						},
+						/** How many strokes it has. */
 						{
-							"doc": "How many strokes it has.",
 							"name": "strokes",
 							"type": {
 								"type": "int"
@@ -2243,11 +2243,12 @@ export const ink = {
 /** The `kinetic` extension. */
 export const kinetic = {
 	"commands": [
+		/** Make the selection move. */
 		{
 			"args": [
+				/** How the text moves: wave, shake, pulse, or rainbow. */
 				{
 					"default": "wave",
-					"doc": "How the text moves: wave, shake, pulse, or rainbow.",
 					"name": "effect",
 					"type": {
 						"enum": [
@@ -2260,14 +2261,14 @@ export const kinetic = {
 					}
 				}
 			],
-			"doc": "Make the selection move.",
 			"name": "setKinetic"
 		},
+		/** Make the selection move, or still when it already does. */
 		{
 			"args": [
+				/** How the text moves: wave, shake, pulse, or rainbow. */
 				{
 					"default": "wave",
-					"doc": "How the text moves: wave, shake, pulse, or rainbow.",
 					"name": "effect",
 					"type": {
 						"enum": [
@@ -2280,12 +2281,11 @@ export const kinetic = {
 					}
 				}
 			],
-			"doc": "Make the selection move, or still when it already does.",
 			"name": "toggleKinetic"
 		},
+		/** Make the selection still. */
 		{
 			"args": [],
-			"doc": "Make the selection still.",
 			"name": "unsetKinetic"
 		}
 	],
@@ -2293,9 +2293,9 @@ export const kinetic = {
 	"nodes": [
 		{
 			"attrs": [
+				/** How the text moves: wave, shake, pulse, or rainbow. */
 				{
 					"default": "wave",
-					"doc": "How the text moves: wave, shake, pulse, or rainbow.",
 					"name": "effect",
 					"type": {
 						"enum": [
@@ -2313,9 +2313,9 @@ export const kinetic = {
 		}
 	],
 	"queries": [
+		/** How the text at the selection moves, or null when it is still. */
 		{
 			"args": [],
-			"doc": "How the text at the selection moves, or null when it is still.",
 			"name": "kineticEffect",
 			"returns": {
 				"of": {
