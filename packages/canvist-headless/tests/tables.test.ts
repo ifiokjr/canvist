@@ -12,6 +12,7 @@ import { test } from "node:test";
 import * as Y from "yjs";
 
 import { createEngine, starterKit, table } from "../src/full.ts";
+import { comparable } from "./descriptors.ts";
 
 const withTable = [...starterKit, table] as const;
 
@@ -49,11 +50,11 @@ const inTable = [
 
 test("the table descriptor matches what Rust reports", async () => {
 	using engine = await createEngine(withTable);
-	const reported = (engine.metadata() as { name: string }[]).find((
+	const reported = comparable(engine.metadata()).find((
 		extension,
 	) => extension.name === "table");
 
-	assert.deepEqual(reported, JSON.parse(JSON.stringify(table)));
+	assert.deepEqual(reported, comparable([table])[0]);
 	assert.deepEqual(
 		table.commands.map((command) => command.name).sort(),
 		[...inTable, "insertTable", "setCellAttribute"].sort(),
