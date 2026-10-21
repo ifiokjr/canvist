@@ -135,6 +135,20 @@ final class CharacterCountHandle extends ExtensionHandle {
   );
 }
 
+/// The commands and queries of `clearFormatting`.
+final class ClearFormattingHandle extends ExtensionHandle {
+  ClearFormattingHandle._(super.registration) : super._();
+
+  /// Remove every mark from the selection.
+  Command unsetAllMarks() => _command('unsetAllMarks', const {});
+
+  /// Turn the selected blocks into plain paragraphs, out of quotes and lists.
+  Command clearNodes() => _command('clearNodes', const {});
+
+  /// Remove every mark and turn the selected blocks into plain paragraphs.
+  Command clearFormatting() => _command('clearFormatting', const {});
+}
+
 /// The commands and queries of `code`.
 final class CodeHandle extends ExtensionHandle {
   CodeHandle._(super.registration) : super._();
@@ -196,6 +210,43 @@ final class ColorHandle extends ExtensionHandle {
       _query('color', (json) => json == null ? null : json as String);
 }
 
+/// The commands and queries of `comments`.
+final class CommentsHandle extends ExtensionHandle {
+  CommentsHandle._(super.registration) : super._();
+
+  /// Add a thread to the selected text.
+  ///
+  /// [threadId]: The thread's id, from the host.
+  Command setComment({required String threadId}) =>
+      _command('setComment', {'threadId': threadId});
+
+  /// Remove a thread from the whole document.
+  ///
+  /// [threadId]: The thread's id, from the host.
+  Command unsetComment({required String threadId}) =>
+      _command('unsetComment', {'threadId': threadId});
+
+  /// The threads on the text at the selection head.
+  Query<List<String>> activeComments() => _query(
+    'activeComments',
+    (json) => [for (final item0 in json! as List<Object?>) item0! as String],
+  );
+
+  /// Every thread in the document, in the order it first appears, with the text it covers.
+  Query<List<({String threadId, String text})>> comments() => _query(
+    'comments',
+    (json) => [
+      for (final item0 in json! as List<Object?>)
+        switch (item0! as Map<String, Object?>) {
+          final map1 => (
+            threadId: map1['threadId']! as String,
+            text: map1['text']! as String,
+          ),
+        },
+    ],
+  );
+}
+
 /// The commands and queries of `details`.
 final class DetailsHandle extends ExtensionHandle {
   DetailsHandle._(super.registration) : super._();
@@ -212,6 +263,23 @@ final class DetailsHandle extends ExtensionHandle {
   /// Whether the details around the selection is open, or null outside one.
   Query<bool?> detailsOpen() =>
       _query('detailsOpen', (json) => json == null ? null : json as bool);
+}
+
+/// The commands and queries of `dragHandle`.
+final class DragHandleHandle extends ExtensionHandle {
+  DragHandleHandle._(super.registration) : super._();
+
+  /// Move the selected blocks up past their previous sibling.
+  Command moveBlockUp() => _command('moveBlockUp', const {});
+
+  /// Move the selected blocks down past their next sibling.
+  Command moveBlockDown() => _command('moveBlockDown', const {});
+
+  /// Move the selected blocks to just before a sibling, by its index, as a drop does.
+  ///
+  /// [index]: The sibling to move before, from zero; past the last moves to the end.
+  Command moveBlocksTo({required int index}) =>
+      _command('moveBlocksTo', {'index': index});
 }
 
 /// The commands and queries of `emoji`.
@@ -288,6 +356,59 @@ final class FileHandle extends ExtensionHandle {
     'fileType': ?fileType,
     'fileSize': ?fileSize,
   });
+}
+
+/// The commands and queries of `findAndReplace`.
+final class FindAndReplaceHandle extends ExtensionHandle {
+  FindAndReplaceHandle._(super.registration) : super._();
+
+  /// Search for a term, or stop searching when it is empty.
+  ///
+  /// [term]: The text to find.
+  Command setSearchTerm({required String term}) =>
+      _command('setSearchTerm', {'term': term});
+
+  /// Match case exactly, or ignore it.
+  ///
+  /// [caseSensitive]: Whether case must match.
+  Command setCaseSensitive({required bool caseSensitive}) =>
+      _command('setCaseSensitive', {'caseSensitive': caseSensitive});
+
+  /// Select the next match after the selection, wrapping at the end.
+  Command nextSearchResult() => _command('nextSearchResult', const {});
+
+  /// Select the previous match before the selection, wrapping at the start.
+  Command previousSearchResult() => _command('previousSearchResult', const {});
+
+  /// Replace the selected match and select the next, or select the next match.
+  ///
+  /// [replacement]: The text to put in place of a match.
+  Command replace({required String replacement}) =>
+      _command('replace', {'replacement': replacement});
+
+  /// Replace every match of the search term.
+  ///
+  /// [replacement]: The text to put in place of a match.
+  Command replaceAll({required String replacement}) =>
+      _command('replaceAll', {'replacement': replacement});
+
+  /// The search term, how many matches it has, and which one is selected, or null when not searching.
+  Query<({String term, int count, int? current, bool caseSensitive})?>
+  searchResults() => _query(
+    'searchResults',
+    (json) => json == null
+        ? null
+        : switch (json as Map<String, Object?>) {
+            final map0 => (
+              term: map0['term']! as String,
+              count: (map0['count']! as num).toInt(),
+              current: map0['current'] == null
+                  ? null
+                  : (map0['current'] as num).toInt(),
+              caseSensitive: map0['caseSensitive']! as bool,
+            ),
+          },
+  );
 }
 
 /// The commands and queries of `fontFamily`.
@@ -785,6 +906,34 @@ final class TableHandle extends ExtensionHandle {
   );
 }
 
+/// The commands and queries of `tableOfContents`.
+final class TableOfContentsHandle extends ExtensionHandle {
+  TableOfContentsHandle._(super.registration) : super._();
+
+  /// Put the caret at the start of a heading, by its place in the table of contents.
+  ///
+  /// [index]: The heading's place in the table of contents, from zero.
+  Command goToHeading({required int index}) =>
+      _command('goToHeading', {'index': index});
+
+  /// The document's headings in order, with their levels, text, outline numbers, and which one the selection is under.
+  Query<List<({int level, String text, String number, bool active})>>
+  tableOfContents() => _query(
+    'tableOfContents',
+    (json) => [
+      for (final item0 in json! as List<Object?>)
+        switch (item0! as Map<String, Object?>) {
+          final map1 => (
+            level: (map1['level']! as num).toInt(),
+            text: map1['text']! as String,
+            number: map1['number']! as String,
+            active: map1['active']! as bool,
+          ),
+        },
+    ],
+  );
+}
+
 /// The commands and queries of `taskList`.
 final class TaskListHandle extends ExtensionHandle {
   TaskListHandle._(super.registration) : super._();
@@ -987,6 +1136,14 @@ final class CharacterCountExtension extends Extension<CharacterCountHandle> {
       CharacterCountHandle._(registration);
 }
 
+/// Registers `clearFormatting`.
+final class ClearFormattingExtension extends Extension<ClearFormattingHandle> {
+  const ClearFormattingExtension._() : super('clearFormatting');
+  @override
+  ClearFormattingHandle _handle(Registration registration) =>
+      ClearFormattingHandle._(registration);
+}
+
 /// Registers `code`.
 final class CodeExtension extends Extension<CodeHandle> {
   const CodeExtension._() : super('code');
@@ -1009,12 +1166,28 @@ final class ColorExtension extends Extension<ColorHandle> {
   ColorHandle _handle(Registration registration) => ColorHandle._(registration);
 }
 
+/// Registers `comments`.
+final class CommentsExtension extends Extension<CommentsHandle> {
+  const CommentsExtension._() : super('comments');
+  @override
+  CommentsHandle _handle(Registration registration) =>
+      CommentsHandle._(registration);
+}
+
 /// Registers `details`.
 final class DetailsExtension extends Extension<DetailsHandle> {
   const DetailsExtension._() : super('details');
   @override
   DetailsHandle _handle(Registration registration) =>
       DetailsHandle._(registration);
+}
+
+/// Registers `dragHandle`.
+final class DragHandleExtension extends Extension<DragHandleHandle> {
+  const DragHandleExtension._() : super('dragHandle');
+  @override
+  DragHandleHandle _handle(Registration registration) =>
+      DragHandleHandle._(registration);
 }
 
 /// Registers `emoji`.
@@ -1029,6 +1202,14 @@ final class FileExtension extends Extension<FileHandle> {
   const FileExtension._() : super('file');
   @override
   FileHandle _handle(Registration registration) => FileHandle._(registration);
+}
+
+/// Registers `findAndReplace`.
+final class FindAndReplaceExtension extends Extension<FindAndReplaceHandle> {
+  const FindAndReplaceExtension._() : super('findAndReplace');
+  @override
+  FindAndReplaceHandle _handle(Registration registration) =>
+      FindAndReplaceHandle._(registration);
 }
 
 /// Registers `fontFamily`.
@@ -1196,6 +1377,14 @@ final class TableExtension extends Extension<TableHandle> {
   TableHandle _handle(Registration registration) => TableHandle._(registration);
 }
 
+/// Registers `tableOfContents`.
+final class TableOfContentsExtension extends Extension<TableOfContentsHandle> {
+  const TableOfContentsExtension._() : super('tableOfContents');
+  @override
+  TableOfContentsHandle _handle(Registration registration) =>
+      TableOfContentsHandle._(registration);
+}
+
 /// Registers `taskList`.
 final class TaskListExtension extends Extension<TaskListHandle> {
   const TaskListExtension._() : super('taskList');
@@ -1283,6 +1472,9 @@ abstract final class Extensions {
   /// The `characterCount` extension.
   static const characterCount = CharacterCountExtension._();
 
+  /// The `clearFormatting` extension.
+  static const clearFormatting = ClearFormattingExtension._();
+
   /// The `code` extension.
   static const code = CodeExtension._();
 
@@ -1292,14 +1484,23 @@ abstract final class Extensions {
   /// The `color` extension.
   static const color = ColorExtension._();
 
+  /// The `comments` extension.
+  static const comments = CommentsExtension._();
+
   /// The `details` extension.
   static const details = DetailsExtension._();
+
+  /// The `dragHandle` extension.
+  static const dragHandle = DragHandleExtension._();
 
   /// The `emoji` extension.
   static const emoji = EmojiExtension._();
 
   /// The `file` extension.
   static const file = FileExtension._();
+
+  /// The `findAndReplace` extension.
+  static const findAndReplace = FindAndReplaceExtension._();
 
   /// The `fontFamily` extension.
   static const fontFamily = FontFamilyExtension._();
@@ -1364,6 +1565,9 @@ abstract final class Extensions {
   /// The `table` extension.
   static const table = TableExtension._();
 
+  /// The `tableOfContents` extension.
+  static const tableOfContents = TableOfContentsExtension._();
+
   /// The `taskList` extension.
   static const taskList = TaskListExtension._();
 
@@ -1418,12 +1622,16 @@ abstract final class Extensions {
     bulletList,
     callout,
     characterCount,
+    clearFormatting,
     code,
     codeBlock,
     color,
+    comments,
     details,
+    dragHandle,
     emoji,
     file,
+    findAndReplace,
     fontFamily,
     fontSize,
     hardBreak,
@@ -1445,6 +1653,7 @@ abstract final class Extensions {
     subscript,
     superscript,
     table,
+    tableOfContents,
     taskList,
     textAlign,
     textStyle,

@@ -64,6 +64,11 @@
 //! | [`Callout`]         | `callout`          | `callout`, `:::warning `                 |
 //! | [`Mathematics`]     | `mathematics`      | `inlineMath`, `blockMath`, `$$x$$`       |
 //! | [`Table`]           | `table`            | `table`, rows, cells, and header cells   |
+//! | [`FindAndReplace`]  | `findAndReplace`   | search, step, and replace                |
+//! | [`TableOfContents`] | `tableOfContents`  | the headings as an outline               |
+//! | [`Comments`]        | `comments`         | `comment`, thread ids on text            |
+//! | [`DragHandle`]      | `dragHandle`       | move blocks, Alt-↑ and Alt-↓             |
+//! | [`ClearFormatting`] | `clearFormatting`  | marks off, blocks to paragraphs, `Mod-\` |
 //!
 //! `docs/src/extensions/parity.md` compares the whole set with Remirror and
 //! TipTap.
@@ -158,6 +163,14 @@ mod ordered_list;
 #[cfg(feature = "placeholder")]
 mod placeholder;
 
+#[cfg(feature = "clear-formatting")]
+mod clear_formatting;
+#[cfg(feature = "comments")]
+mod comments;
+#[cfg(feature = "drag-handle")]
+mod drag_handle;
+#[cfg(feature = "find-and-replace")]
+mod find;
 mod paragraph;
 mod resolve;
 mod starter_kit;
@@ -171,6 +184,8 @@ mod task_list;
 mod text_align;
 #[cfg(feature = "text-style")]
 mod text_style;
+#[cfg(feature = "table-of-contents")]
+mod toc;
 #[cfg(feature = "trailing-node")]
 mod trailing_node;
 #[cfg(feature = "typography")]
@@ -194,20 +209,38 @@ pub use callout::CalloutType;
 pub use character_count::CharacterCount;
 #[cfg(feature = "character-count")]
 pub use character_count::CharacterCountHandle;
+#[cfg(feature = "clear-formatting")]
+pub use clear_formatting::ClearFormatting;
+#[cfg(feature = "clear-formatting")]
+pub use clear_formatting::ClearFormattingHandle;
 #[cfg(feature = "code-block")]
 pub use code_block::CodeBlock;
 #[cfg(feature = "code-block")]
 pub use code_block::CodeBlockHandle;
+#[cfg(feature = "comments")]
+pub use comments::Comments;
+#[cfg(feature = "comments")]
+pub use comments::CommentsHandle;
 #[cfg(feature = "details")]
 pub use details::Details;
 #[cfg(feature = "details")]
 pub use details::DetailsHandle;
+#[cfg(feature = "drag-handle")]
+pub use drag_handle::DragHandle;
+#[cfg(feature = "drag-handle")]
+pub use drag_handle::DragHandleHandle;
 #[cfg(feature = "emoji")]
 pub use emoji::Emoji;
 #[cfg(feature = "emoji")]
 pub use emoji::EmojiHandle;
 #[cfg(feature = "extras")]
 pub use extras::extras;
+#[cfg(feature = "find-and-replace")]
+pub use find::FindAndReplace;
+#[cfg(feature = "find-and-replace")]
+pub use find::FindAndReplaceHandle;
+#[cfg(feature = "find-and-replace")]
+pub use find::SearchMatch;
 #[cfg(feature = "hard-break")]
 pub use hard_break::HardBreak;
 #[cfg(feature = "hard-break")]
@@ -341,6 +374,12 @@ pub use text_style::StyleAttrHandle;
 pub use text_style::TextStyle;
 #[cfg(feature = "text-style")]
 pub use text_style::TextStyleHandle;
+#[cfg(feature = "table-of-contents")]
+pub use toc::TableOfContents;
+#[cfg(feature = "table-of-contents")]
+pub use toc::TableOfContentsHandle;
+#[cfg(feature = "table-of-contents")]
+pub use toc::TocEntry;
 #[cfg(feature = "trailing-node")]
 pub use trailing_node::TrailingNode;
 #[cfg(feature = "typography")]

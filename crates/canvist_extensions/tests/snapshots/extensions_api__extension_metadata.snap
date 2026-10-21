@@ -2397,6 +2397,324 @@ expression: editor.metadata_json()
     "queries": []
   },
   {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The text to find.",
+            "name": "term",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Search for a term, or stop searching when it is empty.",
+        "name": "setSearchTerm"
+      },
+      {
+        "args": [
+          {
+            "doc": "Whether case must match.",
+            "name": "caseSensitive",
+            "type": {
+              "type": "bool"
+            }
+          }
+        ],
+        "doc": "Match case exactly, or ignore it.",
+        "name": "setCaseSensitive"
+      },
+      {
+        "args": [],
+        "doc": "Select the next match after the selection, wrapping at the end.",
+        "name": "nextSearchResult"
+      },
+      {
+        "args": [],
+        "doc": "Select the previous match before the selection, wrapping at the start.",
+        "name": "previousSearchResult"
+      },
+      {
+        "args": [
+          {
+            "doc": "The text to put in place of a match.",
+            "name": "replacement",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Replace the selected match and select the next, or select the next match.",
+        "name": "replace"
+      },
+      {
+        "args": [
+          {
+            "doc": "The text to put in place of a match.",
+            "name": "replacement",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Replace every match of the search term.",
+        "name": "replaceAll"
+      }
+    ],
+    "name": "findAndReplace",
+    "nodes": [],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The search term, how many matches it has, and which one is selected, or null when not searching.",
+        "name": "searchResults",
+        "returns": {
+          "of": {
+            "fields": [
+              {
+                "doc": "The search term.",
+                "name": "term",
+                "type": {
+                  "type": "string"
+                }
+              },
+              {
+                "doc": "How many matches there are.",
+                "name": "count",
+                "type": {
+                  "type": "int"
+                }
+              },
+              {
+                "doc": "The index of the selected match, or null.",
+                "name": "current",
+                "type": {
+                  "of": {
+                    "type": "int"
+                  },
+                  "type": "nullable"
+                }
+              },
+              {
+                "doc": "Whether case must match.",
+                "name": "caseSensitive",
+                "type": {
+                  "type": "bool"
+                }
+              }
+            ],
+            "type": "record"
+          },
+          "type": "nullable"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The heading's place in the table of contents, from zero.",
+            "name": "index",
+            "type": {
+              "type": "int"
+            }
+          }
+        ],
+        "doc": "Put the caret at the start of a heading, by its place in the table of contents.",
+        "name": "goToHeading"
+      }
+    ],
+    "name": "tableOfContents",
+    "nodes": [],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The document's headings in order, with their levels, text, outline numbers, and which one the selection is under.",
+        "name": "tableOfContents",
+        "returns": {
+          "of": {
+            "fields": [
+              {
+                "doc": "The heading level, from 1.",
+                "name": "level",
+                "type": {
+                  "type": "int"
+                }
+              },
+              {
+                "doc": "The heading's text.",
+                "name": "text",
+                "type": {
+                  "type": "string"
+                }
+              },
+              {
+                "doc": "Its outline number, such as `2.1`.",
+                "name": "number",
+                "type": {
+                  "type": "string"
+                }
+              },
+              {
+                "doc": "Whether the selection is under it.",
+                "name": "active",
+                "type": {
+                  "type": "bool"
+                }
+              }
+            ],
+            "type": "record"
+          },
+          "type": "list"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [
+          {
+            "doc": "The thread's id, from the host.",
+            "name": "threadId",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Add a thread to the selected text.",
+        "name": "setComment"
+      },
+      {
+        "args": [
+          {
+            "doc": "The thread's id, from the host.",
+            "name": "threadId",
+            "type": {
+              "type": "string"
+            }
+          }
+        ],
+        "doc": "Remove a thread from the whole document.",
+        "name": "unsetComment"
+      }
+    ],
+    "name": "comments",
+    "nodes": [
+      {
+        "attrs": [
+          {
+            "default": [],
+            "doc": "The ids of the threads on this text.",
+            "name": "threads",
+            "type": {
+              "of": {
+                "type": "string"
+              },
+              "type": "list"
+            }
+          }
+        ],
+        "kind": "mark",
+        "name": "comment"
+      }
+    ],
+    "queries": [
+      {
+        "args": [],
+        "doc": "The threads on the text at the selection head.",
+        "name": "activeComments",
+        "returns": {
+          "of": {
+            "type": "string"
+          },
+          "type": "list"
+        }
+      },
+      {
+        "args": [],
+        "doc": "Every thread in the document, in the order it first appears, with the text it covers.",
+        "name": "comments",
+        "returns": {
+          "of": {
+            "fields": [
+              {
+                "doc": "The thread's id.",
+                "name": "threadId",
+                "type": {
+                  "type": "string"
+                }
+              },
+              {
+                "doc": "The text it covers.",
+                "name": "text",
+                "type": {
+                  "type": "string"
+                }
+              }
+            ],
+            "type": "record"
+          },
+          "type": "list"
+        }
+      }
+    ]
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Move the selected blocks up past their previous sibling.",
+        "name": "moveBlockUp"
+      },
+      {
+        "args": [],
+        "doc": "Move the selected blocks down past their next sibling.",
+        "name": "moveBlockDown"
+      },
+      {
+        "args": [
+          {
+            "doc": "The sibling to move before, from zero; past the last moves to the end.",
+            "name": "index",
+            "type": {
+              "type": "int"
+            }
+          }
+        ],
+        "doc": "Move the selected blocks to just before a sibling, by its index, as a drop does.",
+        "name": "moveBlocksTo"
+      }
+    ],
+    "name": "dragHandle",
+    "nodes": [],
+    "queries": []
+  },
+  {
+    "commands": [
+      {
+        "args": [],
+        "doc": "Remove every mark from the selection.",
+        "name": "unsetAllMarks"
+      },
+      {
+        "args": [],
+        "doc": "Turn the selected blocks into plain paragraphs, out of quotes and lists.",
+        "name": "clearNodes"
+      },
+      {
+        "args": [],
+        "doc": "Remove every mark and turn the selected blocks into plain paragraphs.",
+        "name": "clearFormatting"
+      }
+    ],
+    "name": "clearFormatting",
+    "nodes": [],
+    "queries": []
+  },
+  {
     "commands": [],
     "name": "typography",
     "nodes": [],

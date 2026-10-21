@@ -1730,6 +1730,334 @@ export const mathematics = {
 	"queries": []
 } as const satisfies ExtensionDescriptor;
 
+/** The `findAndReplace` extension. */
+export const findAndReplace = {
+	"commands": [
+		/** Search for a term, or stop searching when it is empty. */
+		{
+			"args": [
+				/** The text to find. */
+				{
+					"name": "term",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"name": "setSearchTerm"
+		},
+		/** Match case exactly, or ignore it. */
+		{
+			"args": [
+				/** Whether case must match. */
+				{
+					"name": "caseSensitive",
+					"type": {
+						"type": "bool"
+					}
+				}
+			],
+			"name": "setCaseSensitive"
+		},
+		/** Select the next match after the selection, wrapping at the end. */
+		{
+			"args": [],
+			"name": "nextSearchResult"
+		},
+		/** Select the previous match before the selection, wrapping at the start. */
+		{
+			"args": [],
+			"name": "previousSearchResult"
+		},
+		/** Replace the selected match and select the next, or select the next match. */
+		{
+			"args": [
+				/** The text to put in place of a match. */
+				{
+					"name": "replacement",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"name": "replace"
+		},
+		/** Replace every match of the search term. */
+		{
+			"args": [
+				/** The text to put in place of a match. */
+				{
+					"name": "replacement",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"name": "replaceAll"
+		}
+	],
+	"name": "findAndReplace",
+	"nodes": [],
+	"queries": [
+		/** The search term, how many matches it has, and which one is selected, or null when not searching. */
+		{
+			"args": [],
+			"name": "searchResults",
+			"returns": {
+				"of": {
+					"fields": [
+						/** The search term. */
+						{
+							"name": "term",
+							"type": {
+								"type": "string"
+							}
+						},
+						/** How many matches there are. */
+						{
+							"name": "count",
+							"type": {
+								"type": "int"
+							}
+						},
+						/** The index of the selected match, or null. */
+						{
+							"name": "current",
+							"type": {
+								"of": {
+									"type": "int"
+								},
+								"type": "nullable"
+							}
+						},
+						/** Whether case must match. */
+						{
+							"name": "caseSensitive",
+							"type": {
+								"type": "bool"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `tableOfContents` extension. */
+export const tableOfContents = {
+	"commands": [
+		/** Put the caret at the start of a heading, by its place in the table of contents. */
+		{
+			"args": [
+				/** The heading's place in the table of contents, from zero. */
+				{
+					"name": "index",
+					"type": {
+						"type": "int"
+					}
+				}
+			],
+			"name": "goToHeading"
+		}
+	],
+	"name": "tableOfContents",
+	"nodes": [],
+	"queries": [
+		/** The document's headings in order, with their levels, text, outline numbers, and which one the selection is under. */
+		{
+			"args": [],
+			"name": "tableOfContents",
+			"returns": {
+				"of": {
+					"fields": [
+						/** The heading level, from 1. */
+						{
+							"name": "level",
+							"type": {
+								"type": "int"
+							}
+						},
+						/** The heading's text. */
+						{
+							"name": "text",
+							"type": {
+								"type": "string"
+							}
+						},
+						/** Its outline number, such as `2.1`. */
+						{
+							"name": "number",
+							"type": {
+								"type": "string"
+							}
+						},
+						/** Whether the selection is under it. */
+						{
+							"name": "active",
+							"type": {
+								"type": "bool"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "list"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `comments` extension. */
+export const comments = {
+	"commands": [
+		/** Add a thread to the selected text. */
+		{
+			"args": [
+				/** The thread's id, from the host. */
+				{
+					"name": "threadId",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"name": "setComment"
+		},
+		/** Remove a thread from the whole document. */
+		{
+			"args": [
+				/** The thread's id, from the host. */
+				{
+					"name": "threadId",
+					"type": {
+						"type": "string"
+					}
+				}
+			],
+			"name": "unsetComment"
+		}
+	],
+	"name": "comments",
+	"nodes": [
+		{
+			"attrs": [
+				/** The ids of the threads on this text. */
+				{
+					"default": [],
+					"name": "threads",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "list"
+					}
+				}
+			],
+			"kind": "mark",
+			"name": "comment"
+		}
+	],
+	"queries": [
+		/** The threads on the text at the selection head. */
+		{
+			"args": [],
+			"name": "activeComments",
+			"returns": {
+				"of": {
+					"type": "string"
+				},
+				"type": "list"
+			}
+		},
+		/** Every thread in the document, in the order it first appears, with the text it covers. */
+		{
+			"args": [],
+			"name": "comments",
+			"returns": {
+				"of": {
+					"fields": [
+						/** The thread's id. */
+						{
+							"name": "threadId",
+							"type": {
+								"type": "string"
+							}
+						},
+						/** The text it covers. */
+						{
+							"name": "text",
+							"type": {
+								"type": "string"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "list"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `dragHandle` extension. */
+export const dragHandle = {
+	"commands": [
+		/** Move the selected blocks up past their previous sibling. */
+		{
+			"args": [],
+			"name": "moveBlockUp"
+		},
+		/** Move the selected blocks down past their next sibling. */
+		{
+			"args": [],
+			"name": "moveBlockDown"
+		},
+		/** Move the selected blocks to just before a sibling, by its index, as a drop does. */
+		{
+			"args": [
+				/** The sibling to move before, from zero; past the last moves to the end. */
+				{
+					"name": "index",
+					"type": {
+						"type": "int"
+					}
+				}
+			],
+			"name": "moveBlocksTo"
+		}
+	],
+	"name": "dragHandle",
+	"nodes": [],
+	"queries": []
+} as const satisfies ExtensionDescriptor;
+
+/** The `clearFormatting` extension. */
+export const clearFormatting = {
+	"commands": [
+		/** Remove every mark from the selection. */
+		{
+			"args": [],
+			"name": "unsetAllMarks"
+		},
+		/** Turn the selected blocks into plain paragraphs, out of quotes and lists. */
+		{
+			"args": [],
+			"name": "clearNodes"
+		},
+		/** Remove every mark and turn the selected blocks into plain paragraphs. */
+		{
+			"args": [],
+			"name": "clearFormatting"
+		}
+	],
+	"name": "clearFormatting",
+	"nodes": [],
+	"queries": []
+} as const satisfies ExtensionDescriptor;
+
 /** The `typography` extension. */
 export const typography = {
 	"commands": [],
@@ -2027,7 +2355,7 @@ export const table = {
 } as const satisfies ExtensionDescriptor;
 
 /** Every extension beyond the StarterKit, which `@canvist/headless/full` compiles in. */
-export const extras = [textStyle, mention, details, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, image, youtube, twitch, audio, file, callout, mathematics, typography, table] as const;
+export const extras = [textStyle, mention, details, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, image, youtube, twitch, audio, file, callout, mathematics, findAndReplace, tableOfContents, comments, dragHandle, clearFormatting, typography, table] as const;
 
 /** Every optional extension canvist ships, the StarterKit's included. */
 export const allExtensions = [...starterKit, ...extras] as const;

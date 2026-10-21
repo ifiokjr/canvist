@@ -1,0 +1,604 @@
+{
+	"description": "Document tools: find and replace, the table of contents, comments, moving blocks, and clearing formatting.",
+	"cases": [
+		{
+			"name": "finds, steps through, and replaces matches",
+			"requires": ["extensions"],
+			"extensions": ["findAndReplace"],
+			"input": { "format": "markdown", "content": "one fish two fish\n\nred Fish" },
+			"steps": [
+				{ "op": "query", "query": "searchResults", "expect": null },
+				{ "op": "run", "command": "setSearchTerm", "args": { "term": "fish" }, "applied": true },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "fish", "count": 3, "current": null, "caseSensitive": false }
+				},
+				{ "op": "select", "anchor": { "path": [0], "offset": 0 } },
+				{ "op": "run", "command": "nextSearchResult", "applied": true },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "fish", "count": 3, "current": 0, "caseSensitive": false }
+				},
+				{ "op": "run", "command": "replace", "args": { "replacement": "cat" }, "applied": true },
+				{
+					"op": "run",
+					"command": "setCaseSensitive",
+					"args": { "caseSensitive": true },
+					"applied": true
+				},
+				{ "op": "run", "command": "replaceAll", "args": { "replacement": "dog" }, "applied": true },
+				{ "op": "run", "command": "replace", "error": "invalidArgs" }
+			],
+			"expect": { "markdown": "one cat two dog\n\nred Fish" }
+		},
+		{
+			"name": "lists headings as an outline and goes to one",
+			"requires": ["extensions"],
+			"extensions": ["tableOfContents"],
+			"input": { "format": "markdown", "content": "# Intro\n\n### Detail\n\n## Part" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [1], "offset": 2 } },
+				{
+					"op": "query",
+					"query": "tableOfContents",
+					"expect": [
+						{ "level": 1, "text": "Intro", "number": "1", "active": false },
+						{ "level": 3, "text": "Detail", "number": "1.1", "active": true },
+						{ "level": 2, "text": "Part", "number": "1.2", "active": false }
+					]
+				},
+				{ "op": "run", "command": "goToHeading", "args": { "index": 2 }, "applied": true },
+				{ "op": "typeText", "text": "First " }
+			],
+			"expect": { "markdown": "# Intro\n\n### Detail\n\n## First Part" }
+		},
+		{
+			"name": "comments overlap on text and write HTML",
+			"requires": ["extensions"],
+			"extensions": ["comments"],
+			"input": { "format": "text", "content": "Shared words" },
+			"steps": [
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 0 },
+					"head": { "path": [0], "offset": 12 }
+				},
+				{ "op": "run", "command": "setComment", "args": { "threadId": "a" }, "applied": true },
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 7 },
+					"head": { "path": [0], "offset": 12 }
+				},
+				{ "op": "run", "command": "setComment", "args": { "threadId": "b" }, "applied": true },
+				{ "op": "query", "query": "activeComments", "expect": ["a", "b"] },
+				{
+					"op": "query",
+					"query": "comments",
+					"expect": [{ "threadId": "a", "text": "Shared words" }, { "threadId": "b", "text": "words" }]
+				}
+			],
+			"expect": {
+				"html": "<p><span data-type=\"comment\" data-threads=\"a\">Shared </span><span data-type=\"comment\" data-threads=\"a b\">words</span></p>"
+			}
+		},
+		{
+			"name": "moves blocks and clears formatting",
+			"requires": ["extensions"],
+			"extensions": ["dragHandle", "clearFormatting"],
+			"input": { "format": "markdown", "content": "one\n\n> ## **two**" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [1, 0], "offset": 1 } },
+				{ "op": "run", "command": "moveBlockUp", "applied": true },
+				{
+					"op": "select",
+					"anchor": { "path": [0, 0], "offset": 0 },
+					"head": { "path": [0, 0], "offset": 3 }
+				},
+				{ "op": "run", "command": "clearFormatting", "applied": true },
+				{ "op": "run", "command": "moveBlocksTo", "args": { "index": 2 }, "applied": true }
+			],
+			"expect": { "markdown": "one\n\ntwo" }
+		},
+		{
+			"name": "find ignores case across non-ASCII text and counts UTF-16 offsets",
+			"requires": ["extensions"],
+			"extensions": ["findAndReplace"],
+			"input": { "format": "text", "content": "😀 Ça va, ÇA va" },
+			"steps": [
+				{ "op": "run", "command": "setSearchTerm", "args": { "term": "ça" }, "applied": true },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "ça", "count": 2, "current": null, "caseSensitive": false }
+				},
+				{ "op": "select", "anchor": { "path": [0], "offset": 0 } },
+				{ "op": "run", "command": "nextSearchResult", "applied": true },
+				{
+					"op": "expect",
+					"selection": { "anchor": { "path": [0], "offset": 3 }, "head": { "path": [0], "offset": 5 } }
+				},
+				{ "op": "run", "command": "nextSearchResult", "applied": true },
+				{
+					"op": "expect",
+					"selection": { "anchor": { "path": [0], "offset": 10 }, "head": { "path": [0], "offset": 12 } }
+				},
+				{ "op": "run", "command": "nextSearchResult", "applied": true },
+				{
+					"op": "expect",
+					"selection": { "anchor": { "path": [0], "offset": 3 }, "head": { "path": [0], "offset": 5 } }
+				},
+				{ "op": "run", "command": "setCaseSensitive", "args": { "caseSensitive": true }, "applied": true },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "ça", "count": 0, "current": null, "caseSensitive": true }
+				},
+				{ "op": "run", "command": "nextSearchResult", "applied": false },
+				{ "op": "run", "command": "setSearchTerm", "args": { "term": "ÇA" }, "applied": true },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "ÇA", "count": 1, "current": null, "caseSensitive": true }
+				}
+			],
+			"expect": { "text": "😀 Ça va, ÇA va" }
+		},
+		{
+			"name": "previous result steps back from the selection and wraps to the last",
+			"requires": ["extensions"],
+			"extensions": ["findAndReplace"],
+			"input": { "format": "markdown", "content": "ab ab\n\nab" },
+			"steps": [
+				{ "op": "run", "command": "setSearchTerm", "args": { "term": "ab" }, "applied": true },
+				{ "op": "select", "anchor": { "path": [0], "offset": 4 } },
+				{ "op": "run", "command": "previousSearchResult", "applied": true },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "ab", "count": 3, "current": 0, "caseSensitive": false }
+				},
+				{ "op": "run", "command": "previousSearchResult", "applied": true },
+				{
+					"op": "expect",
+					"selection": { "anchor": { "path": [1], "offset": 0 }, "head": { "path": [1], "offset": 2 } }
+				},
+				{ "op": "run", "command": "nextSearchResult", "applied": true },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "ab", "count": 3, "current": 0, "caseSensitive": false }
+				}
+			],
+			"expect": { "markdown": "ab ab\n\nab" }
+		},
+		{
+			"name": "replace all is one undo step and keeps each match's marks",
+			"requires": ["extensions"],
+			"extensions": ["findAndReplace"],
+			"input": { "format": "markdown", "content": "a **fish** and a fish\n\n- fish" },
+			"steps": [
+				{ "op": "can", "command": "replaceAll", "args": { "replacement": "cat" }, "expect": false },
+				{ "op": "run", "command": "setSearchTerm", "args": { "term": "FISH" }, "applied": true },
+				{ "op": "can", "command": "replaceAll", "args": { "replacement": "cat" }, "expect": true },
+				{ "op": "expect", "markdown": "a **fish** and a fish\n\n- fish" },
+				{ "op": "run", "command": "replaceAll", "args": { "replacement": "🐱" }, "applied": true },
+				{ "op": "expect", "markdown": "a **🐱** and a 🐱\n\n- 🐱" },
+				{
+					"op": "query",
+					"query": "searchResults",
+					"expect": { "term": "FISH", "count": 0, "current": null, "caseSensitive": false }
+				},
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "markdown": "a **fish** and a fish\n\n- fish" },
+				{ "op": "redo", "applied": true },
+				{ "op": "expect", "markdown": "a **🐱** and a 🐱\n\n- 🐱" },
+				{ "op": "undo", "applied": true },
+				{ "op": "run", "command": "replaceAll", "args": { "replacement": "" }, "applied": true },
+				{ "op": "expect", "markdown": "a  and a \n\n- " }
+			]
+		},
+		{
+			"name": "replace selects a match first, then replaces it and moves on",
+			"requires": ["extensions"],
+			"extensions": ["findAndReplace"],
+			"input": { "format": "text", "content": "x and x and x" },
+			"steps": [
+				{ "op": "run", "command": "setSearchTerm", "args": { "term": "x" }, "applied": true },
+				{ "op": "select", "anchor": { "path": [0], "offset": 3 } },
+				{ "op": "run", "command": "replace", "args": { "replacement": "yy" }, "applied": true },
+				{ "op": "expect", "text": "x and x and x" },
+				{ "op": "run", "command": "replace", "args": { "replacement": "yy" }, "applied": true },
+				{ "op": "expect", "text": "x and yy and x" },
+				{
+					"op": "expect",
+					"selection": { "anchor": { "path": [0], "offset": 13 }, "head": { "path": [0], "offset": 14 } }
+				},
+				{ "op": "run", "command": "replace", "args": { "replacement": "yy" }, "applied": true },
+				{ "op": "expect", "text": "x and yy and yy" },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "text": "x and yy and x" }
+			]
+		},
+		{
+			"name": "find and replace reject wrong arguments with stable codes",
+			"requires": ["extensions"],
+			"extensions": ["findAndReplace"],
+			"input": { "format": "text", "content": "text" },
+			"steps": [
+				{ "op": "run", "command": "setSearchTerm", "error": "invalidArgs" },
+				{ "op": "run", "command": "setSearchTerm", "args": { "term": 3 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "setCaseSensitive", "args": { "caseSensitive": "yes" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "replaceAll", "args": {}, "error": "invalidArgs" },
+				{ "op": "query", "query": "searchResult", "error": "unknownName" },
+				{ "op": "run", "command": "setSearchTerm", "args": { "term": "" }, "applied": true },
+				{ "op": "query", "query": "searchResults", "expect": null },
+				{ "op": "run", "command": "nextSearchResult", "applied": false },
+				{ "op": "run", "command": "replaceAll", "args": { "replacement": "x" }, "applied": false }
+			],
+			"expect": { "text": "text" }
+		},
+		{
+			"name": "the table of contents tracks nested headings, edits, and the selection",
+			"requires": ["extensions"],
+			"extensions": ["tableOfContents"],
+			"input": { "format": "markdown", "content": "Intro text\n\n## Café ☕\n\n> # Quoted\n\n#### Deep" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 0 } },
+				{
+					"op": "query",
+					"query": "tableOfContents",
+					"expect": [
+						{ "level": 2, "text": "Café ☕", "number": "1", "active": false },
+						{ "level": 1, "text": "Quoted", "number": "2", "active": false },
+						{ "level": 4, "text": "Deep", "number": "2.1", "active": false }
+					]
+				},
+				{ "op": "can", "command": "goToHeading", "args": { "index": 1 }, "expect": true },
+				{ "op": "can", "command": "goToHeading", "args": { "index": 3 }, "expect": false },
+				{ "op": "run", "command": "goToHeading", "args": { "index": 1 }, "applied": true },
+				{
+					"op": "expect",
+					"selection": { "anchor": { "path": [2, 0], "offset": 0 }, "head": { "path": [2, 0], "offset": 0 } }
+				},
+				{
+					"op": "query",
+					"query": "tableOfContents",
+					"expect": [
+						{ "level": 2, "text": "Café ☕", "number": "1", "active": false },
+						{ "level": 1, "text": "Quoted", "number": "2", "active": true },
+						{ "level": 4, "text": "Deep", "number": "2.1", "active": false }
+					]
+				},
+				{ "op": "run", "command": "goToHeading", "args": { "index": -1 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "goToHeading", "args": { "index": "1" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "goToHeading", "args": { "index": 9 }, "applied": false },
+				{ "op": "select", "anchor": { "path": [1], "offset": 4 } },
+				{ "op": "run", "command": "setParagraph", "applied": true },
+				{
+					"op": "query",
+					"query": "tableOfContents",
+					"expect": [
+						{ "level": 1, "text": "Quoted", "number": "1", "active": false },
+						{ "level": 4, "text": "Deep", "number": "1.1", "active": false }
+					]
+				},
+				{ "op": "undo", "applied": true },
+				{
+					"op": "query",
+					"query": "tableOfContents",
+					"expect": [
+						{ "level": 2, "text": "Café ☕", "number": "1", "active": true },
+						{ "level": 1, "text": "Quoted", "number": "2", "active": false },
+						{ "level": 4, "text": "Deep", "number": "2.1", "active": false }
+					]
+				}
+			]
+		},
+		{
+			"name": "an empty document has an empty table of contents",
+			"requires": ["extensions"],
+			"extensions": ["tableOfContents"],
+			"steps": [
+				{ "op": "query", "query": "tableOfContents", "expect": [] },
+				{ "op": "run", "command": "goToHeading", "args": { "index": 0 }, "applied": false },
+				{ "op": "typeText", "text": "## Typed" },
+				{
+					"op": "query",
+					"query": "tableOfContents",
+					"expect": [{ "level": 2, "text": "Typed", "number": "1", "active": true }]
+				}
+			]
+		},
+		{
+			"name": "comments undo, need a range, and reject a missing thread id",
+			"requires": ["extensions"],
+			"extensions": ["comments"],
+			"input": { "format": "text", "content": "Shared words" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 3 } },
+				{ "op": "can", "command": "setComment", "args": { "threadId": "a" }, "expect": false },
+				{ "op": "run", "command": "setComment", "args": { "threadId": "a" }, "applied": false },
+				{ "op": "run", "command": "setComment", "error": "invalidArgs" },
+				{ "op": "run", "command": "setComment", "args": { "threadId": 7 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "unsetComment", "args": {}, "error": "invalidArgs" },
+				{ "op": "query", "query": "activeComments", "expect": [] },
+				{ "op": "query", "query": "comments", "expect": [] },
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 0 },
+					"head": { "path": [0], "offset": 6 }
+				},
+				{ "op": "can", "command": "setComment", "args": { "threadId": "a" }, "expect": true },
+				{ "op": "run", "command": "setComment", "args": { "threadId": "a" }, "applied": true },
+				{ "op": "run", "command": "setComment", "args": { "threadId": "a" }, "applied": false },
+				{ "op": "expect", "html": "<p><span data-type=\"comment\" data-threads=\"a\">Shared</span> words</p>" },
+				{ "op": "expect", "markdown": "Shared words" },
+				{ "op": "select", "anchor": { "path": [0], "offset": 6 } },
+				{ "op": "typeText", "text": "!" },
+				{ "op": "expect", "html": "<p><span data-type=\"comment\" data-threads=\"a\">Shared</span>! words</p>" },
+				{ "op": "undo", "applied": true },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "html": "<p>Shared words</p>" },
+				{ "op": "redo", "applied": true },
+				{ "op": "can", "command": "unsetComment", "args": { "threadId": "a" }, "expect": true },
+				{ "op": "can", "command": "unsetComment", "args": { "threadId": "zz" }, "expect": false },
+				{ "op": "run", "command": "unsetComment", "args": { "threadId": "a" }, "applied": true },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "html": "<p><span data-type=\"comment\" data-threads=\"a\">Shared</span> words</p>" }
+			]
+		},
+		{
+			"name": "comments read from TipTap JSON and write JSON, HTML, and Markdown",
+			"requires": ["extensions"],
+			"extensions": ["comments"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "Read " },
+								{
+									"type": "text",
+									"text": "this",
+									"marks": [{ "type": "bold" }, { "type": "comment", "attrs": { "threads": ["t-1", "t\"2&<"] } }]
+								},
+								{ "type": "text", "text": " twice" }
+							]
+						}
+					]
+				}
+			},
+			"steps": [
+				{ "op": "query", "query": "comments", "expect": [{ "threadId": "t-1", "text": "this" }, { "threadId": "t\"2&<", "text": "this" }] },
+				{ "op": "snapshotRoundTrip" },
+				{ "op": "select", "anchor": { "path": [0], "offset": 7 } },
+				{ "op": "query", "query": "activeComments", "expect": ["t-1", "t\"2&<"] }
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "Read " },
+								{
+									"type": "text",
+									"text": "this",
+									"marks": [{ "type": "bold" }, { "type": "comment", "attrs": { "threads": ["t-1", "t\"2&<"] } }]
+								},
+								{ "type": "text", "text": " twice" }
+							]
+						}
+					]
+				},
+				"html": "<p>Read <strong><span data-type=\"comment\" data-threads=\"t-1 t&quot;2&amp;&lt;\">this</span></strong> twice</p>",
+				"markdown": "Read **this** twice"
+			}
+		},
+		{
+			"name": "pasted HTML comments keep their threads",
+			"requires": ["extensions"],
+			"extensions": ["comments"],
+			"input": { "format": "text", "content": "Before  after" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 7 } },
+				{
+					"op": "paste",
+					"format": "html",
+					"content": "<span data-type=\"comment\" data-threads=\"p q\">pasted</span>"
+				},
+				{ "op": "select", "anchor": { "path": [0], "offset": 10 } },
+				{ "op": "query", "query": "activeComments", "expect": ["p", "q"] },
+				{ "op": "run", "command": "unsetComment", "args": { "threadId": "p" }, "applied": true }
+			],
+			"expect": {
+				"html": "<p>Before <span data-type=\"comment\" data-threads=\"q\">pasted</span> after</p>",
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "Before " },
+								{ "type": "text", "text": "pasted", "marks": [{ "type": "comment", "attrs": { "threads": ["q"] } }] },
+								{ "type": "text", "text": " after" }
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "Alt and the arrows move blocks, and undo puts them back exactly",
+			"requires": ["extensions"],
+			"extensions": ["dragHandle"],
+			"input": { "format": "markdown", "content": "one\n\ntwo\n\nthree\n\nfour" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 1 } },
+				{ "op": "can", "command": "moveBlockUp", "expect": false },
+				{ "op": "press", "key": "Alt-ArrowUp" },
+				{ "op": "expect", "markdown": "one\n\ntwo\n\nthree\n\nfour" },
+				{ "op": "press", "key": "Alt-ArrowDown" },
+				{ "op": "press", "key": "Alt-ArrowDown" },
+				{ "op": "expect", "markdown": "two\n\nthree\n\none\n\nfour" },
+				{
+					"op": "expect",
+					"selection": { "anchor": { "path": [2], "offset": 1 }, "head": { "path": [2], "offset": 1 } }
+				},
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "markdown": "two\n\none\n\nthree\n\nfour" },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "markdown": "one\n\ntwo\n\nthree\n\nfour" },
+				{
+					"op": "expect",
+					"selection": { "anchor": { "path": [0], "offset": 1 }, "head": { "path": [0], "offset": 1 } }
+				},
+				{ "op": "redo", "applied": true },
+				{ "op": "expect", "markdown": "two\n\none\n\nthree\n\nfour" }
+			]
+		},
+		{
+			"name": "a selection of several blocks moves together, and drops clamp to the end",
+			"requires": ["extensions"],
+			"extensions": ["dragHandle"],
+			"input": { "format": "markdown", "content": "a\n\nb\n\nc\n\nd" },
+			"steps": [
+				{
+					"op": "select",
+					"anchor": { "path": [1], "offset": 0 },
+					"head": { "path": [2], "offset": 1 }
+				},
+				{ "op": "run", "command": "moveBlockUp", "applied": true },
+				{ "op": "expect", "markdown": "b\n\nc\n\na\n\nd" },
+				{ "op": "run", "command": "moveBlocksTo", "args": { "index": 99 }, "applied": true },
+				{ "op": "expect", "markdown": "a\n\nd\n\nb\n\nc" },
+				{
+					"op": "expect",
+					"selection": { "anchor": { "path": [2], "offset": 0 }, "head": { "path": [3], "offset": 1 } }
+				},
+				{ "op": "can", "command": "moveBlockDown", "expect": false },
+				{ "op": "can", "command": "moveBlocksTo", "args": { "index": 2 }, "expect": false },
+				{ "op": "can", "command": "moveBlocksTo", "args": { "index": 3 }, "expect": false },
+				{ "op": "run", "command": "moveBlocksTo", "args": { "index": 4 }, "applied": false },
+				{ "op": "run", "command": "moveBlocksTo", "args": { "index": -1 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "moveBlocksTo", "error": "invalidArgs" },
+				{ "op": "run", "command": "moveBlocksTo", "args": { "index": 1 }, "applied": true },
+				{ "op": "expect", "markdown": "a\n\nb\n\nc\n\nd" },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "markdown": "a\n\nd\n\nb\n\nc" }
+			]
+		},
+		{
+			"name": "moving inside a list moves items, and the first item climbs out with its list",
+			"requires": ["extensions"],
+			"extensions": ["dragHandle"],
+			"input": { "format": "markdown", "content": "intro\n\n- a\n- b\n\nend" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [1, 1, 0], "offset": 0 } },
+				{ "op": "run", "command": "moveBlockUp", "applied": true },
+				{ "op": "expect", "markdown": "intro\n\n- b\n- a\n\nend" },
+				{ "op": "run", "command": "moveBlockUp", "applied": true },
+				{ "op": "expect", "markdown": "- b\n- a\n\nintro\n\nend" },
+				{ "op": "undo", "applied": true },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "markdown": "intro\n\n- a\n- b\n\nend" }
+			]
+		},
+		{
+			"name": "Mod-backslash clears marks and blocks as one undo step",
+			"requires": ["extensions"],
+			"extensions": ["clearFormatting"],
+			"input": { "format": "markdown", "content": "- **bold** and [a link](https://canvist.dev)\n- `code` *it*\n\nkept **bold**" },
+			"steps": [
+				{
+					"op": "select",
+					"anchor": { "path": [0, 0, 0], "offset": 0 },
+					"head": { "path": [0, 1, 0], "offset": 7 }
+				},
+				{ "op": "can", "command": "clearFormatting", "expect": true },
+				{ "op": "press", "key": "Mod-\\" },
+				{ "op": "expect", "markdown": "bold and a link\n\ncode it\n\nkept **bold**" },
+				{ "op": "can", "command": "unsetAllMarks", "expect": false },
+				{ "op": "can", "command": "clearNodes", "expect": false },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "markdown": "- **bold** and [a link](https://canvist.dev)\n- `code` *it*\n\nkept **bold**" },
+				{ "op": "redo", "applied": true },
+				{ "op": "expect", "markdown": "bold and a link\n\ncode it\n\nkept **bold**" }
+			]
+		},
+		{
+			"name": "unset all marks at a caret types plain text",
+			"requires": ["extensions"],
+			"extensions": ["clearFormatting"],
+			"input": { "format": "markdown", "content": "**bold**" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 4 } },
+				{ "op": "run", "command": "unsetAllMarks", "applied": true },
+				{ "op": "insertText", "text": " x" }
+			],
+			"expect": { "markdown": "**bold** x" }
+		},
+		{
+			"name": "clear nodes turns code blocks, quotes, and task items into paragraphs",
+			"requires": ["extensions"],
+			"extensions": ["clearFormatting"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{ "type": "codeBlock", "attrs": { "language": "rust" }, "content": [{ "type": "text", "text": "let x = 1;" }] },
+						{ "type": "blockquote", "content": [{ "type": "heading", "attrs": { "level": 3 }, "content": [{ "type": "text", "text": "Quote" }] }] },
+						{
+							"type": "taskList",
+							"content": [
+								{ "type": "taskItem", "attrs": { "checked": true }, "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "done" }] }] }
+							]
+						}
+					]
+				}
+			},
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "clearNodes", "applied": true },
+				{ "op": "run", "command": "clearNodes", "applied": false },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "markdown": "```rust\nlet x = 1;\n```\n\n> ### Quote\n\n- [x] done" },
+				{ "op": "redo", "applied": true }
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "let x = 1;" }] },
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "Quote" }] },
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "done" }] },
+						{ "type": "paragraph" }
+					]
+				}
+			}
+		},
+		{
+			"name": "clear formatting removes comment threads with the other marks",
+			"requires": ["extensions"],
+			"extensions": ["clearFormatting", "comments"],
+			"input": {
+				"format": "html",
+				"content": "<p><em>Some</em> <span data-type=\"comment\" data-threads=\"a\"><strong>noted</strong></span> text</p>"
+			},
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "run", "command": "clearFormatting", "applied": true },
+				{ "op": "query", "query": "comments", "expect": [] },
+				{ "op": "run", "command": "clearFormatting", "applied": false }
+			],
+			"expect": { "html": "<p>Some noted text</p>", "markdown": "Some noted text" }
+		}
+	]
+}

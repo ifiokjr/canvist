@@ -50,8 +50,12 @@ extras = [
 	"starter-kit",
 	"callout",
 	"character-count",
+	"clear-formatting",
+	"comments",
 	"details",
+	"drag-handle",
 	"emoji",
+	"find-and-replace",
 	"hashtag",
 	"highlight",
 	"mathematics",
@@ -61,6 +65,7 @@ extras = [
 	"subscript",
 	"superscript",
 	"table",
+	"table-of-contents",
 	"text-align",
 	"text-style-kit",
 	"typography",
@@ -102,6 +107,11 @@ link = []
 list-item = []
 mathematics = []
 table = []
+table-of-contents = []
+find-and-replace = []
+comments = []
+drag-handle = []
+clear-formatting = []
 # Images, YouTube and Twitch videos, audio, and file attachments.
 media = ["audio", "file", "image", "twitch", "youtube"]
 audio = []

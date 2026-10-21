@@ -24,6 +24,9 @@ use canvist_model::Selection;
 use serde_json::Value as Json;
 use serde_json::json;
 
+#[cfg(feature = "full")]
+pub mod document_tools;
+
 /// A StarterKit editor on `platform`.
 pub fn editor_on(platform: Platform) -> Editor {
 	Editor::builder()
