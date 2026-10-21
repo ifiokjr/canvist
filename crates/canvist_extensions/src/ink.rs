@@ -47,8 +47,12 @@ const MAX_HEIGHT: i64 = 4000;
 /// The host captures pointer input over the block's rectangle and adds each
 /// finished stroke with `addInkStroke`, which is one undo step and one Yjs
 /// update. Commands name a drawing by its place among the document's
-/// drawings, as `inks` lists them. HTML writes a `<figure data-type="ink">`
-/// holding an SVG of the drawing, and Markdown writes the same HTML.
+/// drawings, as `inks` lists them. HTML writes a `<figure data-type="ink">`,
+/// named as an image for assistive technology, holding an SVG of the
+/// drawing, and Markdown writes the same HTML.
+///
+/// The strokes are one attribute of the block, so in collaboration two
+/// strokes added to one drawing at the same moment converge on one of them.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Ink;
 
@@ -234,17 +238,34 @@ fn stroke_value(
 			return Err(invalid("`width` must be a positive number"));
 		}
 
-		stroke.set("width", f64::from(width));
+		// The shortest decimal that reads back as the same `f32`, so a width
+		// of 3.3 is stored as 3.3 rather than 3.299999952316284, and
+		// survives HTML and JSON text exactly.
+		let width = width
+			.to_string()
+			.parse::<f64>()
+			.unwrap_or_else(|_| f64::from(width));
+		stroke.set("width", width);
 	}
 
 	Ok(Value::from(stroke))
 }
 
 /// Drawing `index` of the document, from an `ink` argument.
-fn drawing_arg(state: &EditorState, index: i64) -> Option<BlockId> {
-	usize::try_from(index)
-		.ok()
-		.and_then(|index| drawings(state).into_iter().nth(index))
+fn drawing_arg(state: &EditorState, index: usize) -> Option<BlockId> {
+	drawings(state).into_iter().nth(index)
+}
+
+/// The `ink` argument of command `name`: a place among the drawings, so
+/// never negative. A place past the last drawing is not an error; the
+/// command just does not apply, as the document may have changed.
+fn ink_index(args: &canvist_editor::Args<'_>, name: &str) -> Result<usize, EditorError> {
+	usize::try_from(args.int("ink")?).map_err(|_| {
+		EditorError::InvalidArgs {
+			name: name.to_owned(),
+			reason: "`ink` must not be negative".to_owned(),
+		}
+	})
 }
 
 fn ink_field() -> Field {
@@ -272,7 +293,7 @@ fn floats(args: &canvist_editor::Args<'_>, key: &str) -> Result<Vec<f32>, Editor
 }
 
 fn add_stroke_command(args: &canvist_editor::Args<'_>) -> Result<Command, EditorError> {
-	let index = args.int("ink")?;
+	let index = ink_index(args, "addInkStroke")?;
 	let width = match args.get("width")? {
 		Value::Int(width) => Some(*width as f32),
 		Value::Float(width) => Some(*width as f32),
@@ -295,9 +316,10 @@ fn add_stroke_command(args: &canvist_editor::Args<'_>) -> Result<Command, Editor
 
 fn by_index(
 	args: &canvist_editor::Args<'_>,
+	name: &str,
 	change: fn(&mut Vec<Value>),
 ) -> Result<Command, EditorError> {
-	let index = args.int("ink")?;
+	let index = ink_index(args, name)?;
 
 	Ok(command(move |state| {
 		let Some(block) = drawing_arg(state, index) else {
@@ -427,11 +449,11 @@ impl Extension for Ink {
 		let undo = CommandSpec::new(
 			"undoInkStroke",
 			"Remove the last stroke of a drawing.",
-			|args| by_index(args, |strokes| drop(strokes.pop())),
+			|args| by_index(args, "undoInkStroke", |strokes| drop(strokes.pop())),
 		)
 		.arg(ink_field());
 		let clear = CommandSpec::new("clearInk", "Remove every stroke of a drawing.", |args| {
-			by_index(args, Vec::clear)
+			by_index(args, "clearInk", Vec::clear)
 		})
 		.arg(ink_field());
 

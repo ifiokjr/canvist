@@ -177,7 +177,8 @@ fn write_media(name: &str, attrs: &Attrs, html: &mut String) -> bool {
 /// An ink drawing as a `<figure>` carrying its strokes as JSON, which the
 /// reader takes back, around an SVG of them that any browser shows.
 fn write_ink(attrs: &Attrs, html: &mut String) {
-	let height = attr_int(attrs, "height").unwrap_or(400);
+	// A malformed height would make the viewBox invalid.
+	let height = attr_int(attrs, "height").unwrap_or(400).max(1);
 	let strokes = attrs
 		.get("strokes")
 		.and_then(Value::as_array)
@@ -185,8 +186,9 @@ fn write_ink(attrs: &Attrs, html: &mut String) {
 	let json = canvist_editor::value_to_json(&Value::from(strokes.to_vec())).to_string();
 	let _ = write!(
 		html,
-		"<figure data-type=\"ink\" data-height=\"{height}\" data-strokes=\"{}\"><svg \
-		 xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 {height}\">",
+		"<figure data-type=\"ink\" data-height=\"{height}\" data-strokes=\"{}\" role=\"img\" \
+		 aria-label=\"Drawing\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 \
+		 {height}\">",
 		escape(&json)
 	);
 
@@ -204,6 +206,12 @@ fn write_ink(attrs: &Attrs, html: &mut String) {
 				}
 			})
 			.collect();
+
+		// A stroke without one whole point draws nothing.
+		if points.len() < 2 {
+			continue;
+		}
+
 		let color = stroke
 			.get("color")
 			.and_then(Value::as_str)

@@ -736,7 +736,7 @@ Freehand drawings in the flow of the document. Adds the `ink` block: a drawing a
 | `insertInk({ height? })`, `addInkStroke({ ink, points, color?, width? })` | `inks`  |
 | `undoInkStroke({ ink })`, `clearInk({ ink })`                             |         |
 
-Your app captures pointer input over the block's rectangle, converts it to drawing units (`x * 1000 / width`), and adds each finished stroke with `addInkStroke`. Each stroke is one undo step and one Yjs update. Commands name a drawing by its place among the document's drawings, as `inks` lists them. HTML writes a `<figure data-type="ink">` holding an SVG of the drawing, and Markdown writes the same HTML.
+Your app captures pointer input over the block's rectangle, converts it to drawing units (`x * 1000 / width`), and adds each finished stroke with `addInkStroke`. Each stroke is one undo step and one Yjs update. Commands name a drawing by its place among the document's drawings, as `inks` lists them. HTML writes a `<figure data-type="ink" role="img" aria-label="Drawing">` holding an SVG of the drawing, and Markdown writes the same HTML. A drawing's strokes are one attribute, so when two collaborators add a stroke to the same drawing at the same moment, one of the two strokes is kept.
 
 ```ts
 import { createEngine, ink } from "@canvist/headless/full";

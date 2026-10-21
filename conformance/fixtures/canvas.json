@@ -30,7 +30,7 @@
 				{ "op": "query", "query": "inks", "expect": [{ "height": 200, "strokes": 1 }] }
 			],
 			"expect": {
-				"html": "<figure data-type=\"ink\" data-height=\"200\" data-strokes=\"[{&quot;points&quot;:[10.0,20.0,30.0,40.0],&quot;width&quot;:6.0}]\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 200\"><path d=\"M10 20L30 40\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></figure><p></p>"
+				"html": "<figure data-type=\"ink\" data-height=\"200\" data-strokes=\"[{&quot;points&quot;:[10.0,20.0,30.0,40.0],&quot;width&quot;:6.0}]\" role=\"img\" aria-label=\"Drawing\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 200\"><path d=\"M10 20L30 40\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></figure><p></p>"
 			}
 		},
 		{
@@ -50,6 +50,264 @@
 				{ "op": "run", "command": "setKinetic", "args": { "effect": "spin" }, "error": "invalidArgs" }
 			],
 			"expect": { "html": "<p>Say <span data-kinetic=\"wave\">hello</span></p>", "markdown": "Say hello" }
+		},
+		{
+			"name": "each stroke, undo stroke, and clear is one undo step",
+			"requires": ["extensions"],
+			"extensions": ["ink"],
+			"input": { "format": "text", "content": "Sketch" },
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 6 } },
+				{ "op": "can", "command": "insertInk", "expect": true },
+				{ "op": "run", "command": "insertInk", "applied": true },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 400, "strokes": 0 }] },
+				{ "op": "can", "command": "clearInk", "args": { "ink": 0 }, "expect": false },
+				{ "op": "can", "command": "undoInkStroke", "args": { "ink": 0 }, "expect": false },
+				{
+					"op": "run",
+					"command": "addInkStroke",
+					"args": { "ink": 0, "points": [1.04, 2.06, 1200, -5], "color": "#2B8A3E", "width": 3.3 },
+					"applied": true
+				},
+				{ "op": "run", "command": "addInkStroke", "args": { "ink": 0, "points": [500, 100] }, "applied": true },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 400, "strokes": 2 }] },
+				{
+					"op": "expect",
+					"json": {
+						"type": "doc",
+						"content": [
+							{ "type": "paragraph", "content": [{ "type": "text", "text": "Sketch" }] },
+							{
+								"type": "ink",
+								"attrs": {
+									"strokes": [
+										{ "points": [1.0, 2.1, 1000.0, 0.0], "color": "#2b8a3e", "width": 3.3 },
+										{ "points": [500.0, 100.0] }
+									]
+								}
+							},
+							{ "type": "paragraph" }
+						]
+					}
+				},
+				{ "op": "undo", "applied": true },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 400, "strokes": 1 }] },
+				{ "op": "redo", "applied": true },
+				{ "op": "run", "command": "undoInkStroke", "args": { "ink": 0 }, "applied": true },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 400, "strokes": 1 }] },
+				{ "op": "can", "command": "clearInk", "args": { "ink": 0 }, "expect": true },
+				{ "op": "run", "command": "clearInk", "args": { "ink": 0 }, "applied": true },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 400, "strokes": 0 }] },
+				{ "op": "undo", "applied": true },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 400, "strokes": 1 }] },
+				{ "op": "undo", "applied": true },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 400, "strokes": 2 }] }
+			]
+		},
+		{
+			"name": "ink commands reject malformed strokes and sizes with stable codes",
+			"requires": ["extensions"],
+			"extensions": ["ink"],
+			"steps": [
+				{ "op": "run", "command": "insertInk", "args": { "height": 0 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "insertInk", "args": { "height": 4001 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "insertInk", "args": { "height": "tall" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "insertInk", "args": { "height": 4000 }, "applied": true },
+				{ "op": "run", "command": "addInkStroke", "args": { "ink": 0 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "addInkStroke", "args": { "ink": 0, "points": [] }, "error": "invalidArgs" },
+				{ "op": "run", "command": "addInkStroke", "args": { "ink": 0, "points": [1, "x"] }, "error": "invalidArgs" },
+				{ "op": "run", "command": "addInkStroke", "args": { "ink": 0, "points": "1,2" }, "error": "invalidArgs" },
+				{
+					"op": "run",
+					"command": "addInkStroke",
+					"args": { "ink": 0, "points": [1, 2], "color": "red" },
+					"error": "invalidArgs"
+				},
+				{
+					"op": "run",
+					"command": "addInkStroke",
+					"args": { "ink": 0, "points": [1, 2], "color": "#12345" },
+					"error": "invalidArgs"
+				},
+				{ "op": "run", "command": "addInkStroke", "args": { "ink": 0, "points": [1, 2], "width": 0 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "addInkStroke", "args": { "ink": 0, "points": [1, 2], "width": "3" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "addInkStroke", "args": { "ink": -1, "points": [1, 2] }, "error": "invalidArgs" },
+				{ "op": "run", "command": "clearInk", "args": { "ink": -1 }, "error": "invalidArgs" },
+				{ "op": "run", "command": "undoInkStroke", "args": {}, "error": "invalidArgs" },
+				{ "op": "run", "command": "addInkStroke", "args": { "ink": 1, "points": [1, 2] }, "applied": false },
+				{ "op": "run", "command": "drawInk", "error": "unknownName" },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 4000, "strokes": 0 }] }
+			]
+		},
+		{
+			"name": "a TipTap ink block round trips through JSON, HTML, Markdown, and snapshots",
+			"requires": ["extensions"],
+			"extensions": ["ink"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "ink",
+							"attrs": {
+								"height": 250,
+								"strokes": [{ "points": [10, 20, 30, 40], "color": "#ff0000", "width": 8 }, { "points": [5, 5] }]
+							}
+						},
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "after" }] }
+					]
+				}
+			},
+			"steps": [
+				{ "op": "query", "query": "inks", "expect": [{ "height": 250, "strokes": 2 }] },
+				{ "op": "snapshotRoundTrip" },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 250, "strokes": 2 }] }
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "ink",
+							"attrs": {
+								"height": 250,
+								"strokes": [{ "points": [10, 20, 30, 40], "color": "#ff0000", "width": 8 }, { "points": [5, 5] }]
+							}
+						},
+						{ "type": "paragraph", "content": [{ "type": "text", "text": "after" }] }
+					]
+				},
+				"html": "<figure data-type=\"ink\" data-height=\"250\" data-strokes=\"[{&quot;color&quot;:&quot;#ff0000&quot;,&quot;points&quot;:[10,20,30,40],&quot;width&quot;:8},{&quot;points&quot;:[5,5]}]\" role=\"img\" aria-label=\"Drawing\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 250\"><path d=\"M10 20L30 40\" fill=\"none\" stroke=\"#ff0000\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M5 5L5 5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></figure><p>after</p>",
+				"markdown": "<figure data-type=\"ink\" data-height=\"250\" data-strokes=\"[{&quot;color&quot;:&quot;#ff0000&quot;,&quot;points&quot;:[10,20,30,40],&quot;width&quot;:8},{&quot;points&quot;:[5,5]}]\" role=\"img\" aria-label=\"Drawing\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 250\"><path d=\"M10 20L30 40\" fill=\"none\" stroke=\"#ff0000\" stroke-width=\"8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M5 5L5 5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></figure>\n\nafter"
+			}
+		},
+		{
+			"name": "drawings read back from the HTML and Markdown they wrote",
+			"requires": ["extensions"],
+			"extensions": ["ink"],
+			"input": {
+				"format": "markdown",
+				"content": "before\n\n<figure data-type=\"ink\" data-height=\"120\" data-strokes=\"[{&quot;points&quot;:[1,2,3,4]}]\" role=\"img\" aria-label=\"Drawing\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 120\"><path d=\"M1 2L3 4\"/></svg></figure>\n\nafter"
+			},
+			"steps": [
+				{ "op": "query", "query": "inks", "expect": [{ "height": 120, "strokes": 1 }] },
+				{ "op": "select", "anchor": { "path": [2], "offset": 5 } },
+				{
+					"op": "paste",
+					"format": "html",
+					"content": "<figure data-type=\"ink\" data-height=\"80\" data-strokes=\"[{&quot;points&quot;:[7,8]}]\"><svg></svg></figure>"
+				},
+				{ "op": "query", "query": "inks", "expect": [{ "height": 120, "strokes": 1 }, { "height": 80, "strokes": 1 }] },
+				{ "op": "undo", "applied": true },
+				{ "op": "query", "query": "inks", "expect": [{ "height": 120, "strokes": 1 }] }
+			],
+			"expect": { "text": "before\nafter" }
+		},
+		{
+			"name": "kinetic text toggles, unsets, and undoes, with every effect",
+			"requires": ["extensions"],
+			"extensions": ["kinetic"],
+			"input": { "format": "text", "content": "Say hello world" },
+			"steps": [
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 4 },
+					"head": { "path": [0], "offset": 9 }
+				},
+				{ "op": "can", "command": "unsetKinetic", "expect": true },
+				{ "op": "run", "command": "setKinetic", "applied": true },
+				{ "op": "query", "query": "kineticEffect", "expect": "wave" },
+				{ "op": "run", "command": "setKinetic", "args": { "effect": "shake" }, "applied": true },
+				{ "op": "query", "query": "kineticEffect", "expect": "shake" },
+				{ "op": "run", "command": "setKinetic", "args": { "effect": "pulse" }, "applied": true },
+				{ "op": "query", "query": "kineticEffect", "expect": "pulse" },
+				{ "op": "run", "command": "toggleKinetic", "args": { "effect": "rainbow" }, "applied": true },
+				{ "op": "query", "query": "kineticEffect", "expect": "rainbow" },
+				{ "op": "expect", "html": "<p>Say <span data-kinetic=\"rainbow\">hello</span> world</p>" },
+				{ "op": "run", "command": "toggleKinetic", "args": { "effect": "rainbow" }, "applied": true },
+				{ "op": "query", "query": "kineticEffect", "expect": null },
+				{ "op": "undo", "applied": true },
+				{ "op": "query", "query": "kineticEffect", "expect": "rainbow" },
+				{ "op": "redo", "applied": true },
+				{ "op": "expect", "html": "<p>Say hello world</p>" },
+				{ "op": "undo", "applied": true },
+				{
+					"op": "select",
+					"anchor": { "path": [0], "offset": 0 },
+					"head": { "path": [0], "offset": 9 }
+				},
+				{ "op": "query", "query": "kineticEffect", "expect": null },
+				{ "op": "run", "command": "unsetKinetic", "applied": true },
+				{ "op": "expect", "html": "<p>Say hello world</p>" },
+				{ "op": "run", "command": "setKinetic", "args": { "effect": "spin" }, "error": "invalidArgs" },
+				{ "op": "run", "command": "toggleKinetic", "args": { "effect": 3 }, "error": "invalidArgs" },
+				{ "op": "query", "query": "kineticEffects", "error": "unknownName" }
+			],
+			"expect": { "markdown": "Say hello world" }
+		},
+		{
+			"name": "kinetic text reads TipTap JSON and pasted HTML, and keeps unknown effects inert",
+			"requires": ["extensions"],
+			"extensions": ["kinetic"],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "Hey", "marks": [{ "type": "bold" }, { "type": "kinetic", "attrs": { "effect": "shake" } }] },
+								{ "type": "text", "text": " and " },
+								{ "type": "text", "text": "later", "marks": [{ "type": "kinetic", "attrs": { "effect": "explode" } }] }
+							]
+						}
+					]
+				}
+			},
+			"steps": [
+				{ "op": "select", "anchor": { "path": [0], "offset": 1 }, "head": { "path": [0], "offset": 2 } },
+				{ "op": "query", "query": "kineticEffect", "expect": "shake" },
+				{ "op": "select", "anchor": { "path": [0], "offset": 9 }, "head": { "path": [0], "offset": 10 } },
+				{ "op": "query", "query": "kineticEffect", "expect": null },
+				{ "op": "snapshotRoundTrip" },
+				{ "op": "select", "anchor": { "path": [0], "offset": 3 }, "head": { "path": [0], "offset": 8 } },
+				{ "op": "paste", "format": "html", "content": "<span data-kinetic=\"pulse\">beat</span>" },
+				{ "op": "select", "anchor": { "path": [0], "offset": 4 }, "head": { "path": [0], "offset": 5 } },
+				{ "op": "query", "query": "kineticEffect", "expect": "pulse" }
+			],
+			"expect": {
+				"html": "<p><strong><span data-kinetic=\"shake\">Hey</span></strong><span data-kinetic=\"pulse\">beat</span><span data-kinetic=\"explode\">later</span></p>",
+				"markdown": "**Hey**beatlater",
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "paragraph",
+							"content": [
+								{ "type": "text", "text": "Hey", "marks": [{ "type": "bold" }, { "type": "kinetic", "attrs": { "effect": "shake" } }] },
+								{ "type": "text", "text": "beat", "marks": [{ "type": "kinetic", "attrs": { "effect": "pulse" } }] },
+								{ "type": "text", "text": "later", "marks": [{ "type": "kinetic", "attrs": { "effect": "explode" } }] }
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "clearing formatting stills kinetic text",
+			"requires": ["extensions"],
+			"extensions": ["kinetic", "clearFormatting"],
+			"input": { "format": "html", "content": "<p>Say <span data-kinetic=\"wave\">hello</span></p>" },
+			"steps": [
+				{ "op": "selectAll" },
+				{ "op": "press", "key": "Mod-\\" },
+				{ "op": "query", "query": "kineticEffect", "expect": null },
+				{ "op": "undo", "applied": true },
+				{ "op": "expect", "html": "<p>Say <span data-kinetic=\"wave\">hello</span></p>" }
+			],
+			"expect": { "html": "<p>Say <span data-kinetic=\"wave\">hello</span></p>" }
 		}
 	]
 }

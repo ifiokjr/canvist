@@ -220,6 +220,10 @@ impl Writer<'_> {
 		if let (Content::Leaf, LeafStyle::Ink { height, .. }) = (block.content(), resolved.leaf) {
 			let height = attr_px(block.attrs(), "height").unwrap_or(height) * inner / INK_WIDTH;
 			let _ = write!(inline_style, "height:{}px;", num(height));
+			// To assistive technology a drawing is one image; its strokes
+			// carry no text of their own.
+			attribute(&mut self.out, "role", "img");
+			attribute(&mut self.out, "aria-label", "Drawing");
 		}
 
 		if !inline_style.is_empty() {

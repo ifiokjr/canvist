@@ -101,7 +101,8 @@ impl KineticHandle {
 		})
 	}
 
-	/// Make the selection move with `effect`, or still when it already does.
+	/// Make the selection move with `effect`, or still when it already
+	/// moves with `effect`.
 	#[must_use]
 	pub fn toggle(self, effect: KineticEffect) -> Command {
 		toggle(effect)
@@ -130,10 +131,20 @@ fn set(effect: KineticEffect) -> Command {
 	})
 }
 
+/// Still when the selection already moves with `effect`; otherwise it moves
+/// with `effect`, so toggling another effect switches to it, as toggling
+/// a highlight colour does.
 fn toggle(effect: KineticEffect) -> Command {
 	command(move |state| {
 		let mark = mark(state, effect)?;
-		commands::toggle_mark(state, &mark)
+		let same = resolve::shared_mark_attr(state, KINETIC, EFFECT)
+			.is_some_and(|value| value.as_str() == Some(effect.name()));
+
+		if same {
+			commands::unset_mark(state, mark.kind)
+		} else {
+			commands::set_mark(state, &mark)
+		}
 	})
 }
 
