@@ -1,7 +1,7 @@
 /**
  * How peers exchange the shared scene.
  *
- * Every peer starts from the same demo state, so syncing is a state-vector
+ * Every peer starts from the same scene's state, so syncing is a state-vector
  * handshake: a new peer says `hello` with its state vector, each existing
  * peer answers with what the newcomer lacks and a `welcome` carrying its
  * own state vector, and the newcomer answers that in turn. After that,

@@ -20,21 +20,30 @@
 
 # @canvist/canvas
 
-canvist's canvas in the browser. It renders with vello on WebGPU, and falls back to a CPU rasteriser where WebGPU is missing. Text frames are edited with the real canvist text editor. A pluggable transport handles collaboration.
+canvist's design canvas in the browser: shapes, frames, images, vector paths, and text frames edited with the real canvist text editor. It renders with vello on WebGPU and falls back to a CPU rasteriser where WebGPU is missing. A pluggable transport handles collaboration.
+
+```sh
+npm install @canvist/canvas
+```
 
 ```ts
 import { BroadcastTransport, mountCanvas } from "@canvist/canvas";
 
-const canvas = document.querySelector("canvas")!;
-const handle = await mountCanvas(canvas, {
+const canvas = await mountCanvas(document.querySelector("canvas")!, {
+	scene: { type: "canvist-scene", version: 1, nodes: [{ type: "page" }] },
 	transport: new BroadcastTransport("my-room"),
 });
 
-handle.setTool("rectangle");
-console.log(handle.backend); // "webgpu" or "cpu"
+canvas.setTool("rectangle");
+console.log(canvas.backend); // "webgpu" or "cpu"
+const saved = canvas.toJson(); // scene JSON, to store or start from later
 ```
 
-A `Transport` carries three messages: `hello`, `welcome`, and `update`. See `src/transport.ts`. `BroadcastTransport` syncs the tabs of one browser. A WebSocket transport is a few lines on top of the same interface.
+- **`scene`** is scene JSON, nested or flat: the same format `@canvist/headless/scene` reads and agents write. It defaults to one empty page, and `demo: true` starts from canvist's demo scene instead.
+- **Collaboration.** A `Transport` carries three messages: `hello`, `welcome`, and `update` (see `src/transport.ts`). `BroadcastTransport` syncs the tabs of one browser, and a WebSocket transport is a few lines on the same interface. Give every peer the same starting scene: each builds it the same way, so merging peers duplicates nothing.
+- **State.** `encodeState()` is the shared scene as one Yjs update, and `applyUpdate(update)` merges one, such as stored state.
+
+[The design canvas quick start](../../docs/src/quick-start/canvas.md) walks through it.
 
 ## The demo
 
@@ -60,6 +69,7 @@ The wheel pans, and a trackpad pinch (or Ctrl with the wheel) zooms. Cmd/Ctrl+Z 
 - `?cpu` forces the CPU renderer.
 - `?stress=2000` adds 2,000 rectangles.
 - `?room=name` picks a room.
+- `?scene=` starts from that scene JSON instead of the demo scene.
 
 ## Tests
 
@@ -67,7 +77,10 @@ The wheel pans, and a trackpad pinch (or Ctrl with the wheel) zooms. Cmd/Ctrl+Z 
 deno task test
 ```
 
-This needs Chromium from `npx playwright@1.58 install chromium`. The suite has three tests:
+This needs Chromium from `npx playwright@1.58 install chromium`. The suite has four tests:
 
 - Two record frame times during a scripted pan and drag over a 2,000-node scene, one on WebGPU and one on the CPU fallback. They print `CANVAS_PERF` lines and fail when the 95th-percentile frame goes over budget: 8 ms on WebGPU, 33 ms on the CPU. Set `CANVIST_PERF_SLACK` to scale the budgets on slow machines.
 - One drives two tabs editing one scene: drawing a rectangle and typing in a text frame.
+- One starts two tabs from the same scene JSON and checks they share it without duplicates, and that it exports.
+
+For npm, `npm run build:wasm && npm run build` builds the module and `dist/`.

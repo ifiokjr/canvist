@@ -45,14 +45,23 @@ pub struct CanvasApp {
 
 #[wasm_bindgen]
 impl CanvasApp {
-	/// Start the demo on `canvas` as peer `client` (any id but 1), on
-	/// WebGPU when `prefer_gpu` is set and the browser supports it.
+	/// Start the canvas on `canvas` as peer `client` (any id but 1), from
+	/// `scene` (scene JSON text) or, without one, the demo scene, on WebGPU
+	/// when `prefer_gpu` is set and the browser supports it.
 	pub async fn create(
 		canvas: HtmlCanvasElement,
 		client: u32,
 		prefer_gpu: bool,
+		scene: Option<String>,
 	) -> Result<CanvasApp, JsError> {
-		let app = App::new(client).map_err(js_error)?;
+		let app = match scene {
+			Some(scene) => {
+				let scene = serde_json::from_str(&scene).map_err(js_error)?;
+				App::with_scene(client, &scene)
+			}
+			None => App::new(client),
+		}
+		.map_err(js_error)?;
 		let backend = Backend::new(&canvas, prefer_gpu).await.map_err(js_error)?;
 
 		Ok(Self {
@@ -277,7 +286,13 @@ impl CanvasApp {
 		self.app.canvas().state().camera().zoom
 	}
 
-	/// The scene as canonical JSON, to compare peers.
+	/// The whole shared scene as one v1 Yjs update.
+	#[must_use]
+	pub fn encode_state(&self) -> Vec<u8> {
+		self.app.encode_state()
+	}
+
+	/// The scene as canonical JSON, to store or to compare peers.
 	#[must_use]
 	pub fn scene_json(&self) -> String {
 		self.app.canvas().state().scene().to_json().to_string()

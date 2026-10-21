@@ -177,10 +177,18 @@ jobs:
             (cd "$package" && npm ci --no-audit --no-fund && npm run build)
           done
 
+      - name: build @canvist/canvas
+        working-directory: packages/canvist-canvas
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run build:wasm
+          npm run build
+
       - name: check every npm tarball has what its exports name
         run: |
           node tools/release/check_npm_pack.ts \
-            packages/canvist-headless packages/canvist-web packages/canvist-react packages/canvist-vue
+            packages/canvist-headless packages/canvist-web packages/canvist-react packages/canvist-vue packages/canvist-canvas
 
       # Readiness reads the release record: every package must be publishable,
       # with its registry's trusted publishing set up. The Dart packages are

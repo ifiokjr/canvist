@@ -18,7 +18,8 @@ use canvist_scene::SceneSchema;
 
 use crate::AppError;
 
-/// The client id the demo scene is built under. Tabs must use another.
+/// The client id every starting scene is built under, the demo's or one
+/// the host passes. Tabs must use another.
 pub const SEED_CLIENT: u32 = 1;
 /// The demo scene, as nested scene JSON.
 pub const DEMO_SCENE: &str = include_str!("demo.json");
@@ -47,10 +48,14 @@ const SUN: [u8; 3] = [255, 214, 120];
 const GLINT: [u8; 3] = [255, 190, 110];
 const SEA: [u8; 3] = [30, 40, 90];
 
-/// The demo scene's shared state, v1 encoded.
-pub fn seed_state(schema: &Arc<SceneSchema>) -> Result<Vec<u8>, AppError> {
-	let json = serde_json::from_str(DEMO_SCENE)?;
-	let scene = Scene::from_json(schema.clone(), SEED_CLIENT, &json)?;
+/// The shared state, v1 encoded, of `scene` (scene JSON) built under
+/// [`SEED_CLIENT`]: the same bytes in every tab that starts from the same
+/// JSON, so their documents merge without duplicating anything.
+pub fn seed_state(
+	schema: &Arc<SceneSchema>,
+	scene: &serde_json::Value,
+) -> Result<Vec<u8>, AppError> {
+	let scene = Scene::from_json(schema.clone(), SEED_CLIENT, scene)?;
 	let mut binding = SceneBinding::with_client_id(schema.clone(), u64::from(SEED_CLIENT))?;
 	binding.seed(&scene)?;
 	Ok(binding.encode_state(Encoding::V1))

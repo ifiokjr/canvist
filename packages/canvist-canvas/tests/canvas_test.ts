@@ -243,3 +243,47 @@ Deno.test("two tabs edit one scene", async () => {
 		assertEquals((await state(ada)).json, (await state(grace)).json);
 	});
 });
+
+Deno.test("a canvas starts from the scene it is given, the same in every tab", async () => {
+	const scene = {
+		type: "canvist-scene",
+		version: 1,
+		nodes: [{
+			type: "page",
+			children: [{
+				type: "rectangle",
+				props: {
+					name: "Card",
+					size: [120, 80],
+					transform: [1, 0, 0, 1, 40, 40],
+					fills: [{ type: "solid", color: "#3b2cf5" }],
+				},
+			}],
+		}],
+	};
+
+	await withBrowser(async (context, server) => {
+		const url = `${server.url}?cpu&room=scene&scene=${
+			encodeURIComponent(JSON.stringify(scene))
+		}`;
+		const first = await open(context, url);
+		const second = await open(context, url);
+		await nextFrame(second);
+
+		const [one, two] = await Promise.all([state(first), state(second)]);
+		assertEquals(one.nodes, 2, "a page and its rectangle");
+		assertEquals(
+			two.nodes,
+			one.nodes,
+			"tabs that share a scene merge it without duplicates",
+		);
+		assertEquals(two.json, one.json);
+
+		const saved = await first.evaluate(() => globalThis.__canvas?.toJson());
+		assert(JSON.stringify(saved).includes('"Card"'));
+		const stateBytes = await first.evaluate(() =>
+			globalThis.__canvas?.encodeState().length ?? 0
+		);
+		assert(stateBytes > 0, "the shared state encodes");
+	});
+});

@@ -22,10 +22,10 @@ import init, {
 	loadEmoji,
 	WasmEngine,
 } from "../wasm-full/canvist_headless_full.js";
-import { Engine, type EngineOptions, type StarterKit } from "./engine.ts";
+import { Engine, type EngineOptions } from "./engine.ts";
 import { starterKit } from "./extensions.generated.ts";
 import { bundled, type WasmSource } from "./load.ts";
-import type { Extensions } from "./types.ts";
+import type { Extensions, StarterKit } from "./types.ts";
 
 export {
 	type CanvistError,
@@ -33,8 +33,6 @@ export {
 	Engine,
 	type EngineOptions,
 	isCanvistError,
-	type Registered,
-	type StarterKit,
 	type SyncReply,
 	type Validation,
 } from "./engine.ts";

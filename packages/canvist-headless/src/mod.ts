@@ -21,13 +21,10 @@
 export { createEngine } from "./create.ts";
 export {
 	type CanvistError,
-	type Content,
 	Doc,
 	Engine,
 	type EngineOptions,
 	isCanvistError,
-	type Registered,
-	type StarterKit,
 	type SyncReply,
 	type Validation,
 } from "./engine.ts";

@@ -1,1 +1,5 @@
 demo/main.js
+node_modules/
+dist/
+# Built by `npm run build:wasm` (or `deno task build:wasm`).
+wasm/

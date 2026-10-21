@@ -23,19 +23,13 @@
  * @module
  */
 import init, { WasmRenderer } from "../wasm-ssr/canvist_headless_ssr.js";
-import type { Content, StarterKit } from "./engine.ts";
 import { starterKit } from "./extensions.generated.ts";
 import { bundled, type WasmSource } from "./load.ts";
-import type { Extensions, ThemeOptions } from "./types.ts";
+import type { Content, Extensions, StarterKit, ThemeOptions } from "./types.ts";
 
-export {
-	type CanvistError,
-	type Content,
-	isCanvistError,
-	type StarterKit,
-} from "./engine.ts";
+export { type CanvistError, isCanvistError } from "./engine.ts";
 export type { WasmSource } from "./load.ts";
-export type { ThemeOptions } from "./types.ts";
+export type { Content, StarterKit, ThemeOptions } from "./types.ts";
 
 const BUNDLED = new URL(
 	"../wasm-ssr/canvist_headless_ssr_bg.wasm",

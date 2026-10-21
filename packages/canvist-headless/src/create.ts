@@ -4,9 +4,10 @@
  * @module
  */
 import { WasmEngine } from "../wasm/canvist_headless_wasm.js";
-import { Engine, type EngineOptions, type StarterKit } from "./engine.ts";
+import { Engine, type EngineOptions } from "./engine.ts";
 import { starterKit } from "./extensions.generated.ts";
 import { load } from "./load.ts";
+import type { StarterKit } from "./types.ts";
 
 /**
  * Load canvist and create an engine with the given StarterKit extensions,

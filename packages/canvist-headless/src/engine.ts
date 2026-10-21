@@ -6,7 +6,7 @@
  * @module
  */
 import type { WasmDoc, WasmEngine } from "../wasm/canvist_headless_wasm.js";
-import { core, type starterKit } from "./extensions.generated.ts";
+import { core } from "./extensions.generated.ts";
 import type { WasmSource } from "./load.ts";
 import type {
 	CommandName,
@@ -23,18 +23,9 @@ import type {
 	QueryParams,
 	QueryResult,
 	Range,
+	Registered,
+	StarterKit,
 } from "./types.ts";
-
-/** The extensions every engine has, plus the ones it was created with. */
-export type Registered<E extends Extensions> = readonly [...typeof core, ...E];
-
-/** The extensions of TipTap's StarterKit. */
-export type StarterKit = typeof starterKit;
-
-/** A document to start from: text in a format, or ProseMirror JSON. */
-export type Content<E extends Extensions> =
-	| { readonly format: Format; readonly input: string }
-	| DocJson<Registered<E>>;
 
 /** Options for `createEngine`. */
 export interface EngineOptions {

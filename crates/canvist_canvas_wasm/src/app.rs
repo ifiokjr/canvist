@@ -80,11 +80,11 @@ pub enum AppError {
 	/// The scene rejected an edit.
 	#[error(transparent)]
 	Scene(#[from] SceneError),
-	/// The demo scene is not valid JSON.
+	/// The starting scene is not valid JSON.
 	#[error(transparent)]
 	Json(#[from] serde_json::Error),
-	/// The demo's client id is reserved.
-	#[error("client id {0} is reserved for the demo scene")]
+	/// The client id every starting scene is built under is reserved.
+	#[error("client id {0} is reserved for building the starting scene")]
 	ReservedClient(u32),
 }
 
@@ -130,6 +130,17 @@ impl App {
 	/// The demo scene, as peer `client`. Every peer starts from the same
 	/// shared state, so peers sync by exchanging what each other lacks.
 	pub fn new(client: u32) -> Result<Self, AppError> {
+		let scene = serde_json::from_str(demo::DEMO_SCENE)?;
+		let mut app = Self::with_scene(client, &scene)?;
+		app.assets = demo::assets();
+
+		Ok(app)
+	}
+
+	/// `scene` (scene JSON, nested or flat), as peer `client`. Peers that
+	/// start from the same JSON start from the same shared state, as demo
+	/// peers do.
+	pub fn with_scene(client: u32, scene: &serde_json::Value) -> Result<Self, AppError> {
 		if client == demo::SEED_CLIENT {
 			return Err(AppError::ReservedClient(client));
 		}
@@ -138,16 +149,23 @@ impl App {
 		DesignKit::register(&mut builder);
 		let schema = builder.schema()?;
 		let mut binding = SceneBinding::with_client_id(schema.clone(), u64::from(client))?;
-		binding.apply_state(&demo::seed_state(&schema)?, Encoding::V1)?;
+		binding.apply_state(&demo::seed_state(&schema, scene)?, Encoding::V1)?;
 		let scene = binding.scene(client)?;
 
 		Ok(Self {
 			canvas: builder.build(scene, text_layouts())?,
 			binding,
 			session: None,
-			assets: demo::assets(),
+			assets: Assets::new(),
 			now: Duration::ZERO,
 		})
+	}
+
+	/// The whole shared scene as one v1 Yjs update, to store or to give a
+	/// joining peer.
+	#[must_use]
+	pub fn encode_state(&self) -> Vec<u8> {
+		self.binding.encode_state(Encoding::V1)
 	}
 
 	/// The canvas.
