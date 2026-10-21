@@ -1,0 +1,1425 @@
+{
+	"description": "Tables: inserting, Tab between cells, merged cells, headers, and HTML and Markdown.",
+	"cases": [
+		{
+			"name": "inserts a table and fills it with Tab",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"steps": [
+				{
+					"op": "query",
+					"query": "tableCell",
+					"expect": null
+				},
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"rows": 2,
+						"cols": 2
+					},
+					"applied": true
+				},
+				{
+					"op": "typeText",
+					"text": "Name"
+				},
+				{
+					"op": "press",
+					"key": "Tab"
+				},
+				{
+					"op": "typeText",
+					"text": "Score"
+				},
+				{
+					"op": "press",
+					"key": "Tab"
+				},
+				{
+					"op": "typeText",
+					"text": "Ada"
+				},
+				{
+					"op": "press",
+					"key": "Tab"
+				},
+				{
+					"op": "typeText",
+					"text": "10"
+				},
+				{
+					"op": "query",
+					"query": "tableCell",
+					"expect": {
+						"row": 1,
+						"column": 1,
+						"rowspan": 1,
+						"colspan": 1,
+						"header": false,
+						"rows": 2,
+						"columns": 2
+					}
+				},
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"rows": 0
+					},
+					"error": "invalidArgs"
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><th><p>Name</p></th><th><p>Score</p></th></tr><tr><td><p>Ada</p></td><td><p>10</p></td></tr></tbody></table><p></p>",
+				"markdown": "| Name | Score |\n| --- | --- |\n| Ada | 10 |"
+			}
+		},
+		{
+			"name": "Tab past the last cell adds a row",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"steps": [
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"rows": 1,
+						"cols": 1,
+						"withHeaderRow": false
+					},
+					"applied": true
+				},
+				{
+					"op": "press",
+					"key": "Tab"
+				},
+				{
+					"op": "typeText",
+					"text": "new"
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><td><p></p></td></tr><tr><td><p>new</p></td></tr></tbody></table><p></p>"
+			}
+		},
+		{
+			"name": "merges a selection of cells and splits it again",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "html",
+				"content": "<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>"
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							0,
+							0,
+							0
+						],
+						"offset": 0
+					},
+					"head": {
+						"path": [
+							0,
+							0,
+							1,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "run",
+					"command": "mergeCells",
+					"applied": true
+				},
+				{
+					"op": "query",
+					"query": "tableCell",
+					"expect": {
+						"row": 0,
+						"column": 0,
+						"rowspan": 1,
+						"colspan": 2,
+						"header": false,
+						"rows": 2,
+						"columns": 2
+					}
+				},
+				{
+					"op": "run",
+					"command": "addColumnAfter",
+					"applied": true
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><td colspan=\"2\"><p>a</p><p>b</p></td><td><p></p></td></tr><tr><td><p>c</p></td><td><p>d</p></td><td><p></p></td></tr></tbody></table><p></p>",
+				"markdown": "<table><tbody><tr><td colspan=\"2\"><p>a</p><p>b</p></td><td><p></p></td></tr><tr><td><p>c</p></td><td><p>d</p></td><td><p></p></td></tr></tbody></table>"
+			}
+		},
+		{
+			"name": "reads GitHub pipe tables with their alignment",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "markdown",
+				"content": "| a | b |\n| :-: | --- |\n| c |"
+			},
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "table",
+							"content": [
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableHeader",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "a"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableHeader",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "b"
+														}
+													]
+												}
+											]
+										}
+									]
+								},
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "c"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph"
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "toggles the header row and deletes rows and columns",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "html",
+				"content": "<table><tr><th>a</th><th>b</th></tr><tr><td>c</td><td>d</td></tr></table>"
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							1,
+							1,
+							0
+						],
+						"offset": 1
+					}
+				},
+				{
+					"op": "run",
+					"command": "toggleHeaderRow",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "deleteColumn",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "deleteRow",
+					"applied": true
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><td><p>a</p></td></tr></tbody></table><p></p>"
+			}
+		},
+		{
+			"name": "table commands do nothing outside a table, and can says so",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"steps": [
+				{
+					"op": "typeText",
+					"text": "Plain"
+				},
+				{
+					"op": "can",
+					"command": "addColumnBefore",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "addColumnAfter",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "deleteColumn",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "addRowBefore",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "addRowAfter",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "deleteRow",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "deleteTable",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "mergeCells",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "splitCell",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "mergeOrSplit",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "toggleHeaderRow",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "toggleHeaderColumn",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "toggleHeaderCell",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "goToNextCell",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "goToPreviousCell",
+					"expect": false
+				},
+				{
+					"op": "can",
+					"command": "fixTables",
+					"expect": false
+				},
+				{
+					"op": "run",
+					"command": "addRowAfter",
+					"applied": false
+				},
+				{
+					"op": "run",
+					"command": "setCellAttribute",
+					"args": {
+						"name": "align",
+						"value": "left"
+					},
+					"applied": false
+				},
+				{
+					"op": "can",
+					"command": "insertTable",
+					"expect": true
+				}
+			],
+			"expect": {
+				"html": "<p>Plain</p>"
+			}
+		},
+		{
+			"name": "insertTable and setCellAttribute check their arguments",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"steps": [
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"rows": 1001
+					},
+					"error": "invalidArgs"
+				},
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"cols": "2"
+					},
+					"error": "invalidArgs"
+				},
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"withHeaderRow": 1
+					},
+					"error": "invalidArgs"
+				},
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"depth": 1
+					},
+					"error": "invalidArgs"
+				},
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"rows": 1,
+						"cols": 2,
+						"withHeaderRow": false
+					},
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "setCellAttribute",
+					"args": {
+						"name": "align"
+					},
+					"error": "invalidArgs"
+				},
+				{
+					"op": "run",
+					"command": "setCellAttribute",
+					"args": {
+						"name": "align",
+						"value": 3
+					},
+					"error": "invalidArgs"
+				},
+				{
+					"op": "query",
+					"query": "tableCell",
+					"args": {
+						"row": 0
+					},
+					"error": "invalidArgs"
+				},
+				{
+					"op": "run",
+					"command": "setCellAttribute",
+					"args": {
+						"name": "align",
+						"value": "right"
+					},
+					"applied": true
+				}
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "table",
+							"content": [
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableCell",
+											"attrs": {
+												"align": "right"
+											},
+											"content": [
+												{
+													"type": "paragraph"
+												}
+											]
+										},
+										{
+											"type": "tableCell",
+											"content": [
+												{
+													"type": "paragraph"
+												}
+											]
+										}
+									]
+								}
+							]
+						},
+						{
+							"type": "paragraph"
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "table commands are unknown without the extension",
+			"steps": [
+				{
+					"op": "run",
+					"command": "insertTable",
+					"error": "unknownName"
+				},
+				{
+					"op": "run",
+					"command": "addRowAfter",
+					"error": "unknownName"
+				},
+				{
+					"op": "query",
+					"query": "tableCell",
+					"error": "unknownName"
+				}
+			],
+			"expect": {
+				"html": "<p></p>"
+			}
+		},
+		{
+			"name": "Shift-Tab goes back a cell, and Backspace and Delete stop at a cell's edge",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "html",
+				"content": "<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>"
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							1,
+							1,
+							0
+						],
+						"offset": 1
+					}
+				},
+				{
+					"op": "press",
+					"key": "Shift-Tab"
+				},
+				{
+					"op": "expect",
+					"selection": {
+						"anchor": {
+							"path": [
+								0,
+								1,
+								0,
+								0
+							],
+							"offset": 0
+						},
+						"head": {
+							"path": [
+								0,
+								1,
+								0,
+								0
+							],
+							"offset": 1
+						}
+					}
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							1,
+							1,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "press",
+					"key": "Backspace"
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							0,
+							0,
+							0
+						],
+						"offset": 1
+					}
+				},
+				{
+					"op": "press",
+					"key": "Delete"
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							0,
+							0,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "press",
+					"key": "Shift-Tab"
+				},
+				{
+					"op": "expect",
+					"selection": {
+						"anchor": {
+							"path": [
+								0,
+								0,
+								0,
+								0
+							],
+							"offset": 0
+						},
+						"head": {
+							"path": [
+								0,
+								0,
+								0,
+								0
+							],
+							"offset": 0
+						}
+					}
+				},
+				{
+					"op": "run",
+					"command": "goToPreviousCell",
+					"applied": false
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							1,
+							1,
+							0
+						],
+						"offset": 1
+					}
+				},
+				{
+					"op": "run",
+					"command": "goToNextCell",
+					"applied": false
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><td><p>a</p></td><td><p>b</p></td></tr><tr><td><p>c</p></td><td><p>d</p></td></tr></tbody></table><p></p>"
+			}
+		},
+		{
+			"name": "undoes and redoes each table command one call at a time",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "html",
+				"content": "<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>"
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							0,
+							0,
+							0
+						],
+						"offset": 0
+					},
+					"head": {
+						"path": [
+							0,
+							1,
+							0,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "run",
+					"command": "mergeCells",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "addColumnBefore",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "toggleHeaderRow",
+					"applied": true
+				},
+				{
+					"op": "undo",
+					"applied": true
+				},
+				{
+					"op": "undo",
+					"applied": true
+				},
+				{
+					"op": "expect",
+					"html": "<table><tbody><tr><td rowspan=\"2\"><p>a</p><p>c</p></td><td><p>b</p></td></tr><tr><td><p>d</p></td></tr></tbody></table><p></p>"
+				},
+				{
+					"op": "redo",
+					"applied": true
+				},
+				{
+					"op": "redo",
+					"applied": true
+				},
+				{
+					"op": "redo",
+					"applied": false
+				},
+				{
+					"op": "undo",
+					"applied": true
+				},
+				{
+					"op": "undo",
+					"applied": true
+				},
+				{
+					"op": "undo",
+					"applied": true
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><td><p>a</p></td><td><p>b</p></td></tr><tr><td><p>c</p></td><td><p>d</p></td></tr></tbody></table><p></p>"
+			}
+		},
+		{
+			"name": "toggling the header column twice keeps the header row's corner",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"steps": [
+				{
+					"op": "run",
+					"command": "insertTable",
+					"args": {
+						"rows": 2,
+						"cols": 2
+					},
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "toggleHeaderColumn",
+					"applied": true
+				},
+				{
+					"op": "expect",
+					"html": "<table><tbody><tr><th><p></p></th><th><p></p></th></tr><tr><th><p></p></th><td><p></p></td></tr></tbody></table><p></p>"
+				},
+				{
+					"op": "run",
+					"command": "toggleHeaderColumn",
+					"applied": true
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><th><p></p></th><th><p></p></th></tr><tr><td><p></p></td><td><p></p></td></tr></tbody></table><p></p>"
+			}
+		},
+		{
+			"name": "reads TipTap JSON with merged cells and widths and writes it back unchanged",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "json",
+				"content": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "table",
+							"content": [
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableHeader",
+											"attrs": {
+												"colspan": 2,
+												"colwidth": [
+													120,
+													0
+												],
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "Wide"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableHeader",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "C"
+														}
+													]
+												}
+											]
+										}
+									]
+								},
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 2
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "Tall"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "b"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "c"
+														}
+													]
+												}
+											]
+										}
+									]
+								},
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "e"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "f"
+														}
+													]
+												}
+											]
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							2,
+							1,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "query",
+					"query": "tableCell",
+					"expect": {
+						"row": 2,
+						"column": 2,
+						"rowspan": 1,
+						"colspan": 1,
+						"header": false,
+						"rows": 3,
+						"columns": 3
+					}
+				},
+				{
+					"op": "snapshotRoundTrip"
+				}
+			],
+			"expect": {
+				"json": {
+					"type": "doc",
+					"content": [
+						{
+							"type": "table",
+							"content": [
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableHeader",
+											"attrs": {
+												"colspan": 2,
+												"colwidth": [
+													120,
+													0
+												],
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "Wide"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableHeader",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "C"
+														}
+													]
+												}
+											]
+										}
+									]
+								},
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 2
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "Tall"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "b"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "c"
+														}
+													]
+												}
+											]
+										}
+									]
+								},
+								{
+									"type": "tableRow",
+									"content": [
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "e"
+														}
+													]
+												}
+											]
+										},
+										{
+											"type": "tableCell",
+											"attrs": {
+												"colspan": 1,
+												"colwidth": null,
+												"rowspan": 1
+											},
+											"content": [
+												{
+													"type": "paragraph",
+													"content": [
+														{
+															"type": "text",
+															"text": "f"
+														}
+													]
+												}
+											]
+										}
+									]
+								}
+							]
+						},
+						{
+							"type": "paragraph"
+						}
+					]
+				},
+				"html": "<table><tbody><tr><th colspan=\"2\" colwidth=\"120,0\"><p>Wide</p></th><th><p>C</p></th></tr><tr><td rowspan=\"2\"><p>Tall</p></td><td><p>b</p></td><td><p>c</p></td></tr><tr><td><p>e</p></td><td><p>f</p></td></tr></tbody></table><p></p>"
+			}
+		},
+		{
+			"name": "keeps a row a merged cell spans entirely through HTML",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "html",
+				"content": "<table><tbody><tr><td colspan=\"2\" rowspan=\"2\"><p>all</p></td></tr><tr></tr><tr><td><p>a</p></td><td><p>b</p></td></tr></tbody></table>"
+			},
+			"steps": [
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							2,
+							0,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "query",
+					"query": "tableCell",
+					"expect": {
+						"row": 2,
+						"column": 0,
+						"rowspan": 1,
+						"colspan": 1,
+						"header": false,
+						"rows": 3,
+						"columns": 2
+					}
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><td colspan=\"2\" rowspan=\"2\"><p>all</p></td></tr><tr></tr><tr><td><p>a</p></td><td><p>b</p></td></tr></tbody></table><p></p>"
+			}
+		},
+		{
+			"name": "writes pipe tables with alignment, escapes, and marks, and HTML for the rest",
+			"requires": [
+				"extensions"
+			],
+			"extensions": [
+				"table",
+				"textAlign"
+			],
+			"input": {
+				"format": "markdown",
+				"content": "| L | C | R |\n| :--- | :---: | ---: |\n| **a** | b \\| c | `d` |"
+			},
+			"steps": [
+				{
+					"op": "expect",
+					"markdown": "| L | C | R |\n| :--- | :---: | ---: |\n| **a** | b \\| c | `d` |"
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							1,
+							0,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "run",
+					"command": "toggleHeaderColumn",
+					"applied": true
+				}
+			],
+			"expect": {
+				"markdown": "<table><tbody><tr><th><p style=\"text-align: left\">L</p></th><th><p style=\"text-align: center\">C</p></th><th><p style=\"text-align: right\">R</p></th></tr><tr><th><p style=\"text-align: left\"><strong>a</strong></p></th><td><p style=\"text-align: center\">b | c</p></td><td><p style=\"text-align: right\"><code>d</code></p></td></tr></tbody></table>"
+			}
+		},
+		{
+			"name": "table cells and spans survive sharing and a new peer joining",
+			"requires": [
+				"collab",
+				"extensions"
+			],
+			"extensions": [
+				"table"
+			],
+			"input": {
+				"format": "html",
+				"content": "<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>"
+			},
+			"steps": [
+				{
+					"op": "share",
+					"clientId": 1
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							0,
+							0,
+							0
+						],
+						"offset": 0
+					},
+					"head": {
+						"path": [
+							0,
+							0,
+							1,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "run",
+					"command": "mergeCells",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "toggleHeaderRow",
+					"applied": true
+				},
+				{
+					"op": "run",
+					"command": "addRowAfter",
+					"applied": true
+				},
+				{
+					"op": "rejoin",
+					"clientId": 2
+				},
+				{
+					"op": "validate",
+					"rejectedBlocks": 0,
+					"waiting": false
+				},
+				{
+					"op": "select",
+					"anchor": {
+						"path": [
+							0,
+							0,
+							0,
+							0
+						],
+						"offset": 0
+					}
+				},
+				{
+					"op": "query",
+					"query": "tableCell",
+					"expect": {
+						"row": 0,
+						"column": 0,
+						"rowspan": 1,
+						"colspan": 2,
+						"header": true,
+						"rows": 3,
+						"columns": 2
+					}
+				},
+				{
+					"op": "press",
+					"key": "Tab"
+				},
+				{
+					"op": "typeText",
+					"text": "new"
+				}
+			],
+			"expect": {
+				"html": "<table><tbody><tr><th colspan=\"2\"><p>a</p><p>b</p></th></tr><tr><td><p>new</p></td><td><p></p></td></tr><tr><td><p>c</p></td><td><p>d</p></td></tr></tbody></table><p></p>"
+			}
+		}
+	]
+}

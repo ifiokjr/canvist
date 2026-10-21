@@ -173,6 +173,17 @@ fn round_trip(doc: &Document, width: f32, exact: bool) -> Result<(), TestCaseErr
 		let rect = layout
 			.caret_rect(caret)
 			.expect("every text block is laid out");
+		let block = layout
+			.block_rect(caret.point.block)
+			.expect("every block has a rectangle");
+
+		// Trailing spaces hang past the end of a line, as CSS `pre-wrap` lets
+		// them; in a table cell that can be over the next cell, where a click
+		// belongs to that cell.
+		if rect.x + rect.width / 2.0 > block.x + block.width {
+			continue;
+		}
+
 		let (x, y) = (rect.x + rect.width / 2.0, rect.y + rect.height / 2.0);
 		let hit = layout.hit_test(x, y).expect("the document has rows");
 
@@ -205,6 +216,12 @@ proptest! {
 	/// hit test at a caret returns exactly that caret's point.
 	#[test]
 	fn hit_test_inverts_caret_rect(doc in document(false), width in 60.0f32..400.0) {
+		round_trip(&doc, width, true)?;
+	}
+
+	/// The same holds for text placed side by side in table cells.
+	#[test]
+	fn hit_test_inverts_caret_rect_in_tables(doc in table_document(), width in 120.0f32..480.0) {
 		round_trip(&doc, width, true)?;
 	}
 
@@ -318,7 +335,41 @@ fn root_node() -> impl Strategy<Value = Json> {
 		1 => proptest::collection::vec(text(), 1..3)
 			.prop_map(|paragraphs| json!({ "type": "blockquote", "content": paragraphs })),
 		1 => Just(json!({ "type": "horizontalRule" })),
+		1 => table_node(),
 	]
+}
+
+/// A table of one to three rows of one to three cells, some spanning two
+/// columns or rows, each holding one or two paragraphs.
+fn table_node() -> impl Strategy<Value = Json> {
+	let words = || proptest::collection::vec(proptest::sample::select(LTR_WORDS.to_vec()), 0..8);
+	let paragraphs = proptest::collection::vec(words(), 1..3);
+	let cell = (paragraphs, 1..3i64, 1..3i64, any::<bool>()).prop_map(
+		|(texts, colspan, rowspan, header)| {
+			let content: Vec<Json> = texts
+				.iter()
+				.map(|words| support::paragraph(&words.join(" ")))
+				.collect();
+			json!({
+				"type": if header { "tableHeader" } else { "tableCell" },
+				"attrs": { "colspan": colspan, "rowspan": rowspan },
+				"content": content,
+			})
+		},
+	);
+	let row = proptest::collection::vec(cell, 1..4)
+		.prop_map(|cells| json!({ "type": "tableRow", "content": cells }));
+
+	proptest::collection::vec(row, 1..4)
+		.prop_map(|rows| json!({ "type": "table", "content": rows }))
+}
+
+fn table_document() -> impl Strategy<Value = Document> {
+	proptest::collection::vec(
+		prop_oneof![table_node(), Just(support::paragraph("between"))],
+		1..4,
+	)
+	.prop_map(|roots| support::doc(Json::Array(roots)))
 }
 
 fn structured_document() -> impl Strategy<Value = Document> {

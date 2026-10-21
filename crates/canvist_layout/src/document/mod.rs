@@ -7,9 +7,18 @@ use canvist_model::BlockId;
 use canvist_model::Commit;
 use canvist_model::Document;
 
+pub(crate) use self::grid::GridStep;
+#[cfg(feature = "tables")]
+pub(crate) use self::grid::column_widths;
+pub(crate) use self::grid::span_attr;
+#[cfg(feature = "tables")]
+pub(crate) use self::grid::table_cells;
+#[cfg(feature = "tables")]
+pub(crate) use self::grid::table_map;
 use self::heights::Heights;
 pub(crate) use self::query::Origin;
 use self::rows::Flat;
+use self::rows::GridPart;
 pub(crate) use self::rows::Marker;
 pub(crate) use self::rows::Row;
 pub(crate) use self::rows::RowKind;
@@ -36,10 +45,16 @@ use crate::theme::Theme;
 
 mod dump;
 mod edits;
+mod grid;
 mod heights;
 mod query;
 mod rows;
 mod splice;
+#[cfg(feature = "tables")]
+mod tables;
+#[cfg(not(feature = "tables"))]
+#[path = "tables_off.rs"]
+mod tables;
 
 /// Layout settings.
 #[derive(Clone, Copy, Debug)]
@@ -523,10 +538,8 @@ impl DocumentLayout {
 
 	fn rebuild_heights(&mut self) {
 		self.heights = Heights::new(
-			self.flat
-				.rows
-				.iter()
-				.map(|row| row.lead + row.height)
+			(0..self.flat.rows.len())
+				.map(|index| self.flat.extent(index))
 				.collect(),
 		);
 	}
@@ -596,6 +609,7 @@ impl DocumentLayout {
 	) -> Result<Option<f32>, LayoutError> {
 		let tab_size = self.theme().tab_size();
 		let mut moved = None;
+		let mut tables = Vec::new();
 
 		for (index, draft) in drafts {
 			let style = self.styles.get(self.flat.rows[index].style);
@@ -611,9 +625,23 @@ impl DocumentLayout {
 			}
 
 			row.height = height;
+
+			if let Some(table) = row.table() {
+				if !tables.contains(&table) {
+					tables.push(table);
+				}
+
+				continue;
+			}
+
 			let extent = row.lead + height;
 			self.heights.set(index, extent);
 			let top = to_px(self.row_top(index));
+			moved = Some(moved.map_or(top, |y: f32| y.min(top)));
+		}
+
+		for table in tables {
+			let top = to_px(self.resolve_grid(table));
 			moved = Some(moved.map_or(top, |y: f32| y.min(top)));
 		}
 
@@ -733,7 +761,14 @@ impl DocumentLayout {
 
 	/// The top of row `index`'s border box, in units.
 	pub(crate) fn row_top(&self, index: usize) -> i64 {
-		self.heights.prefix(index) + self.flat.rows.get(index).map_or(0, |row| row.lead)
+		let Some(row) = self.flat.rows.get(index) else {
+			return self.heights.prefix(index);
+		};
+
+		match self.flat.grid(row.table()) {
+			Some((first, grid)) => self.heights.prefix(first) + grid.lead + row.grid_y,
+			None => self.heights.prefix(index) + row.lead,
+		}
 	}
 
 	pub(crate) fn row_rect(&self, index: usize) -> Rect {
@@ -750,17 +785,41 @@ impl DocumentLayout {
 	}
 
 	pub(crate) fn span_rect(&self, span: &Span) -> Rect {
-		let top = self.row_top(span.first_row as usize) - span.top;
-		let last = span.last_row as usize;
-		let bottom =
-			self.row_top(last) + self.heights.get(last) - self.flat.rows[last].lead + span.bottom;
+		let (top, bottom) = match span.grid_part() {
+			Some(GridPart::Row { table, row }) => {
+				let row = *row as usize;
+				self.grid_band(*table, row..row + 1, 0)
+			}
+			Some(GridPart::Cell { table, cell }) => {
+				let grid = self.flat.grid(Some(*table)).map(|(_, grid)| grid);
+				let cell = grid.and_then(|grid| grid.cells.get(*cell as usize));
+				let inset = grid.map_or(0, |grid| grid.rule / 2);
+				cell.map_or((0, 0), |cell| self.grid_band(*table, cell.spanned(), inset))
+			}
+			_ => {
+				let first = span.first_row as usize;
+				let last = span.last_row as usize;
+				(
+					self.flow_top(first) - span.top,
+					self.flow_bottom(last) + span.bottom,
+				)
+			}
+		};
 
 		Rect::new(span.x, to_px(top), span.width, to_px(bottom - top))
 	}
 
-	/// The row containing `y`, if there are rows.
+	/// The row containing `y`, if there are rows. Inside a table that is
+	/// its first row, since the grid places the rest beside each other.
 	pub(crate) fn row_at(&self, y: f32) -> Option<usize> {
-		(!self.flat.rows.is_empty()).then(|| self.heights.find(to_units(y)))
+		if self.flat.rows.is_empty() {
+			return None;
+		}
+
+		let index = self.heights.find(to_units(y));
+		let table = self.flat.rows[index].table();
+
+		Some(self.flat.grid(table).map_or(index, |(first, _)| first))
 	}
 
 	/// Rows whose extent (leading space plus box) intersects `top..bottom`.

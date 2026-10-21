@@ -69,6 +69,7 @@ mod savepoint;
 mod schema;
 mod selection;
 mod step;
+mod table;
 #[cfg(test)]
 mod testing;
 mod transaction;
@@ -114,5 +115,8 @@ pub use step::Mapped;
 pub use step::Step;
 pub use step::StepError;
 pub use step::StepMap;
+pub use table::GridCell;
+pub use table::GridRect;
+pub use table::TableMap;
 pub use transaction::Commit;
 pub use transaction::Transaction;

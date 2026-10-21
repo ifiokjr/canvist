@@ -683,6 +683,108 @@ final class SuperscriptHandle extends ExtensionHandle {
       _query('isSuperscript', (json) => json! as bool);
 }
 
+/// The commands and queries of `table`.
+final class TableHandle extends ExtensionHandle {
+  TableHandle._(super.registration) : super._();
+
+  /// Insert a table of empty cells at the selection, with the caret in the first cell.
+  ///
+  /// [rows]: How many rows, from 1 to 1000.
+  ///
+  /// [cols]: How many columns, from 1 to 1000.
+  ///
+  /// [withHeaderRow]: Whether the first row is header cells.
+  Command insertTable({int? rows, int? cols, bool? withHeaderRow}) => _command(
+    'insertTable',
+    {'rows': ?rows, 'cols': ?cols, 'withHeaderRow': ?withHeaderRow},
+  );
+
+  /// Add a column left of the selected cells.
+  Command addColumnBefore() => _command('addColumnBefore', const {});
+
+  /// Add a column right of the selected cells.
+  Command addColumnAfter() => _command('addColumnAfter', const {});
+
+  /// Delete the selected columns.
+  Command deleteColumn() => _command('deleteColumn', const {});
+
+  /// Add a row above the selected cells.
+  Command addRowBefore() => _command('addRowBefore', const {});
+
+  /// Add a row below the selected cells.
+  Command addRowAfter() => _command('addRowAfter', const {});
+
+  /// Delete the selected rows.
+  Command deleteRow() => _command('deleteRow', const {});
+
+  /// Delete the table around the selection.
+  Command deleteTable() => _command('deleteTable', const {});
+
+  /// Merge the selected cells into one.
+  Command mergeCells() => _command('mergeCells', const {});
+
+  /// Split the merged cell holding the selection.
+  Command splitCell() => _command('splitCell', const {});
+
+  /// Merge the selected cells, or split the merged cell holding the caret.
+  Command mergeOrSplit() => _command('mergeOrSplit', const {});
+
+  /// Toggle header cells for the first row.
+  Command toggleHeaderRow() => _command('toggleHeaderRow', const {});
+
+  /// Toggle header cells for the first column.
+  Command toggleHeaderColumn() => _command('toggleHeaderColumn', const {});
+
+  /// Toggle header cells for the selected cells.
+  Command toggleHeaderCell() => _command('toggleHeaderCell', const {});
+
+  /// Set an attribute of the selected cells, or remove it when the value is null.
+  ///
+  /// [name]: The attribute, such as `backgroundColor`.
+  ///
+  /// [value]: Its value, or null to remove it.
+  Command setCellAttribute({required String name, required String? value}) =>
+      _command('setCellAttribute', {'name': name, 'value': value});
+
+  /// Select the next cell's content.
+  Command goToNextCell() => _command('goToNextCell', const {});
+
+  /// Select the previous cell's content.
+  Command goToPreviousCell() => _command('goToPreviousCell', const {});
+
+  /// Give every short row of every table empty cells up to its width.
+  Command fixTables() => _command('fixTables', const {});
+
+  /// Where the selection head sits in its table, or null outside one.
+  Query<
+    ({
+      int row,
+      int column,
+      int rowspan,
+      int colspan,
+      bool header,
+      int rows,
+      int columns,
+    })?
+  >
+  tableCell() => _query(
+    'tableCell',
+    (json) => json == null
+        ? null
+        : switch (json as Map<String, Object?>) {
+            final map0 => (
+              row: (map0['row']! as num).toInt(),
+              column: (map0['column']! as num).toInt(),
+              rowspan: (map0['rowspan']! as num).toInt(),
+              colspan: (map0['colspan']! as num).toInt(),
+              header: map0['header']! as bool,
+              rows: (map0['rows']! as num).toInt(),
+              columns: (map0['columns']! as num).toInt(),
+            ),
+          },
+  );
+}
+
 /// The commands and queries of `taskList`.
 final class TaskListHandle extends ExtensionHandle {
   TaskListHandle._(super.registration) : super._();
@@ -1087,6 +1189,13 @@ final class SuperscriptExtension extends Extension<SuperscriptHandle> {
       SuperscriptHandle._(registration);
 }
 
+/// Registers `table`.
+final class TableExtension extends Extension<TableHandle> {
+  const TableExtension._() : super('table');
+  @override
+  TableHandle _handle(Registration registration) => TableHandle._(registration);
+}
+
 /// Registers `taskList`.
 final class TaskListExtension extends Extension<TaskListHandle> {
   const TaskListExtension._() : super('taskList');
@@ -1252,6 +1361,9 @@ abstract final class Extensions {
   /// The `superscript` extension.
   static const superscript = SuperscriptExtension._();
 
+  /// The `table` extension.
+  static const table = TableExtension._();
+
   /// The `taskList` extension.
   static const taskList = TaskListExtension._();
 
@@ -1332,6 +1444,7 @@ abstract final class Extensions {
     strike,
     subscript,
     superscript,
+    table,
     taskList,
     textAlign,
     textStyle,

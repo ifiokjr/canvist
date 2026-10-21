@@ -28,7 +28,8 @@ mod build;
 pub enum RectKind {
 	/// A block or container background, such as a code block.
 	Background,
-	/// A container's left border, such as a blockquote bar.
+	/// A container's border, such as a blockquote bar or a table's grid
+	/// lines.
 	Border,
 	/// A horizontal rule.
 	Rule,

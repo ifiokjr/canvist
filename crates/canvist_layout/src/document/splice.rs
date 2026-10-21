@@ -17,6 +17,7 @@ use canvist_model::Step;
 use super::DocumentLayout;
 use super::rows;
 use super::rows::Flat;
+use super::rows::GridPart;
 use super::rows::Region;
 use super::rows::RootExtent;
 use super::rows::Row;
@@ -198,6 +199,7 @@ impl DocumentLayout {
 		let translated = rows.into_iter().enumerate().map(|(index, mut row)| {
 			row.key = key_base + index as u32;
 			row.span = row.span.map(|span| span + origin.span as u32);
+			row.table = row.table.map(|table| table + origin.span as u32);
 			row
 		});
 
@@ -221,6 +223,11 @@ impl DocumentLayout {
 			span.first_row += origin.row as u32;
 			span.last_row += origin.row as u32;
 			span.parent = span.parent.map(|parent| parent + origin.span as u32);
+
+			if let Some(table) = span.grid.as_mut().and_then(GridPart::table_mut) {
+				*table += origin.span as u32;
+			}
+
 			span
 		});
 
@@ -242,12 +249,17 @@ impl DocumentLayout {
 
 		for row in &mut flat.rows[rows_from..] {
 			row.span = row.span.map(|span| shift(span, delta.1));
+			row.table = row.table.map(|table| shift(table, delta.1));
 		}
 
 		for span in &mut flat.spans[spans_from..] {
 			span.first_row = shift(span.first_row, delta.0);
 			span.last_row = shift(span.last_row, delta.0);
 			span.parent = span.parent.map(|parent| shift(parent, delta.1));
+
+			if let Some(table) = span.grid.as_mut().and_then(GridPart::table_mut) {
+				*table = shift(*table, delta.1);
+			}
 		}
 	}
 
@@ -284,8 +296,15 @@ impl DocumentLayout {
 			})
 		};
 		let change = owed(previous.1) - owed(previous.0);
+		let table = self.flat.rows.get(next_row).and_then(Row::table);
 
-		if let Some(row) = self.flat.rows.get_mut(next_row) {
+		// A table's first row has its leading space in the table's grid.
+		if let Some(span) = table.and_then(|table| self.flat.spans.get_mut(table as usize))
+			&& span.first_row as usize == next_row
+			&& let Some(GridPart::Table(grid)) = &mut span.grid
+		{
+			grid.lead += change;
+		} else if let Some(row) = self.flat.rows.get_mut(next_row) {
 			row.lead += change;
 		}
 	}

@@ -1,5 +1,7 @@
 //! Slices to HTML, in the markup TipTap renders.
 
+use std::fmt::Write;
+
 use canvist_editor::Slice;
 use canvist_model::Attrs;
 use canvist_model::BlockTree;
@@ -175,6 +177,33 @@ fn float_text(number: f64) -> Option<String> {
 	serde_json::Number::from_f64(number).map(|number| number.to_string())
 }
 
+/// A cell's opening tag, with its spans when they are more than one and
+/// TipTap's comma-separated `colwidth`.
+fn cell_tag(tag: &str, attrs: &Attrs) -> String {
+	let mut open = format!("<{tag}");
+
+	for key in ["colspan", "rowspan"] {
+		if let Some(span) = attr_int(attrs, key).filter(|&span| span > 1) {
+			let _ = write!(open, " {key}=\"{span}\"");
+		}
+	}
+
+	let widths: Vec<String> = attrs
+		.get("colwidth")
+		.and_then(Value::as_array)
+		.unwrap_or_default()
+		.iter()
+		.map(|width| width.as_int().unwrap_or(0).to_string())
+		.collect();
+
+	if widths.iter().any(|width| width != "0") {
+		let _ = write!(open, " colwidth=\"{}\"", widths.join(","));
+	}
+
+	open.push('>');
+	open
+}
+
 fn container_tags(name: &str, attrs: &Attrs) -> (String, &'static str) {
 	match name {
 		"blockquote" => ("<blockquote>".to_owned(), "</blockquote>"),
@@ -186,7 +215,11 @@ fn container_tags(name: &str, attrs: &Attrs) -> (String, &'static str) {
 			}
 		}
 		"listItem" => ("<li>".to_owned(), "</li>"),
-		"details" => {
+		"table" if cfg!(feature = "table") => ("<table><tbody>".to_owned(), "</tbody></table>"),
+		"tableRow" if cfg!(feature = "table") => ("<tr>".to_owned(), "</tr>"),
+		"tableCell" if cfg!(feature = "table") => (cell_tag("td", attrs), "</td>"),
+		"tableHeader" if cfg!(feature = "table") => (cell_tag("th", attrs), "</th>"),
+		"details" if cfg!(feature = "details") => {
 			let open = attrs.get("open").and_then(Value::as_bool) == Some(true);
 			let tag = if open { "<details open>" } else { "<details>" };
 			(tag.to_owned(), "</details>")

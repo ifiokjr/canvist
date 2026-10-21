@@ -169,6 +169,13 @@ pub(super) fn starts_block(line: &str) -> bool {
 		|| item(line).is_some()
 		|| cfg!(feature = "mathematics") && line.trim() == "$$"
 		|| cfg!(feature = "details") && details_open(line).is_some()
+		|| html_table(line)
+}
+
+/// Whether `line` opens an HTML table, as Markdown writes a table a pipe
+/// table cannot hold.
+fn html_table(line: &str) -> bool {
+	line.trim_start().starts_with("<table")
 }
 
 /// Parse a run of lines into blocks.
@@ -183,6 +190,16 @@ fn blocks(build: &mut Builder<'_>, lines: &[&str]) -> Vec<BlockTree> {
 		if line.trim().is_empty() {
 			flush_paragraph(build, &mut paragraph, &mut trees);
 			index += 1;
+			continue;
+		}
+
+		if let Some((consumed, table)) = cfg!(feature = "table")
+			.then(|| pipe_table(build, &lines[index..]))
+			.flatten()
+		{
+			flush_paragraph(build, &mut paragraph, &mut trees);
+			trees.extend(table);
+			index += consumed;
 			continue;
 		}
 
@@ -302,6 +319,10 @@ fn block_at(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>) 
 		return details(build, lines, open);
 	}
 
+	if html_table(line) {
+		return table_html(build, lines);
+	}
+
 	list(build, lines)
 }
 
@@ -337,6 +358,134 @@ fn block_math(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>
 	});
 
 	(used, vec![tree])
+}
+
+/// An HTML table, through the line that closes it, read as HTML.
+fn table_html(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>) {
+	let used = lines
+		.iter()
+		.position(|line| line.contains("</table>"))
+		.map_or(lines.len(), |index| index + 1);
+	let html = lines[..used].join("\n");
+	let trees = super::html_read::from_html(build.schema, &html)
+		.into_blocks()
+		.into_iter()
+		.map(|tree| build.adopt(tree))
+		.collect();
+
+	(used, trees)
+}
+
+/// A GitHub pipe table: a header row, a delimiter row of `---` cells with
+/// `:` marking alignment, then body rows until a blank line or another
+/// block. Short rows are padded and long ones cut to the header's width,
+/// and a row without pipes is one cell, as GitHub reads them.
+fn pipe_table(build: &mut Builder<'_>, lines: &[&str]) -> Option<(usize, Vec<BlockTree>)> {
+	build.schema.block_type("table")?;
+	let header = pipe_cells(lines.first()?)?;
+	let alignments = pipe_cells(lines.get(1)?)?
+		.into_iter()
+		.map(alignment)
+		.collect::<Option<Vec<_>>>()?;
+
+	if alignments.len() != header.len() {
+		return None;
+	}
+
+	let body = lines[2..]
+		.iter()
+		.take_while(|line| !line.trim().is_empty() && !starts_block(line))
+		.count();
+	let mut rows = table_row(build, &header, "tableHeader", &alignments);
+
+	for line in &lines[2..2 + body] {
+		let mut cells = pipe_cells(line).unwrap_or_else(|| vec![line.trim()]);
+		cells.resize(header.len(), "");
+		rows.extend(table_row(build, &cells, "tableCell", &alignments));
+	}
+
+	Some((2 + body, build.container("table", &Attrs::new(), rows)))
+}
+
+/// The cells of a pipe table row, split at unescaped pipes, without the
+/// optional pipes at either end. `None` for a line with no pipe.
+fn pipe_cells(line: &str) -> Option<Vec<&str>> {
+	let trimmed = line.trim();
+
+	if !trimmed.contains('|') {
+		return None;
+	}
+
+	let inner = trimmed.strip_prefix('|').unwrap_or(trimmed);
+	let inner = match inner.strip_suffix('|') {
+		Some(rest) if !rest.ends_with('\\') => rest,
+		_ => inner,
+	};
+	let mut cells = Vec::new();
+	let mut start = 0;
+	let mut escaped = false;
+
+	for (index, character) in inner.char_indices() {
+		match (escaped, character) {
+			(false, '\\') => escaped = true,
+			(false, '|') => {
+				cells.push(inner[start..index].trim());
+				start = index + 1;
+			}
+			_ => escaped = false,
+		}
+	}
+
+	cells.push(inner[start..].trim());
+	Some(cells)
+}
+
+/// A pipe table column's alignment, from its delimiter cell: the
+/// paragraphs' `textAlign`, or `None` for the default.
+#[derive(Clone, Copy)]
+struct ColumnAlign(Option<&'static str>);
+
+/// A delimiter cell's alignment, or `None` when the cell is not a
+/// delimiter.
+fn alignment(cell: &str) -> Option<ColumnAlign> {
+	let left = cell.starts_with(':');
+	let right = cell.ends_with(':') && cell.len() > 1;
+	let dashes = cell.trim_start_matches(':').trim_end_matches(':');
+
+	if dashes.is_empty() || !dashes.chars().all(|character| character == '-') {
+		return None;
+	}
+
+	Some(ColumnAlign(match (left, right) {
+		(true, true) => Some("center"),
+		(true, false) => Some("left"),
+		(false, true) => Some("right"),
+		(false, false) => None,
+	}))
+}
+
+/// One table row of cells of type `kind`, each a paragraph aligned as its
+/// column says.
+fn table_row(
+	build: &mut Builder<'_>,
+	cells: &[&str],
+	kind: &str,
+	alignments: &[ColumnAlign],
+) -> Vec<BlockTree> {
+	let cells: Vec<BlockTree> = cells
+		.iter()
+		.zip(alignments)
+		.flat_map(|(text, align)| {
+			let attrs = align
+				.0
+				.map_or_else(Attrs::new, |align| Attrs::new().with("textAlign", align));
+			let inline = parse_inline(build, text);
+			let paragraph = build.text("paragraph", attrs, inline);
+			build.container(kind, &Attrs::new(), vec![paragraph])
+		})
+		.collect();
+
+	build.container("tableRow", &Attrs::new(), cells)
 }
 
 /// Whether `line` opens a `<details>` block, and if so whether it is open.

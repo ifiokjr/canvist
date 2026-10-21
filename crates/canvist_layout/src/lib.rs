@@ -132,6 +132,7 @@ pub use theme::MarkRule;
 pub use theme::MarkerKind;
 pub use theme::MarkerStyle;
 pub use theme::StarterKitOptions;
+pub use theme::TableRole;
 pub use theme::TextPatch;
 pub use theme::TextStyle;
 pub use theme::Theme;

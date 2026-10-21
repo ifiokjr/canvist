@@ -60,6 +60,7 @@ extras = [
 	"placeholder",
 	"subscript",
 	"superscript",
+	"table",
 	"text-align",
 	"text-style-kit",
 	"typography",
@@ -100,6 +101,7 @@ line-height = ["text-style"]
 link = []
 list-item = []
 mathematics = []
+table = []
 # Images, YouTube and Twitch videos, audio, and file attachments.
 media = ["audio", "file", "image", "twitch", "youtube"]
 audio = []

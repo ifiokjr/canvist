@@ -36,11 +36,14 @@ name = "layout"
 harness = false
 
 [features]
-default = ["theme-extensions"]
+default = ["tables", "theme-extensions"]
 # StarterKit theme rules for blocks, marks, and embeds beyond the
 # StarterKit. Without it a host whose schema has none of them carries
 # none of their styles.
 theme-extensions = []
+# Lay tables out on a grid. Without it a table's cells stack like any
+# container's children, which keeps hosts whose schema has no tables smaller.
+tables = []
 editor = ["dep:canvist_editor"]
 # `StarterKitOptions::from_json`: theme options as `@canvist/web` and
 # `@canvist/headless/ssr` pass them.

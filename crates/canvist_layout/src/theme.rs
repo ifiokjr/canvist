@@ -273,6 +273,26 @@ pub enum MarkerKind {
 	Disclosure,
 }
 
+/// How a block takes part in a table's grid.
+///
+/// A table's rows are laid out together: each cell's content is placed in
+/// the columns its `colspan` covers, from the widths in its `colwidth`
+/// attribute (a list of pixels, one per column, as TipTap stores them) or an
+/// even share of what is left, and each row is as tall as its tallest cell.
+/// A cell's `rowspan` runs it down into the rows below.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TableRole {
+	/// The table, with grid lines of `rule` around and between its cells.
+	Table {
+		/// The grid lines.
+		rule: Border,
+	},
+	/// A row of cells.
+	Row,
+	/// A cell, or a header cell.
+	Cell,
+}
+
 /// How a leaf block (one with no content) is drawn.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LeafStyle {
@@ -314,6 +334,8 @@ pub struct BlockPatch {
 	pub marker: Option<MarkerKind>,
 	/// How the block draws when it is a leaf.
 	pub leaf: Option<LeafStyle>,
+	/// Its part in a table grid, if any.
+	pub table: Option<TableRole>,
 	/// The HTML element used for server rendering, e.g. `p` or `h2`.
 	pub tag: Option<Arc<str>>,
 }
@@ -373,6 +395,13 @@ impl BlockPatch {
 	#[must_use]
 	pub fn leaf(mut self, leaf: LeafStyle) -> Self {
 		self.leaf = Some(leaf);
+		self
+	}
+
+	/// Set the block's part in a table grid.
+	#[must_use]
+	pub fn table(mut self, role: TableRole) -> Self {
+		self.table = Some(role);
 		self
 	}
 

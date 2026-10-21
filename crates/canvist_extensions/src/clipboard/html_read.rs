@@ -258,7 +258,7 @@ enum Role {
 	Inline,
 }
 
-const BOUNDARIES: [&str; 20] = [
+const BOUNDARIES: [&str; 17] = [
 	"address",
 	"article",
 	"aside",
@@ -275,10 +275,7 @@ const BOUNDARIES: [&str; 20] = [
 	"main",
 	"nav",
 	"section",
-	"table",
 	"tbody",
-	"td",
-	"tr",
 ];
 
 /// A text block's attributes from its `style`: TipTap's text alignment.
@@ -340,6 +337,10 @@ fn role(name: &str, attrs: &[(String, String)], parent: Option<&'static str>) ->
 			)
 		}
 		"summary" => Role::Text("detailsSummary", Attrs::new()),
+		"table" => Role::Container("table", Attrs::new()),
+		"tr" => Role::Container("tableRow", Attrs::new()),
+		"td" => Role::Container("tableCell", cell_attrs(attrs)),
+		"th" => Role::Container("tableHeader", cell_attrs(attrs)),
 		"div" if data_type == Some("detailsContent") => {
 			Role::Container("detailsContent", Attrs::new())
 		}
@@ -446,6 +447,31 @@ const ATOM_ATTRIBUTES: [(&str, &str); 6] = [
 	("data-emoji", "emoji"),
 	("data-latex", "latex"),
 ];
+
+/// A table cell's spans and TipTap's `colwidth`, a comma-separated list of
+/// pixel widths.
+fn cell_attrs(attrs: &[(String, String)]) -> Attrs {
+	let mut cell = Attrs::new();
+
+	for key in ["colspan", "rowspan"] {
+		if let Some(span) = attr(attrs, key).and_then(|span| span.trim().parse::<i64>().ok()) {
+			cell.set(key, span.max(1));
+		}
+	}
+
+	let widths: Vec<Value> = attr(attrs, "colwidth")
+		.unwrap_or_default()
+		.split(',')
+		.filter_map(|width| width.trim().parse::<i64>().ok())
+		.map(Value::Int)
+		.collect();
+
+	if !widths.is_empty() {
+		cell.set("colwidth", widths);
+	}
+
+	cell
+}
 
 fn atom_attrs(attrs: &[(String, String)]) -> Attrs {
 	ATOM_ATTRIBUTES
@@ -835,9 +861,21 @@ impl<'s> Reader<'s> {
 	}
 
 	fn pop_frame(&mut self) {
-		let Some(frame) = self.frames.pop() else {
+		let Some(mut frame) = self.frames.pop() else {
 			return;
 		};
+
+		// A cell always holds a block, so an empty one keeps its place.
+		if cfg!(feature = "table")
+			&& frame.children.is_empty()
+			&& matches!(frame.name, "tableCell" | "tableHeader")
+		{
+			let paragraph = self
+				.build
+				.text("paragraph", Attrs::new(), InlineText::new());
+			frame.children.push(paragraph);
+		}
+
 		let trees = self
 			.build
 			.container(frame.name, &frame.attrs, frame.children);

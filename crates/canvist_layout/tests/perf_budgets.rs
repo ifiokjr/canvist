@@ -470,3 +470,52 @@ fn keystroke_relayout_in_a_100kb_paragraph() {
 		KEYSTROKE_BUDGET,
 	);
 }
+
+/// Rows and columns of the table the table budget types in: a thousand
+/// cells, more than a document is likely to hold in one table.
+const TABLE_ROWS: usize = 200;
+const TABLE_COLUMNS: usize = 5;
+
+#[test]
+#[ignore = "release-mode performance budget; run with `test:perf`"]
+fn keystroke_relayout_in_a_table_of_a_thousand_cells() {
+	let words = ["Cell", "with", "a", "few", "words"];
+	let rows: Vec<Vec<&str>> = (0..TABLE_ROWS).map(|_| words.to_vec()).collect();
+	let rows: Vec<&[&str]> = rows.iter().map(Vec::as_slice).collect();
+	let mut doc = support::doc(serde_json::json!([support::table(&rows)]));
+	let table = doc.children(None)[0];
+	let row = doc.children(Some(table))[1];
+	let cell = doc.children(Some(row))[2];
+	let block = doc.children(Some(cell))[0];
+	let mut measurer = FixedMeasurer::new();
+	let mut layout = DocumentLayout::new(&doc, Arc::new(Theme::starter_kit()), options());
+	let mut typed = false;
+
+	layout
+		.ensure(&doc, &mut measurer, 0.0, SCREEN)
+		.expect("measured");
+
+	let measured = median_per_call(KEYSTROKE_BATCH, || {
+		let mut transaction = doc.transaction();
+
+		if typed {
+			transaction.delete_text(block, 1..2).expect("valid range");
+		} else {
+			transaction
+				.insert_text(Point::new(block, 1), "x", MarkSet::empty())
+				.expect("valid point");
+		}
+
+		typed = !typed;
+		let commit = transaction.commit();
+		layout.apply(&doc, &commit);
+		let update = layout.ensure(&doc, &mut measurer, 0.0, SCREEN);
+		std::hint::black_box(update.expect("measured"));
+	});
+
+	assert_within(
+		"keystroke relayout in a table of 1,000 cells",
+		measured,
+		KEYSTROKE_BUDGET,
+	);
+}

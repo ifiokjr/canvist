@@ -5,6 +5,7 @@ use std::sync::Arc;
 use super::AttrBinding;
 use super::BlockPatch;
 use super::BlockRule;
+use super::Border;
 use super::Chrome;
 use super::Decorations;
 use super::EmbedRule;
@@ -14,6 +15,7 @@ use super::LeafStyle;
 use super::MarkRule;
 use super::MarkerKind;
 use super::MarkerStyle;
+use super::TableRole;
 use super::TextPatch;
 use super::TextStyle;
 use super::Theme;
@@ -55,6 +57,8 @@ struct Palette {
 	selection: Color,
 	/// Callout backgrounds and bars: info, success, warning, and error.
 	callouts: [(Color, Color); 4],
+	/// Table header cells' background.
+	table_header: Color,
 }
 
 const LIGHT: Palette = Palette {
@@ -74,6 +78,7 @@ const LIGHT: Palette = Palette {
 		(Color::rgb(0xff, 0xf4, 0xdb), Color::rgb(0xe8, 0x59, 0x0c)),
 		(Color::rgb(0xff, 0xe9, 0xe9), Color::rgb(0xc9, 0x2a, 0x2a)),
 	],
+	table_header: Color::rgb(0xf7, 0xf6, 0xf5),
 };
 
 const DARK: Palette = Palette {
@@ -93,6 +98,7 @@ const DARK: Palette = Palette {
 		(Color::rgb(0x45, 0x34, 0x18), Color::rgb(0xff, 0xa9, 0x4d)),
 		(Color::rgb(0x4a, 0x21, 0x21), Color::rgb(0xff, 0x87, 0x87)),
 	],
+	table_header: Color::rgb(0x24, 0x21, 0x1f),
 };
 
 /// What [`Theme::starter_kit_with`] varies: the colour scheme, the font
@@ -317,6 +323,10 @@ fn block_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<BlockRule>
 		rules.extend(callout_rules(palette));
 	}
 
+	if cfg!(feature = "tables") {
+		rules.extend(table_rules(palette));
+	}
+
 	rules
 }
 
@@ -328,6 +338,45 @@ fn media_rules() -> [BlockRule; 5] {
 		media_rule("audio", AUDIO_HEIGHT),
 		media_rule("file", FILE_HEIGHT),
 		media_rule("blockMath", MATH_HEIGHT),
+	]
+}
+
+/// Tables: a grid of hairlines, padded cells, and tinted header cells.
+fn table_rules(palette: &Palette) -> Vec<BlockRule> {
+	let cell = || {
+		BlockPatch::new()
+			.table(TableRole::Cell)
+			.padding(Insets::symmetric(0.375 * REM, 0.5 * REM))
+	};
+	let rule = Border {
+		width: 1.0,
+		color: palette.rule,
+	};
+
+	vec![
+		BlockRule::new(
+			"table",
+			BlockPatch::new()
+				.table(TableRole::Table { rule })
+				.space(FIGURE_SPACE, FIGURE_SPACE)
+				.tag("table"),
+		),
+		BlockRule::new(
+			"tableRow",
+			BlockPatch::new().table(TableRole::Row).tag("tr"),
+		),
+		BlockRule::new("tableCell", cell().tag("td")),
+		BlockRule::new(
+			"tableHeader",
+			cell()
+				.text(TextPatch::new().weight(BOLD))
+				.background(palette.table_header, 0.0)
+				.tag("th"),
+		),
+		BlockRule::new("paragraph", BlockPatch::new().space(ITEM_SPACE, ITEM_SPACE))
+			.within("tableCell"),
+		BlockRule::new("paragraph", BlockPatch::new().space(ITEM_SPACE, ITEM_SPACE))
+			.within("tableHeader"),
 	]
 }
 

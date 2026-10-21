@@ -32,7 +32,7 @@ impl DocumentLayout {
 	/// have not been measured resolve to their start.
 	#[must_use]
 	pub fn hit_test(&self, x: f32, y: f32) -> Option<Caret> {
-		let index = self.row_at(y)?;
+		let index = self.grid_hit(self.row_at(y)?, x, y);
 		let row = &self.rows()[index];
 
 		if row.kind != RowKind::Text {
@@ -54,8 +54,9 @@ impl DocumentLayout {
 
 	/// The block whose row contains `(x, y)`, including leaf blocks.
 	#[must_use]
-	pub fn hit_block(&self, _x: f32, y: f32) -> Option<BlockId> {
-		self.row_at(y).map(|index| self.rows()[index].block)
+	pub fn hit_block(&self, x: f32, y: f32) -> Option<BlockId> {
+		self.row_at(y)
+			.map(|index| self.rows()[self.grid_hit(index, x, y)].block)
 	}
 
 	/// The rectangle to draw the caret in. Its horizontal centre is the caret

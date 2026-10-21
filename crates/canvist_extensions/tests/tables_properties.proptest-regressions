@@ -1,0 +1,10 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 4886cea1ae874daba76b230cfa5cf32454d90032143cd3ef0a3caeffaab38ce6 # shrinks to shape = Shape { rows: 1, columns: 1, header_row: false, header_column: true, merges: [], words: ["a"] }
+cc 73a12d789e22a5572745a66212241de3741073b5cebeef79764818f8e660d44b # shrinks to rows = 1, cols = 1, header = false, edits = [Run("addRowBefore", (0, 0)), Merge((0, 0), (0, 0))]
+cc b1db7be23b91371532062e8d41a1f919c2c05136e1ce3dbddd7ce5b53f6acbef # shrinks to rows = 2, cols = 2, header = false, edits = [Merge((1, 0), (2, 5))]
+cc 3e44ceb5ad3712662f657b45364247aed8d90afbe5932e1176c639bc532238d4 # shrinks to rows = 2, cols = 3, header = false, edits = [Run("addColumnBefore", (0, 0)), Run("addRowBefore", (0, 0)), Run("deleteRow", (0, 0)), Run("addRowBefore", (0, 0)), Run("addRowBefore", (0, 0)), Merge((4, 2), (2, 6)), Run("deleteColumn", (3, 3)), Keys("[Shift-ArrowDown]q", (0, 2))]

@@ -70,6 +70,9 @@ fn block(schema: &Schema, tree: &BlockTree, marker: char) -> String {
 
 	match &tree.content {
 		TreeContent::Inline(text) => text_block(schema, name, &tree.attrs, text),
+		TreeContent::Blocks(_) if cfg!(feature = "table") && (name == "table") => {
+			table(schema, tree)
+		}
 		TreeContent::Blocks(children) => container(schema, name, &tree.attrs, children, marker),
 
 		TreeContent::Leaf if name == "horizontalRule" => "---".to_owned(),
@@ -193,6 +196,117 @@ fn container(
 			})
 		}
 		_ => blocks(schema, children, "\n\n"),
+	}
+}
+
+/// A table as a GitHub pipe table when one can hold it exactly: a full grid
+/// of single cells, each one line of text, with header cells in the first
+/// row and nowhere else. Any other table is written as HTML, which GitHub
+/// renders and the reader reads back.
+fn table(schema: &Schema, tree: &BlockTree) -> String {
+	pipe_table(schema, tree)
+		.unwrap_or_else(|| super::html_write::to_html(schema, &Slice::new(vec![tree.clone()])))
+}
+
+fn pipe_table(schema: &Schema, tree: &BlockTree) -> Option<String> {
+	let TreeContent::Blocks(rows) = &tree.content else {
+		return None;
+	};
+	let mut lines = Vec::new();
+	let mut columns = Vec::new();
+
+	for (index, row) in rows.iter().enumerate() {
+		let TreeContent::Blocks(cells) = &row.content else {
+			return None;
+		};
+
+		if cells.is_empty() || cells.len() != table_width(rows) {
+			return None;
+		}
+
+		// A pipe table aligns whole columns, as their header cells say.
+		let aligns: Vec<Option<&str>> = cells.iter().map(cell_align).collect();
+
+		if aligns.contains(&Some("justify")) || (index > 0 && aligns != columns) {
+			return None;
+		}
+
+		if index == 0 {
+			columns.clone_from(&aligns);
+		}
+
+		let texts = cells
+			.iter()
+			.map(|cell| pipe_cell(schema, cell, index == 0))
+			.collect::<Option<Vec<_>>>()?;
+		lines.push(format!("| {} |", texts.join(" | ")));
+
+		if index == 0 {
+			let delimiters: Vec<&str> = columns.iter().map(|align| delimiter(*align)).collect();
+			lines.push(format!("| {} |", delimiters.join(" | ")));
+		}
+	}
+
+	Some(lines.join("\n"))
+}
+
+/// How many cells the first row of a table has.
+fn table_width(rows: &[BlockTree]) -> usize {
+	match rows.first().map(|row| &row.content) {
+		Some(TreeContent::Blocks(cells)) => cells.len(),
+		_ => 0,
+	}
+}
+
+/// A pipe table cell's text: a single cell of the expected kind holding one
+/// line of text, with its pipes escaped.
+fn pipe_cell(schema: &Schema, cell: &BlockTree, header: bool) -> Option<String> {
+	let expected = if header { "tableHeader" } else { "tableCell" };
+	let spans = ["colspan", "rowspan"].iter().any(|key| {
+		cell.attrs
+			.get(key)
+			.and_then(Value::as_int)
+			.is_some_and(|span| span > 1)
+	});
+
+	if schema.block(cell.kind).name.as_ref() != expected || spans {
+		return None;
+	}
+
+	let TreeContent::Blocks(children) = &cell.content else {
+		return None;
+	};
+	let [paragraph] = children.as_slice() else {
+		return None;
+	};
+	let TreeContent::Inline(text) = &paragraph.content else {
+		return None;
+	};
+	let markdown = inline(schema, text);
+
+	(!markdown.contains('\n')).then(|| markdown.replace('|', "\\|"))
+}
+
+/// The alignment of a cell's paragraph.
+fn cell_align(cell: &BlockTree) -> Option<&str> {
+	match &cell.content {
+		TreeContent::Blocks(children) => {
+			children
+				.first()
+				.and_then(|paragraph| paragraph.attrs.get("textAlign"))
+				.and_then(Value::as_str)
+		}
+		_ => None,
+	}
+}
+
+/// The delimiter cell for a column aligned `align`.
+fn delimiter(align: Option<&str>) -> &'static str {
+	match align {
+		Some("left") => ":---",
+		Some("center") => ":---:",
+		Some("right") => "---:",
+		_ => "---",
 	}
 }
 

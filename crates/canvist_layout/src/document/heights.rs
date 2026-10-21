@@ -29,6 +29,7 @@ impl Heights {
 	}
 
 	/// The extent of row `index`.
+	#[cfg(test)]
 	pub(crate) fn get(&self, index: usize) -> i64 {
 		self.values.get(index).copied().unwrap_or(0)
 	}

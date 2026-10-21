@@ -19,6 +19,7 @@ use crate::Caret;
 use crate::Color;
 use crate::DocumentLayout;
 use crate::Rect;
+use crate::TableRole;
 use crate::document::Marker;
 use crate::document::Origin;
 use crate::document::Row;
@@ -172,12 +173,25 @@ impl Builder<'_> {
 	/// outermost first.
 	fn containers(&mut self, rows: &[usize]) {
 		let layout = self.layout;
+		let mut tables = Vec::new();
 
 		for index in visible_spans(layout, rows) {
 			let span = &layout.spans()[index as usize];
 			let style = layout.styles().get(span.style);
 
 			self.push_box(layout.span_rect(span), style, span.block);
+
+			if let Some(TableRole::Table { rule }) = style.table {
+				tables.push((index, rule));
+			}
+		}
+
+		for (index, rule) in tables {
+			let block = layout.spans()[index as usize].block;
+
+			for line in layout.grid_lines(index, self.list.bounds) {
+				self.push_rect(line, rule.color, 0.0, RectKind::Border, block);
+			}
 		}
 	}
 

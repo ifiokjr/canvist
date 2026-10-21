@@ -25,6 +25,7 @@ use crate::theme::EmbedStyle;
 use crate::theme::LeafStyle;
 use crate::theme::MarkRule;
 use crate::theme::MarkerKind;
+use crate::theme::TableRole;
 use crate::theme::TextStyle;
 use crate::theme::Theme;
 
@@ -49,6 +50,8 @@ pub struct BlockStyle {
 	pub marker: Option<MarkerKind>,
 	/// How the block draws when it has no content.
 	pub leaf: LeafStyle,
+	/// Its part in a table grid, if any.
+	pub table: Option<TableRole>,
 	/// The HTML element for server rendering.
 	pub tag: Arc<str>,
 }
@@ -232,6 +235,7 @@ impl Styles {
 			space_after: 0.0,
 			marker: None,
 			leaf: LeafStyle::Slot { height: 0.0 },
+			table: None,
 			tag: Arc::from("div"),
 		};
 		let Some(rules) = self.rules.get(key.kind.index()) else {
@@ -249,6 +253,12 @@ impl Styles {
 
 		if let (Some(scale), Some(border)) = (self.border_scale, style.border_left.as_mut()) {
 			border.width = snap_border(border.width, scale);
+		}
+
+		if let (Some(scale), Some(TableRole::Table { rule })) =
+			(self.border_scale, style.table.as_mut())
+		{
+			rule.width = snap_border(rule.width, scale);
 		}
 
 		style
@@ -405,6 +415,7 @@ fn apply_block_patch(style: &mut BlockStyle, patch: &BlockPatch) {
 	style.border_left = patch.border_left.or(style.border_left);
 	style.background = patch.background.or(style.background);
 	style.marker = patch.marker.or(style.marker);
+	style.table = patch.table.or(style.table);
 
 	if let Some(tag) = &patch.tag {
 		style.tag = tag.clone();

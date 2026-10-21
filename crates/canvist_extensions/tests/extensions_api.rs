@@ -31,6 +31,7 @@ use canvist_extensions::FontFamily;
 use canvist_extensions::FontSize;
 use canvist_extensions::Hashtag;
 use canvist_extensions::HashtagHandle;
+use canvist_extensions::HeaderPart;
 use canvist_extensions::Highlight;
 use canvist_extensions::HighlightHandle;
 use canvist_extensions::Image;
@@ -48,6 +49,8 @@ use canvist_extensions::StarterKit;
 use canvist_extensions::StyleAttrHandle;
 use canvist_extensions::Subscript;
 use canvist_extensions::Superscript;
+use canvist_extensions::Table;
+use canvist_extensions::TableHandle;
 use canvist_extensions::TextAlign;
 use canvist_extensions::TextAlignHandle;
 use canvist_extensions::TextStyle;
@@ -85,6 +88,7 @@ struct Extras {
 	details: DetailsHandle,
 	callout: CalloutHandle,
 	math: MathematicsHandle,
+	table: TableHandle,
 }
 
 /// The StarterKit plus every other extension, built through the typed path.
@@ -115,6 +119,7 @@ fn full() -> (Editor, Extras) {
 		details: builder.add(Details),
 		callout: builder.add(Callout),
 		math: builder.add(Mathematics),
+		table: builder.add(Table),
 	};
 	builder.add(Typography::default());
 
@@ -354,6 +359,48 @@ fn typed_handles_and_named_commands_agree() {
 		"insertBlockMath",
 		&Attrs::new().with("latex", "x^2"),
 	);
+	same_as_named(
+		|kit| kit.table.insert(2, 3, false),
+		"insertTable",
+		&Attrs::new()
+			.with("rows", 2)
+			.with("cols", 3)
+			.with("withHeaderRow", false),
+	);
+}
+
+#[test]
+fn table_handles_edit_and_read_the_table() {
+	let (mut typist, kit) = typed_with("");
+	let editor = &mut typist.editor;
+
+	assert_eq!(kit.table.cell(editor.state()), None);
+	editor
+		.run(&kit.table.insert(2, 2, true), &mut env())
+		.expect("table");
+
+	let cell = kit.table.cell(editor.state()).expect("in a table");
+	assert_eq!((cell.row, cell.column, cell.header), (0, 0, true));
+	assert_eq!((cell.rows, cell.columns), (2, 2));
+
+	for command in [
+		kit.table.add_column_after(),
+		kit.table.add_row_after(),
+		kit.table.go_to_next_cell(),
+		kit.table.toggle_header(HeaderPart::Column),
+		kit.table
+			.set_cell_attribute("backgroundColor", Some("#fef08a")),
+	] {
+		editor.run(&command, &mut env()).expect("table command");
+	}
+
+	let cell = kit.table.cell(editor.state()).expect("in a table");
+	assert_eq!((cell.rows, cell.columns, cell.column), (3, 3, 1));
+
+	editor
+		.run(&kit.table.delete_table(), &mut env())
+		.expect("delete");
+	assert_eq!(kit.table.cell(editor.state()), None);
 }
 
 #[test]

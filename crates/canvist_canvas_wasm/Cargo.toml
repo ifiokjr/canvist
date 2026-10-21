@@ -21,7 +21,7 @@ canvist_canvas = { workspace = true, features = ["editor"] }
 canvist_collab = { workspace = true, features = ["scene"] }
 canvist_editor = { workspace = true }
 canvist_extensions = { workspace = true, features = ["starter-kit"] }
-canvist_layout = { workspace = true, features = ["parley", "theme-extensions"] }
+canvist_layout = { workspace = true, features = ["parley", "tables", "theme-extensions"] }
 canvist_model = { workspace = true }
 canvist_paint = { workspace = true, features = ["cpu", "gpu"] }
 canvist_scene = { workspace = true }
