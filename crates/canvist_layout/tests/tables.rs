@@ -304,3 +304,52 @@ fn html_writes_a_fixed_table_with_layouts_column_widths() {
 		html.css
 	);
 }
+
+#[test]
+fn html_header_cells_say_which_cells_they_label() {
+	let mut content = table(&[
+		&["", "Mon", "Tue"],
+		&["Ada", "1", "2"],
+		&["Bob", "3", "4|1x1"],
+	]);
+
+	for column in 0..3 {
+		content["content"][0]["content"][column]["type"] = json!("tableHeader");
+	}
+
+	for row in 1..3 {
+		content["content"][row]["content"][0]["type"] = json!("tableHeader");
+	}
+
+	// A header in the middle of the table labels nothing in particular.
+	content["content"][2]["content"][2]["type"] = json!("tableHeader");
+	let doc = doc(json!([content]));
+	let html = to_html(
+		&doc,
+		&Arc::new(Theme::starter_kit()),
+		&HtmlOptions::new(WIDTH),
+	)
+	.html;
+	let scopes: Vec<&str> = html
+		.split("<th ")
+		.skip(1)
+		.map(|tag| {
+			tag.split('>')
+				.next()
+				.and_then(|tag| tag.split("scope=\"").nth(1))
+				.and_then(|scope| scope.split('"').next())
+				.unwrap_or("none")
+		})
+		.collect();
+
+	assert_eq!(
+		scopes,
+		["col", "col", "col", "row", "row", "none"],
+		"{html}"
+	);
+	assert!(!html.contains("<td scope"), "{html}");
+	assert!(
+		html.contains("<table ") && html.contains("<tbody>"),
+		"{html}"
+	);
+}

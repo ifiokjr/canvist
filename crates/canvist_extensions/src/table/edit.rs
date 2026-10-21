@@ -504,26 +504,43 @@ pub enum HeaderPart {
 
 /// Turn the first row, the first column, or the selected cells into header
 /// cells, or back into plain cells when they all are headers already.
+///
+/// As in TipTap, the corner cell belongs to a header row or column that is
+/// already on: toggling the other one leaves it a header, so toggling twice
+/// changes nothing.
 pub(crate) fn toggle_header(state: &mut EditorState, part: HeaderPart) -> CommandResult {
 	let Some((context, rect)) = selected(state) else {
 		return Ok(None);
 	};
 	let kinds = CellKinds::of(state)?;
-	let targets: Vec<BlockId> = context
-		.map
-		.cells()
+	let doc = state.doc();
+	let cells = context.map.cells();
+	let all_headers = |first: fn(&canvist_model::GridCell) -> bool| {
+		cells
+			.iter()
+			.enumerate()
+			.filter(|(_, cell)| first(cell))
+			.all(|(index, _)| is_named(doc, context.block(index), &[HEADER]))
+	};
+	let header_row = all_headers(|cell| cell.row == 0);
+	let header_column = all_headers(|cell| cell.column == 0);
+	let targets: Vec<BlockId> = cells
 		.iter()
 		.enumerate()
 		.filter(|(index, cell)| {
 			match part {
-				HeaderPart::Row => cell.row == 0,
-				HeaderPart::Column => cell.column == 0,
+				HeaderPart::Row => cell.row == 0 && !(header_column && cell.column == 0),
+				HeaderPart::Column => cell.column == 0 && !(header_row && cell.row == 0),
 				HeaderPart::Cells => context.blocks_in(rect).contains(&context.block(*index)),
 			}
 		})
 		.map(|(index, _)| context.block(index))
 		.collect();
-	let doc = state.doc();
+
+	if targets.is_empty() {
+		return Ok(None);
+	}
+
 	let to_header = !targets.iter().all(|&cell| is_named(doc, cell, &[HEADER]));
 	let kind = kinds.pick(to_header);
 

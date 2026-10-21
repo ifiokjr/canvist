@@ -67,6 +67,41 @@ pub(super) struct Builder<'s> {
 	next: u32,
 }
 
+/// A table's rows without the empty ones no cell above spans across,
+/// which hold nothing.
+fn spanned_rows(rows: Vec<BlockTree>) -> Vec<BlockTree> {
+	let cells = |row: &BlockTree| {
+		match &row.content {
+			TreeContent::Blocks(cells) => cells.len(),
+			_ => 0,
+		}
+	};
+	let span = |cell: &BlockTree, key: &str| {
+		cell.attrs
+			.get(key)
+			.and_then(Value::as_int)
+			.and_then(|span| usize::try_from(span).ok())
+			.unwrap_or(1)
+	};
+	let map = canvist_model::TableMap::new(rows.iter().map(|row| {
+		let cells = match &row.content {
+			TreeContent::Blocks(cells) => cells.as_slice(),
+			_ => &[],
+		};
+		cells
+			.iter()
+			.map(|cell| (span(cell, "colspan"), span(cell, "rowspan")))
+	}));
+
+	rows.into_iter()
+		.enumerate()
+		.filter(|(index, row)| {
+			cells(row) > 0 || (0..map.width()).any(|column| map.cell_at(*index, column).is_some())
+		})
+		.map(|(_, row)| row)
+		.collect()
+}
+
 impl<'s> Builder<'s> {
 	pub(super) fn new(schema: &'s Schema) -> Self {
 		Self { schema, next: 0 }
@@ -267,8 +302,16 @@ impl<'s> Builder<'s> {
 			return Some(tree);
 		};
 		let children = self.fit(Some(tree.kind), children);
+		let name = &*self.schema.block(tree.kind).name;
+		let children = if cfg!(feature = "table") && name == "table" {
+			spanned_rows(children)
+		} else {
+			children
+		};
 
-		if children.is_empty() {
+		// An empty row stays when a cell above spans across it: dropping it
+		// would shorten that cell.
+		if children.is_empty() && name != "tableRow" {
 			return None;
 		}
 

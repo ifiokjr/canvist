@@ -8,6 +8,7 @@ mod support;
 use std::time::Duration;
 
 use canvist_editor::Editor;
+use canvist_editor::EditorError;
 use canvist_editor::Env;
 use canvist_extensions::clipboard;
 use canvist_model::Attrs;
@@ -602,4 +603,638 @@ proptest::proptest! {
 		typist.unwind(false);
 		proptest::prop_assert_eq!(typist.snapshot()["doc"].clone(), before);
 	}
+}
+
+/// Named command arguments.
+type Args = Vec<(&'static str, Value)>;
+
+/// Every table command, by name.
+const COMMANDS: [&str; 16] = [
+	"addColumnBefore",
+	"addColumnAfter",
+	"deleteColumn",
+	"addRowBefore",
+	"addRowAfter",
+	"deleteRow",
+	"deleteTable",
+	"mergeCells",
+	"splitCell",
+	"mergeOrSplit",
+	"toggleHeaderRow",
+	"toggleHeaderColumn",
+	"toggleHeaderCell",
+	"goToNextCell",
+	"goToPreviousCell",
+	"fixTables",
+];
+
+fn can(editor: &mut Editor, name: &str, args: &[(&'static str, Value)]) -> bool {
+	let args: Attrs = args.iter().cloned().collect();
+	let command = editor.command_named(name, &args).expect("a known command");
+	editor
+		.can(&command, &mut env())
+		.expect("checking never fails")
+}
+
+fn run_error(editor: &mut Editor, name: &str, args: &[(&'static str, Value)]) -> EditorError {
+	let args: Attrs = args.iter().cloned().collect();
+	let before = editor.state().doc().to_json();
+	let error = editor
+		.run_named(name, &args, &mut env())
+		.expect_err("the command is refused");
+	assert_eq!(editor.state().doc().to_json(), before, "nothing changes");
+	error
+}
+
+fn table_cell(typist: &Typist) -> Value {
+	typist
+		.editor
+		.query("tableCell", &Attrs::new())
+		.expect("a query")
+}
+
+/// The whole document as a slice, as the formats write it.
+fn whole(typist: &Typist) -> canvist_editor::Slice {
+	let doc = typist.editor.state().doc();
+	canvist_editor::Slice::new(
+		doc.children(None)
+			.iter()
+			.filter_map(|&id| doc.tree(id))
+			.collect(),
+	)
+}
+
+#[test]
+fn outside_a_table_only_insert_table_applies() {
+	let mut typist = typist("Plain");
+	let before = typist.snapshot();
+	let attribute = [("name", Value::from("x")), ("value", Value::from("y"))];
+
+	for name in COMMANDS {
+		assert!(!can(&mut typist.editor, name, &[]), "{name}");
+		assert!(!run(&mut typist.editor, name, &[]), "{name}");
+	}
+
+	assert!(!can(&mut typist.editor, "setCellAttribute", &attribute));
+	assert!(!run(&mut typist.editor, "setCellAttribute", &attribute));
+	assert_eq!(table_cell(&typist), Value::Null);
+	assert_eq!(typist.snapshot(), before);
+	assert!(can(&mut typist.editor, "insertTable", &[]));
+}
+
+#[test]
+fn inside_a_table_can_reports_each_command_without_changing_anything() {
+	let mut typist = with_table(2, 2);
+	let before = typist.snapshot();
+	let expected = [
+		("addColumnBefore", true),
+		("addColumnAfter", true),
+		("deleteColumn", true),
+		("addRowBefore", true),
+		("addRowAfter", true),
+		("deleteRow", true),
+		("deleteTable", true),
+		("mergeCells", false),
+		("splitCell", false),
+		("mergeOrSplit", false),
+		("toggleHeaderRow", true),
+		("toggleHeaderColumn", true),
+		("toggleHeaderCell", true),
+		("goToNextCell", true),
+		("goToPreviousCell", false),
+		("fixTables", false),
+	];
+
+	for (name, applies) in expected {
+		assert_eq!(can(&mut typist.editor, name, &[]), applies, "{name}");
+	}
+
+	assert_eq!(typist.snapshot(), before);
+	select_cells(&mut typist, (0, 0), (1, 1));
+	assert!(can(&mut typist.editor, "mergeCells", &[]));
+	assert!(can(&mut typist.editor, "mergeOrSplit", &[]));
+}
+
+#[test]
+fn insert_table_takes_typed_arguments_and_defaults() {
+	let mut typist = typist("");
+	assert!(run(&mut typist.editor, "insertTable", &[]));
+	assert_eq!(
+		cells(&typist),
+		grid(&[&["#", "#", "#"], &["", "", ""], &["", "", ""]])
+	);
+
+	let mut typist = self::typist("");
+	assert!(run(
+		&mut typist.editor,
+		"insertTable",
+		&[
+			("rows", Value::Int(1)),
+			("cols", Value::Int(4)),
+			("withHeaderRow", Value::Bool(false))
+		]
+	));
+	assert_eq!(cells(&typist), grid(&[&["", "", "", ""]]));
+	assert_eq!(typist.snapshot()["selection"], "caret 0.0.0.0@0");
+
+	let mut typist = self::typist("");
+	assert!(run(
+		&mut typist.editor,
+		"insertTable",
+		&[("rows", Value::Int(1000)), ("cols", Value::Int(1))]
+	));
+	assert_eq!(cells(&typist).len(), 1000);
+}
+
+#[test]
+fn invalid_arguments_are_refused_with_invalid_args() {
+	let mut typist = with_table(1, 1);
+	let cases: [(&str, Args); 10] = [
+		("insertTable", vec![("rows", Value::Int(0))]),
+		("insertTable", vec![("cols", Value::Int(1001))]),
+		("insertTable", vec![("rows", Value::Int(-1))]),
+		("insertTable", vec![("rows", Value::from("2"))]),
+		("insertTable", vec![("withHeaderRow", Value::Int(1))]),
+		("insertTable", vec![("depth", Value::Int(1))]),
+		("setCellAttribute", vec![("name", Value::from("x"))]),
+		("setCellAttribute", vec![("value", Value::from("x"))]),
+		(
+			"setCellAttribute",
+			vec![("name", Value::from("x")), ("value", Value::Int(1))],
+		),
+		("addRowAfter", vec![("count", Value::Int(2))]),
+	];
+
+	for (name, args) in cases {
+		assert!(
+			matches!(
+				run_error(&mut typist.editor, name, &args),
+				EditorError::InvalidArgs { .. }
+			),
+			"{name} {args:?}"
+		);
+	}
+
+	assert!(matches!(
+		typist
+			.editor
+			.query("tableCell", &Attrs::new().with("row", 1)),
+		Err(EditorError::InvalidArgs { .. })
+	));
+}
+
+#[test]
+fn an_editor_without_the_extension_has_none_of_its_names() {
+	let mut editor = support::editor();
+
+	for name in COMMANDS.iter().chain(&["insertTable"]) {
+		assert!(
+			matches!(
+				run_error(&mut editor, name, &[]),
+				EditorError::UnknownName(_)
+			),
+			"{name}"
+		);
+	}
+
+	assert!(matches!(
+		editor.query("tableCell", &Attrs::new()),
+		Err(EditorError::UnknownName(_))
+	));
+}
+
+#[test]
+fn tables_go_where_blocks_go_and_nowhere_else() {
+	// A table in a cell is allowed, and layout stacks it.
+	let mut typist = with_table(1, 1);
+	assert!(run(
+		&mut typist.editor,
+		"insertTable",
+		&[("rows", Value::Int(1)), ("cols", Value::Int(1))]
+	));
+	assert_eq!(typist.snapshot()["selection"], "caret 0.0.0.0.0.0.0@0");
+	support::assert_valid(typist.editor.state());
+
+	// A details summary holds only text.
+	let mut typist = self::typist("x");
+	assert!(run(&mut typist.editor, "setDetails", &[]));
+	assert!(!can(&mut typist.editor, "insertTable", &[]));
+}
+
+#[test]
+fn go_to_next_and_previous_cell_select_whole_cells_and_stop_at_the_ends() {
+	let mut typist = with_table(1, 2);
+	typist.type_script("ab⏎c");
+
+	assert!(run(&mut typist.editor, "goToNextCell", &[]));
+	assert_eq!(typist.snapshot()["selection"], "caret 0.0.1.0@0");
+	assert!(!run(&mut typist.editor, "goToNextCell", &[]));
+	assert!(run(&mut typist.editor, "goToPreviousCell", &[]));
+	assert_eq!(
+		typist.snapshot()["selection"],
+		"text 0.0.0.0@0 → 0.0.0.1@1",
+		"the previous cell's paragraphs are all selected"
+	);
+	assert!(!run(&mut typist.editor, "goToPreviousCell", &[]));
+
+	// Shift-Tab in the first cell does nothing at all.
+	caret_in(&mut typist, 0, 0);
+	let before = typist.snapshot();
+	typist.type_script("⇤");
+	assert_eq!(typist.snapshot(), before);
+}
+
+#[test]
+fn tab_in_a_cell_list_sinks_the_item_before_moving_on() {
+	let mut typist = with_table(1, 2);
+	typist.type_script("- one⏎two⇥");
+
+	assert_eq!(
+		typist.snapshot()["doc"][0]["content"][0]["content"][0]["content"][0]["content"][0]
+			["content"][1]["type"],
+		"bulletList",
+		"the second item nests in the first"
+	);
+	assert_eq!(
+		table_cell(&typist)
+			.as_map()
+			.and_then(|cell| cell.get("column"))
+			.cloned(),
+		Some(Value::Int(0))
+	);
+}
+
+#[test]
+fn enter_in_a_cell_adds_a_paragraph_in_that_cell() {
+	let mut typist = with_table(1, 2);
+	typist.type_script("a⏎b");
+
+	assert_eq!(cells(&typist), grid(&[&["#a/b", "#"]]));
+}
+
+#[test]
+fn every_word_and_line_delete_stops_at_a_cells_edge() {
+	for chord in [
+		"[Mod-Backspace]",
+		"[Ctrl-Backspace]",
+		"[Alt-Backspace]",
+		"[Shift-Backspace]",
+	] {
+		let mut typist = with_table(1, 2);
+		typist.type_script("a b⇥");
+		typist.type_script(chord);
+		assert_eq!(cells(&typist), grid(&[&["#a b", "#"]]), "{chord}");
+	}
+
+	for chord in ["[Mod-Delete]", "[Ctrl-Delete]", "[Alt-Delete]"] {
+		let mut typist = with_table(1, 2);
+		typist.type_script("a⇥b");
+		caret_in(&mut typist, 0, 0);
+		typist.type_script(chord);
+		assert_eq!(cells(&typist), grid(&[&["#a", "#b"]]), "{chord}");
+	}
+}
+
+#[test]
+fn merging_a_selection_that_cuts_a_merged_cell_grows_to_a_rectangle() {
+	let mut typist = with_table(3, 3);
+	typist.type_script("a⇥b⇥c⇥d⇥e⇥f⇥g⇥h⇥i");
+	select_cells(&mut typist, (1, 1), (2, 1));
+	assert!(run(&mut typist.editor, "mergeCells", &[]));
+	assert_eq!(
+		cells(&typist),
+		grid(&[&["#a", "#b", "#c"], &["d", "e/h|1x2", "f"], &["g", "i"]])
+	);
+
+	// From d to the merged cell's lower half: the rectangle grows to cover
+	// the whole merged cell, so g joins too.
+	select_cells(&mut typist, (1, 0), (1, 1));
+	assert!(run(&mut typist.editor, "mergeCells", &[]));
+	assert_eq!(
+		cells(&typist),
+		grid(&[&["#a", "#b", "#c"], &["d/e/h/g|2x2", "f"], &["i"]])
+	);
+	support::assert_valid(typist.editor.state());
+}
+
+#[test]
+fn merging_one_cell_does_nothing_and_merge_or_split_toggles() {
+	let mut typist = with_table(2, 2);
+	select_cells(&mut typist, (1, 0), (1, 0));
+	assert!(!run(&mut typist.editor, "mergeCells", &[]));
+
+	select_cells(&mut typist, (1, 0), (1, 1));
+	assert!(run(&mut typist.editor, "mergeOrSplit", &[]));
+	assert_eq!(cells(&typist), grid(&[&["#", "#"], &["|2x1"]]));
+	assert!(run(&mut typist.editor, "mergeOrSplit", &[]));
+	assert_eq!(cells(&typist), grid(&[&["#", "#"], &["", ""]]));
+}
+
+#[test]
+fn merging_keeps_column_widths_and_splitting_hands_them_back() {
+	let mut typist = typist("");
+	let schema = typist.editor.schema().clone();
+	let pasted = clipboard::from_html(
+		&schema,
+		"<table><tr><td colwidth=\"120\">a</td><td colwidth=\"80\">b</td></tr></table>",
+	);
+	typist.editor.paste(pasted, &mut env()).expect("pastes");
+	select_cells(&mut typist, (0, 0), (0, 1));
+
+	assert!(run(&mut typist.editor, "mergeCells", &[]));
+	let html = clipboard::to_html(&schema, &whole(&typist));
+	assert!(
+		html.contains("<td colspan=\"2\" colwidth=\"120,80\">"),
+		"{html}"
+	);
+
+	assert!(run(&mut typist.editor, "splitCell", &[]));
+	let html = clipboard::to_html(&schema, &whole(&typist));
+	assert!(
+		html.contains("<td colwidth=\"120\"><p>a</p><p>b</p></td><td colwidth=\"80\">"),
+		"{html}"
+	);
+}
+
+#[test]
+fn deleting_every_row_or_column_deletes_the_table() {
+	for name in ["deleteRow", "deleteColumn"] {
+		let mut typist = typist("Before");
+		typist.type_script("⏎");
+		run(
+			&mut typist.editor,
+			"insertTable",
+			&[("rows", Value::Int(2)), ("cols", Value::Int(2))],
+		);
+		select_cells(&mut typist, (0, 0), (1, 1));
+
+		assert!(run(&mut typist.editor, name, &[]), "{name}");
+		assert_eq!(cells(&typist), Vec::<Vec<String>>::new(), "{name}");
+		assert_eq!(typist.snapshot()["doc"][0]["content"][0]["text"], "Before");
+		support::assert_valid(typist.editor.state());
+	}
+}
+
+#[test]
+fn delete_table_between_blocks_keeps_them_and_adds_nothing() {
+	let mut typist = typist("Before");
+	typist.type_script("⏎");
+	run(
+		&mut typist.editor,
+		"insertTable",
+		&[("rows", Value::Int(1)), ("cols", Value::Int(1))],
+	);
+
+	assert!(run(&mut typist.editor, "deleteTable", &[]));
+	let doc = typist.snapshot()["doc"].clone();
+	assert_eq!(doc.as_array().map(Vec::len), Some(2), "{doc}");
+	assert_eq!(typist.snapshot()["selection"], "caret 1@0");
+}
+
+#[test]
+fn toggling_a_header_twice_restores_it() {
+	let mut typist = with_table(2, 2);
+	let before = cells(&typist);
+
+	for name in ["toggleHeaderRow", "toggleHeaderColumn", "toggleHeaderCell"] {
+		assert!(run(&mut typist.editor, name, &[]));
+		assert!(run(&mut typist.editor, name, &[]));
+		assert_eq!(cells(&typist), before, "{name}");
+	}
+
+	select_cells(&mut typist, (1, 0), (1, 1));
+	assert!(run(&mut typist.editor, "toggleHeaderCell", &[]));
+	assert_eq!(cells(&typist), grid(&[&["#", "#"], &["#", "#"]]));
+	assert_eq!(
+		table_cell(&typist)
+			.as_map()
+			.and_then(|cell| cell.get("header"))
+			.cloned(),
+		Some(Value::Bool(true))
+	);
+}
+
+#[test]
+fn each_command_undoes_to_the_exact_document_and_redoes() {
+	let mut cases: Vec<(&str, Args)> = COMMANDS
+		.iter()
+		.filter(|name| !matches!(**name, "goToNextCell" | "goToPreviousCell" | "fixTables"))
+		.map(|&name| (name, Vec::new()))
+		.collect();
+	cases.push((
+		"setCellAttribute",
+		vec![
+			("name", Value::from("align")),
+			("value", Value::from("left")),
+		],
+	));
+	cases.push((
+		"insertTable",
+		vec![("rows", Value::Int(1)), ("cols", Value::Int(1))],
+	));
+
+	for (name, args) in cases {
+		let mut typist = with_table(3, 3);
+		typist.type_script("a⇥b⇥c⇥d⇥e⇥f⏸");
+		select_cells(&mut typist, (1, 0), (2, 1));
+		if name == "splitCell" {
+			run(&mut typist.editor, "mergeCells", &[]);
+			typist.type_script("⏸");
+		}
+		let before = typist.snapshot()["doc"].clone();
+
+		let args: Attrs = args.iter().cloned().collect();
+		let applied = typist
+			.editor
+			.run_named(name, &args, &mut Env::headless(Duration::from_secs(3600)))
+			.expect("commands run");
+		assert!(applied.is_some(), "{name} applies");
+		let after = typist.snapshot()["doc"].clone();
+		assert_ne!(after, before, "{name} changes the document");
+
+		typist.type_script("[Mod-z]");
+		assert_eq!(typist.snapshot()["doc"], before, "undo {name}");
+		typist.type_script("[Mod-Shift-z]");
+		assert_eq!(typist.snapshot()["doc"], after, "redo {name}");
+	}
+}
+
+#[test]
+fn tiptap_json_tables_read_and_write_back_unchanged() {
+	let typist = typist("");
+	let schema = typist.editor.schema().clone();
+	let cell = |kind: &str, attrs: Json, text: &str| {
+		serde_json::json!({
+			"type": kind,
+			"attrs": attrs,
+			"content": [{ "type": "paragraph", "content": [{ "type": "text", "text": text }] }],
+		})
+	};
+	let plain = || serde_json::json!({ "colspan": 1, "rowspan": 1, "colwidth": null });
+	let json = serde_json::json!({ "type": "doc", "content": [{ "type": "table", "content": [
+		{ "type": "tableRow", "content": [
+			cell("tableHeader", serde_json::json!({ "colspan": 2, "rowspan": 1, "colwidth": [100, 0] }), "Wide"),
+			cell("tableHeader", plain(), "C"),
+		] },
+		{ "type": "tableRow", "content": [
+			cell("tableCell", serde_json::json!({ "colspan": 1, "rowspan": 2, "colwidth": null }), "Tall"),
+			cell("tableCell", plain(), "b"),
+			cell("tableCell", plain(), "c"),
+		] },
+		{ "type": "tableRow", "content": [
+			cell("tableCell", plain(), "e"),
+			cell("tableCell", plain(), "f"),
+		] },
+	] }] });
+	let loaded =
+		canvist_model::Document::from_json(schema.clone(), 1, &json).expect("TipTap JSON loads");
+	let mut written = loaded.to_json();
+	strip_ids(&mut written);
+	assert_eq!(written, json);
+
+	let slice = canvist_editor::Slice::new(
+		loaded
+			.children(None)
+			.iter()
+			.filter_map(|&id| loaded.tree(id))
+			.collect(),
+	);
+	assert_eq!(
+		clipboard::to_html(&schema, &slice),
+		"<table><tbody><tr><th colspan=\"2\" \
+		 colwidth=\"100,0\"><p>Wide</p></th><th><p>C</p></th></tr><tr><td \
+		 rowspan=\"2\"><p>Tall</p></td><td><p>b</p></td><td><p>c</p></td></tr><tr><td><p>e</p></\
+		 td><td><p>f</p></td></tr></tbody></table>"
+	);
+}
+
+fn strip_ids(node: &mut Json) {
+	if let Some(attrs) = node.get_mut("attrs").and_then(Json::as_object_mut) {
+		attrs.remove("id");
+
+		if attrs.is_empty() {
+			node.as_object_mut().map(|object| object.remove("attrs"));
+		}
+	}
+
+	if let Some(children) = node.get_mut("content").and_then(Json::as_array_mut) {
+		children.iter_mut().for_each(strip_ids);
+	}
+}
+
+#[test]
+fn html_tables_normalise_to_tiptaps_markup() {
+	let cases = [
+		(
+			"<table><thead><tr><th>a</th></tr></thead><tbody><tr><td>b</td></tr></tbody></table>",
+			"<table><tbody><tr><th><p>a</p></th></tr><tr><td><p>b</p></td></tr></tbody></table>",
+		),
+		(
+			"<table><caption>Cap</caption><tr><td>a</td></tr></table>",
+			"<table><tbody><tr><td><p>a</p></td></tr></tbody></table>",
+		),
+		(
+			"<table><tr><td colspan=\"x\" rowspan=\"-1\" colwidth=\"abc\">a</td></tr></table>",
+			"<table><tbody><tr><td><p>a</p></td></tr></tbody></table>",
+		),
+		(
+			"<table><tr><td><p>a</p><ul><li>b</li></ul></td></tr></table>",
+			"<table><tbody><tr><td><p>a</p><ul><li><p>b</p></li></ul></td></tr></tbody></table>",
+		),
+		(
+			"<table><tr><td>a &amp; <strong>b</strong></td></tr></table>",
+			"<table><tbody><tr><td><p>a &amp; <strong>b</strong></p></td></tr></tbody></table>",
+		),
+	];
+
+	for (html, expected) in cases {
+		assert_eq!(html_round_trip(html), expected, "{html}");
+		assert_eq!(html_round_trip(expected), expected, "{expected} is stable");
+	}
+}
+
+#[test]
+fn markdown_pipe_tables_keep_alignment_escapes_and_marks() {
+	for markdown in [
+		"| L | C | R |\n| :--- | :---: | ---: |\n| a | b | c |",
+		"| **Bold** | `code` | [link](u) |\n| --- | --- | --- |\n| a \\| b | ~~s~~ | *i* |",
+		"| Only |\n| --- |",
+	] {
+		assert_eq!(markdown_round_trip(markdown), markdown);
+	}
+
+	// GitHub drops cells past the header's and pads short rows.
+	assert_eq!(
+		markdown_round_trip("| a | b |\n| --- | --- |\n| c | d | e |\n| f |"),
+		"| a | b |\n| --- | --- |\n| c | d |\n| f |  |"
+	);
+	// A pipe inside a code span still splits the cell, as in GitHub.
+	assert_eq!(
+		markdown_round_trip("| a | b |\n| --- | --- |\n| `x|y` |"),
+		"| a | b |\n| --- | --- |\n| \\`x | y\\` |"
+	);
+}
+
+#[test]
+fn markdown_writes_html_for_tables_a_pipe_table_cannot_hold() {
+	for html in [
+		"<table><tbody><tr><td><p>no</p></td><td><p>header</p></td></tr></tbody></table>",
+		"<table><tbody><tr><th><p>h</p></th><td><p>a</p></td></tr></tbody></table>",
+		"<table><tbody><tr><th><p>a</p></th></tr><tr><td><p>b</p><p>c</p></td></tr></tbody></\
+		 table>",
+		"<table><tbody><tr><th rowspan=\"2\"><p>a</p></th></tr><tr></tr></tbody></table>",
+	] {
+		let typist = typist("");
+		let schema = typist.editor.schema();
+		let markdown = clipboard::to_markdown(schema, &clipboard::from_html(schema, html));
+
+		assert!(markdown.starts_with("<table>"), "{html} → {markdown}");
+		assert_eq!(markdown_round_trip(&markdown), markdown, "{markdown}");
+	}
+}
+
+#[test]
+fn typing_over_a_selection_into_the_next_row_keeps_the_grid_full() {
+	let mut typist = with_table(3, 3);
+	select_cells(&mut typist, (0, 2), (2, 2));
+	assert!(run(&mut typist.editor, "mergeCells", &[]));
+	assert_eq!(
+		cells(&typist),
+		grid(&[&["#", "#", "#|1x3"], &["", ""], &["", ""]])
+	);
+
+	// From the tall cell down into the next row: deleting the selection
+	// joins away the cell it ends in, and the table refills the hole left
+	// of the tall cell.
+	let anchor = cell_text(&typist, 0, 2);
+	let head = cell_text(&typist, 1, 0);
+	typist
+		.editor
+		.select(
+			Selection::text(Point::new(anchor, 0), Point::new(head, 0)),
+			&mut env(),
+		)
+		.expect("a valid selection");
+	typist.type_script("q");
+
+	assert_eq!(
+		cells(&typist).iter().map(Vec::len).collect::<Vec<_>>(),
+		[3, 2, 2]
+	);
+	let typist_ref = &typist;
+	let doc = typist_ref.editor.state().doc();
+	let table = doc.children(None)[0];
+	let map = canvist_model::TableMap::new(doc.children(Some(table)).iter().map(|&row| {
+		doc.children(Some(row)).iter().map(|&cell| {
+			let span = |key: &str| {
+				doc.block(cell)
+					.and_then(|block| block.attrs().get(key))
+					.and_then(Value::as_int)
+					.map_or(1, |span| span as usize)
+			};
+			(span("colspan"), span("rowspan"))
+		})
+	}));
+	assert!(map.is_full(), "{:?}", cells(&typist));
+	support::assert_valid(typist.editor.state());
 }

@@ -254,12 +254,15 @@ impl TableMap {
 		self.slots.iter().flatten().all(Option::is_some)
 	}
 
-	/// How many slots each row is missing at its end.
+	/// How many slots each row is missing. They all come after the row's
+	/// last cell, since each cell takes the first free slot, so appending
+	/// that many cells fills the row, even where a cell from above spans
+	/// the row's end.
 	#[must_use]
 	pub fn missing(&self) -> Vec<usize> {
 		self.slots
 			.iter()
-			.map(|line| line.iter().rev().take_while(|slot| slot.is_none()).count())
+			.map(|line| line.iter().filter(|slot| slot.is_none()).count())
 			.collect()
 	}
 }

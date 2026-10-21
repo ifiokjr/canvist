@@ -102,6 +102,7 @@ pub fn to_html(doc: &Document, theme: &Arc<Theme>, options: &HtmlOptions) -> Htm
 		styles: Styles::new(theme.clone(), doc.schema().clone()),
 		out: String::new(),
 		stacked_tables: 0,
+		header_scope: None,
 	};
 	writer.out.push_str("<div class=\"cv-doc\">");
 	writer.children(None, None, 0, options.width);
@@ -121,6 +122,10 @@ struct Writer<'a> {
 	/// How many tables enclose the block being written that stack their
 	/// cells, as layout does for a table nested in a cell.
 	stacked_tables: usize,
+	/// The `scope` of the grid cell about to be written, if it is a header:
+	/// `col` across the first row, `row` down the first column. Only its
+	/// table knows where a cell sits.
+	header_scope: Option<&'static str>,
 }
 
 impl Writer<'_> {
@@ -325,6 +330,11 @@ impl Writer<'_> {
 				let cell_style = self
 					.styles
 					.resolve(cell, Some(row_block.kind()), Some(row_style));
+				self.header_scope = match (placed.row, placed.column) {
+					(0, _) => Some("col"),
+					(_, 0) => Some("row"),
+					_ => None,
+				};
 				self.block(cell, cell_style, 0.0, None, (lists, cell_width.max(0.0)));
 			}
 
@@ -390,8 +400,10 @@ impl Writer<'_> {
 
 		attribute(&mut self.out, "data-id", &block.id().to_string());
 
-		if self.styles.get(style).table == Some(TableRole::Cell) {
-			self.cell_spans(block);
+		// Without grid layout, cells stack like any container's children,
+		// so they have no spans to declare.
+		if cfg!(feature = "tables") && self.styles.get(style).table == Some(TableRole::Cell) {
+			self.cell_spans(block, tag);
 		}
 
 		if matches!(block.content(), Content::Inline(_)) {
@@ -404,8 +416,13 @@ impl Writer<'_> {
 	}
 
 	/// A cell's `colspan` and `rowspan` attributes, when it spans more than
-	/// one column or row.
-	fn cell_spans(&mut self, cell: &Block) {
+	/// one column or row, and a header cell's `scope`, so assistive
+	/// technology reads each data cell with the headers that label it.
+	fn cell_spans(&mut self, cell: &Block, tag: &str) {
+		if let Some(scope) = self.header_scope.take().filter(|_| tag == "th") {
+			attribute(&mut self.out, "scope", scope);
+		}
+
 		for key in ["colspan", "rowspan"] {
 			let span = span_attr(self.doc, cell, key);
 
