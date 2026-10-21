@@ -25,6 +25,8 @@
 
 The scene model behind [canvist](https://github.com/canvist/canvist)'s canvas: the design-tool sibling of `canvist_model`.
 
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::scene` behind the `canvas` feature: `cargo add canvist --features canvas`.
+
 - **Nodes:** pages, frames, groups, rectangles, ellipses, polygons and stars, vector paths, boolean operations, images, components, instances, and text frames that each hold a full canvist text document.
 - **Schema:** node types are registered by name. Several types can share a built-in behaviour, and custom types draw their own geometry, so plugins add a `sticky` frame or a generative shape without forking the model.
 - **Props:** typed core properties (transform, size, fills, strokes, effects, blend modes, constraints, auto-layout) plus custom values and per-property instance overrides.

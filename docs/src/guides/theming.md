@@ -22,16 +22,16 @@ Rules are keyed by type name, so an extension's blocks are styled by name whethe
 ```rust
 use std::sync::Arc;
 
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::Renderer;
-use canvist_layout::BlockPatch;
-use canvist_layout::BlockRule;
-use canvist_layout::Color;
-use canvist_layout::TextPatch;
-use canvist_layout::Theme;
+use canvist::headless::Engine;
+use canvist::headless::Format;
+use canvist::headless::Renderer;
+use canvist::layout::BlockPatch;
+use canvist::layout::BlockRule;
+use canvist::layout::Color;
+use canvist::layout::TextPatch;
+use canvist::layout::Theme;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let brand = Color::rgb(0x6a, 0x00, 0xf5);
 	let theme = Theme::starter_kit()
 		.to_builder()
@@ -59,10 +59,10 @@ fn main() -> Result<(), canvist_headless::HeadlessError> {
 }
 ```
 
-Add `canvist_layout` next to `canvist_headless` to use themes:
+Themes are in `canvist::layout`, which the `ssr` feature includes:
 
 ```sh
-cargo add canvist_layout --git https://github.com/canvist/canvist
+cargo add canvist --git https://github.com/canvist/canvist --features ssr
 ```
 
 ## Dark mode, fonts, and size
@@ -72,9 +72,9 @@ cargo add canvist_layout --git https://github.com/canvist/canvist
 ```rust
 use std::sync::Arc;
 
-use canvist_layout::ColorScheme;
-use canvist_layout::StarterKitOptions;
-use canvist_layout::Theme;
+use canvist::layout::ColorScheme;
+use canvist::layout::StarterKitOptions;
+use canvist::layout::Theme;
 
 let theme = Theme::starter_kit_with(&StarterKitOptions {
 	scheme: ColorScheme::Dark,

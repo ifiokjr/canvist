@@ -120,10 +120,10 @@ The same calls exist everywhere:
 | `engine.restore(snapshot)` | `engine.restore(&snapshot)?`     | `engine.restore(snapshot)`     |
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
+use canvist::headless::Engine;
+use canvist::headless::Format;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let engine = Engine::starter_kit();
 	let doc = engine.parse(Format::Html, "<h2>Title</h2><p>Body</p>")?;
 

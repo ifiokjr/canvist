@@ -26,6 +26,8 @@
 
 The platform-agnostic editing engine behind [canvist](https://github.com/canvist/canvist), built on [`canvist_model`](../canvist_model). It has no UI: hosts send it input and draw what it returns.
 
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::editor`: `cargo add canvist`.
+
 - **One state:** the document, selection, stored marks, and IME composition change through one path, so they never disagree.
 - **Commands:** typing, deleting by grapheme, word, or line, Enter and Backspace that understand lists and quotes, marks, block types, and copy and paste.
 - **Selection motion:** by grapheme and word (UAX #29), line, and document. The layout engine answers line and vertical moves.

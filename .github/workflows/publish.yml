@@ -218,9 +218,22 @@ jobs:
         if: needs.plan.outputs.dry_run == 'true'
         run: |
           set -euo pipefail
-          crates=$(jq -r '[.packages[] | select(.registry == "crates_io") | "-p " + .package] | join(" ")' "$RUNNER_TEMP/publish-readiness.json")
-          # shellcheck disable=SC2086 # one `-p <crate>` word pair per crate
-          cargo publish --dry-run --locked $crates
+          # Readiness names packages by their monochange id, which is not
+          # always the crate name (`canvist-rust` publishes `canvist`), so
+          # resolve each id through its `path` in monochange.toml.
+          metadata=$(cargo metadata --no-deps --format-version 1)
+          crates=()
+          for id in $(jq -r '.packages[] | select(.registry == "crates_io") | .package' "$RUNNER_TEMP/publish-readiness.json"); do
+            crate_path=$(awk -v id="$id" '
+              $0 == "[package." id "]" || $0 == "[package.\"" id "\"]" { found = 1; next }
+              found && /^path *=/ { gsub(/^path *= *"|"$/, ""); print; exit }
+              found && /^\[/ { exit }
+            ' monochange.toml)
+            name=$(jq -r --arg manifest "$PWD/$crate_path/Cargo.toml" '.packages[] | select(.manifest_path == $manifest) | .name' <<<"$metadata")
+            [ -n "$name" ] || { echo "::error::no crate found for monochange package $id" >&2; exit 1; }
+            crates+=(-p "$name")
+          done
+          cargo publish --dry-run --locked "${crates[@]}"
         shell: devenv shell -- bash -e {0}
 
       # Fetched last, right before publishing: the token lasts 30 minutes.

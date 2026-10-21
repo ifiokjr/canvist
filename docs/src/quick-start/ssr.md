@@ -2,7 +2,7 @@
 
 In this guide you render a canvist document to HTML on a server, laid out exactly as the editor paints it, then let the live editor take over in the browser without moving a pixel. Use it for fast first paint, SEO, readers without JavaScript, email, previews, and thumbnails.
 
-**Status: available.** JavaScript servers (Node, Deno, Bun, and Workers, including Next.js and Nuxt) use `@canvist/headless/ssr`. Rust servers use `canvist_headless` with the `ssr` feature. Both render the same HTML.
+**Status: available.** JavaScript servers (Node, Deno, Bun, and Workers, including Next.js and Nuxt) use `@canvist/headless/ssr`. Rust servers use the `canvist` crate with the `ssr` feature. Both render the same HTML.
 
 ## 1. Install
 
@@ -147,18 +147,18 @@ npm run dev   # http://localhost:5180/ssr.html and /ssr-react.html
 
 ## Render from Rust
 
-The same renderer is in `canvist_headless` behind the `ssr` feature:
+The same renderer is in the `canvist` crate behind the `ssr` feature:
 
 ```sh
-cargo add canvist_headless --git https://github.com/canvist/canvist --features ssr
+cargo add canvist --git https://github.com/canvist/canvist --features ssr
 ```
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::Renderer;
+use canvist::headless::Engine;
+use canvist::headless::Format;
+use canvist::headless::Renderer;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let doc =
 		Engine::starter_kit().parse(Format::Markdown, "# Release notes\n\n- Faster **typing**")?;
 

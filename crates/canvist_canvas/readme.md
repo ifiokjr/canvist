@@ -25,6 +25,8 @@
 
 The headless interaction core of [canvist](https://github.com/canvist/canvist)'s design canvas: everything between input and pixels, with no UI. Build your own Figma on top of it.
 
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::canvas` behind the `canvas` feature: `cargo add canvist --features canvas`.
+
 - **Camera:** pan, zoom about a point, pinch, momentum that doesn't depend on frame rate, and zoom-to-fit.
 - **Scene index:** world transforms, auto-layout, boolean outlines, and an R-tree, updated only where a commit touched.
 - **Hit testing:** exact tests on fills, strokes, and curves, clipped by frames, plus marquee selection.

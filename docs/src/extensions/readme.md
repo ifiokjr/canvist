@@ -12,7 +12,7 @@ Every extension below ships today in Rust, TypeScript, and Dart. Names match Tip
 | Rust       | `Engine::new(\|b\| b.add(Bold))`        | `Engine::starter_kit()`  |
 | Dart       | `EngineBuilder()..add(Extensions.bold)` | `Engine.starterKit()`    |
 
-In TypeScript, import each StarterKit extension by name from `@canvist/headless`. In Rust, import it from `canvist_extensions` (re-exported as `canvist_headless::canvist_extensions`). `Mod` means Cmd on Apple platforms and Ctrl elsewhere.
+In TypeScript, import each StarterKit extension by name from `@canvist/headless`. In Rust, import it from `canvist::extensions`. `Mod` means Cmd on Apple platforms and Ctrl elsewhere.
 
 Extensions beyond the StarterKit, from [subscript](#subscript-and-superscript) on, each sit behind a Cargo feature of their own, and `full` turns them all on. In TypeScript they live in a second WebAssembly module, `@canvist/headless/full`, so the StarterKit module stays small: import `createEngine` and every extension from there instead, with the same API. The full module loads the emoji table the first time an engine registers `emoji`. The Dart package includes every extension. The browser editor, `@canvist/web`, includes the StarterKit only for now, to keep its download small.
 

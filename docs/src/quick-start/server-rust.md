@@ -2,17 +2,17 @@
 
 In this guide you load a document, edit it with typed commands, and export it, all from Rust. It takes about five minutes. The same engine powers every other canvist platform, so what you learn here carries over.
 
-**Status: available.** `canvist_headless` works today. It goes to crates.io with the first release; until then, install it from GitHub.
+**Status: available.** The `canvist` crate works today. It goes to crates.io with the first release; until then, install it from GitHub.
 
 ## 1. Install
 
 You need Rust 1.95 or newer.
 
 ```sh
-cargo add canvist_headless --git https://github.com/canvist/canvist
+cargo add canvist --git https://github.com/canvist/canvist
 ```
 
-The default build includes the StarterKit (paragraphs, headings, lists, tasks, quotes, code blocks, bold, italic, underline, strike, code, links, and undo). Two optional features add more:
+`canvist` is the one crate you need: the engine's other crates are its modules, such as `canvist::headless` and `canvist::extensions`. The default build includes the headless engine and the StarterKit (paragraphs, headings, lists, tasks, quotes, code blocks, bold, italic, underline, strike, code, links, and undo). Optional features add more:
 
 | Feature  | Adds                                                                  |
 | -------- | --------------------------------------------------------------------- |
@@ -20,7 +20,7 @@ The default build includes the StarterKit (paragraphs, headings, lists, tasks, q
 | `ssr`    | Server-side rendering to HTML and SVG                                 |
 
 ```sh
-cargo add canvist_headless --git https://github.com/canvist/canvist --features collab,ssr
+cargo add canvist --git https://github.com/canvist/canvist --features collab,ssr
 ```
 
 ## 2. Load, edit, and export a document
@@ -28,11 +28,11 @@ cargo add canvist_headless --git https://github.com/canvist/canvist --features c
 Replace `src/main.rs` with this:
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::Position;
+use canvist::headless::Engine;
+use canvist::headless::Format;
+use canvist::headless::Position;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	// An engine holds your extensions. Build one and share it.
 	let engine = Engine::starter_kit();
 	let kit = engine.handles();
@@ -64,13 +64,13 @@ cargo run
 `Engine::starter_kit()` registers everything in the StarterKit. To build a smaller editor, register extensions one by one with `Engine::new`. It returns a typed handle for each extension you add:
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::canvist_extensions::Bold;
-use canvist_headless::canvist_extensions::Document;
-use canvist_headless::canvist_extensions::Paragraph;
+use canvist::extensions::Bold;
+use canvist::extensions::Document;
+use canvist::extensions::Paragraph;
+use canvist::headless::Engine;
+use canvist::headless::Format;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let engine = Engine::new(|builder| {
 		builder.add(Document);
 		builder.add(Paragraph);

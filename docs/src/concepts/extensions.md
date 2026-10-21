@@ -61,15 +61,15 @@ The count includes the four extensions every engine has: the document, paragraph
 In Rust, each extension sits behind a Cargo feature of `canvist_extensions`, so extensions you don't enable aren't compiled at all. Register extensions with `Engine::new`, and each `builder.add` returns that extension's typed handle. `Engine::new` registers exactly what you add, so include `Document` and `Paragraph`, and `BaseKeymap` if you want the standard editing keys:
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::canvist_extensions::Bold;
-use canvist_headless::canvist_extensions::Document;
-use canvist_headless::canvist_extensions::Heading;
-use canvist_headless::canvist_extensions::HeadingLevel;
-use canvist_headless::canvist_extensions::Paragraph;
+use canvist::extensions::Bold;
+use canvist::extensions::Document;
+use canvist::extensions::Heading;
+use canvist::extensions::HeadingLevel;
+use canvist::extensions::Paragraph;
+use canvist::headless::Engine;
+use canvist::headless::Format;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let engine = Engine::new(|builder| {
 		builder.add(Document);
 		builder.add(Paragraph);

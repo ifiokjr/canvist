@@ -59,11 +59,11 @@ If a position doesn't exist, selecting it fails with the code `invalidPosition`,
 To act on text by content, read the blocks, find the match, and convert its index to a position. In Rust, `doc.document()` gives you the model:
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::Position;
+use canvist::headless::Engine;
+use canvist::headless::Format;
+use canvist::headless::Position;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let engine = Engine::starter_kit();
 	let kit = engine.handles();
 	let mut doc = engine.parse(Format::Markdown, "Status: DONE\n\nNext: TODO")?;

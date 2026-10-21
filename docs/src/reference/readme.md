@@ -8,6 +8,7 @@ Every public type, function, and command is documented in its package. The regis
 
 | Package              | Language   | After the first release                                                                                                 | Today                                                 |
 | -------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `canvist`            | Rust       | [docs.rs/canvist](https://docs.rs/canvist)                                                                              | `cargo doc -p canvist --all-features --open`          |
 | `canvist_headless`   | Rust       | [docs.rs/canvist_headless](https://docs.rs/canvist_headless)                                                            | `cargo doc -p canvist_headless --all-features --open` |
 | `canvist_extensions` | Rust       | [docs.rs/canvist_extensions](https://docs.rs/canvist_extensions)                                                        | `cargo doc -p canvist_extensions --open`              |
 | `canvist_editor`     | Rust       | [docs.rs/canvist_editor](https://docs.rs/canvist_editor)                                                                | `cargo doc -p canvist_editor --open`                  |

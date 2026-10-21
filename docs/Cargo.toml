@@ -11,11 +11,8 @@ rust-version.workspace = true
 description = "The canvist docs, with their Rust samples run as doc tests"
 
 [dev-dependencies]
+canvist = { workspace = true, features = ["collab", "ssr"] }
 canvist_desktop = { workspace = true }
-canvist_editor = { workspace = true }
-canvist_headless = { path = "../crates/canvist_headless", features = ["collab", "ssr"] }
-canvist_layout = { workspace = true, features = ["ink", "kinetic", "tables", "theme-extensions"] }
-canvist_model = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
 
 [lints]

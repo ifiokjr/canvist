@@ -10,7 +10,7 @@ canvist hasn't had its first release, and several platforms are still coming. Do
 
 | Target                         | Install                                                                                                                  | Exists today? |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| Rust                           | `cargo add canvist_headless --git https://github.com/canvist/canvist`                                                    | Yes           |
+| Rust                           | `cargo add canvist --git https://github.com/canvist/canvist`                                                             | Yes           |
 | Node, Deno, Bun, Workers       | Build `packages/canvist-headless` and install the tarball ([how](../quick-start/server-typescript.md))                   | Yes           |
 | Dart                           | Git dependency on `platforms/dart` ([how](../quick-start/server-dart.md))                                                | Yes           |
 | Flutter                        | Git dependency on `platforms/flutter`: `CanvistEditor` ([how](../quick-start/flutter.md))                                | Yes           |
@@ -54,11 +54,11 @@ Verify with `deno check` or `tsc --noEmit`, then run it.
 ### Rust
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::Position;
+use canvist::headless::Engine;
+use canvist::headless::Format;
+use canvist::headless::Position;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let engine = Engine::starter_kit();
 	let kit = engine.handles();
 	let mut doc = engine.parse(Format::Markdown, "# Welcome\n\nRead the guide")?;
