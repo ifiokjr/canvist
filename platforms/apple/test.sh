@@ -9,6 +9,9 @@ apple_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 destination="platform=iOS Simulator,id=$("$apple_dir/simulator.sh")"
 echo "Testing on: $destination"
 
+# xcodebuild passes `TEST_RUNNER_`-prefixed variables to the tests.
+export TEST_RUNNER_CANVIST_PERF_SLACK="${CANVIST_PERF_SLACK:-1}"
+
 cd "$apple_dir"
 xcodebuild test \
 	-scheme Canvist \

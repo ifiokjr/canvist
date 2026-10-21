@@ -72,7 +72,7 @@ One core runs everywhere, so a document exports byte for byte the same in Rust, 
 | Design canvas                  | [`@canvist/canvas`](./packages/canvist-canvas)     | Preview     |
 | Desktop: macOS, Windows, Linux | [`canvist_desktop`](./crates/canvist_desktop)      | Available   |
 | iOS                            | [`Canvist`](./platforms/apple) Swift package       | Available   |
-| Android                        | Kotlin package                                     | Coming soon |
+| Android                        | [`canvist-android`](./platforms/android)           | Available   |
 | React Native and Lynx          | `@canvist/react-native`, `@canvist/lynx`           | Coming soon |
 
 canvist hasn't had its first release yet. Each [quick start](./docs/src/quick-start/readme.md) shows how to install from GitHub until it does.

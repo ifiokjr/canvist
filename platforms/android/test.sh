@@ -13,4 +13,5 @@ if [ -z "${JAVA_HOME:-}" ] && [ -d "$studio_jdk" ]; then
 fi
 
 cd "$android_dir"
-"$android_dir/emulator.sh" ./gradlew connectedDebugAndroidTest --console=plain
+"$android_dir/emulator.sh" ./gradlew connectedDebugAndroidTest --console=plain \
+	-Pandroid.testInstrumentationRunnerArguments.perfSlack="${CANVIST_PERF_SLACK:-1}"

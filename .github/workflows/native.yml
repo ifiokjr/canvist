@@ -67,6 +67,9 @@ jobs:
       - name: test swift package and sample app
         timeout-minutes: 25
         run: platforms/apple/test.sh
+        env:
+          # Debug builds on a shared runner's simulator.
+          CANVIST_PERF_SLACK: "3"
 
       - name: install node
         uses: actions/setup-node@v4
@@ -200,7 +203,13 @@ jobs:
           emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot-save -gpu swiftshader_indirect
           # A software-rendered emulator running a debug build: the keystroke
           # budget gets generous slack.
-          script: platforms/android/test.sh && CANVIST_FLUTTER_PLATFORMS=android CANVIST_PERF_SLACK=6 platforms/flutter/test.sh
+          script: CANVIST_PERF_SLACK=6 platforms/android/test.sh && CANVIST_FLUTTER_PLATFORMS=android CANVIST_PERF_SLACK=6 platforms/flutter/test.sh
+
+      # Gradle says only that the library's or the sample's instrumented tests
+      # failed; their results say which test and why.
+      - name: show android test failures
+        if: failure()
+        run: grep -h -B2 -A25 "<failure" platforms/android/*/build/outputs/androidTest-results/connected/debug/*.xml || true
 
       # A test that vanishes from Patrol's summary died with the app: its
       # crash is in the device log and Gradle's report.
@@ -213,3 +222,5 @@ jobs:
             platforms/flutter/example/build/logcat.txt
             platforms/flutter/example/build/flutter-test.log
             platforms/flutter/example/build/app/reports/androidTests
+            platforms/android/*/build/outputs/androidTest-results
+            platforms/android/*/build/reports/androidTests

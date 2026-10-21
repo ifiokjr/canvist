@@ -49,8 +49,9 @@ Every number below has a budget, and a test fails the build when an operation go
 | Native: IME update → frame, 10k paragraphs ⁵         | < 200 µs                                    | 29 µs                |
 | Native: collaborator's keystroke → frame ⁵           | < 200 µs                                    | 57 µs                |
 | iOS: keystroke → paint, p95 ⁶                        | < 16 ms                                     | 1.2 ms               |
-| Desktop: keystroke → frame, 10k paragraphs ⁷         | < 4 ms                                      | 0.14 ms              |
-| Desktop: keystroke → frame, 100 KB paragraph ⁷       | < 4 ms                                      | 0.56 ms              |
+| Android: keystroke → paint, p95 ⁷                    | < 16 ms                                     | 3.7 ms               |
+| Desktop: keystroke → frame, 10k paragraphs ⁸         | < 4 ms                                      | 0.14 ms              |
+| Desktop: keystroke → frame, 100 KB paragraph ⁸       | < 4 ms                                      | 0.56 ms              |
 | Desktop: open 10k paragraphs → first frame           | < 100 ms                                    | 26 ms                |
 | Desktop: typing burst, 1,000 keys with a frame each  | no crash, < 1.5 s                           | 0.23 s               |
 | Web bundle (core + StarterKit), gzipped              | < 350 KB                                    | 349.6 KB ³           |
@@ -67,7 +68,9 @@ Every number below has a budget, and a test fails the build when an operation go
 
 ⁶ `CanvistView` on an iPhone 17 Pro simulator, debug build: a character through `UITextInput`, relayout, and Core Graphics painting the damaged area (`CanvistViewTests.testKeystrokeToPaintStaysWithinBudget`). The median is 1 ms.
 
-⁷ `canvist_desktop` on an Apple silicon Mac, measured by its `tests/perf_budgets.rs`: handling the key event (the edit, history, and relayout bookkeeping), laying out the viewport, building its display list, and encoding it as a vello scene. The GPU rasterises the scene in parallel.
+⁷ `CanvistView` on an API 35 arm64 emulator on an Apple silicon Mac, debug build, in a 2,000-paragraph document: a character committed through the `InputConnection`, relayout, and drawing the view on a `Canvas` (`CanvistViewTest.keystrokeToPaintStaysWithinBudget`). The median is 2.2 ms.
+
+⁸ `canvist_desktop` on an Apple silicon Mac, measured by its `tests/perf_budgets.rs`: handling the key event (the edit, history, and relayout bookkeeping), laying out the viewport, building its display list, and encoding it as a vello scene. The GPU rasterises the scene in parallel.
 
 ## Regression checks on every pull request
 

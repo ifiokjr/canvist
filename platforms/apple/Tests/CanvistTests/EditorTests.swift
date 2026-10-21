@@ -136,7 +136,7 @@ final class EditorTests: XCTestCase {
         let p95 = samples[samples.count * Self.percentile / 100]
 
         print("PERF swift keystroke-to-frame median=\(Int(median))µs p95=\(Int(p95))µs")
-        XCTAssertLessThan(p95, Self.budget, "keystroke-to-frame p95 \(p95)µs is over its budget")
+        XCTAssertLessThan(p95, Self.budget * perfSlack, "keystroke-to-frame p95 \(p95)µs is over its budget")
     }
 
     /// Type a character, or delete one, and build the frame; returns
