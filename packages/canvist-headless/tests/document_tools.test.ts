@@ -24,6 +24,7 @@ import {
 	starterKit,
 	tableOfContents,
 } from "../src/full.ts";
+import { comparable } from "./descriptors.ts";
 
 const tools = [
 	findAndReplace,
@@ -35,13 +36,13 @@ const tools = [
 
 test("the document tools' descriptors match what Rust reports", async () => {
 	using engine = await createEngine(tools);
-	const reported = (engine.metadata() as { name: string }[]).filter((entry) =>
+	const reported = comparable(engine.metadata()).filter((entry) =>
 		tools.some((tool) => tool.name === entry.name)
 	);
 	const byName = (list: readonly { name: string }[]) =>
 		[...list].sort((a, b) => a.name.localeCompare(b.name));
 
-	assert.deepEqual(byName(reported), byName(JSON.parse(JSON.stringify(tools))));
+	assert.deepEqual(byName(reported), comparable(tools));
 	assert.deepEqual(
 		comments.nodes.map((node) => [node.kind, node.name]),
 		[["mark", "comment"]],
