@@ -59,6 +59,59 @@ impl Default for HistoryConfig {
 	}
 }
 
+/// The rule [`UndoHistory`] groups changes by, on its own: whether each
+/// update joins the previous undo step. A shared history that keeps its
+/// steps elsewhere asks it how to track each local change, so collaborative
+/// undo groups typing exactly as single-user undo does.
+#[derive(Clone, Debug, Default)]
+pub struct UndoGrouping {
+	config: HistoryConfig,
+	/// How the current group ended, until something closes it.
+	last: Option<GroupEnd>,
+}
+
+/// The end of the newest undo group.
+#[derive(Clone, Copy, Debug)]
+struct GroupEnd {
+	kind: EditKind,
+	at: Duration,
+	selection: Selection,
+}
+
+impl UndoGrouping {
+	/// Grouping with `config`'s delay.
+	#[must_use]
+	pub fn new(config: HistoryConfig) -> Self {
+		Self { config, last: None }
+	}
+
+	/// Whether `update`, made at `now`, joins the previous undo step: typing
+	/// (or deleting) that carries on where the previous edit of the same
+	/// kind left off, within the group delay. Either way, `update` now ends
+	/// the newest group.
+	pub fn joins(&mut self, update: &Update, now: Duration) -> bool {
+		let joins = self.last.is_some_and(|last| {
+			group(update.kind).is_some()
+				&& group(update.kind) == group(last.kind)
+				&& now.saturating_sub(last.at) <= self.config.group_delay
+				&& update.selection_before == last.selection
+		});
+		self.last = Some(GroupEnd {
+			kind: update.kind,
+			at: now,
+			selection: update.selection,
+		});
+
+		joins
+	}
+
+	/// Make the next update start a new step, as after an undo or a click
+	/// elsewhere.
+	pub fn close(&mut self) {
+		self.last = None;
+	}
+}
+
 /// One undo (or redo) step.
 #[derive(Clone, Debug)]
 struct Entry {
@@ -82,9 +135,9 @@ struct Entry {
 #[derive(Clone, Debug, Default)]
 pub struct UndoHistory {
 	config: HistoryConfig,
+	grouping: UndoGrouping,
 	done: Vec<Entry>,
 	undone: Vec<Entry>,
-	closed: bool,
 }
 
 impl UndoHistory {
@@ -93,6 +146,7 @@ impl UndoHistory {
 	pub fn new(config: HistoryConfig) -> Self {
 		Self {
 			config,
+			grouping: UndoGrouping::new(config),
 			..Self::default()
 		}
 	}
@@ -101,19 +155,6 @@ impl UndoHistory {
 	#[must_use]
 	pub fn undo_depth(&self) -> usize {
 		self.done.len()
-	}
-
-	/// Whether `update` continues the most recent entry.
-	fn continues(&self, update: &Update, now: Duration) -> bool {
-		let Some(last) = self.done.last() else {
-			return false;
-		};
-
-		!self.closed
-			&& group(update.kind).is_some()
-			&& group(update.kind) == group(last.kind)
-			&& now.saturating_sub(last.at) <= self.config.group_delay
-			&& update.selection_before == last.selection_after
 	}
 
 	/// Revert the newest entry of `from` and push its inverse onto `to`.
@@ -156,6 +197,7 @@ impl History for UndoHistory {
 			Origin::Remote => {
 				self.done.clear();
 				self.undone.clear();
+				self.grouping.close();
 				return;
 			}
 			Origin::Local => {}
@@ -167,7 +209,7 @@ impl History for UndoHistory {
 
 		self.undone.clear();
 
-		if self.continues(update, now) {
+		if self.grouping.joins(update, now) {
 			if let Some(last) = self.done.last_mut() {
 				last.inverses.extend(update.commit.inverses.iter().cloned());
 				last.selection_after = update.selection;
@@ -177,7 +219,6 @@ impl History for UndoHistory {
 			return;
 		}
 
-		self.closed = false;
 		self.done.push(Entry {
 			inverses: update.commit.inverses.clone(),
 			selection: update.selection_before,
@@ -192,12 +233,12 @@ impl History for UndoHistory {
 	}
 
 	fn undo(&mut self, state: &mut EditorState) -> CommandResult {
-		self.closed = true;
+		self.grouping.close();
 		Self::revert(&mut self.done, &mut self.undone, state)
 	}
 
 	fn redo(&mut self, state: &mut EditorState) -> CommandResult {
-		self.closed = true;
+		self.grouping.close();
 		Self::revert(&mut self.undone, &mut self.done, state)
 	}
 
@@ -210,6 +251,6 @@ impl History for UndoHistory {
 	}
 
 	fn close_group(&mut self) {
-		self.closed = true;
+		self.grouping.close();
 	}
 }

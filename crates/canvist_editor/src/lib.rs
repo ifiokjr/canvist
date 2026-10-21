@@ -134,6 +134,7 @@ pub use extension::embed_type;
 pub use extension::mark_type;
 pub use history::History;
 pub use history::HistoryConfig;
+pub use history::UndoGrouping;
 pub use history::UndoHistory;
 pub use keymap::KeyPress;
 pub use keymap::Keymap;

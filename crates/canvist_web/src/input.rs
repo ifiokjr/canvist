@@ -69,7 +69,14 @@ impl WebEditor {
 			alt: modifiers & ALT != 0,
 			meta: modifiers & META != 0,
 		};
-		self.edit(|editor, env| editor.handle_key(KeyPress::new(key, modifiers), env))
+		let press = KeyPress::new(key, modifiers);
+
+		#[cfg(feature = "collab")]
+		if let Some(redo) = self.doc.shared_history_key(press) {
+			return self.history(redo);
+		}
+
+		self.edit(|editor, env| editor.handle_key(press, env))
 	}
 
 	/// Show `text` as IME preedit text at the selection, replacing any

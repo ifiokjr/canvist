@@ -56,13 +56,17 @@ pub struct Doc {
 	/// The time of the last call. Calls without a host clock advance it by
 	/// one second, so each is its own undo step and results never depend on
 	/// the wall clock; [`Doc::edit`] moves it to the host's time.
-	clock: Duration,
+	pub(crate) clock: Duration,
 	/// Every commit that changed the document since the host last took
 	/// them, while [`Doc::record_commits`] is on.
 	#[cfg(feature = "journal")]
 	journal: Option<Vec<Commit>>,
 	#[cfg(feature = "collab")]
 	pub(crate) shared: Option<canvist_collab::Binding>,
+	/// Which local changes join the shared history's previous undo step,
+	/// by the rule the editor's own history follows.
+	#[cfg(feature = "collab")]
+	pub(crate) grouping: canvist_editor::UndoGrouping,
 }
 
 impl std::fmt::Debug for Doc {
@@ -83,6 +87,8 @@ impl Doc {
 			journal: None,
 			#[cfg(feature = "collab")]
 			shared: None,
+			#[cfg(feature = "collab")]
+			grouping: canvist_editor::UndoGrouping::default(),
 		}
 	}
 
@@ -158,8 +164,8 @@ impl Doc {
 	/// the nearest valid ones.
 	pub fn select(&mut self, selection: Selection) -> Result<(), HeadlessError> {
 		let mut env = self.env();
-		let update = self.editor.select(selection, &mut env)?;
-		self.finish(update.as_ref()).map(drop)
+		let mut update = self.editor.select(selection, &mut env)?;
+		self.finish(&mut update).map(drop)
 	}
 
 	/// Select from `anchor` to `head`; equal positions make a caret.
@@ -183,8 +189,8 @@ impl Doc {
 	/// `kit.bold.toggle()`. Returns whether it applied.
 	pub fn run(&mut self, command: &Command) -> Result<bool, HeadlessError> {
 		let mut env = self.env();
-		let update = self.editor.run(command, &mut env)?;
-		self.finish(update.as_ref())
+		let mut update = self.editor.run(command, &mut env)?;
+		self.finish(&mut update)
 	}
 
 	/// Whether `command` would apply. Nothing changes.
@@ -201,8 +207,8 @@ impl Doc {
 		let chain = commands.iter().fold(self.editor.chain(), |chain, command| {
 			chain.then(command.clone())
 		});
-		let update = chain.run(&mut env)?;
-		self.finish(update.as_ref())
+		let mut update = chain.run(&mut env)?;
+		self.finish(&mut update)
 	}
 
 	/// Run the command an extension registered as `name`, such as
@@ -211,6 +217,12 @@ impl Doc {
 	/// scripts; Rust code uses typed handles.
 	pub fn run_named(&mut self, name: &str, args: &Json) -> Result<bool, HeadlessError> {
 		let command = self.command_named(name, args)?;
+
+		#[cfg(feature = "collab")]
+		if let Some(redo) = self.shared_history_command(name) {
+			return Ok(self.history_step(redo)?.is_some());
+		}
+
 		self.run(&command)
 	}
 
@@ -261,10 +273,10 @@ impl Doc {
 
 		for character in text.chars() {
 			let mut env = self.env();
-			let update = self
+			let mut update = self
 				.editor
 				.insert_text(character.encode_utf8(&mut buffer), &mut env)?;
-			changed |= self.finish(update.as_ref())?;
+			changed |= self.finish(&mut update)?;
 		}
 
 		Ok(changed)
@@ -275,11 +287,17 @@ impl Doc {
 	/// bound command applied.
 	pub fn press(&mut self, key: &str) -> Result<bool, HeadlessError> {
 		let (key, modifiers) = parse_binding(key, self.editor.platform())?;
+
+		#[cfg(feature = "collab")]
+		if let Some(redo) = self.shared_history_key(KeyPress::new(&key, modifiers)) {
+			return Ok(self.history_step(redo)?.is_some());
+		}
+
 		let mut env = self.env();
-		let update = self
+		let mut update = self
 			.editor
 			.handle_key(KeyPress::new(&key, modifiers), &mut env)?;
-		self.finish(update.as_ref())
+		self.finish(&mut update)
 	}
 
 	/// Paste `content` read as `format` over the selection, as a user
@@ -287,40 +305,45 @@ impl Doc {
 	/// literal.
 	pub fn paste(&mut self, format: Format, content: &str) -> Result<bool, HeadlessError> {
 		let mut env = self.env();
-		let update = match format {
+		let mut update = match format {
 			Format::Text => self.editor.paste_text(content, &mut env)?,
 			format => {
 				let slice = format::read_slice(self.document().schema(), format, content)?;
 				self.editor.paste(slice, &mut env)?
 			}
 		};
-		self.finish(update.as_ref())
+		self.finish(&mut update)
 	}
 
 	/// Undo the last call that changed the document. Returns whether there
 	/// was anything to undo.
 	pub fn undo(&mut self) -> Result<bool, HeadlessError> {
-		#[cfg(feature = "collab")]
-		if self.shared.is_some() {
-			return self.undo_shared(false);
-		}
-
-		let mut env = self.env();
-		let update = self.editor.undo(&mut env)?;
-		self.finish(update.as_ref())
+		Ok(self.history_step(false)?.is_some())
 	}
 
 	/// Redo the last undone call. Returns whether there was anything to
 	/// redo.
 	pub fn redo(&mut self) -> Result<bool, HeadlessError> {
+		Ok(self.history_step(true)?.is_some())
+	}
+
+	/// Undo, or with `redo` redo, one step and return the update, for hosts
+	/// that lay out again from it. A shared document undoes only this peer's
+	/// own changes, through the shared history.
+	pub fn history_step(&mut self, redo: bool) -> Result<Option<Update>, HeadlessError> {
 		#[cfg(feature = "collab")]
 		if self.shared.is_some() {
-			return self.undo_shared(true);
+			return self.undo_shared(redo);
 		}
 
 		let mut env = self.env();
-		let update = self.editor.redo(&mut env)?;
-		self.finish(update.as_ref())
+		let mut update = if redo {
+			self.editor.redo(&mut env)?
+		} else {
+			self.editor.undo(&mut env)?
+		};
+		self.finish(&mut update)?;
+		Ok(update)
 	}
 
 	/// Whether [`Doc::undo`] has anything to undo: this peer's own changes
@@ -362,8 +385,8 @@ impl Doc {
 	) -> Result<Option<Update>, HeadlessError> {
 		self.clock = self.clock.max(now);
 		let mut env = Env::new(self.clock, lines);
-		let update = change(&mut self.editor, &mut env)?;
-		self.finish(update.as_ref())?;
+		let mut update = change(&mut self.editor, &mut env)?;
+		self.finish(&mut update)?;
 
 		Ok(update)
 	}
@@ -414,7 +437,8 @@ impl Doc {
 	}
 
 	/// Pass a local update on to collaborators, and report whether there
-	/// was one.
+	/// was one. A follow-up the shared state needed joins the update's
+	/// commit, so hosts lay it out too.
 	#[cfg_attr(
 		not(feature = "collab"),
 		allow(
@@ -422,14 +446,16 @@ impl Doc {
 			reason = "only shared documents pass updates on"
 		)
 	)]
-	fn finish(&mut self, update: Option<&Update>) -> Result<bool, HeadlessError> {
+	fn finish(&mut self, update: &mut Option<Update>) -> Result<bool, HeadlessError> {
 		let Some(update) = update else {
 			return Ok(false);
 		};
 
-		self.record(update);
+		// Mirror first: a follow-up the shared state needed joins the
+		// update's commit, and the journal records it with the rest.
 		#[cfg(feature = "collab")]
 		self.mirror_local(update)?;
+		self.record(update);
 
 		Ok(true)
 	}

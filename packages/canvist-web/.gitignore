@@ -6,3 +6,5 @@ report/
 
 # Built by `npm run build:wasm`.
 wasm/
+# Built by `npm run build:wasm:collab`.
+wasm-collab/
