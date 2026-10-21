@@ -19,7 +19,9 @@ use canvist_collab::yrs::sync::SyncMessage;
 use canvist_collab::yrs::updates::decoder::Decode;
 use canvist_collab::yrs::updates::decoder::DecoderV1;
 use canvist_collab::yrs::updates::encoder::Encode;
+use canvist_editor::KeyPress;
 use canvist_editor::Update;
+use canvist_editor::parse_binding;
 use canvist_model::BlockTree;
 use canvist_model::Commit;
 use canvist_model::Document;
@@ -31,6 +33,20 @@ use crate::HeadlessError;
 
 /// A Yjs update that changes nothing: no structs and no deletions.
 const EMPTY_UPDATE: [u8; 2] = [0, 0];
+
+/// The History extension's keys and whether each redoes. A shared document
+/// answers them, and its `undo` and `redo` commands, with the shared
+/// history, which never reverts a collaborator's work.
+const HISTORY_KEYS: [(&str, bool); 3] = [("Mod-z", false), ("Mod-Shift-z", true), ("Mod-y", true)];
+
+/// The y-sync message a client sends to join a shared document it has no
+/// state for: sync step 1 with an empty state vector, which a server
+/// answers with the whole document in sync step 2. Pass that answer to
+/// [`Engine::join_sync`].
+#[must_use]
+pub fn join_message() -> Vec<u8> {
+	Message::Sync(SyncMessage::SyncStep1(StateVector::default())).encode_v1()
+}
 
 /// What to send after [`Doc::receive_sync`] handled a message.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -80,6 +96,39 @@ impl<H: Copy> Engine<H> {
 		shared.shared = Some(binding);
 		Ok(shared)
 	}
+
+	/// Join a shared document from a server's y-sync `message`, after
+	/// sending it [`join_message`]: the document, joined as yrs client
+	/// `client_id`, once the message holds sync step 2, with the rest of
+	/// the message handled as [`Doc::receive_sync`] would. `None` while it
+	/// doesn't: what arrives before step 2 is already part of it.
+	///
+	/// Joining an empty shared document writes one empty paragraph into it,
+	/// which [`Doc::flush_sync`] then sends.
+	pub fn join_sync(
+		&self,
+		message: &[u8],
+		client_id: u64,
+	) -> Result<Option<(Doc, SyncReply)>, HeadlessError> {
+		let mut messages = decode(message)?.into_iter();
+		let Some(state) = messages.by_ref().find_map(|message| {
+			match message {
+				Message::Sync(SyncMessage::SyncStep2(state)) => Some(state),
+				_ => None,
+			}
+		}) else {
+			return Ok(None);
+		};
+
+		let mut doc = self.from_yjs(&state, client_id)?;
+		let mut sync = SyncReply::default();
+
+		for message in messages {
+			doc.handle(message, &mut sync, &mut Vec::new())?;
+		}
+
+		Ok(Some((doc, sync)))
+	}
 }
 
 impl Doc {
@@ -113,8 +162,12 @@ impl Doc {
 		Ok(self.integrate(update)?.doc_changed())
 	}
 
+	/// [`Doc::apply_update`], returning the editor update it made.
 	fn integrate(&mut self, update: &[u8]) -> Result<Update, HeadlessError> {
-		let mut env = self.env();
+		// A collaborator's change takes no time here: servers such as
+		// y-websocket's echo each update to its sender, and advancing the
+		// clock for the echo would split the sender's typing into undo steps.
+		let mut env = canvist_editor::Env::headless(self.clock);
 		let binding = self.shared.as_mut().ok_or(HeadlessError::NotShared)?;
 		let update = self.editor.apply_external(&mut env, |doc| {
 			let commit = binding.apply_update(doc, update, Encoding::V1)?;
@@ -197,6 +250,39 @@ impl Doc {
 		Ok((sync, commits))
 	}
 
+	/// Whether `press` is one of the History extension's undo or redo keys
+	/// (`Some(redo)`) on a shared document that registers History. Hosts
+	/// that handle keys themselves answer it with [`Doc::history_step`].
+	#[must_use]
+	pub fn shared_history_key(&self, press: KeyPress<'_>) -> Option<bool> {
+		self.shared_history_command("undo")?;
+		let platform = self.editor.platform();
+		let key = press.key.to_lowercase();
+
+		HISTORY_KEYS.iter().find_map(|&(binding, redo)| {
+			let (bound, modifiers) = parse_binding(binding, platform).ok()?;
+			(bound == key && modifiers == press.modifiers).then_some(redo)
+		})
+	}
+
+	/// Whether command `name` is History's `undo` or `redo` (`Some(redo)`)
+	/// on a shared document that registers History. Hosts that run commands
+	/// themselves answer it with [`Doc::history_step`].
+	#[must_use]
+	pub fn shared_history_command(&self, name: &str) -> Option<bool> {
+		let redo = match name {
+			"undo" => false,
+			"redo" => true,
+			_ => return None,
+		};
+		let registered = self
+			.editor
+			.command_named(name, &canvist_model::Attrs::default())
+			.is_ok();
+
+		(self.shared.is_some() && registered).then_some(redo)
+	}
+
 	/// The local changes since the last call as y-sync update messages for
 	/// every connection. Call it after running commands on a shared
 	/// document.
@@ -244,8 +330,8 @@ impl Doc {
 	}
 
 	/// Mirror a local update into the shared state, applying any follow-up
-	/// the binding returns.
-	pub(crate) fn mirror_local(&mut self, update: &Update) -> Result<(), HeadlessError> {
+	/// the binding returns and joining it to the update's commit.
+	pub(crate) fn mirror_local(&mut self, update: &mut Update) -> Result<(), HeadlessError> {
 		let Some(binding) = self.shared.as_mut() else {
 			return Ok(());
 		};
@@ -254,18 +340,29 @@ impl Doc {
 			return Ok(());
 		}
 
+		// Typing a word is one undo step, as it is without collaboration.
+		let track = if self.grouping.joins(update, self.clock) {
+			Track::Merge
+		} else {
+			Track::Step
+		};
 		let mut env = canvist_editor::Env::headless(std::time::Duration::ZERO);
 		let follow_up = self.editor.apply_external(&mut env, |doc| {
-			let follow_up = binding.apply_local(doc, &update.commit, Track::Step)?;
+			let follow_up = binding.apply_local(doc, &update.commit, track)?;
 			with_block(follow_up, doc, binding)
 		})?;
-		self.record(&follow_up);
+
+		if !follow_up.commit.is_empty() {
+			append(&mut update.commit, follow_up.commit);
+		}
+
 		Ok(())
 	}
 
 	/// Undo or redo this peer's own changes through the shared history,
 	/// which never reverts a collaborator's work.
-	pub(crate) fn undo_shared(&mut self, redo: bool) -> Result<bool, HeadlessError> {
+	pub(crate) fn undo_shared(&mut self, redo: bool) -> Result<Option<Update>, HeadlessError> {
+		self.grouping.close();
 		let mut env = self.env();
 		let binding = self.shared.as_mut().ok_or(HeadlessError::NotShared)?;
 		let mut applied = false;
@@ -282,7 +379,7 @@ impl Doc {
 		})?;
 		self.record(&update);
 
-		Ok(applied)
+		Ok(applied.then_some(update))
 	}
 
 	fn binding(&self) -> Result<&Binding, HeadlessError> {
@@ -336,18 +433,19 @@ fn ensure_block(
 }
 
 /// Two consecutive commits as one.
-fn then(first: Commit, second: Commit) -> Commit {
-	let mut touched = first.touched;
-	touched.extend(second.touched);
-	touched.sort_unstable();
-	touched.dedup();
+fn then(mut first: Commit, second: Commit) -> Commit {
+	append(&mut first, second);
+	first
+}
 
-	Commit {
-		steps: [first.steps, second.steps].concat(),
-		inverses: [first.inverses, second.inverses].concat(),
-		maps: [first.maps, second.maps].concat(),
-		touched,
-		structural: first.structural || second.structural,
-		version: second.version.max(first.version),
-	}
+/// Make `first` the commit of itself followed by `second`.
+fn append(first: &mut Commit, second: Commit) {
+	first.steps.extend(second.steps);
+	first.inverses.extend(second.inverses);
+	first.maps.extend(second.maps);
+	first.touched.extend(second.touched);
+	first.touched.sort_unstable();
+	first.touched.dedup();
+	first.structural |= second.structural;
+	first.version = first.version.max(second.version);
 }

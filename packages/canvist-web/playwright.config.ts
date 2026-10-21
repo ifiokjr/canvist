@@ -16,6 +16,9 @@ const all = [
 /** Whether this run is on a CI server, which sets `CI` in the environment. */
 const onContinuousIntegration = process.env.CI !== undefined;
 
+/** The port y-websocket's server listens on. */
+const COLLAB_PORT = 5181;
+
 /** How long one test may take, in milliseconds: font loading and three-way pixel comparisons are slow. */
 const TEST_TIMEOUT_MS = 60_000;
 
@@ -27,9 +30,18 @@ export default defineConfig({
 	reporter: onContinuousIntegration ? [["list"], ["github"]] : "list",
 	use: { baseURL: "http://localhost:5179" },
 	projects: all.filter((project) => browsers.includes(project.name)),
-	webServer: {
-		command: "npx vite --config tests/vite.config.ts",
-		url: "http://localhost:5179/parity.html",
-		reuseExistingServer: !onContinuousIntegration,
-	},
+	webServer: [
+		{
+			command: "npx vite --config tests/vite.config.ts",
+			url: "http://localhost:5179/parity.html",
+			reuseExistingServer: !onContinuousIntegration,
+		},
+		{
+			// y-websocket's own server, for the collaboration tests.
+			command: "node node_modules/y-websocket/bin/server.cjs",
+			env: { HOST: "127.0.0.1", PORT: String(COLLAB_PORT) },
+			port: COLLAB_PORT,
+			reuseExistingServer: !onContinuousIntegration,
+		},
+	],
 });

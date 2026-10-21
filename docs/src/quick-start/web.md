@@ -137,6 +137,24 @@ if (element !== null && bubble !== null) {
 
 By default a bubble menu shows while the editor is editable and focused and the selection isn't a caret, and a floating menu while the caret is in an empty text block. Pass `shouldShow(editor)` to decide yourself. For your own positioning, `editor.selectionRect()` is the selection's bounding box in document coordinates, `editor.toClientRect(rect)` converts it to viewport coordinates, and `placeMenu(element, rect, { placement })` does the flipping and clamping.
 
+## 7. Collaborate
+
+`@canvist/web/collab` puts editors in a room on any y-websocket server, with no Yjs code of your own:
+
+```ts no_run
+import { connect, createEditor } from "@canvist/web/collab";
+
+const element = document.querySelector<HTMLElement>("#editor");
+
+if (element !== null) {
+	const editor = await createEditor(element);
+	await connect(editor, { url: "wss://sync.example.com", room: "notes" })
+		.whenSynced();
+}
+```
+
+[Collaboration](../guides/collaboration.md#put-editors-in-a-room) covers servers, reconnection, and undo.
+
 ## Run the examples
 
 `examples/web` in the repository has a plain page, React, Vue, and two server-rendered pages (plain and React), each with a Playwright test:

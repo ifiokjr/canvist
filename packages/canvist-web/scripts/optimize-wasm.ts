@@ -1,5 +1,6 @@
 /**
- * Optimize `wasm/canvist_web_bg.wasm` for size on the wire.
+ * Optimize a built module (`wasm/canvist_web_bg.wasm` by default, or the
+ * path given) for size on the wire.
  *
  * wasm-pack's default `wasm-opt` pass inlines small functions. That makes
  * the module smaller raw but larger gzipped (374 KB against 355 KB
@@ -17,7 +18,10 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const module = fileURLToPath(
-	new URL("../wasm/canvist_web_bg.wasm", import.meta.url),
+	new URL(
+		`../${process.argv[2] ?? "wasm/canvist_web_bg.wasm"}`,
+		import.meta.url,
+	),
 );
 const wasmOpt = fileURLToPath(
 	new URL("../node_modules/.bin/wasm-opt", import.meta.url),
