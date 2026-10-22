@@ -31,7 +31,8 @@ android = []
 [dependencies]
 base64 = { workspace = true, features = ["std"] }
 canvist_headless = { workspace = true }
-playwright-rs = { version = "^0.20", optional = true }
+# rustls, not native-tls: CI runners have no OpenSSL to build against.
+playwright-rs = { version = "^0.20", optional = true, default-features = false, features = ["macros", "ring", "rustls-tls-webpki-roots"] }
 serde = { workspace = true, features = ["derive", "std"] }
 serde_json = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }

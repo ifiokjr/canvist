@@ -51,6 +51,7 @@ jobs:
         run: |
           cargo build -p canvist_testkit --bin canvist_testkit_daemon
           CANVIST_TEST_TARGET=headless,loopback cargo nextest run -p canvist_testkit --features collab
+        shell: devenv shell -c -- bash -e {0}
 
   dom:
     name: dom (chromium)
@@ -62,11 +63,7 @@ jobs:
       - name: Browser target
         run: |
           CANVIST_TEST_TARGET=dom cargo nextest run -p canvist_testkit --features dom
-        env:
-          # The first run builds the wasm modules and installs the dev
-          # server's packages; Playwright's chromium comes with the crate's
-          # driver, and this asks it to fetch what it needs.
-          CANVIST_TEST_PREP: build
+        shell: devenv shell -c -- bash -e {0}
 
   ios:
     name: ios (simulator)
@@ -80,6 +77,7 @@ jobs:
         run: |
           cargo build -p canvist_testkit --features ios --bin canvist_testkit_daemon
           CANVIST_TEST_TARGET=ios cargo test -p canvist_testkit --features ios --test typing -- --test-threads=1 --nocapture
+        shell: devenv shell -c -- bash -e {0}
 
   android:
     name: android (emulator)
@@ -105,3 +103,4 @@ jobs:
           script: |
             cargo build -p canvist_testkit --features android --bin canvist_testkit_daemon
             CANVIST_TEST_TARGET=android cargo test -p canvist_testkit --features android --test typing -- --test-threads=1 --nocapture
+          shell: devenv shell -c -- bash -e {0}

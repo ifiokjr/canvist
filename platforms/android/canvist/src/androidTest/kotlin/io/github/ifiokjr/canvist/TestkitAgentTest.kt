@@ -106,12 +106,12 @@ class TestkitAgentTest {
 	/** One operation, through the same FFI calls an app makes. */
 	private fun run(session: Editor, instruction: Instruction.Op): Reply = try {
 		val value: Any? = when (val op = instruction.op) {
-			is Op.Load -> {
+			is TestkitOp.Load -> {
 				session.load(format(op.format), op.content)
 
 				null
 			}
-			is Op.TypeText -> {
+			is TestkitOp.TypeText -> {
 				var changed = false
 
 				for (character in op.text) {
@@ -120,50 +120,53 @@ class TestkitAgentTest {
 
 				changed
 			}
-			is Op.InsertText -> session.insertText(op.text)
-			is Op.Press -> session.press(
+			is TestkitOp.InsertText -> session.insertText(op.text)
+			is TestkitOp.Press -> session.press(
 				op.key,
 				Modifiers(op.shift, op.ctrl, op.alt, op.meta),
 			)
-			is Op.Select -> {
+			is TestkitOp.Select -> {
 				val head = op.head ?: op.anchor
 
 				session.selectPositions(
-					DocPosition(op.anchor.path.map { it.toInt() }, op.anchor.offset.toUInt()),
-					DocPosition(head.path.map { it.toInt() }, head.offset.toUInt()),
+					DocPosition(op.anchor.path.map { it.toUInt() }, op.anchor.offset.toUInt()),
+					DocPosition(head.path.map { it.toUInt() }, head.offset.toUInt()),
 				)
 			}
-			Op.SelectAll -> session.selectAll()
-			Op.DeleteSelection -> session.press("Backspace", Modifiers())
-			Op.Paste -> return Reply(
+			TestkitOp.SelectAll -> session.selectAll()
+			TestkitOp.DeleteSelection -> session.press(
+				"Backspace",
+				Modifiers(shift = false, ctrl = false, alt = false, meta = false),
+			)
+			TestkitOp.Paste -> return Reply(
 				instruction.id,
 				ok = false,
 				error = "the Android binding has no paste; test pasting on another target",
 			)
-			is Op.Run -> session.run(Command(op.command, op.args ?: "null"))
-			is Op.Can -> session.can(Command(op.command, op.args ?: "null"))
-			is Op.Query -> parse(session.query(op.query, op.args ?: "null"))
-			Op.Undo -> session.undo()
-			Op.Redo -> session.redo()
-			is Op.SetMarked -> session.setMarkedText(
+			is TestkitOp.Run -> session.run(Command(op.command, op.args ?: "null"))
+			is TestkitOp.Can -> session.can(Command(op.command, op.args ?: "null"))
+			is TestkitOp.Query -> parse(session.query(op.query, op.args ?: "null"))
+			TestkitOp.Undo -> session.undo()
+			TestkitOp.Redo -> session.redo()
+			is TestkitOp.SetMarked -> session.setMarkedText(
 				op.text,
 				OffsetRange(op.selected.first.toUInt(), op.selected.second.toUInt()),
 			)
-			Op.UnmarkText -> session.unmarkText()
-			is Op.Share -> {
+			TestkitOp.UnmarkText -> session.unmarkText()
+			is TestkitOp.Share -> {
 				session.share(op.client.toULong())
 
 				null
 			}
-			is Op.ApplyUpdate -> session.applyUpdate(
+			is TestkitOp.ApplyUpdate -> session.applyUpdate(
 				android.util.Base64.decode(op.update, android.util.Base64.DEFAULT),
 			)
-			Op.TakeUpdates -> JSONArray(
+			TestkitOp.TakeUpdates -> JSONArray(
 				session.takeUpdates().map { update ->
 					android.util.Base64.encodeToString(update, android.util.Base64.NO_WRAP)
 				},
 			)
-			Op.EncodeState -> android.util.Base64.encodeToString(
+			TestkitOp.EncodeState -> android.util.Base64.encodeToString(
 				session.encodeState(),
 				android.util.Base64.NO_WRAP,
 			)
@@ -268,6 +271,9 @@ private sealed class Flow {
 	data class Run(val instruction: Instruction) : Flow()
 }
 
+/** The document a session starts from. */
+private data class StartDoc(val format: String, val content: String)
+
 /** One instruction, from the daemon's JSON. */
 private sealed class Instruction {
 	data class Start(
@@ -276,11 +282,11 @@ private sealed class Instruction {
 		val extensions: List<String>,
 		val client: Int,
 		val apple: Boolean,
-		val load: Load,
+		val load: StartDoc,
 	) : Instruction()
-	data class Op(val id: Long, val op: TestkitOp) : Instruction()
-	data class Read(val id: Long, val what: String) : Instruction()
-	data class Close(val id: Long) : Instruction()
+	data class Op(val id: Long, val session: Int, val op: TestkitOp) : Instruction()
+	data class Read(val id: Long, val session: Int, val what: String) : Instruction()
+	data class Close(val id: Long, val session: Int) : Instruction()
 
 	companion object {
 		fun of(json: JSONObject): Instruction {
@@ -295,19 +301,22 @@ private sealed class Instruction {
 					} ?: emptyList(),
 					json.optInt("client", 1),
 					json.optBoolean("apple"),
-					Load(
+					StartDoc(
 						json.optJSONObject("load")?.optString("format") ?: "text",
 						json.optJSONObject("load")?.optString("content") ?: "",
 					),
 				)
-				"op" -> Op(id, TestkitOp.of(json.optJSONObject("op") ?: JSONObject()))
-				"read" -> Read(id, json.optString("what", "text"))
-				else -> Close(id)
+				"op" -> Op(
+					id,
+					json.optInt("session"),
+					TestkitOp.of(json.optJSONObject("op") ?: JSONObject()),
+				)
+				"read" -> Read(id, json.optInt("session"), json.optString("what", "text"))
+				else -> Close(id, json.optInt("session"))
 			}
 		}
 	}
 
-	data class Load(val format: String, val content: String)
 }
 
 /** One operation, from the daemon's JSON. */

@@ -15,22 +15,21 @@
  * handles — that is the point of the dom target.
  */
 import * as generated from "@canvist/headless/extensions";
-import { core, starterKit } from "@canvist/headless/extensions";
-import type { Editor } from "../../src/editor.ts";
+import { starterKit } from "@canvist/headless/extensions";
 import { createEditor, detectPlatform } from "../../src/mod.ts";
 
+/** A named extension, in the StarterKit's own shape. */
+type NamedExtension = (typeof starterKit)[number];
+
 /** Every named extension the bindings ship, keyed by its registry name. */
-const byName = new Map<string, (typeof generated)[keyof typeof generated]>();
+const byName = new Map<string, NamedExtension>();
 for (const extension of Object.values(generated)) {
 	if (
 		typeof extension === "object" && extension !== null && "name" in extension
 	) {
 		const record = extension as Record<string, unknown>;
 		if (typeof record.name === "string") {
-			byName.set(
-				record.name,
-				extension as (typeof generated)[keyof typeof generated],
-			);
+			byName.set(record.name, extension as unknown as NamedExtension);
 		}
 	}
 }
@@ -41,12 +40,12 @@ const names = (params.get("extensions") ?? "")
 	.map((name) => name.trim())
 	.filter(Boolean);
 
-const missing = names.filter((name) => !byName.has(name));
-const extensions = missing.length === 0 && names.length > 0
+const extensions: NamedExtension[] = names.length > 0 &&
+		names.every((name) => byName.has(name))
 	? names.map((name) => byName.get(name)!)
-	: (starterKit as unknown as typeof extensions);
+	: [...starterKit];
 
-const editor: Editor<typeof extensions, []> = await createEditor(
+const editor = await createEditor(
 	document.querySelector<HTMLElement>("#host")!,
 	{
 		extensions,
@@ -56,6 +55,36 @@ const editor: Editor<typeof extensions, []> = await createEditor(
 	},
 );
 await editor.ready();
+
+/**
+ * The editor as the bridge needs it. The typed API derives command names
+ * from the extension set at compile time; the bridge dispatches runtime
+ * strings from the wire, so it takes the same methods with `string` names.
+ */
+interface Bridged {
+	setContent(
+		content: { format: "json" | "html" | "markdown" | "text"; input: string },
+	): void;
+	insertText(text: string): boolean;
+	select(
+		anchor: { path: number[]; offset: number },
+		head?: { path: number[]; offset: number },
+	): void;
+	run(name: string, args?: unknown): boolean;
+	ask(name: string, args?: unknown): unknown;
+	undo(): boolean;
+	redo(): boolean;
+	export(format: "json" | "html" | "markdown" | "text"): string;
+	toJson(): unknown;
+	readonly selection: {
+		anchor: { path: number[]; offset: number };
+		head: { path: number[]; offset: number };
+	} | null;
+	readonly focused: boolean;
+	focus(): void;
+}
+
+const bridge = editor as unknown as Bridged;
 
 /** One op's answer. */
 interface Answer {
@@ -84,53 +113,52 @@ function run(name: string, arg: unknown): unknown {
 				format: "json" | "html" | "markdown" | "text";
 				content: string;
 			};
-			editor.setContent({ format: load.format, input: load.content });
+			bridge.setContent({ format: load.format, input: load.content });
 			return null;
 		}
 		case "insertText":
-			return editor.insertText(arg as string);
+			return bridge.insertText(arg as string);
 		case "select": {
 			const range = arg as {
 				anchor: { path: number[]; offset: number };
 				head?: { path: number[]; offset: number };
 			};
-			editor.select(range.anchor, range.head ?? range.anchor);
+			bridge.select(range.anchor, range.head ?? range.anchor);
 			return null;
 		}
 		case "run": {
 			const call = arg as { command: string; args?: unknown };
-			return editor.run(call.command as never, call.args as never);
-		}
-		case "query": {
-			const call = arg as { query: string; args?: unknown };
-			return editor.ask(call.query as never, call.args as never);
+			return bridge.run(call.command, call.args);
 		}
 		case "can": {
-			// `can` reaches the wasm the typed commands reach; unknown names
-			// report false rather than throw.
+			// The bridge answers `can` as "would not throw"; the harness
+			// reads capability through `run` where it matters.
 			const call = arg as { command: string; args?: unknown };
 			try {
-				return editor.run(call.command as never, call.args as never) !==
-					undefined;
+				return bridge.run(call.command, call.args) !== undefined;
 			} catch {
 				return false;
 			}
 		}
+		case "query": {
+			const call = arg as { query: string; args?: unknown };
+			return bridge.ask(call.query, call.args);
+		}
 		case "undo":
-			return editor.undo();
+			return bridge.undo();
 		case "redo":
-			return editor.redo();
+			return bridge.redo();
 		case "export":
-			return editor.export(arg as "json" | "html" | "markdown" | "text");
+			return bridge.export(arg as "json" | "html" | "markdown" | "text");
 		case "json":
-			return JSON.stringify(editor.toJson());
+			return JSON.stringify(bridge.toJson());
 		case "selection":
-			return editor.selection;
+			return bridge.selection;
 		case "focus":
 			// Only a first focus: refocusing moves the caret, which would
 			// drop a selection a test just made with the keyboard.
-			if (!editor.focused) {
-				editor.focus();
+			if (!bridge.focused) {
+				bridge.focus();
 			}
 			return null;
 		default:
