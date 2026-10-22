@@ -13,7 +13,7 @@
  *
  * @module
  */
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,6 +28,7 @@ import {
 import { loadSpeedConfig } from "./lib/config.ts";
 import { parseDivan } from "./lib/divan.ts";
 import { setOutput, upsertComment, writeSummary } from "./lib/github.ts";
+import { parseGungraun } from "./lib/gungraun.ts";
 import { speedReport } from "./lib/report.ts";
 import { judgeAll, type SpeedRow, type Suite } from "./lib/speed.ts";
 
@@ -166,20 +167,44 @@ function build(): void {
 	}
 }
 
-/** Runs one bench binary from its crate's directory, as `cargo bench` does. */
+/**
+ * Runs one bench binary from its crate's directory, as `cargo bench` does.
+ *
+ * A gungraun binary may exit 3 after printing its summaries, because it
+ * compared them with the run before and found a regression by its own
+ * rules; this gate judges regressions itself, so any output that parses
+ * is accepted.
+ */
 function runSuite(
 	binary: string,
 	suite: Suite,
 	cwd: string,
 ): Map<string, number> {
-	const output = execFileSync(binary, ["--bench", "--color", "never"], {
+	const instructions = suite.metric === "instructions";
+	const args = instructions
+		? ["--bench", "--output-format=json"]
+		: ["--bench", "--color", "never"];
+	const run = spawnSync(binary, args, {
 		cwd,
 		encoding: "utf8",
 		maxBuffer: OUTPUT_BUFFER,
 		stdio: ["ignore", "pipe", "inherit"],
 	});
+	const output = run.stdout ?? "";
+	// Only a gungraun run's exit 3 is tolerated, and only with output.
+	const tolerated = instructions && run.status === 3 && output !== "";
 
-	return parseDivan(suite.bench, output);
+	if (run.error !== undefined || (run.status !== 0 && !tolerated)) {
+		throw new Error(
+			`${suite.bench} failed with exit ${
+				run.status ?? run.signal ?? "unknown"
+			}: ${run.stderr}`,
+		);
+	}
+
+	return instructions
+		? parseGungraun(suite.bench, output)
+		: parseDivan(suite.bench, output);
 }
 
 type Side = "base" | "head";
@@ -200,7 +225,9 @@ function record(
 /**
  * Runs `suites` `rounds` more times per side, adding to `samples`. The order
  * flips each round (base then head, head then base) so a runner that slows
- * down or warms up over the job penalises both sides equally.
+ * down or warms up over the job penalises both sides equally. A suite that
+ * counts instructions runs once per side: callgrind's counts are exact, so
+ * repeating them measures nothing.
  */
 function sample(
 	samples: Recorded,
@@ -222,6 +249,8 @@ function sample(
 		const order: Side[] = round % 2 === 0 ? ["base", "head"] : ["head", "base"];
 
 		for (const suite of suites) {
+			if (suite.metric === "instructions" && round > 0) continue;
+
 			const binaries = order
 				.map((side) => ({ side, binary: join(directories[side], suite.bench) }))
 				.filter(({ binary }) => existsSync(binary));
@@ -252,9 +281,20 @@ function notes(rounds: number, confirmed: readonly Suite[]): string[] {
 	const skipped = config.suites.filter((suite) =>
 		!selectedSuites().includes(suite)
 	);
+	const counting = selectedSuites().filter((suite) =>
+		suite.metric === "instructions"
+	);
 	const lines = [
 		`Each suite ran ${rounds} times per revision on this runner, alternating base and head. A time is the median of the runs' divan medians. A benchmark regresses only when it is slower by more than its threshold **and** every head run is slower than every base run.`,
 	];
+
+	if (counting.length > 0) {
+		lines.push(
+			`${
+				counting.map((suite) => `\`${suite.bench}\``).join(", ")
+			} ran once per revision under callgrind (valgrind): instruction counts are exact, the same binary always reports the same one, so code layout and the runner's CPU cannot move them.`,
+		);
+	}
 
 	if (confirmed.length > 0) {
 		lines.push(

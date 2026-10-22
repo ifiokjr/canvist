@@ -80,14 +80,20 @@ The budgets above are absolute: an operation fails when it takes longer than its
 
 ### `bench / speed`
 
-The check runs every divan benchmark in the crates the pull request can change (model, editor keystrokes, extensions, layout, collaboration, headless, scene, canvas, paint, and desktop) on the base and on the head, on one runner, in one job. The base is the commit the pull request merges into, so the comparison shows exactly what the pull request changes.
+The check runs every divan benchmark in the crates the pull request can change (model, editor keystrokes, extensions, layout, collaboration, headless, scene, canvas, paint, and desktop) on the base and on the head, on one runner, in one job. The headless export benchmarks are the exception: their suite, `counts`, runs once per side under valgrind's callgrind and compares instruction counts, for the reason under [why export is counted, not timed](#why-export-is-counted-not-timed). The base is the commit the pull request merges into, so the comparison shows exactly what the pull request changes.
 
 Each bench binary runs five times per side, alternating base and head so that a runner warming up or slowing down affects both. Every run gives one median per benchmark, and a time in the report is the median of those medians. A benchmark **regresses** only when both of these hold:
 
 - the head is slower than the base by more than the benchmark's threshold, and
 - every head run is slower than every base run.
 
-The second rule is what keeps runner noise from failing a pull request. A busy neighbour on the runner slows one run, not all of one side and none of the other. When a benchmark looks regressed, its suite runs five more times per side, and the verdict uses all ten runs.
+The second rule is what keeps runner noise from failing a pull request. A busy neighbour on the runner slows one run, not all of one side and none of the other. When a benchmark looks regressed, its suite runs five more times per side, and the verdict uses all ten runs. Instruction counts skip all of this: callgrind's count is exact and the same binary always reports the same one, so one run per side settles it.
+
+#### Why export is counted, not timed
+
+Exporting 10,000 paragraphs to HTML takes about 2 ms, in a hot loop small enough that where the linker places it decides its speed. The workspace links with LTO and one codegen unit, so a change anywhere can shift that loop to an address where the same instructions run slower, and which side wins depends on the runner's CPU, not on the revision. On the Linux x86_64 runner, pull requests that never touched the export path moved its wall time anywhere between −26% and +35%, the same two binaries flipped from +35% slower on one runner to 7% faster on another, and a third build of the same sources reversed the sign again — while callgrind, which counts instructions deterministically, found the revisions within a fraction of a percent of each other. Wall time for that loop measures the layout, so the gate counts instructions instead.
+
+A count still catches real regressions: an extra allocation, a worse algorithm, or more work per paragraph all execute more instructions. What it cannot see is a change that executes the same instructions slower; the export budgets in the table above still bound wall time absolutely, and every other suite is timed. Counting needs valgrind (`sudo apt-get install valgrind`) and gungraun's runner (`cargo install gungraun-runner`), which the check's workflow installs; run the suite by hand with `cargo bench -p canvist_headless --bench counts`.
 
 The report, in the job summary and in a comment on the pull request, lists what regressed or improved first, then every benchmark:
 
@@ -98,6 +104,8 @@ The report, in the job summary and in a comment on the pull request, lists what 
 | Change    | head over base: `+12.0%` is 12% slower                                |
 | Threshold | the slowdown this benchmark may show before it fails                  |
 | Verdict   | ❌ regressed, 🚀 improved, `new` or `removed`, or empty for no change |
+
+A `counts` row shows callgrind instruction counts (`965.3 M`) where the others show times, and "slower" there means "more instructions".
 
 Suites the pull request can't affect don't run, and the report names them. A suite is affected when a file changes in its crate or in any workspace crate it depends on, or when a global input changes: `Cargo.lock`, `Cargo.toml`, `rust-toolchain.toml`, `.cargo`, `tools/bench`, or the workflow. Every push to `main` runs every suite and caches its bench binaries, so most pull requests only build the head.
 
@@ -130,6 +138,8 @@ node tools/bench/speed.ts build --root ../canvist-base --suites "model keystroke
 node tools/bench/speed.ts build --root . --suites "model keystroke" --out .bench/head
 node tools/bench/speed.ts compare --base .bench/base --head .bench/head --suites "model keystroke"
 ```
+
+The `counts` suite runs there like any other, with `--suites "counts"`; it needs valgrind installed. [`tools/bench/readme.md`](https://github.com/canvist/canvist/blob/main/tools/bench/readme.md) describes the tools and their two metrics.
 
 Measure sizes the same way, with `node tools/bench/size.ts build --root . --groups web`, then `measure` and `compare`. The commands are documented at the top of each script.
 

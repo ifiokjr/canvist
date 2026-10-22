@@ -1,11 +1,15 @@
 //! Headless hot paths, through the public API a server uses.
 //!
 //! - `load_markdown`, `load_json`: parse a document of N paragraphs.
-//! - `export`: write it as JSON, Markdown, or HTML.
 //! - `create`: an empty StarterKit document, which builds its editor.
 //! - `run_command`: toggle bold at a caret, through a typed handle.
 //! - `apply_update`: integrate a peer's keystroke (typed, then deleted, so
 //!   the paragraph keeps its length).
+//!
+//! Exporting is measured by the `counts` bench, as callgrind instruction
+//! counts: its wall time swung by tens of percent with code the export
+//! path never ran, because one link-time layout decision moved its hot
+//! loop. `docs/src/guides/performance.md` tells that story.
 //!
 //! Run with `cargo bench -p canvist_headless --all-features`.
 
@@ -56,12 +60,6 @@ fn load_json(bencher: Bencher<'_, '_>, paragraphs: u32) {
 	let engine = Engine::starter_kit();
 	let input = doc(&engine, paragraphs).export(Format::Json);
 	bencher.bench(|| engine.parse(Format::Json, black_box(&input)));
-}
-
-#[divan::bench(args = [Format::Json, Format::Markdown, Format::Html], sample_count = 20)]
-fn export(bencher: Bencher<'_, '_>, format: Format) {
-	let doc = doc(&Engine::starter_kit(), 10_000);
-	bencher.bench_local(|| doc.export(black_box(format)));
 }
 
 #[divan::bench]

@@ -23,6 +23,12 @@ export interface Suite {
 	readonly package: string;
 	readonly bench: string;
 	readonly features?: readonly string[];
+	/**
+	 * `instructions` compares callgrind instruction counts, which a
+	 * bench's own code layout cannot move, instead of wall time. The
+	 * default, wall time, is what divan measures.
+	 */
+	readonly metric?: "instructions";
 }
 
 /** `tools/bench/speed.json`. */
@@ -40,7 +46,9 @@ export interface SpeedConfig {
 	readonly suites: readonly Suite[];
 }
 
-/** Every run's median for one benchmark, in nanoseconds. */
+/** Every run's median for one benchmark, in its suite's metric: one
+ * nanosecond count for a wall-time suite, one instruction count for an
+ * instruction-count suite. */
 export interface Samples {
 	readonly base: readonly number[];
 	readonly head: readonly number[];
@@ -53,11 +61,15 @@ export type SpeedVerdict =
 	| "new"
 	| "removed";
 
+/** What a suite's numbers mean, for the report's columns. */
+export type SpeedUnit = "time" | "instructions";
+
 export interface SpeedRow {
 	readonly id: string;
+	readonly unit: SpeedUnit;
 	readonly baseNs: number | undefined;
 	readonly headNs: number | undefined;
-	/** Head over base, minus one: `0.1` is 10% slower. */
+	/** Head over base, minus one: `0.1` is 10% more. */
 	readonly change: number | undefined;
 	/** In percent. */
 	readonly threshold: number;
@@ -118,6 +130,7 @@ function verdictFor(
 /** Compares one benchmark's runs on the base and the head. */
 export function judge(
 	id: string,
+	unit: SpeedUnit,
 	samples: Samples,
 	threshold: number,
 ): SpeedRow {
@@ -127,13 +140,21 @@ export function judge(
 	if (baseNs === undefined || headNs === undefined) {
 		const verdict = baseNs === undefined ? "new" : "removed";
 
-		return { id, baseNs, headNs, change: undefined, threshold, verdict };
+		return {
+			id,
+			unit,
+			baseNs,
+			headNs,
+			change: undefined,
+			threshold,
+			verdict,
+		};
 	}
 
 	const change = headNs / baseNs - 1;
 	const verdict = verdictFor(samples, change, threshold);
 
-	return { id, baseNs, headNs, change, threshold, verdict };
+	return { id, unit, baseNs, headNs, change, threshold, verdict };
 }
 
 /** Judges every benchmark, sorted by id. */
@@ -141,7 +162,17 @@ export function judgeAll(
 	samples: ReadonlyMap<string, Samples>,
 	config: SpeedConfig,
 ): SpeedRow[] {
+	const units = new Map(config.suites.map((suite): [string, SpeedUnit] => [
+		suite.bench,
+		suite.metric === "instructions" ? "instructions" : "time",
+	]));
+
 	return [...samples.keys()].sort().map((id) =>
-		judge(id, samples.get(id)!, thresholdFor(id, config))
+		judge(
+			id,
+			units.get(id.split("/")[0] ?? "") ?? "time",
+			samples.get(id)!,
+			thresholdFor(id, config),
+		)
 	);
 }

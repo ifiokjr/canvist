@@ -40,7 +40,8 @@ function readJson(url: URL): Json {
 function isSuite(value: unknown): value is Suite {
 	return isRecord(value) && typeof value["package"] === "string" &&
 		typeof value["bench"] === "string" &&
-		(value["features"] === undefined || isStringArray(value["features"]));
+		(value["features"] === undefined || isStringArray(value["features"])) &&
+		(value["metric"] === undefined || value["metric"] === "instructions");
 }
 
 /** `speed.json`, checked. */
