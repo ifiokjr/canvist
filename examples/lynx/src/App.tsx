@@ -15,12 +15,15 @@ import { useInitData, useState } from "@lynx-js/react";
 import "./App.css";
 import { benchmark, type BenchmarkResult } from "./benchmark.ts";
 
+// The last item is short, so a tap below the text lands after its end on any
+// screen width, as the end-to-end flows rely on.
 const NOTE = `# Field notes
 
 Tap anywhere to write. Type **##** and a space for a heading, **-** for a list, or **[ ]** for a checklist.
 
 - [ ] Try the toolbar
-- [ ] Undo with a shake`;
+- [ ] Undo with a shake
+- [ ] Ship it`;
 
 declare module "@lynx-js/react" {
 	interface InitData {
