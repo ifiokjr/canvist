@@ -46,6 +46,7 @@
 - [Text input on the web](./guides/web-input.md)
 - [Rendering parity](./guides/rendering-parity.md)
 - [Performance](./guides/performance.md)
+- [Testing](./guides/testing.md)
 
 # AI agents
 

@@ -14,6 +14,7 @@ members = [
 	"crates/canvist_model",
 	"crates/canvist_paint",
 	"crates/canvist_scene",
+	"crates/canvist_testkit",
 	"crates/canvist_web",
 	"docs",
 	"examples/desktop",
@@ -68,6 +69,7 @@ insta = { default-features = false, version = "^1" }
 js-sys = { default-features = false, version = "^0.3" }
 kurbo = { default-features = false, version = "^0.13" }
 log = { default-features = false, version = "^0.4" }
+playwright-rs = { default-features = false, version = "^0.20" }
 proptest = { default-features = false, version = "^1" }
 regex-lite = { default-features = false, version = "^0.1" }
 reqwest = { default-features = false, version = "^0.12" }

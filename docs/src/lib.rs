@@ -34,6 +34,7 @@ pages! {
 	guides_server_transforms => "guides/server-transforms.md",
 	guides_theming => "guides/theming.md",
 	guides_fonts => "guides/fonts.md",
+	guides_testing => "guides/testing.md",
 	agents => "agents/readme.md",
 	skill => "../../skills/canvist/SKILL.md",
 }
