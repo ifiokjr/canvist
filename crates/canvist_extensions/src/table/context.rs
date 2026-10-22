@@ -1,10 +1,10 @@
 //! Reading the table around the selection: its rows, its cells, and the
 //! grid they make.
 
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::EditorTransaction;
-use canvist_editor::position;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::EditorTransaction;
+use canvist_core::position;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::BlockTree;

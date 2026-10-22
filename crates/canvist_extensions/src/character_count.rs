@@ -1,19 +1,19 @@
 //! Character and word counts, and a character limit.
 
-use canvist_editor::Command;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::Extension;
-use canvist_editor::Field;
-use canvist_editor::QuerySpec;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
-use canvist_editor::Update;
-use canvist_editor::UpdateFilter;
-use canvist_editor::ValueType;
-use canvist_editor::command;
-use canvist_editor::commands;
+use canvist_core::Command;
+use canvist_core::CommandSpec;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::Extension;
+use canvist_core::Field;
+use canvist_core::QuerySpec;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
+use canvist_core::Update;
+use canvist_core::UpdateFilter;
+use canvist_core::ValueType;
+use canvist_core::command;
+use canvist_core::commands;
 use canvist_model::BlockTree;
 use canvist_model::Document;
 use canvist_model::InlineText;

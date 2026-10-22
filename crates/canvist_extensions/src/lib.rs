@@ -5,7 +5,7 @@
 //! # `canvist_extensions`
 //!
 //! The canvist StarterKit: the extensions TipTap's StarterKit ships, built
-//! on [`canvist_editor`] and named the way TipTap names them, so documents
+//! on [`canvist_core`] and named the way TipTap names them, so documents
 //! move between the two as ProseMirror JSON without conversion.
 //!
 //! Each extension sits behind a Cargo feature of the same name, and the
@@ -80,8 +80,8 @@
 //! ```
 //! use std::time::Duration;
 //!
-//! use canvist_editor::Editor;
-//! use canvist_editor::Env;
+//! use canvist_core::Editor;
+//! use canvist_core::Env;
 //! use canvist_extensions::StarterKit;
 //!
 //! let mut editor = Editor::builder()
@@ -96,7 +96,7 @@
 //! let heading = editor.schema().block_type("heading");
 //! let first = editor.state().doc().first_text_block().and_then(|id| editor.state().doc().block(id));
 //! assert_eq!(first.map(|block| block.kind()), heading);
-//! # Ok::<(), canvist_editor::EditorError>(())
+//! # Ok::<(), canvist_core::EditorError>(())
 //! ```
 
 #[cfg(feature = "blockquote")]

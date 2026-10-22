@@ -16,9 +16,9 @@ mod support;
 use std::sync::Arc;
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
-use canvist_editor::Extension;
+use canvist_core::Editor;
+use canvist_core::Env;
+use canvist_core::Extension;
 use canvist_extensions::BackgroundColor;
 use canvist_extensions::Color;
 use canvist_extensions::FontFamily;
@@ -151,7 +151,7 @@ fn apply(editor: &mut Editor, op: &Op) {
 }
 
 /// The whole document copied as a slice.
-fn whole(editor: &Editor) -> canvist_editor::Slice {
+fn whole(editor: &Editor) -> canvist_core::Slice {
 	let mut copy = editor_from(Some(&editor.state().doc().to_json()));
 	let block = copy.state().doc().children(None)[0];
 	let len = copy

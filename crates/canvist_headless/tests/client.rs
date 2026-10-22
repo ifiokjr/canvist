@@ -9,8 +9,8 @@ use canvist_headless::Engine;
 use canvist_headless::Format;
 use canvist_headless::HeadlessError;
 use canvist_headless::Position;
-use canvist_headless::canvist_editor::KeyPress;
-use canvist_headless::canvist_editor::Modifiers;
+use canvist_headless::canvist_core::KeyPress;
+use canvist_headless::canvist_core::Modifiers;
 use canvist_headless::join_message;
 use serde_json::Value as Json;
 
@@ -147,7 +147,7 @@ fn undo_keys_and_commands_undo_only_this_peers_changes() -> Result<(), HeadlessE
 fn typing_a_word_is_one_shared_undo_step_despite_echoes() -> Result<(), HeadlessError> {
 	use std::time::Duration;
 
-	use canvist_headless::canvist_editor::ParagraphNavigator;
+	use canvist_headless::canvist_core::ParagraphNavigator;
 
 	let engine = Engine::starter_kit();
 	let mut server = server(&engine, "");

@@ -7,9 +7,9 @@ mod support;
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::EditorError;
-use canvist_editor::Env;
+use canvist_core::Editor;
+use canvist_core::EditorError;
+use canvist_core::Env;
 use canvist_extensions::clipboard;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
@@ -127,7 +127,7 @@ fn cell_text(typist: &Typist, row: usize, index: usize) -> BlockId {
 
 fn caret_in(typist: &mut Typist, row: usize, index: usize) {
 	let block = cell_text(typist, row, index);
-	let end = canvist_editor::position::end_of(typist.editor.state().doc(), block);
+	let end = canvist_core::position::end_of(typist.editor.state().doc(), block);
 	typist
 		.editor
 		.select(Selection::caret(end), &mut env())
@@ -654,9 +654,9 @@ fn table_cell(typist: &Typist) -> Value {
 }
 
 /// The whole document as a slice, as the formats write it.
-fn whole(typist: &Typist) -> canvist_editor::Slice {
+fn whole(typist: &Typist) -> canvist_core::Slice {
 	let doc = typist.editor.state().doc();
-	canvist_editor::Slice::new(
+	canvist_core::Slice::new(
 		doc.children(None)
 			.iter()
 			.filter_map(|&id| doc.tree(id))
@@ -1092,7 +1092,7 @@ fn tiptap_json_tables_read_and_write_back_unchanged() {
 	strip_ids(&mut written);
 	assert_eq!(written, json);
 
-	let slice = canvist_editor::Slice::new(
+	let slice = canvist_core::Slice::new(
 		loaded
 			.children(None)
 			.iter()

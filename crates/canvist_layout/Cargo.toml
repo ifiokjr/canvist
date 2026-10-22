@@ -15,7 +15,7 @@ rust-version.workspace = true
 description = "Incremental text and block layout for the canvist editor: line breaking, bidi, hit testing, display lists, and SVG/HTML renderers"
 
 [dependencies]
-canvist_editor = { workspace = true, optional = true }
+canvist_core = { workspace = true, optional = true }
 canvist_model = { workspace = true }
 icu_segmenter = { version = "^2.3", default-features = false, features = ["compiled_data"] }
 parley = { version = "^0.12", default-features = false, features = ["std"], optional = true }
@@ -49,7 +49,7 @@ kinetic = []
 # Lay tables out on a grid. Without it a table's cells stack like any
 # container's children, which keeps hosts whose schema has no tables smaller.
 tables = []
-editor = ["dep:canvist_editor"]
+editor = ["dep:canvist_core"]
 # `StarterKitOptions::from_json`: theme options as `@canvist/web` and
 # `@canvist/headless/ssr` pass them.
 json = ["dep:serde_json"]

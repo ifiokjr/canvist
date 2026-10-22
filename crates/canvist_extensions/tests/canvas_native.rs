@@ -7,9 +7,9 @@ mod support;
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::EditorError;
-use canvist_editor::Env;
+use canvist_core::Editor;
+use canvist_core::EditorError;
+use canvist_core::Env;
 use canvist_extensions::InkHandle;
 use canvist_extensions::InkStroke;
 use canvist_extensions::KineticEffect;
@@ -240,7 +240,7 @@ fn handles(doc: Option<&serde_json::Value>) -> (Typist, InkHandle, KineticHandle
 	(Typist::with(editor), ink, kinetic)
 }
 
-fn apply(typist: &mut Typist, command: &canvist_editor::Command) -> bool {
+fn apply(typist: &mut Typist, command: &canvist_core::Command) -> bool {
 	typist
 		.editor
 		.run(command, &mut env())
@@ -248,7 +248,7 @@ fn apply(typist: &mut Typist, command: &canvist_editor::Command) -> bool {
 		.is_some()
 }
 
-fn can(typist: &mut Typist, command: &canvist_editor::Command) -> bool {
+fn can(typist: &mut Typist, command: &canvist_core::Command) -> bool {
 	typist
 		.editor
 		.can(command, &mut env())

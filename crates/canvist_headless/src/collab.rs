@@ -19,9 +19,9 @@ use canvist_collab::yrs::sync::SyncMessage;
 use canvist_collab::yrs::updates::decoder::Decode;
 use canvist_collab::yrs::updates::decoder::DecoderV1;
 use canvist_collab::yrs::updates::encoder::Encode;
-use canvist_editor::KeyPress;
-use canvist_editor::Update;
-use canvist_editor::parse_binding;
+use canvist_core::KeyPress;
+use canvist_core::Update;
+use canvist_core::parse_binding;
 use canvist_model::BlockTree;
 use canvist_model::Commit;
 use canvist_model::Document;
@@ -167,7 +167,7 @@ impl Doc {
 		// A collaborator's change takes no time here: servers such as
 		// y-websocket's echo each update to its sender, and advancing the
 		// clock for the echo would split the sender's typing into undo steps.
-		let mut env = canvist_editor::Env::headless(self.clock);
+		let mut env = canvist_core::Env::headless(self.clock);
 		let binding = self.shared.as_mut().ok_or(HeadlessError::NotShared)?;
 		let update = self.editor.apply_external(&mut env, |doc| {
 			let commit = binding.apply_update(doc, update, Encoding::V1)?;
@@ -346,7 +346,7 @@ impl Doc {
 		} else {
 			Track::Step
 		};
-		let mut env = canvist_editor::Env::headless(std::time::Duration::ZERO);
+		let mut env = canvist_core::Env::headless(std::time::Duration::ZERO);
 		let follow_up = self.editor.apply_external(&mut env, |doc| {
 			let follow_up = binding.apply_local(doc, &update.commit, track)?;
 			with_block(follow_up, doc, binding)

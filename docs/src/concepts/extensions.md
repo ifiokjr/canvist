@@ -89,7 +89,7 @@ fn main() -> Result<(), canvist::headless::HeadlessError> {
 
 ## Your own extensions
 
-The extensions in the catalogue are built on the public `Extension` trait in `canvist_editor`, and you can implement it yourself in Rust. A custom extension can add blocks, marks, and embeds, plus commands, queries, keyboard shortcuts, and input rules. [Build your own editor](../extensions/build-your-own-editor.md#add-your-own-extension) walks through one.
+The extensions in the catalogue are built on the public `Extension` trait in `canvist_core`, and you can implement it yourself in Rust. A custom extension can add blocks, marks, and embeds, plus commands, queries, keyboard shortcuts, and input rules. [Build your own editor](../extensions/build-your-own-editor.md#add-your-own-extension) walks through one.
 
 Two limits today:
 

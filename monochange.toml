@@ -126,8 +126,8 @@ path = "crates/canvist"
 [package.canvist_model]
 path = "crates/canvist_model"
 
-[package.canvist_editor]
-path = "crates/canvist_editor"
+[package.canvist_core]
+path = "crates/canvist_core"
 
 [package.canvist_extensions]
 path = "crates/canvist_extensions"
@@ -269,8 +269,8 @@ packages = [
 	"canvist_canvas",
 	"canvist_canvas_wasm",
 	"canvist_collab",
+	"canvist_core",
 	"canvist_desktop",
-	"canvist_editor",
 	"canvist_extensions",
 	"canvist_ffi",
 	"canvist_flutter",

@@ -1,7 +1,7 @@
 //! Lists: bullet, ordered, and task lists, and the items inside them.
 //!
 //! Every list type shares one set of item commands from
-//! [`canvist_editor::commands`]; the extensions here only name the types,
+//! [`canvist_core::commands`]; the extensions here only name the types,
 //! bind keys, and add input rules.
 
 #![cfg_attr(
@@ -16,19 +16,19 @@
 	)
 )]
 
-use canvist_editor::Binding;
-use canvist_editor::Command;
-use canvist_editor::CommandResult;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::QuerySpec;
-use canvist_editor::RuleMatch;
-use canvist_editor::ValueType;
-use canvist_editor::command;
-use canvist_editor::commands;
-use canvist_editor::commands::ListType;
-use canvist_editor::position;
+use canvist_core::Binding;
+use canvist_core::Command;
+use canvist_core::CommandResult;
+use canvist_core::CommandSpec;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::QuerySpec;
+use canvist_core::RuleMatch;
+use canvist_core::ValueType;
+use canvist_core::command;
+use canvist_core::commands;
+use canvist_core::commands::ListType;
+use canvist_core::position;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::BlockTypeId;
@@ -63,8 +63,8 @@ pub(crate) fn list_type(
 	(list, item): (&'static str, &'static str),
 ) -> Result<ListType, EditorError> {
 	Ok(ListType {
-		list: canvist_editor::block_type(schema, extension, list)?,
-		item: canvist_editor::block_type(schema, extension, item)?,
+		list: canvist_core::block_type(schema, extension, list)?,
+		item: canvist_core::block_type(schema, extension, item)?,
 	})
 }
 
@@ -85,7 +85,7 @@ pub(crate) fn item_command(
 	run: fn(&mut EditorState, BlockTypeId) -> CommandResult,
 ) -> Command {
 	command(move |state| {
-		let kind = canvist_editor::block_type(state.schema(), extension, item)?;
+		let kind = canvist_core::block_type(state.schema(), extension, item)?;
 		run(state, kind)
 	})
 }

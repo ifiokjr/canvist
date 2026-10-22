@@ -1,5 +1,5 @@
 ---
-"canvist_editor": minor
+"canvist_core": minor
 "canvist_extensions": patch
 ---
 

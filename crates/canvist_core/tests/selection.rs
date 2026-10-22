@@ -2,20 +2,20 @@
 
 mod support;
 
-use canvist_editor::Affinity;
-use canvist_editor::Caret;
-use canvist_editor::Direction;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::LineEdge;
-use canvist_editor::LineNavigator;
-use canvist_editor::NavigationError;
-use canvist_editor::ParagraphNavigator;
-use canvist_editor::Unit;
-use canvist_editor::VerticalDirection;
-use canvist_editor::VerticalMotion;
-use canvist_editor::commands;
-use canvist_editor::motion;
+use canvist_core::Affinity;
+use canvist_core::Caret;
+use canvist_core::Direction;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::LineEdge;
+use canvist_core::LineNavigator;
+use canvist_core::NavigationError;
+use canvist_core::ParagraphNavigator;
+use canvist_core::Unit;
+use canvist_core::VerticalDirection;
+use canvist_core::VerticalMotion;
+use canvist_core::commands;
+use canvist_core::motion;
 use canvist_model::Document;
 use canvist_model::Point;
 use support::after;
@@ -27,14 +27,14 @@ fn step(
 	direction: Direction,
 	unit: Unit,
 	extend: bool,
-) -> impl FnOnce(&mut EditorState) -> canvist_editor::CommandResult {
+) -> impl FnOnce(&mut EditorState) -> canvist_core::CommandResult {
 	move |state| motion::move_caret(state, direction, unit, extend, &mut ParagraphNavigator)
 }
 
 fn vertical(
 	direction: Direction,
 	extend: bool,
-) -> impl FnOnce(&mut EditorState) -> canvist_editor::CommandResult {
+) -> impl FnOnce(&mut EditorState) -> canvist_core::CommandResult {
 	move |state| motion::move_vertical(state, direction, extend, &mut ParagraphNavigator)
 }
 

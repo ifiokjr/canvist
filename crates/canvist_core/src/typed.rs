@@ -36,7 +36,7 @@ use crate::Update;
 /// for an extension the app never added:
 ///
 /// ```compile_fail
-/// let forged = canvist_editor::Registration { _private: () };
+/// let forged = canvist_core::Registration { _private: () };
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Registration {
@@ -57,10 +57,10 @@ impl EditorBuilder {
 	/// Register `extension` and return its typed handle.
 	///
 	/// ```
-	/// use canvist_editor::Editor;
-	/// use canvist_editor::Extension;
-	/// use canvist_editor::Registration;
-	/// use canvist_editor::TypedExtension;
+	/// use canvist_core::Editor;
+	/// use canvist_core::Extension;
+	/// use canvist_core::Registration;
+	/// use canvist_core::TypedExtension;
 	/// use canvist_model::BlockSpec;
 	/// use canvist_model::SchemaBuilder;
 	///
@@ -88,7 +88,7 @@ impl EditorBuilder {
 	/// let _paragraphs = builder.add(Paragraphs);
 	/// let editor = builder.build()?;
 	/// # let _ = editor;
-	/// # Ok::<(), canvist_editor::EditorError>(())
+	/// # Ok::<(), canvist_core::EditorError>(())
 	/// ```
 	pub fn add<E: TypedExtension>(&mut self, extension: E) -> E::Handle {
 		let handle = extension.handle(Registration { _private: () });

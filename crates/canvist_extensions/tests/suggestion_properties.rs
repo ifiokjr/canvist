@@ -8,9 +8,9 @@ mod support;
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
-use canvist_editor::Slice;
+use canvist_core::Editor;
+use canvist_core::Env;
+use canvist_core::Slice;
 use canvist_extensions::Emoji;
 use canvist_extensions::Hashtag;
 use canvist_extensions::Mention;
@@ -49,7 +49,7 @@ fn mention_suggestion(editor: &Editor) -> Json {
 	let value = editor
 		.query("mentionSuggestion", &Attrs::new())
 		.expect("a known query");
-	canvist_editor::value_to_json(&value)
+	canvist_core::value_to_json(&value)
 }
 
 /// The query the finder should report for a caret after `text`: the text
@@ -245,7 +245,7 @@ proptest! {
 		let mut expected = tags.clone();
 		expected.sort();
 		expected.dedup();
-		let found = canvist_editor::value_to_json(
+		let found = canvist_core::value_to_json(
 			&typist.editor.query("hashtags", &Attrs::new()).expect("a known query"),
 		);
 		prop_assert_eq!(found, json!(expected));

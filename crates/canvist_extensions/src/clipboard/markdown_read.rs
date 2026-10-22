@@ -1,7 +1,7 @@
 //! Markdown to slices: the CommonMark block structure clipboards carry,
 //! plus GitHub's task lists and strikethrough.
 
-use canvist_editor::Slice;
+use canvist_core::Slice;
 use canvist_model::Attrs;
 use canvist_model::BlockTree;
 use canvist_model::InlineText;

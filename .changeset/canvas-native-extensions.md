@@ -1,7 +1,7 @@
 ---
 "canvist_extensions": feat
 "canvist_layout": feat
-"canvist_editor": feat
+"canvist_core": feat
 "canvist_paint": feat
 "canvist_web": feat
 "canvist_headless": feat
@@ -35,6 +35,6 @@ Two canvas-native extensions, each behind its own Cargo feature and included in 
 - The HTML renderer draws ink as inline SVG in a figure named as an image, and animates kinetic text with CSS, off under `prefers-reduced-motion`.
 - New default features `ink` and `kinetic` hold this code. `canvist_web` builds without them, as it does without `tables`.
 
-`canvist_editor`: `ValueType::sample` gives lists two items, so lists of pairs get valid samples.
+`canvist_core`: `ValueType::sample` gives lists two items, so lists of pairs get valid samples.
 
 `canvist_canvas` and `canvist_canvas_wasm` turn on `canvist_layout`'s new `ink` and `kinetic` features.

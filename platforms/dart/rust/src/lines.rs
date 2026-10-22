@@ -1,11 +1,11 @@
 //! The editor's line navigation, answered by the view's live layout.
 
-use canvist_headless::canvist_editor::Caret;
-use canvist_headless::canvist_editor::LineEdge;
-use canvist_headless::canvist_editor::LineNavigator;
-use canvist_headless::canvist_editor::NavigationError;
-use canvist_headless::canvist_editor::VerticalDirection;
-use canvist_headless::canvist_editor::VerticalMotion;
+use canvist_headless::canvist_core::Caret;
+use canvist_headless::canvist_core::LineEdge;
+use canvist_headless::canvist_core::LineNavigator;
+use canvist_headless::canvist_core::NavigationError;
+use canvist_headless::canvist_core::VerticalDirection;
+use canvist_headless::canvist_core::VerticalMotion;
 use canvist_headless::canvist_model::Document;
 use canvist_layout::DocumentLayout;
 use canvist_layout::TextMeasurer;

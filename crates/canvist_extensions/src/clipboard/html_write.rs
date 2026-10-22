@@ -2,7 +2,7 @@
 
 use std::fmt::Write;
 
-use canvist_editor::Slice;
+use canvist_core::Slice;
 use canvist_model::Attrs;
 use canvist_model::BlockTree;
 use canvist_model::Embed;
@@ -183,7 +183,7 @@ fn write_ink(attrs: &Attrs, html: &mut String) {
 		.get("strokes")
 		.and_then(Value::as_array)
 		.unwrap_or_default();
-	let json = canvist_editor::value_to_json(&Value::from(strokes.to_vec())).to_string();
+	let json = canvist_core::value_to_json(&Value::from(strokes.to_vec())).to_string();
 	let _ = write!(
 		html,
 		"<figure data-type=\"ink\" data-height=\"{height}\" data-strokes=\"{}\" role=\"img\" \

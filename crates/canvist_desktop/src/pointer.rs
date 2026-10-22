@@ -5,7 +5,7 @@
 use std::cmp::Ordering;
 use std::time::Duration;
 
-use canvist_headless::canvist_editor::position;
+use canvist_headless::canvist_core::position;
 use canvist_headless::canvist_model::InlineText;
 use canvist_headless::canvist_model::Point as ModelPoint;
 use canvist_headless::canvist_model::Selection;

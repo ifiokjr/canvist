@@ -111,7 +111,7 @@ mod ssr;
 
 #[cfg(feature = "collab")]
 pub use canvist_collab;
-pub use canvist_editor;
+pub use canvist_core;
 #[cfg(feature = "starter-kit")]
 pub use canvist_extensions;
 #[cfg(feature = "ssr")]

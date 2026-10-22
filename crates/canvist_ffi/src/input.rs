@@ -2,8 +2,8 @@
 //! ask of a text view, in UTF-16 offsets into the editor's text, and the
 //! geometry they place carets, handles, and candidate windows with.
 
-use canvist_headless::canvist_editor::LineEdge;
-use canvist_headless::canvist_editor::VerticalDirection;
+use canvist_headless::canvist_core::LineEdge;
+use canvist_headless::canvist_core::VerticalDirection;
 use canvist_headless::canvist_model::InlineText;
 use canvist_headless::canvist_model::Selection;
 use canvist_layout::Affinity;
@@ -150,7 +150,7 @@ impl Editor {
 			VerticalDirection::Down
 		};
 
-		let caret = canvist_headless::canvist_editor::Caret::new(point);
+		let caret = canvist_headless::canvist_core::Caret::new(point);
 		let motion = session
 			.navigate(|lines, doc| lines.vertical(doc, caret, direction, goal_x).ok().flatten())?;
 
@@ -163,7 +163,7 @@ impl Editor {
 		let mut session = self.lock();
 		let point = session.point(offset)?;
 		let edge = if end { LineEdge::End } else { LineEdge::Start };
-		let caret = canvist_headless::canvist_editor::Caret::new(point);
+		let caret = canvist_headless::canvist_core::Caret::new(point);
 		let found = session.navigate(|lines, doc| lines.line_edge(doc, caret, edge).ok())?;
 		let doc = session.doc.document();
 		session.text.offset(doc, found.point)

@@ -20,9 +20,9 @@
 use std::time::Duration;
 use std::time::Instant;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
-use canvist_editor::KeyPress;
+use canvist_core::Editor;
+use canvist_core::Env;
+use canvist_core::KeyPress;
 use canvist_extensions::StarterKit;
 use canvist_extensions::StarterKitHandles;
 use canvist_model::BlockId;
@@ -87,7 +87,7 @@ fn editor_over(
 
 /// [`editor_over`] with `extras` registered after the StarterKit.
 fn editor_with(
-	extras: impl FnOnce(&mut canvist_editor::EditorBuilder),
+	extras: impl FnOnce(&mut canvist_core::EditorBuilder),
 	paragraphs: impl FnOnce(&canvist_model::Schema) -> Vec<InlineText>,
 ) -> (Editor, StarterKitHandles) {
 	let mut builder = Editor::builder();
@@ -300,7 +300,7 @@ fn typing_in_heavy_formatting() {
 /// A dry run applies the command and rolls it back exactly, so it costs
 /// what the command costs: microseconds for marks and block types, and
 /// `O(siblings)` for list wrapping at the root, like the edit itself.
-fn per_can_check(commands: &[canvist_editor::Command]) -> Duration {
+fn per_can_check(commands: &[canvist_core::Command]) -> Duration {
 	let (mut editor, _) = editor_over(|_| {
 		(0..LARGE_DOC)
 			.map(|_| InlineText::plain(PARAGRAPH, MarkSet::empty()))
@@ -343,7 +343,7 @@ fn can_checks_for_a_toolbar_in_a_100k_block_document() {
 
 /// Every extension beyond the StarterKit.
 #[cfg(feature = "full")]
-fn every_extension(builder: &mut canvist_editor::EditorBuilder) {
+fn every_extension(builder: &mut canvist_core::EditorBuilder) {
 	let extras = std::mem::take(builder).extensions(canvist_extensions::extras());
 	*builder = extras;
 }

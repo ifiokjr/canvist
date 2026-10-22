@@ -5,10 +5,10 @@
 //! `extras` feature, and its host language chooses which ones an engine
 //! registers. The names are the extension names in the metadata.
 
-use canvist_editor::BaseKeymap;
-use canvist_editor::EditorBuilder;
-use canvist_editor::EditorError;
-use canvist_editor::UndoInputRule;
+use canvist_core::BaseKeymap;
+use canvist_core::EditorBuilder;
+use canvist_core::EditorError;
+use canvist_core::UndoInputRule;
 use canvist_extensions::Blockquote;
 use canvist_extensions::Bold;
 use canvist_extensions::BulletList;

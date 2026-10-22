@@ -19,7 +19,7 @@ toolchain spike (UniFFI, simulators) and logo: in parallel, now
 - [x] `divan` benchmarks for every hot path, at 100, 10,000, and 100,000 blocks.
 - [x] A `lint:style` gate: monostyle readability and complexity ≥ 90.
 
-## M1: editor engine (`canvist_editor`)
+## M1: editor engine (`canvist_core`)
 
 - [x] **Commands:** insert text, delete backward and forward (by grapheme, word, line, or document), split and join that know about lists and quotes, wrap and lift, toggle mark, set block type, select all, and cut, copy, and paste from HTML, Markdown, and plain text.
 - [x] **Selection motion:** grapheme, word, line, and document, plus block selection. Atomic blocks are selected as a whole when the caret reaches them.

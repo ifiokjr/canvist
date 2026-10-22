@@ -10,11 +10,11 @@ mod support;
 use std::sync::Arc;
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::EditorError;
-use canvist_editor::Env;
-use canvist_editor::Extension;
-use canvist_editor::Platform;
+use canvist_core::Editor;
+use canvist_core::EditorError;
+use canvist_core::Env;
+use canvist_core::Extension;
+use canvist_core::Platform;
 use canvist_extensions::Alignment;
 use canvist_extensions::CharacterCount;
 use canvist_extensions::Placeholder;
@@ -113,7 +113,7 @@ fn text(typist: &Typist) -> String {
 
 /// The whole document as a slice, copied from a fresh editor so the
 /// typist's selection is untouched.
-fn whole(typist: &Typist) -> canvist_editor::Slice {
+fn whole(typist: &Typist) -> canvist_core::Slice {
 	let mut copy = loaded(&typist.editor.state().doc().to_json()["content"]);
 	copy.type_script("[Mod-a]");
 	copy.editor.copy().expect("copy")

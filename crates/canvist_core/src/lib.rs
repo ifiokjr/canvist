@@ -2,7 +2,7 @@
 	html_logo_url = "https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/web/icon.svg",
 	html_favicon_url = "https://raw.githubusercontent.com/canvist/canvist/main/assets/brand/web/favicon.svg"
 )]
-//! # `canvist_editor`
+//! # `canvist_core`
 //!
 //! The platform-agnostic editing engine behind canvist. It sits between the
 //! document model ([`canvist_model`]) and the platform hosts, and owns
@@ -37,8 +37,8 @@
 //! ```
 //! use std::sync::Arc;
 //!
-//! use canvist_editor::EditorState;
-//! use canvist_editor::commands;
+//! use canvist_core::EditorState;
+//! use canvist_core::commands;
 //! use canvist_model::BlockSpec;
 //! use canvist_model::Document;
 //! use canvist_model::Schema;
@@ -59,11 +59,11 @@
 //! ```
 //! use std::time::Duration;
 //!
-//! use canvist_editor::BaseKeymap;
-//! use canvist_editor::Editor;
-//! use canvist_editor::Env;
-//! use canvist_editor::Extension;
-//! use canvist_editor::KeyPress;
+//! use canvist_core::BaseKeymap;
+//! use canvist_core::Editor;
+//! use canvist_core::Env;
+//! use canvist_core::Extension;
+//! use canvist_core::KeyPress;
 //! use canvist_model::BlockSpec;
 //! use canvist_model::SchemaBuilder;
 //!

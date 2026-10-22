@@ -156,7 +156,7 @@ jobs:
           FULL_OUTPUT=""
 
           # The crates monochange publishes (`monochange.toml`).
-          PACKAGES=("canvist" "canvist_model" "canvist_editor" "canvist_extensions" "canvist_layout" "canvist_collab" "canvist_headless")
+          PACKAGES=("canvist" "canvist_model" "canvist_core" "canvist_extensions" "canvist_layout" "canvist_collab" "canvist_headless")
 
           for pkg in "${PACKAGES[@]}"; do
             echo "::group::Checking $pkg"

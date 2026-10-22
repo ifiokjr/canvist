@@ -8,7 +8,7 @@ use canvist_desktop::Ime;
 use canvist_desktop::InputEvent;
 use canvist_desktop::KeyInput;
 use canvist_headless::Engine;
-use canvist_headless::canvist_editor::Platform;
+use canvist_headless::canvist_core::Platform;
 use canvist_layout::DisplayItem;
 use canvist_layout::RectKind;
 use support::CTRL;

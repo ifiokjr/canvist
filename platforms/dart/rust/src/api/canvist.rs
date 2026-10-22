@@ -12,7 +12,7 @@ use canvist_headless::HeadlessError;
 use canvist_headless::Position;
 use canvist_headless::Renderer;
 use canvist_headless::Snapshot;
-use canvist_headless::canvist_editor::Platform;
+use canvist_headless::canvist_core::Platform;
 use flutter_rust_bridge::frb;
 use serde_json::Value as Json;
 

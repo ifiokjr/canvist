@@ -6,7 +6,7 @@
 
 mod support;
 
-use canvist_editor::Command;
+use canvist_core::Command;
 use canvist_extensions::DragHandleHandle;
 use canvist_model::Point;
 use canvist_model::Selection;

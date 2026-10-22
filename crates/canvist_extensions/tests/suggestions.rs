@@ -6,8 +6,8 @@ mod support;
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
+use canvist_core::Editor;
+use canvist_core::Env;
 use canvist_extensions::clipboard;
 use canvist_model::Attrs;
 use canvist_model::Value;
@@ -36,7 +36,7 @@ fn run(editor: &mut Editor, name: &str, args: &[(&'static str, Value)]) -> bool 
 fn query(editor: &Editor, name: &str, args: &[(&'static str, Value)]) -> Json {
 	let args: Attrs = args.iter().cloned().collect();
 	let value = editor.query(name, &args).expect("a known query");
-	canvist_editor::value_to_json(&value)
+	canvist_core::value_to_json(&value)
 }
 
 fn content(typist: &Typist) -> Json {
@@ -366,11 +366,9 @@ fn atoms_editor_with(
 	(editor, mention, hashtag, emoji)
 }
 
-fn invalid_args(
-	result: Result<Option<canvist_editor::Update>, canvist_editor::EditorError>,
-) -> String {
+fn invalid_args(result: Result<Option<canvist_core::Update>, canvist_core::EditorError>) -> String {
 	match result {
-		Err(canvist_editor::EditorError::InvalidArgs { name, .. }) => name,
+		Err(canvist_core::EditorError::InvalidArgs { name, .. }) => name,
 		other => panic!("expected invalid arguments, got {other:?}"),
 	}
 }
@@ -607,7 +605,7 @@ fn invalid_arguments_are_reported() {
 		.query("searchEmoji", &Attrs::new())
 		.expect_err("a query is required");
 	assert!(
-		matches!(error, canvist_editor::EditorError::InvalidArgs { .. }),
+		matches!(error, canvist_core::EditorError::InvalidArgs { .. }),
 		"{error:?}"
 	);
 	let error = typist
@@ -618,7 +616,7 @@ fn invalid_arguments_are_reported() {
 		)
 		.expect_err("the limit is an int");
 	assert!(
-		matches!(error, canvist_editor::EditorError::InvalidArgs { .. }),
+		matches!(error, canvist_core::EditorError::InvalidArgs { .. }),
 		"{error:?}"
 	);
 }
@@ -643,7 +641,7 @@ fn handle_commands_fail_on_a_schema_without_their_type() {
 			.run(&command, &mut env)
 			.expect_err("no such type");
 		assert!(
-			matches!(error, canvist_editor::EditorError::MissingType { .. }),
+			matches!(error, canvist_core::EditorError::MissingType { .. }),
 			"{error:?}"
 		);
 	}
@@ -1043,13 +1041,13 @@ fn html_escapes_atom_attributes() {
 }
 
 /// The whole document as a slice, for the clipboard writers.
-fn whole(doc: &canvist_model::Document) -> canvist_editor::Slice {
+fn whole(doc: &canvist_model::Document) -> canvist_core::Slice {
 	let blocks = doc
 		.children(None)
 		.iter()
 		.filter_map(|&id| doc.tree(id))
 		.collect();
-	canvist_editor::Slice::new(blocks)
+	canvist_core::Slice::new(blocks)
 }
 
 /// Regression: reading a label-less mention back from HTML took the id it

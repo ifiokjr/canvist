@@ -10,12 +10,12 @@
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::EditorState;
-use canvist_editor::Env;
-use canvist_editor::KeyPress;
-use canvist_editor::Platform;
-use canvist_editor::parse_binding;
+use canvist_core::Editor;
+use canvist_core::EditorState;
+use canvist_core::Env;
+use canvist_core::KeyPress;
+use canvist_core::Platform;
+use canvist_core::parse_binding;
 use canvist_extensions::StarterKit;
 use canvist_model::BlockId;
 use canvist_model::Document;
@@ -43,7 +43,7 @@ pub fn editor() -> Editor {
 }
 
 /// A StarterKit editor plus `extra` extensions, with Ctrl as `Mod`.
-pub fn editor_with(extra: Vec<std::sync::Arc<dyn canvist_editor::Extension>>) -> Editor {
+pub fn editor_with(extra: Vec<std::sync::Arc<dyn canvist_core::Extension>>) -> Editor {
 	Editor::builder()
 		.extensions(StarterKit::default().extensions())
 		.extensions(extra)
@@ -213,7 +213,7 @@ fn strip_ids(node: &mut Json) {
 }
 
 fn path(doc: &Document, id: BlockId) -> String {
-	let mut indexes: Vec<String> = canvist_editor::position::ancestors_or_self(doc, id)
+	let mut indexes: Vec<String> = canvist_core::position::ancestors_or_self(doc, id)
 		.filter_map(|block| doc.index_in_parent(block))
 		.map(|index| index.to_string())
 		.collect();
@@ -278,7 +278,7 @@ pub fn assert_valid(state: &EditorState) {
 
 	let selection = state.selection();
 	assert_eq!(
-		canvist_editor::position::valid_selection(doc, selection),
+		canvist_core::position::valid_selection(doc, selection),
 		selection,
 		"the selection is valid"
 	);
@@ -291,8 +291,8 @@ pub fn assert_valid(state: &EditorState) {
 pub fn assert_metadata_matches_schema(editor: &Editor) {
 	use std::collections::HashMap;
 
-	use canvist_editor::Field;
-	use canvist_editor::NodeKind;
+	use canvist_core::Field;
+	use canvist_core::NodeKind;
 
 	let schema = editor.schema();
 	let mut declared: HashMap<(NodeKind, &str), Vec<&Field>> = HashMap::new();

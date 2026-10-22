@@ -20,8 +20,8 @@
 
 use std::sync::Arc;
 
-use canvist_editor::EditorState;
-use canvist_editor::commands;
+use canvist_core::EditorState;
+use canvist_core::commands;
 use canvist_model::Attrs;
 use canvist_model::Block;
 use canvist_model::BlockId;
@@ -123,7 +123,7 @@ pub fn render(state: &EditorState) -> String {
 /// Run `command` on the state parsed from `before` and render the result.
 pub fn after(
 	before: &str,
-	command: impl FnOnce(&mut EditorState) -> canvist_editor::CommandResult,
+	command: impl FnOnce(&mut EditorState) -> canvist_core::CommandResult,
 ) -> String {
 	let mut state = state(before);
 	command(&mut state).expect("the command succeeds");

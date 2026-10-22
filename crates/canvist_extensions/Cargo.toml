@@ -137,7 +137,7 @@ typography = []
 underline = []
 
 [dependencies]
-canvist_editor = { workspace = true }
+canvist_core = { workspace = true }
 canvist_model = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
 unicode-segmentation = { workspace = true, optional = true }

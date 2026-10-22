@@ -6,7 +6,7 @@
 
 use canvist_headless::Format;
 use canvist_headless::Position;
-use canvist_headless::canvist_editor::Platform;
+use canvist_headless::canvist_core::Platform;
 use canvist_layout::Color;
 use canvist_layout::Rect;
 

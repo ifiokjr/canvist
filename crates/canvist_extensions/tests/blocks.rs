@@ -8,10 +8,10 @@ mod support;
 use std::sync::Arc;
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::EditorError;
-use canvist_editor::Env;
-use canvist_editor::Extension;
+use canvist_core::Editor;
+use canvist_core::EditorError;
+use canvist_core::Env;
+use canvist_core::Extension;
 use canvist_extensions::Callout;
 use canvist_extensions::Details;
 use canvist_extensions::Mathematics;
@@ -324,7 +324,7 @@ fn markdown_of(typist: &Typist) -> String {
 		.iter()
 		.filter_map(|&id| doc.tree(id))
 		.collect();
-	clipboard::to_markdown(doc.schema(), &canvist_editor::Slice::new(blocks))
+	clipboard::to_markdown(doc.schema(), &canvist_core::Slice::new(blocks))
 }
 
 /// Run `name` an hour in, after anything typed, so it never joins the
@@ -776,10 +776,7 @@ fn an_unknown_callout_type_pastes_as_info() {
 	assert_eq!(markdown_round_trip_html(&schema, &pasted), "> [!NOTE]\n> x");
 }
 
-fn markdown_round_trip_html(
-	schema: &canvist_model::Schema,
-	slice: &canvist_editor::Slice,
-) -> String {
+fn markdown_round_trip_html(schema: &canvist_model::Schema, slice: &canvist_core::Slice) -> String {
 	clipboard::to_markdown(schema, slice)
 }
 
@@ -818,7 +815,7 @@ fn tiptap_json_without_attrs_takes_the_defaults() {
 		{ "type": "blockMath" },
 	] });
 	let loaded = canvist_model::Document::from_json(schema.clone(), 1, &json).expect("loads");
-	let slice = canvist_editor::Slice::new(
+	let slice = canvist_core::Slice::new(
 		loaded
 			.children(None)
 			.iter()
