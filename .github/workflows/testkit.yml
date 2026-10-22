@@ -1,0 +1,107 @@
+name: "testkit"
+
+# Runs the cross-platform testkit: the same Rust tests against the headless
+# engine, the agent protocol, and a real browser through Playwright. The
+# simulator and emulator targets run there too, through the same jobs the
+# native workflow already pays for, once this workflow is merged alongside
+# them (see the comment in each job).
+#
+# Pull requests run the cheap targets on every change to the editor; the
+# browser job follows the web workflow's pattern of building what the page
+# needs first. The device targets are driven from this workflow on a nightly
+# cadence, and from `native`'s simulators whenever that workflow lands the
+# testkit agents on them.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/testkit.yml"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "conformance/**"
+      - "crates/**"
+      - "packages/canvist-headless/**"
+      - "packages/canvist-web/tests/pages/testkit.*"
+      - "platforms/**"
+      - "rust-toolchain.toml"
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  engine:
+    name: headless + loopback (ubuntu)
+    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/devenv
+      - name: Headless and loopback targets
+        run: |
+          cargo build -p canvist_testkit --bin canvist_testkit_daemon
+          CANVIST_TEST_TARGET=headless,loopback cargo nextest run -p canvist_testkit --features collab
+
+  dom:
+    name: dom (chromium)
+    timeout-minutes: 45
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/devenv
+      - name: Browser target
+        run: |
+          CANVIST_TEST_TARGET=dom cargo nextest run -p canvist_testkit --features dom
+        env:
+          # The first run builds the wasm modules and installs the dev
+          # server's packages; Playwright's chromium comes with the crate's
+          # driver, and this asks it to fetch what it needs.
+          CANVIST_TEST_PREP: build
+
+  ios:
+    name: ios (simulator)
+    timeout-minutes: 90
+    runs-on: macos-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/devenv
+      - name: Simulator target
+        run: |
+          cargo build -p canvist_testkit --features ios --bin canvist_testkit_daemon
+          CANVIST_TEST_TARGET=ios cargo test -p canvist_testkit --features ios --test typing -- --test-threads=1 --nocapture
+
+  android:
+    name: android (emulator)
+    timeout-minutes: 90
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/devenv
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Emulator target
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            cargo build -p canvist_testkit --features android --bin canvist_testkit_daemon
+            CANVIST_TEST_TARGET=android cargo test -p canvist_testkit --features android --test typing -- --test-threads=1 --nocapture

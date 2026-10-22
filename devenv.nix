@@ -106,6 +106,48 @@ in
       description = "Build libcanvist_ffi.so with cargo-ndk and the Kotlin bindings.";
       binary = "bash";
     };
+    "test:cross" = {
+      exec = ''
+        set -e
+        export CANVIST_TEST_TARGET="''${CANVIST_TEST_TARGET:-headless,loopback}"
+        cargo nextest run -p canvist_testkit --features collab
+      '';
+      description = "Run the cross-platform testkit: CANVIST_TEST_TARGET picks the targets.";
+      binary = "bash";
+    };
+
+    "test:cross:dom" = {
+      exec = ''
+        set -e
+        export CANVIST_TEST_TARGET=dom
+        cargo nextest run -p canvist_testkit --features dom,collab
+      '';
+      description = "Run the testkit in a real browser (Playwright builds what it needs first).";
+      binary = "bash";
+    };
+
+    "test:cross:ios" = {
+      exec = ''
+        set -e
+        cargo build -p canvist_testkit --bin canvist_testkit_daemon
+        export CANVIST_TEST_TARGET=ios
+        cargo test -p canvist_testkit --features ios,collab --test typing --test extensions -- --test-threads=1
+      '';
+      description = "Run the testkit on an iOS Simulator (one agent run, serial tests).";
+      binary = "bash";
+    };
+
+    "test:cross:android" = {
+      exec = ''
+        set -e
+        cargo build -p canvist_testkit --bin canvist_testkit_daemon
+        export CANVIST_TEST_TARGET=android
+        cargo test -p canvist_testkit --features android,collab --test typing --test extensions -- --test-threads=1
+      '';
+      description = "Run the testkit on an Android emulator (one agent run, serial tests).";
+      binary = "bash";
+    };
+
     "test:ios" = {
       exec = ''
         set -e
