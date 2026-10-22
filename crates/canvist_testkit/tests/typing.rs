@@ -5,7 +5,6 @@
 //! `CANVIST_TEST_TARGET`. The body types the way a person types: one
 //! character at a time, real key presses, and reads the document back.
 
-use canvist_headless::Format;
 use canvist_testkit::Position;
 use canvist_testkit::cross_test;
 
@@ -123,7 +122,7 @@ cross_test! {
 	/// paste through.
 	pasting_markdown_keeps_structure, targets = [headless, loopback], async fn paste_markdown(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
 		editor.load_text("").await?;
-		editor.paste(Format::Markdown, "# Title\n\nBody with **bold**").await?;
+		editor.paste(canvist_headless::Format::Markdown, "# Title\n\nBody with **bold**").await?;
 
 		editor.assert_markdown("# Title\n\nBody with **bold**").await?;
 		editor.assert_text("Title\nBody with bold").await?;

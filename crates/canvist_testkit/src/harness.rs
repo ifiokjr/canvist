@@ -185,6 +185,33 @@ impl EditorHarness {
 		self.load(Format::Text, text).await
 	}
 
+	/// Replace the document with `markdown`.
+	///
+	/// # Errors
+	/// See [`EditorHarness::load`].
+	pub async fn load_markdown(&mut self, markdown: &str) -> TestResult<()> {
+		self.load(Format::Markdown, markdown).await
+	}
+
+	/// Replace the document with `html`.
+	///
+	/// # Errors
+	/// See [`EditorHarness::load`].
+	pub async fn load_html(&mut self, html: &str) -> TestResult<()> {
+		self.load(Format::Html, html).await
+	}
+
+	/// Replace the document with ProseMirror `json`.
+	///
+	/// # Errors
+	/// See [`EditorHarness::load`].
+	pub async fn load_json(&mut self, json: &Json) -> TestResult<()> {
+		let text = serde_json::to_string(json)
+			.map_err(|error| TestkitError::protocol(self.target, error.to_string()))?;
+
+		self.load(Format::Json, &text).await
+	}
+
 	/// Type `text` one character at a time, as a keyboard would, so input
 	/// rules fire: `"## "` turns the block into a heading. Returns whether
 	/// anything changed.
@@ -241,9 +268,9 @@ impl EditorHarness {
 		self.select(position, None).await
 	}
 
-	/// Place the caret at the end of the block `path` names: where typing
-	/// continues a document. The end is computed from the document's own
-	/// JSON, so it is the same caret on every target.
+	/// Place the caret at the end of the block `path` names. The end is
+	/// computed from the document's own JSON, so it is the same caret on
+	/// every target.
 	///
 	/// # Errors
 	/// See [`EditorHarness::select`].
@@ -252,6 +279,18 @@ impl EditorHarness {
 		let end = crate::position::text_end(&self.json().await?, &path);
 
 		self.select(&Position::new(path, end), None).await
+	}
+
+	/// Place the caret where typing continues the document: the end of its
+	/// last block that holds text. `load_text("hello").move_to_document_end()`
+	/// then typing appends, on every target.
+	///
+	/// # Errors
+	/// See [`EditorHarness::select`].
+	pub async fn move_to_document_end(&mut self) -> TestResult<()> {
+		let end = crate::position::document_end(&self.json().await?);
+
+		self.select(&end, None).await
 	}
 
 	/// Select the whole document.

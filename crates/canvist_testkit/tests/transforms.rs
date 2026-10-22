@@ -25,7 +25,7 @@ transform_test! {
 	heading_command, |case| case
 		.text("title")
 		.select_all()
-		.command("toggleHeading", &json!({"level": 2}))
+		.run_command("toggleHeading", &json!({"level": 2}))
 		.expect_markdown("## title")
 }
 

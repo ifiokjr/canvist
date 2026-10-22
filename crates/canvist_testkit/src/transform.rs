@@ -192,9 +192,10 @@ impl TransformCase {
 		self
 	}
 
-	/// Run the command an extension registered as `name`.
+	/// Run the command an extension registered as `name`, with `args`: the
+	/// same call [`crate::EditorHarness::run_command`] makes.
 	#[must_use]
-	pub fn command(mut self, name: &str, args: &Json) -> Self {
+	pub fn run_command(mut self, name: &str, args: &Json) -> Self {
 		self.push(Step::Run(name.to_owned(), args.clone()));
 
 		self

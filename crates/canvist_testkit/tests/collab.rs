@@ -18,11 +18,11 @@ cross_test! {
 	/// What one editor types, the other sees after one sync.
 	typing_reaches_the_peer, targets = [headless, loopback], async fn sync_typing(a: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
 		a.load_text("hello").await?;
-		a.move_to_end([0]).await?;
+		a.move_to_document_end().await?;
 		a.share(1).await?;
 
 		let mut b = EditorHarness::join(a.target(), EditorConfig::default().client(2), &a.encode_state().await?).await?;
-		b.move_to_end([0]).await?;
+		b.move_to_document_end().await?;
 
 		a.type_text(" world").await?;
 		a.sync_to(&mut b).await?;
@@ -37,11 +37,11 @@ cross_test! {
 	/// Two peers typing in the same document converge, in both directions.
 	both_peers_converge, targets = [headless, loopback], async fn converge(a: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
 		a.load_text("a1 b1").await?;
-		a.move_to_end([0]).await?;
+		a.move_to_document_end().await?;
 		a.share(1).await?;
 
 		let mut b = EditorHarness::join(a.target(), EditorConfig::default().client(2), &a.encode_state().await?).await?;
-		b.move_to_end([0]).await?;
+		b.move_to_document_end().await?;
 
 		a.type_text(" more-a").await?;
 		b.type_text(" more-b").await?;
@@ -64,7 +64,7 @@ cross_test! {
 		b.type_text("from b").await?;
 		b.sync_to(&mut *a).await?;
 
-		a.move_to_end([0]).await?;
+		a.move_to_document_end().await?;
 		a.type_text(" from a").await?;
 		a.sync_to(&mut b).await?;
 
@@ -103,7 +103,7 @@ cross_test! {
 	/// including everything it missed while away.
 	rejoin_from_state_sees_missed_work, targets = [headless, loopback], async fn rejoin(a: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
 		a.load_text("base").await?;
-		a.move_to_end([0]).await?;
+		a.move_to_document_end().await?;
 		a.share(1).await?;
 
 		let mut b = EditorHarness::join(a.target(), EditorConfig::default().client(2), &a.encode_state().await?).await?;

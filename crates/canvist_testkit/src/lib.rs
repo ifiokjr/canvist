@@ -13,17 +13,17 @@
 //! | `android` | `canvist-android`'s FFI editor, in an instrumentation agent on an emulator | the `android` feature, the SDK |
 //!
 //! ```no_run
-//! use canvist_headless::Format;
 //! use canvist_testkit::EditorHarness;
 //! use canvist_testkit::cross_test;
 //!
 //! cross_test! {
-//!     /// Typing a heading rule turns the paragraph into a heading.
-//!     heading_input_rule, async fn heading(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
-//!         editor.load(Format::Text, "").await?;
-//!         editor.type_text("## Notes").await?;
+//!     /// Two marks together, on only the extensions that provide them.
+//!     marks_together, extensions = ["bold", "italic", "history"], async fn marks(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
+//!         editor.load_text("bold me").await?;
+//!         editor.select_all().await?;
+//!         editor.press("Mod-b").await?;
 //!
-//!         editor.assert_markdown("## Notes").await?;
+//!         editor.assert_markdown("**bold me**").await?;
 //!         Ok(())
 //!     }
 //! }
@@ -85,13 +85,14 @@ pub use crate::wire::Op;
 /// counts as skipped on that target, not failed —
 /// [`EditorHarness::require`] returns it for capabilities a target lacks.
 ///
-/// Two optional clauses shape the run:
+/// Three optional clauses shape the run:
 ///
 /// - `targets = [dom, headless]` runs only those targets, intersected
 ///   with [`Selection::current`]; without it, every selected target runs.
-/// - `config = |config| ...` adjusts the [`EditorConfig`] each target
-///   starts from, such as `|config| *config =
-///   EditorConfig::with_extensions(&["bold", "history"])`.
+/// - `extensions = ["bold", "history"]` registers exactly those
+///   extensions, by name, on every target — the common case.
+/// - `config = |config| ...` adjusts the [`EditorConfig`] for anything
+///   else, such as the client id or the platform.
 ///
 /// ```no_run
 /// use canvist_testkit::EditorHarness;
@@ -118,6 +119,7 @@ macro_rules! cross_test {
 		$(#[$meta:meta])*
 		$name:ident,
 		$(targets = [$($target:ident),* $(,)?],)?
+		$(extensions = [$($extension:expr),* $(,)?],)?
 		$(config = $config:expr,)?
 		async fn $run:ident ($editor:ident : &mut $harness:ty) $(-> $result:ty)? $body:block
 	) => {
@@ -137,6 +139,9 @@ macro_rules! cross_test {
 				}
 
 				let mut config = $crate::EditorConfig::default();
+				$(
+					config.extensions = vec![$($extension.to_owned()),*];
+				)?
 				$($config(&mut config);)?
 				let _ = &config;
 

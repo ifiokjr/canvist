@@ -5,7 +5,6 @@
 //! picks what it ships, and the same set is registered on every target.
 
 use canvist_headless::Format;
-use canvist_testkit::EditorConfig;
 use canvist_testkit::Position;
 use canvist_testkit::cross_test;
 use serde_json::json;
@@ -34,7 +33,7 @@ cross_test! {
 cross_test! {
 	/// Two marks on one word: whichever toggles second does not undo the
 	/// first.
-	two_marks_stack, config = |config: &mut EditorConfig| *config = EditorConfig::with_extensions(&["bold", "italic", "history"]), async fn stacking(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
+	two_marks_stack, extensions = ["bold", "italic", "history"], async fn stacking(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
 		editor.load_text("").await?;
 
 		editor.type_text("word").await?;
@@ -51,7 +50,7 @@ cross_test! {
 	/// A code block and a list next to each other keep their own rules:
 	/// typing into the list after the code block stays out of it, and
 	/// each exports as its own structure.
-	code_block_and_list_together, config = |config: &mut EditorConfig| *config = EditorConfig::with_extensions(&["codeBlock", "bulletList", "listItem", "history"]), async fn neighbors(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
+	code_block_and_list_together, extensions = ["codeBlock", "bulletList", "listItem", "history"], async fn neighbors(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
 		editor.load(Format::Markdown, "```\nx = 1\n```\n\n- item").await?;
 
 		editor.move_to_end([1, 0, 0]).await?;
@@ -69,7 +68,7 @@ cross_test! {
 cross_test! {
 	/// A command an extension did not register fails cleanly, on every
 	/// target, without touching the document.
-	unregistered_command_fails_cleanly, config = |config: &mut EditorConfig| *config = EditorConfig::with_extensions(&["bold", "history"]), async fn missing_command(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
+	unregistered_command_fails_cleanly, extensions = ["bold", "history"], async fn missing_command(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
 		editor.load_text("keep").await?;
 
 		let before = editor.markdown().await?;
@@ -84,7 +83,7 @@ cross_test! {
 cross_test! {
 	/// One extension's query reports what another's command did: the
 	/// registry agrees across extensions.
-	queries_see_other_extensions_marks, config = |config: &mut EditorConfig| *config = EditorConfig::with_extensions(&["bold", "italic", "history"]), async fn cross_query(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
+	queries_see_other_extensions_marks, extensions = ["bold", "italic", "history"], async fn cross_query(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
 		editor.load_text("word").await?;
 		editor.select_all().await?;
 		editor.run_command("toggleBold", &json!(null)).await?;
@@ -101,9 +100,9 @@ cross_test! {
 cross_test! {
 	/// Task lists, headings, and links in one document: the extras set,
 	/// together, still types and exports.
-	extras_extensions_together, targets = [headless, loopback], config = |config: &mut EditorConfig| *config = EditorConfig::with_extensions(&[
+	extras_extensions_together, targets = [headless, loopback], extensions = [
 		"heading", "taskList", "listItem", "link", "history", "trailingNode",
-	]), async fn tasks_and_links(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
+	], async fn tasks_and_links(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
 		editor.load_text("").await?;
 		editor.type_text("## Todo").await?;
 		editor.press("Enter").await?;
