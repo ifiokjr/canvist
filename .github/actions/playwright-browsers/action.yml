@@ -2,8 +2,8 @@ name: playwright browsers
 description: >-
   Install Playwright browsers with a cache and retries. Browser downloads and
   their apt dependencies have stalled CI runners for the full step timeout, so
-  the browsers are cached per runner OS and Playwright version, and each
-  install attempt is retried before the job fails.
+  apt retries each fetch instead of hanging, the browsers are cached per runner
+  OS and Playwright version, and each download attempt is retried.
 inputs:
   browsers:
     description: Space-separated browsers to install, such as `chromium firefox`.
@@ -43,21 +43,40 @@ runs:
           ~/Library/Caches/ms-playwright
         key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.version.outputs.version }}-${{ inputs.browsers }}
 
-    # Up to three attempts of five minutes each: a stalled download fails fast
-    # and retries instead of holding the job for its whole timeout. `perl`'s
-    # alarm stands in for `timeout`, which macOS runners don't have.
+    # The runners' apt mirror drops fetches. Short per-fetch timeouts with
+    # retries turn a hung download into a retried one. apt-get itself is never
+    # killed partway, which would leave the dpkg lock held for the next try.
+    - name: install the system packages
+      if: inputs.with-deps == 'true' && runner.os == 'Linux'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::https::Timeout "30";\n' |
+          sudo tee /etc/apt/apt.conf.d/80-ci-retries >/dev/null
+        # shellcheck disable=SC2086 # `command` and `browsers` split into words
+        ${{ inputs.command }} install-deps ${{ inputs.browsers }}
+
+    # Up to three attempts of five minutes each, so a stalled download is
+    # retried instead of holding the job for its whole timeout. The attempt
+    # runs in its own process group, which a timeout kills whole; macOS
+    # runners have no `timeout`, so `perl` keeps the clock.
     - name: install the browsers
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: |
         set -uo pipefail
-        deps=""
-        if [ "${{ inputs.with-deps }}" = "true" ] && [ "$RUNNER_OS" = "Linux" ]; then
-          deps="--with-deps"
-        fi
         for attempt in 1 2 3; do
-          # shellcheck disable=SC2086 # `command`, `deps` and `browsers` split into words
-          if perl -e 'alarm shift; exec @ARGV' 300 ${{ inputs.command }} install $deps ${{ inputs.browsers }}; then
+          # shellcheck disable=SC2086 # `command` and `browsers` split into words
+          if perl -e '
+            my $seconds = shift;
+            my $pid = fork() // die "fork: $!";
+            if ($pid == 0) { setpgrp(0, 0); exec @ARGV or die "exec: $!" }
+            $SIG{ALRM} = sub { kill "-TERM", $pid; sleep 5; kill "-KILL", $pid; exit 124 };
+            alarm $seconds;
+            waitpid($pid, 0);
+            exit($? >> 8);
+          ' 300 ${{ inputs.command }} install ${{ inputs.browsers }}; then
             exit 0
           fi
           echo "::warning::playwright install attempt $attempt failed; retrying"
