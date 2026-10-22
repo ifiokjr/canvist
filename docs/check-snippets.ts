@@ -43,6 +43,8 @@ const SHOWN = new Set([
 	"yaml",
 	"swift",
 	"kotlin",
+	"ruby",
+	"groovy",
 	"tsx",
 	"vue",
 	"markdown",

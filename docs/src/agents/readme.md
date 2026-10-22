@@ -6,7 +6,7 @@ Machine-readable versions of these docs live at [`/llms.txt`](/llms.txt) (an ind
 
 ## 1. Check what exists before you write code
 
-canvist hasn't had its first release, and several platforms are still coming. Don't guess package names. Use this table:
+canvist hasn't had its first release, so nothing is on a package registry yet. Don't guess package names. Use this table:
 
 | Target                         | Install                                                                                                                  | Exists today? |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------- |
@@ -21,9 +21,10 @@ canvist hasn't had its first release, and several platforms are still coming. Do
 | Desktop: macOS, Windows, Linux | `canvist_desktop` ([how](../quick-start/desktop.md))                                                                     | Yes           |
 | iOS                            | `Canvist` Swift package: `CanvistView` ([how](../quick-start/ios.md))                                                    | Yes           |
 | Android                        | `canvist-android`: `CanvistView` ([how](../quick-start/android.md))                                                      | Yes           |
-| React Native, Lynx             | None                                                                                                                     | No            |
+| React Native                   | `@canvist/react-native`: `CanvistEditor` ([how](../quick-start/react-native.md))                                         | Yes           |
+| Lynx                           | `@canvist/lynx`: `<canvist-editor>` ([how](../quick-start/lynx.md))                                                      | Yes           |
 
-If the user asks for a platform marked "No", say so. Offer the closest working path, such as Flutter for mobile or `@canvist/headless` on the server, rather than inventing `@canvist/react-native`.
+Don't invent packages beyond this table, such as `@canvist/core` or `@canvist/ssr`.
 
 ## 2. The minimal integration, per platform
 
@@ -222,7 +223,7 @@ Give the model the document as Markdown or JSON, and the positions it needs, so 
 
 ## 6. Common pitfalls
 
-- **Inventing packages.** `@canvist/core`, `@canvist/ssr`, and `@canvist/react-native` don't exist yet. Check section 1.
+- **Inventing packages.** `@canvist/core` and `@canvist/ssr` don't exist. Check section 1.
 - **Byte offsets.** Offsets count UTF-16 code units in every language, including Rust. An emoji is two units. Convert with `text[..byte].encode_utf16().count()` in Rust.
 - **Flat positions in nested blocks.** Text inside a list item lives at `[list, item, 0]`, not `[list]`. Selecting a container fails with `invalidPosition`.
 - **Running commands without a selection.** Commands apply to the selection. A new document's selection is at its start, which is rarely what you want.

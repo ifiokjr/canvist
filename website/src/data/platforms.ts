@@ -60,15 +60,15 @@ export const platforms: Platform[] = [
 	{
 		id: "react-native",
 		name: "React Native",
-		how: "a native component via uniffi-bindgen-react-native",
-		status: "planned",
-		statusText: "coming soon",
+		how: "a Fabric component over the iOS and Android views",
+		status: "live",
+		statusText: "available · iOS, Android",
 	},
 	{
 		id: "lynx",
 		name: "Lynx",
 		how: "a custom native element over the iOS and Android views",
-		status: "planned",
-		statusText: "coming soon",
+		status: "live",
+		statusText: "available · iOS, Android",
 	},
 ];
