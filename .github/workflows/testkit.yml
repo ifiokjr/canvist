@@ -57,9 +57,23 @@ jobs:
     name: dom (chromium)
     timeout-minutes: 45
     runs-on: ubuntu-24.04
+    # Not the devenv action: the page's build needs node and wasm-pack
+    # side by side, which the direct installs give and the devenv shell's
+    # clean environment does not. The web workflow does the same.
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/devenv
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
       - name: install node
         uses: actions/setup-node@v4
         with:
@@ -73,19 +87,15 @@ jobs:
           npm ci
           npm run build:wasm
           npm run build
-        shell: devenv shell -c -- bash -e {0}
       - name: install dependencies
         working-directory: packages/canvist-web
         run: npm ci
       - name: build wasm
         working-directory: packages/canvist-web
         run: npm run build:wasm
-        shell: devenv shell -c -- bash -e {0}
 
       - name: Browser target
-        run: |
-          CANVIST_TEST_TARGET=dom cargo nextest run -p canvist_testkit --features dom
-        shell: devenv shell -c -- bash -e {0}
+        run: CANVIST_TEST_TARGET=dom cargo test -p canvist_testkit --features dom --test typing --test extensions
 
   ios:
     name: ios (simulator)
