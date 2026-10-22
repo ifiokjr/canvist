@@ -190,6 +190,8 @@ in
       exec = ''
         set -e
         cargo nextest run --workspace
+        # Each module of the `canvist` crate sits behind its own feature.
+        cargo nextest run -p canvist --all-features
         # The conformance fixtures for collaboration, the SSR renderer, and the
         # extensions beyond the StarterKit only run with canvist_headless's
         # optional features.
@@ -268,6 +270,7 @@ in
     "lint:style" = {
       exec = ''
         set -e
+        monostyle check crates/canvist --fail-under 90
         monostyle check crates/canvist_model --fail-under 90
         monostyle check crates/canvist_layout --fail-under 90
         monostyle check crates/canvist_editor --fail-under 90

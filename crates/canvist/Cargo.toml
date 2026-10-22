@@ -1,0 +1,94 @@
+[package]
+name = "canvist"
+version.workspace = true
+authors.workspace = true
+categories.workspace = true
+documentation = "https://docs.rs/canvist"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+keywords = ["text-editor", "rich-text", "prosemirror", "canvas", "yjs"]
+license.workspace = true
+readme = "readme.md"
+repository.workspace = true
+rust-version.workspace = true
+description = "The canvist rich-text editor engine in one crate: the document model, editing engine, extensions, and headless engine, with layout, collaboration, and the canvas behind features"
+
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+# A server or script: the headless engine with TipTap's StarterKit.
+default = ["headless", "starter-kit"]
+
+# `canvist::headless`: load, edit, and export documents with no UI.
+headless = ["dep:canvist_headless"]
+
+# TipTap's StarterKit in `canvist::extensions` (and `Engine::starter_kit`).
+starter-kit = ["canvist_extensions/starter-kit", "canvist_headless?/starter-kit"]
+# Every extension in `canvist::extensions`, with `emoji` loading its table at
+# runtime.
+extras = ["starter-kit", "canvist_extensions/extras", "canvist_headless?/extras"]
+# Every extension, with the emoji table compiled in.
+full = ["extras", "canvist_extensions/full", "canvist_headless?/full"]
+
+# `canvist::collab`: Yjs collaboration. With `headless`, a `Doc` is a Yjs peer
+# and a y-sync endpoint.
+collab = ["dep:canvist_collab", "canvist_collab/sync", "canvist_headless?/collab"]
+# `Doc::record_commits`, for hosts that keep a layout of a document other
+# code changes too.
+journal = ["headless", "canvist_headless/journal"]
+# `canvist::headless::Renderer`: server-side HTML and SVG, laid out exactly as
+# the canvas editor paints.
+ssr = ["headless", "parley", "canvist_headless/ssr"]
+
+# `canvist::layout`: incremental text and block layout, hit testing, and
+# display lists.
+layout = [
+	"dep:canvist_layout",
+	"canvist_layout/editor",
+	"canvist_layout/ink",
+	"canvist_layout/kinetic",
+	"canvist_layout/tables",
+	"canvist_layout/theme-extensions",
+]
+# `canvist::layout::ParleyMeasurer`: measure text with real fonts.
+parley = ["layout", "canvist_layout/parley"]
+
+# `canvist::scene` and `canvist::canvas`: the design canvas's scene model and
+# its headless interaction core. With `collab`, scenes are Yjs peers.
+canvas = [
+	"layout",
+	"dep:canvist_canvas",
+	"dep:canvist_scene",
+	"canvist_canvas/editor",
+	"canvist_collab?/scene",
+]
+# `canvist::paint`: draw scenes, with the SVG backend.
+paint = ["canvas", "dep:canvist_paint"]
+# `canvist::paint::CpuPainter`: rasterise scenes to PNG on the CPU.
+png = ["paint", "canvist_paint/cpu"]
+# `canvist::paint::VelloPainter`: draw scenes with vello on wgpu.
+gpu = ["paint", "canvist_paint/gpu"]
+# `canvist::headless::SceneEngine`: load, edit, and export canvas scenes as
+# SVG and PNG on a server.
+headless-scene = ["headless", "png", "canvist_headless/scene"]
+
+[dependencies]
+canvist_canvas = { workspace = true, optional = true }
+canvist_collab = { workspace = true, optional = true }
+canvist_editor = { workspace = true }
+# Named by path: the workspace entries enable default features, and these
+# two leave theirs to this crate's features.
+canvist_extensions = { path = "../canvist_extensions", version = "0.1.0", default-features = false }
+canvist_headless = { path = "../canvist_headless", version = "0.1.0", optional = true, default-features = false }
+canvist_layout = { workspace = true, optional = true }
+canvist_model = { workspace = true }
+canvist_paint = { workspace = true, optional = true }
+canvist_scene = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json = { workspace = true, features = ["std"] }
+
+[lints]
+workspace = true

@@ -7,11 +7,11 @@ In this guide you change documents in bulk on a server: script edits with typed 
 Load the document, find what to change, select it, and run a command. This turns every paragraph that starts with `TODO:` into an unchecked task:
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::Position;
+use canvist::headless::Engine;
+use canvist::headless::Format;
+use canvist::headless::Position;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let engine = Engine::starter_kit();
 	let kit = engine.handles();
 	let mut doc = engine.parse(Format::Markdown, "Intro\n\nTODO: write docs\n\nTODO: ship")?;
@@ -50,10 +50,10 @@ fn main() -> Result<(), canvist_headless::HeadlessError> {
 An `Engine` is `Send + Sync` and cheap to clone, and each `Doc` is `Send`. Build one engine and share it across threads:
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
+use canvist::headless::Engine;
+use canvist::headless::Format;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let engine = Engine::starter_kit();
 	let inputs = ["# One", "# Two", "# Three"];
 

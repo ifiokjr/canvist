@@ -115,13 +115,13 @@ In Rust:
 ```rust
 use std::sync::Arc;
 
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::Renderer;
-use canvist_layout::StarterKitOptions;
-use canvist_layout::Theme;
+use canvist::headless::Engine;
+use canvist::headless::Format;
+use canvist::headless::Renderer;
+use canvist::layout::StarterKitOptions;
+use canvist::layout::Theme;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	// The same options the browser editor's `theme` sets.
 	let theme = Theme::starter_kit_with(&StarterKitOptions {
 		body_family: Arc::from("Inter, system-ui, sans-serif"),

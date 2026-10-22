@@ -1,6 +1,6 @@
 ---
 name: canvist
-description: Integrate canvist, the plugin-based rich-text editor with a Rust core, into an app. Use when a task mentions canvist, @canvist/headless, canvist_headless, canvist_flutter, or asks to add a rich-text editor, convert between ProseMirror/TipTap JSON, HTML, and Markdown, run editor commands on a server, or sync documents with Yjs using canvist.
+description: Integrate canvist, the plugin-based rich-text editor with a Rust core, into an app. Use when a task mentions canvist, @canvist/headless, the canvist crate, canvist_headless, canvist_flutter, or asks to add a rich-text editor, convert between ProseMirror/TipTap JSON, HTML, and Markdown, run editor commands on a server, or sync documents with Yjs using canvist.
 ---
 
 # canvist
@@ -15,7 +15,7 @@ canvist has not had its first release. Nothing is on crates.io, npm, JSR, or pub
 
 | Target                   | Package                          | Install                                                                                                                                                                                     |
 | ------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Rust                     | `canvist_headless`               | `cargo add canvist_headless --git https://github.com/canvist/canvist`                                                                                                                       |
+| Rust                     | `canvist`                        | `cargo add canvist --git https://github.com/canvist/canvist`                                                                                                                                |
 | Node, Deno, Bun, Workers | `@canvist/headless`              | Clone, then in `packages/canvist-headless`: `npm ci && npm run build:wasm && npm pack`; install the tarball                                                                                 |
 | Dart                     | `canvist`                        | pubspec git dependency: `url: https://github.com/canvist/canvist`, `path: platforms/dart`                                                                                                   |
 | Flutter                  | `canvist_flutter`                | pubspec git dependency with `path: platforms/flutter`. `CanvistEditor` plus a `CanvistController`                                                                                           |
@@ -44,11 +44,11 @@ console.log(doc.export("html"));
 ```
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::Position;
+use canvist::headless::Engine;
+use canvist::headless::Format;
+use canvist::headless::Position;
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let engine = Engine::starter_kit();
 	let kit = engine.handles();
 	let mut doc = engine.parse(Format::Markdown, "Hello world")?;

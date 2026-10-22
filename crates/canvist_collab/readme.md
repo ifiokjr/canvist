@@ -26,6 +26,8 @@
 
 Real-time collaboration for [canvist](https://github.com/canvist/canvist) documents over Yjs, using [`yrs`](https://crates.io/crates/yrs).
 
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::collab` behind the `collab` feature: `cargo add canvist --features collab`.
+
 - **Binding:** mirrors a `canvist_model` document into a yrs document and back. Each model step becomes yrs operations and each remote yrs event becomes steps, so nothing is ever diffed.
 - **Plain Yjs:** the shared document follows a documented schema of `Y.Map` blocks, `Y.Text` with marks as formatting, and nested `Y.Array`s, so JavaScript Yjs peers, y-websocket, and Hocuspocus take part without knowing about canvist.
 - **Robust:** updates may arrive out of order or twice, blocks that break the schema are hidden rather than deleted, and concurrent moves of one block keep a single copy.

@@ -11,7 +11,7 @@ The editor is a Rust component on [winit](https://github.com/rust-windowing/wini
 You need Rust 1.95 or newer. On Linux, a desktop with X11 or Wayland and Vulkan or OpenGL drivers.
 
 ```sh
-cargo add canvist_desktop canvist_headless --git https://github.com/canvist/canvist
+cargo add canvist canvist_desktop --git https://github.com/canvist/canvist
 ```
 
 | Feature           | Adds                                                                                    |
@@ -26,11 +26,11 @@ Without `winit`, the crate is the headless editor core, which still lays out, re
 Replace `src/main.rs` with this:
 
 ```rust no_run
+use canvist::headless::Engine;
+use canvist::headless::Format;
 use canvist_desktop::DesktopEditor;
 use canvist_desktop::EditorOptions;
 use canvist_desktop::winit::winit::window::Window;
-use canvist_headless::Engine;
-use canvist_headless::Format;
 
 fn main() -> Result<(), canvist_desktop::DesktopError> {
 	let options = EditorOptions::new().max_width(720.0).label("Notes");
@@ -54,12 +54,12 @@ Type `##` to make a heading, `-` for a list, and `[ ]` for a task. Cmd-B (Ctrl-B
 Commands come from the engine's typed handles, so commands of extensions you didn't register don't compile. Every change goes through the editor, so undo and layout follow it:
 
 ```rust
+use canvist::extensions::HeadingLevel;
+use canvist::headless::Engine;
+use canvist::headless::Format;
 use canvist_desktop::DesktopEditor;
 use canvist_desktop::EditorOptions;
 use canvist_desktop::FontSource;
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::canvist_extensions::HeadingLevel;
 
 fn main() -> Result<(), canvist_desktop::DesktopError> {
 	let options = EditorOptions::new().fonts(FontSource::Bundled);
@@ -82,13 +82,13 @@ fn main() -> Result<(), canvist_desktop::DesktopError> {
 `EditorWindow` puts the editor in any winit app. Forward the window's events to it, draw your own chrome into the same vello scene, and place the editor where you want it, such as below a toolbar:
 
 ```rust no_run
+use canvist::extensions::StarterKitHandles;
+use canvist::headless::Engine;
 use canvist_desktop::DesktopEditor;
 use canvist_desktop::EditorOptions;
 use canvist_desktop::kurbo::Rect;
 use canvist_desktop::winit::EditorWindow;
 use canvist_desktop::winit::winit;
-use canvist_headless::Engine;
-use canvist_headless::canvist_extensions::StarterKitHandles;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;

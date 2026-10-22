@@ -26,6 +26,8 @@
 
 Incremental text and block layout for [canvist](https://github.com/canvist/canvist), and the display list every painter draws from.
 
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::layout` behind the `layout` feature: `cargo add canvist --features layout`.
+
 - **Themes:** data-driven styles for blocks, marks, and embeds, keyed by schema names so extensions add their own. The default matches TipTap's StarterKit.
 - **Measurement:** a batched `TextMeasurer` trait, so one relayout costs one call to the host. Results are cached by font and word. A deterministic measurer is included for tests, and a `parley` one behind the `parley` feature.
 - **Line breaking and bidi:** UAX #14 breaks via ICU4X, UAX #9 reordering, tabs, embeds, and hard breaks, following CSS `pre-wrap` rules.

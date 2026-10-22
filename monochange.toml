@@ -117,7 +117,12 @@ Deployment, infrastructure, and implementation notes for the website and canvist
 # SDK packages
 # =============================================================================
 
-# Published crates.
+# Published crates. The `canvist` crate is the one people install: it
+# re-exports the others under modules and features. Its id names the
+# ecosystem because the Dart package is called `canvist` too.
+[package.canvist-rust]
+path = "crates/canvist"
+
 [package.canvist_model]
 path = "crates/canvist_model"
 
@@ -253,6 +258,7 @@ packages = [
 	"@canvist/vue",
 	"@canvist/web",
 	"canvist-dart",
+	"canvist-rust",
 	"canvist_canvas",
 	"canvist_canvas_wasm",
 	"canvist_collab",

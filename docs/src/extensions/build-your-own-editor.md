@@ -110,22 +110,22 @@ What else a Google Docs-style editor needs, and where it stands:
 When the catalogue doesn't have what you need, write an extension in Rust. This one inserts a signature. It adds a command, a keyboard shortcut, and a typed handle, so only engines that registered it can call it:
 
 ```rust
-use canvist_headless::Engine;
-use canvist_headless::Format;
-use canvist_headless::canvist_editor::BaseKeymap;
-use canvist_headless::canvist_editor::Binding;
-use canvist_headless::canvist_editor::Command;
-use canvist_headless::canvist_editor::CommandSpec;
-use canvist_headless::canvist_editor::EditorError;
-use canvist_headless::canvist_editor::Extension;
-use canvist_headless::canvist_editor::Platform;
-use canvist_headless::canvist_editor::Registration;
-use canvist_headless::canvist_editor::TypedExtension;
-use canvist_headless::canvist_editor::command;
-use canvist_headless::canvist_editor::commands;
-use canvist_headless::canvist_extensions::Document;
-use canvist_headless::canvist_extensions::Paragraph;
-use canvist_headless::canvist_model::Schema;
+use canvist::editor::BaseKeymap;
+use canvist::editor::Binding;
+use canvist::editor::Command;
+use canvist::editor::CommandSpec;
+use canvist::editor::EditorError;
+use canvist::editor::Extension;
+use canvist::editor::Platform;
+use canvist::editor::Registration;
+use canvist::editor::TypedExtension;
+use canvist::editor::command;
+use canvist::editor::commands;
+use canvist::extensions::Document;
+use canvist::extensions::Paragraph;
+use canvist::headless::Engine;
+use canvist::headless::Format;
+use canvist::model::Schema;
 
 /// Inserts "— Ada" at the caret, with `Mod-Alt-s`.
 struct Signature;
@@ -174,7 +174,7 @@ impl TypedExtension for Signature {
 	}
 }
 
-fn main() -> Result<(), canvist_headless::HeadlessError> {
+fn main() -> Result<(), canvist::headless::HeadlessError> {
 	let engine = Engine::new(|builder| {
 		builder.add(Document);
 		builder.add(Paragraph);

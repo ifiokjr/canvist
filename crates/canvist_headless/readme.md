@@ -26,6 +26,8 @@
 
 The [canvist](https://github.com/canvist/canvist) document model and editing engine with no UI, for servers, scripts, and tests. It is the core the TypeScript and Dart server packages wrap.
 
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::headless`: `cargo add canvist`.
+
 - **Formats:** load and export ProseMirror/TipTap JSON, HTML, Markdown, and plain text.
 - **Typed commands:** register extensions once on an `Engine` and get typed handles, so an unregistered extension's commands do not compile. Bindings and scripts use named commands and queries, whose argument types come from the extension metadata.
 - **Explicit selections:** no layout is needed. Select by model points, or by `Position`s (block path plus UTF-16 offset) that mean the same thing in Rust, TypeScript, and Dart.

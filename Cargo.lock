@@ -774,14 +774,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "canvist_book"
+name = "canvist"
 version = "0.1.0"
 dependencies = [
- "canvist_desktop",
+ "canvist_canvas",
+ "canvist_collab",
  "canvist_editor",
+ "canvist_extensions",
  "canvist_headless",
  "canvist_layout",
  "canvist_model",
+ "canvist_paint",
+ "canvist_scene",
+ "serde_json",
+]
+
+[[package]]
+name = "canvist_book"
+version = "0.1.0"
+dependencies = [
+ "canvist",
+ "canvist_desktop",
  "serde_json",
 ]
 

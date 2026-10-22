@@ -26,6 +26,8 @@
 
 The [canvist](https://github.com/canvist/canvist) StarterKit: the extensions TipTap's StarterKit ships, built on [`canvist_editor`](../canvist_editor) and named the way TipTap names them, so documents move between the two as ProseMirror JSON.
 
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::extensions`: `cargo add canvist`.
+
 - **Nodes:** paragraph, heading (levels 1 to 6), blockquote, code block, hard break, horizontal rule, bullet list, ordered list, list item, and task list.
 - **Marks:** bold, italic, underline, strike, code, and link (non-inclusive, with autolinking and linking on paste).
 - **Behaviour:** Markdown-style input rules (`##`, `-`, `1.`, `[ ]`, `>`, `` ``` ``, `---`, `**bold**`), TipTap's key bindings, undo and redo keys, and a trailing paragraph.

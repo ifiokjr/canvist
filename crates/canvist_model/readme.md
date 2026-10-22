@@ -26,6 +26,8 @@
 
 The block-based rich-text document model behind [canvist](https://github.com/canvist/canvist).
 
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::model`: `cargo add canvist`.
+
 - **Schema:** blocks, marks, and inline embeds, contributed by the extensions an app registers.
 - **Document:** blocks addressed by stable ids. Text blocks hold one string with run-length formatting.
 - **Steps:** invertible edits that map one-to-one onto Yjs operations and report how carets move.

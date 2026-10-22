@@ -25,6 +25,8 @@
 
 Rendering for [canvist](https://github.com/canvist/canvist)'s canvas. A scene walker turns one page into `Painter` calls, culled to the viewport and with level of detail. Every backend implements `Painter`:
 
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::paint` behind the `paint` feature: `cargo add canvist --features paint`.
+
 - **`gpu`:** vello on wgpu. This covers WebGPU in browsers, and Metal, Vulkan, and DX12 natively.
 - **`cpu`:** `vello_cpu`, for PNG export, server thumbnails, and the browser fallback.
 - **SVG**, with text kept as text.
