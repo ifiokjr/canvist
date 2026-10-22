@@ -78,8 +78,11 @@ jobs:
       # `deno run npm:playwright install` hangs on CI runners; npx installs
       # the same browser build into the cache the deno tests use.
       - name: install chromium
-        timeout-minutes: 10
-        run: npx --yes playwright@1.58 install --with-deps chromium
+        timeout-minutes: 20
+        uses: ./.github/actions/playwright-browsers
+        with:
+          command: npx --yes playwright@1.58
+          browsers: chromium
 
       # `shell: bash` runs with `-o pipefail`; the default shell doesn't, and
       # `tee` would report success for a failing test.
