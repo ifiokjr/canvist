@@ -40,7 +40,14 @@ editor.commands.toggleItalic();
 editor.toHtml(); // what a server would send: { html, css }
 ```
 
-Using React or Vue? See [`@canvist/react`](../canvist-react) and [`@canvist/vue`](../canvist-vue).
+Using React or Vue? See [`@canvist/react`](../canvist-react) and [`@canvist/vue`](../canvist-vue). Rendering on a server? See [`@canvist/headless/ssr`](../../docs/src/quick-start/ssr.md).
+
+## What it does
+
+- **Editing like TipTap:** typed commands and queries, `editable: false` for read-only, a `placeholder`, and menus that follow the selection from `@canvist/web/menus` (`bubbleMenu`, `floatingMenu`).
+- **Collaboration:** `@canvist/web/collab` joins a room on any y-websocket server with `connect(editor, { url, room })`, with per-person undo. Its Yjs build is a separate module, so editors that don't collaborate never download it.
+- **Server rendering:** an element holding canvist's server-rendered HTML hydrates without a layout shift.
+- **Small:** 349.6 KB gzipped for the editor and the StarterKit, with a 350 KB budget CI enforces.
 
 ## Types follow what you register
 
@@ -64,7 +71,7 @@ await editor.plugins.fonts.local(); // installed fonts, where the browser allows
 
 - **Fonts:** installed fonts and the page's web fonts work with no setup. `@canvist/web/fonts` loads faces the way `@font-face` does and adds metric-compatible fallbacks, so a font swap barely moves anything. See [Fonts and text rendering](../../docs/src/guides/fonts.md).
 - **Input:** `EditContext` in Chromium and a hidden textarea elsewhere, so input methods, dictation, and autocorrect work as they do in a text field. See [Text input on the web](../../docs/src/guides/web-input.md).
-- **Accessibility:** a visually hidden copy of the document lets screen readers read it.
+- **Accessibility:** a visually hidden copy of the document lets screen readers read it, and every change runs an axe audit and screen reader smoke tests.
 - **Latency:** every input event is painted in its own task, and `editor.inputLatency()` reports how long that took.
 
 <details>

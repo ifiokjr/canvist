@@ -2,7 +2,7 @@
 
 In this guide you add a canvist editor to a React app with `@canvist/react`, and build a toolbar that re-renders when the selection changes.
 
-**Status: preview.** `@canvist/react` wraps [`@canvist/web`](./web.md), which is a preview. Its API may still change before 1.0.
+**Status: available.** `@canvist/react` wraps [`@canvist/web`](./web.md), supports React 18.3 and 19, and is tested under Strict Mode and with server rendering (`renderToString` and `hydrateRoot`).
 
 ## 1. Install
 

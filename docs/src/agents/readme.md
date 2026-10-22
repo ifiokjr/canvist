@@ -8,16 +8,22 @@ Machine-readable versions of these docs live at [`/llms.txt`](/llms.txt) (an ind
 
 canvist hasn't had its first release, and several platforms are still coming. Don't guess package names. Use this table:
 
-| Target                                                | Install                                                                                                | Exists today? |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------- |
-| Rust                                                  | `cargo add canvist_headless --git https://github.com/canvist/canvist`                                  | Yes           |
-| Node, Deno, Bun, Workers                              | Build `packages/canvist-headless` and install the tarball ([how](../quick-start/server-typescript.md)) | Yes           |
-| Dart                                                  | Git dependency on `platforms/dart` ([how](../quick-start/server-dart.md))                              | Yes           |
-| Flutter                                               | Git dependency on `platforms/flutter`: `CanvistEditor` ([how](../quick-start/flutter.md))              | Yes           |
-| Browser editor                                        | `createEditor` from [`@canvist/web`](../quick-start/web.md)                                            | Preview       |
-| React, Vue, iOS, Android, desktop, React Native, Lynx | None                                                                                                   | No            |
+| Target                         | Install                                                                                                                  | Exists today? |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| Rust                           | `cargo add canvist_headless --git https://github.com/canvist/canvist`                                                    | Yes           |
+| Node, Deno, Bun, Workers       | Build `packages/canvist-headless` and install the tarball ([how](../quick-start/server-typescript.md))                   | Yes           |
+| Dart                           | Git dependency on `platforms/dart` ([how](../quick-start/server-dart.md))                                                | Yes           |
+| Flutter                        | Git dependency on `platforms/flutter`: `CanvistEditor` ([how](../quick-start/flutter.md))                                | Yes           |
+| Browser editor                 | Build `packages/canvist-web` and install the tarball ([how](../quick-start/web.md)): `createEditor`                      | Yes           |
+| React and Vue                  | `@canvist/react` and `@canvist/vue` over `@canvist/web` ([React](../quick-start/react.md), [Vue](../quick-start/vue.md)) | Yes           |
+| Server-side rendering          | `@canvist/headless/ssr` ([how](../quick-start/ssr.md))                                                                   | Yes           |
+| Design canvas                  | `@canvist/canvas` ([how](../quick-start/canvas.md))                                                                      | Yes           |
+| Desktop: macOS, Windows, Linux | `canvist_desktop` ([how](../quick-start/desktop.md))                                                                     | Yes           |
+| iOS                            | `Canvist` Swift package: `CanvistView` ([how](../quick-start/ios.md))                                                    | Yes           |
+| Android                        | `canvist-android`: `CanvistView` ([how](../quick-start/android.md))                                                      | Yes           |
+| React Native, Lynx             | None                                                                                                                     | No            |
 
-If the user asks for a platform marked "No", say so. Offer the closest working path, such as Flutter for mobile or `@canvist/headless` on the server, rather than inventing `@canvist/react` or `CanvistView`.
+If the user asks for a platform marked "No", say so. Offer the closest working path, such as Flutter for mobile or `@canvist/headless` on the server, rather than inventing `@canvist/react-native`.
 
 ## 2. The minimal integration, per platform
 
@@ -216,7 +222,7 @@ Give the model the document as Markdown or JSON, and the positions it needs, so 
 
 ## 6. Common pitfalls
 
-- **Inventing packages.** `@canvist/react`, `@canvist/vue`, `@canvist/core`, `CanvistView`, and `canvist_desktop` don't exist yet. Check section 1.
+- **Inventing packages.** `@canvist/core`, `@canvist/ssr`, and `@canvist/react-native` don't exist yet. Check section 1.
 - **Byte offsets.** Offsets count UTF-16 code units in every language, including Rust. An emoji is two units. Convert with `text[..byte].encode_utf16().count()` in Rust.
 - **Flat positions in nested blocks.** Text inside a list item lives at `[list, item, 0]`, not `[list]`. Selecting a container fails with `invalidPosition`.
 - **Running commands without a selection.** Commands apply to the selection. A new document's selection is at its start, which is rarely what you want.

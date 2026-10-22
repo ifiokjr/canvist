@@ -55,6 +55,7 @@ function Notes() {
 
 - `useCanvistEditor(options)` creates the editor in the element `ref` is attached to and destroys it on unmount, Strict Mode included.
 - `useEditorState(editor, select, fallback)` re-renders when `select(editor)` changes, through `useSyncExternalStore`.
-- `<CanvistEditor />` takes the editor's options as props, plus `onReady`, `onUpdate`, and `html` for server-rendered HTML to hydrate.
+- `<CanvistEditor />` takes the editor's options as props, plus `onReady`, `onUpdate`, and `html` for server-rendered HTML to hydrate. `editable` and `placeholder` follow their props.
+- `<BubbleMenu editor={editor}>` and `<FloatingMenu editor={editor}>` keep their children next to the selection.
 
 See [Quick start: React](../../docs/src/quick-start/react.md).

@@ -2,7 +2,7 @@
 
 In this guide you add a canvist editor to a Vue app with `@canvist/vue`, and build a toolbar that follows the selection.
 
-**Status: preview.** `@canvist/vue` wraps [`@canvist/web`](./web.md), which is a preview. Its API may still change before 1.0.
+**Status: available.** `@canvist/vue` wraps [`@canvist/web`](./web.md), supports Vue 3.5, and hydrates server-rendered HTML through its `html` prop.
 
 ## 1. Install
 

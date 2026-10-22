@@ -2,8 +2,6 @@
 
 In this guide you choose the fonts a canvist editor uses on the web, load web fonts without layout jank, and render the same fonts on your server, so server-rendered HTML and the editor that replaces it look identical.
 
-**Status: preview.** `@canvist/web`, the browser editor, is new. Its API may still change before 1.0.
-
 ## Fonts work the way they do in CSS
 
 The editor paints the document on a canvas, but it uses fonts exactly as a web page does:

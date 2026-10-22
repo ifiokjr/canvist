@@ -13,9 +13,10 @@ Every platform runs the same Rust core, so documents, extensions, and commands b
 | Server: Dart                     | `canvist`                                                   | Available   | [Dart](./server-dart.md)                   |
 | Server-side rendering            | `@canvist/headless/ssr`, `canvist_headless` (`ssr` feature) | Available   | [SSR](./ssr.md)                            |
 | Flutter                          | `canvist_flutter`                                           | Available   | [Flutter](./flutter.md)                    |
-| Web                              | `@canvist/web`                                              | Preview     | [Web](./web.md)                            |
-| React                            | `@canvist/react`                                            | Preview     | [React](./react.md)                        |
-| Vue                              | `@canvist/vue`                                              | Preview     | [Vue](./vue.md)                            |
+| Web                              | `@canvist/web`                                              | Available   | [Web](./web.md)                            |
+| React                            | `@canvist/react`                                            | Available   | [React](./react.md)                        |
+| Vue                              | `@canvist/vue`                                              | Available   | [Vue](./vue.md)                            |
+| Design canvas                    | `@canvist/canvas`                                           | Available   | [Design canvas](./canvas.md)               |
 | iOS                              | `Canvist` Swift package                                     | Available   | [iOS](./ios.md)                            |
 | Android                          | `canvist-android`                                           | Available   | [Android](./android.md)                    |
 | macOS, Windows, Linux            | `canvist_desktop`                                           | Available   | [Desktop](./desktop.md)                    |
@@ -30,5 +31,6 @@ Every platform runs the same Rust core, so documents, extensions, and commands b
 - **You're building an Android app:** use [`canvist-android`](./android.md). `CanvistView` is a native editor for Views and Jetpack Compose.
 - **You're building a desktop app in Rust:** use [`canvist_desktop`](./desktop.md), a native editor component for any winit app.
 - **You're building a Flutter app:** use `canvist_flutter`: `CanvistEditor` is the editor, and the same engine runs on your Dart server.
-- **You want an editor in a web page:** use [`@canvist/web`](./web.md), or its [React](./react.md) and [Vue](./vue.md) bindings. Do server work with `@canvist/headless`.
+- **You want an editor in a web page:** use [`@canvist/web`](./web.md), or its [React](./react.md) and [Vue](./vue.md) bindings. Render it on your server with [`@canvist/headless/ssr`](./ssr.md), and do other server work with `@canvist/headless`.
+- **You want a design canvas, like Figma's:** use [`@canvist/canvas`](./canvas.md).
 - **You're an AI coding agent:** read [Integrate canvist with an agent](../agents/readme.md) first.
