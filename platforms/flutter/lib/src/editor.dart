@@ -173,6 +173,11 @@ class _CanvistEditorState extends State<CanvistEditor>
   /// word at the caret for suggestions.
   var _platformMarked = false;
 
+  /// The selection the platform had before the editor last sent it another.
+  /// An input method update that returns to it without editing was made
+  /// before the platform heard the editor, so it is stale.
+  TextSelection? _superseded;
+
   ViewOptions? _options;
   Timer? _blink;
   var _caretOn = true;
@@ -379,6 +384,7 @@ class _CanvistEditorState extends State<CanvistEditor>
     );
     _platformValue = _input.value;
     _platformMarked = false;
+    _superseded = null;
     _connection!
       ..setEditingState(_platformValue)
       ..show();
@@ -404,6 +410,9 @@ class _CanvistEditorState extends State<CanvistEditor>
         value.selection == _platformValue.selection;
 
     if (value != _platformValue && !marked) {
+      _superseded = value.selection == _platformValue.selection
+          ? null
+          : _platformValue.selection;
       _platformValue = value;
       _platformMarked = false;
       _connection?.setEditingState(value);
@@ -411,6 +420,12 @@ class _CanvistEditorState extends State<CanvistEditor>
 
     _updateInputGeometry();
   }
+
+  /// Whether [value], from the platform, only returns to the selection the
+  /// editor has since replaced: the input method made it before the
+  /// platform heard the editor, which will overwrite it.
+  bool _stale(TextEditingValue value) =>
+      value.text == _platformValue.text && value.selection == _superseded;
 
   /// Whether the platform's composing range, after its latest edit, marks
   /// text the editor isn't composing.
@@ -459,7 +474,13 @@ class _CanvistEditorState extends State<CanvistEditor>
       _platformValue,
       (value, delta) => delta.apply(value),
     );
+
+    if (_stale(expected)) {
+      return;
+    }
+
     _platformValue = expected;
+    _superseded = null;
 
     if (widget.readOnly) {
       return;
@@ -473,7 +494,13 @@ class _CanvistEditorState extends State<CanvistEditor>
   @override
   void updateEditingValue(TextEditingValue value) {
     final previous = _platformValue;
+
+    if (_stale(value)) {
+      return;
+    }
+
     _platformValue = value;
+    _superseded = null;
 
     if (widget.readOnly || value == previous) {
       return;

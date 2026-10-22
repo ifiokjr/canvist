@@ -83,6 +83,11 @@ void main() {
     'typing on an Android keyboard never restarts its input',
     _typesWithoutRestartingInput,
   );
+
+  testWidgets(
+    'a keyboard update from before the editor moved the selection is stale',
+    _ignoresStaleSelection,
+  );
   testWidgets(
     'keys run bindings: formatting, history, and navigation',
     _runsKeyBindings,
@@ -300,6 +305,31 @@ Future<void> _typesWithoutRestartingInput(WidgetTester tester) async {
     0,
     reason: 'the editor leaves the words the keyboard marks alone',
   );
+}
+
+Future<void> _ignoresStaleSelection(WidgetTester tester) async {
+  final controller = await _focused(tester, 'Make me a heading');
+  controller.selectAll();
+  await tester.pump();
+
+  // The keyboard's first session, at the caret the editor opened with,
+  // finishes after the editor selected everything: the platform hears it
+  // before the editor's new state.
+  await sendDeltas(tester, [
+    TextEditingDeltaNonTextUpdate(
+      oldText: '\nMake me a heading',
+      selection: const TextSelection.collapsed(offset: 1),
+      composing: TextRange.empty,
+    ),
+    TextEditingDeltaNonTextUpdate(
+      oldText: '\nMake me a heading',
+      selection: const TextSelection.collapsed(offset: 1),
+      composing: const TextRange(start: 1, end: 5),
+    ),
+  ]);
+  controller.run(starterKit.kit.italic.toggleItalic());
+
+  expect(controller.export(Format.markdown), '*Make me a heading*');
 }
 
 /// A keyboard that behaves as Android's do. Each state the editor sends
