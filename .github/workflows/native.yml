@@ -48,8 +48,8 @@ jobs:
         with:
           key: native-apple
 
-      - name: install xcodegen
-        run: brew install xcodegen
+      - name: install xcodegen and swiftlint
+        run: brew install xcodegen swiftlint
 
       - name: setup flutter
         uses: kuhnroyal/flutter-fvm-config-action/setup@v3
@@ -61,6 +61,9 @@ jobs:
         run: |
           dart pub global activate patrol_cli 4.8.0
           echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: lint swift
+        run: swiftlint lint --strict
 
       # Per-step timeouts make a hung simulator or emulator fail fast with logs
       # instead of running into the job timeout.

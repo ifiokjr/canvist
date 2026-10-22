@@ -15,7 +15,9 @@ import android.text.TextPaint
  * [CanvistView] makes one per editor. Hosts that drive an [Editor] without the
  * view (tests, React Native, Lynx) can give it one too.
  */
-class PaintMeasurer(density: Float) : PlatformMeasurer {
+class PaintMeasurer(
+    density: Float,
+) : PlatformMeasurer {
     internal val fonts = FontTable(density)
 
     override fun measure(request: MeasureRequest): MeasureResponse {
@@ -34,7 +36,10 @@ class PaintMeasurer(density: Float) : PlatformMeasurer {
 
     internal companion object {
         /** The extent of [paint]'s font around the baseline, in dp. */
-        fun metrics(paint: TextPaint?, density: Float): VerticalMetrics {
+        fun metrics(
+            paint: TextPaint?,
+            density: Float,
+        ): VerticalMetrics {
             val font = paint?.fontMetrics ?: return VerticalMetrics(0f, 0f)
 
             return VerticalMetrics(-font.ascent / density, font.descent / density)
@@ -45,17 +50,30 @@ class PaintMeasurer(density: Float) : PlatformMeasurer {
          * what `Paint` advances the pen by for it, shaped in context, so the
          * advances always add up to the run's width.
          */
-        fun advances(text: String, paint: TextPaint?, density: Float, out: MutableList<Float>) {
+        fun advances(
+            text: String,
+            paint: TextPaint?,
+            density: Float,
+            out: MutableList<Float>,
+        ) {
             val units = FloatArray(text.length)
             paint?.getTextRunAdvances(
-                /* chars = */ text.toCharArray(),
-                /* index = */ 0,
-                /* count = */ text.length,
-                /* contextIndex = */ 0,
-                /* contextCount = */ text.length,
-                /* isRtl = */ isRtl(text),
-                /* advances = */ units,
-                /* advancesIndex = */ 0,
+                // chars =
+                text.toCharArray(),
+                // index =
+                0,
+                // count =
+                text.length,
+                // contextIndex =
+                0,
+                // contextCount =
+                text.length,
+                // isRtl =
+                isRtl(text),
+                // advances =
+                units,
+                // advancesIndex =
+                0,
             )
 
             var index = 0
@@ -68,7 +86,10 @@ class PaintMeasurer(density: Float) : PlatformMeasurer {
         }
 
         /** The sum of [from] until [to]: a scalar's advance over its UTF-16 units. */
-        private fun FloatArray.sum(from: Int, to: Int): Float {
+        private fun FloatArray.sum(
+            from: Int,
+            to: Int,
+        ): Float {
             var total = 0f
 
             for (index in from until to) total += this[index]
@@ -78,19 +99,22 @@ class PaintMeasurer(density: Float) : PlatformMeasurer {
 
         /** Whether [text]'s first strong character is right to left. */
         private fun isRtl(text: String): Boolean {
-            val strong = text.codePoints()
-                .map { Character.getDirectionality(it).toInt() }
-                .filter { it in STRONG }
-                .findFirst()
+            val strong =
+                text
+                    .codePoints()
+                    .map { Character.getDirectionality(it).toInt() }
+                    .filter { it in STRONG }
+                    .findFirst()
 
             return strong.isPresent && strong.asInt != Character.DIRECTIONALITY_LEFT_TO_RIGHT.toInt()
         }
 
-        private val STRONG = setOf(
-            Character.DIRECTIONALITY_LEFT_TO_RIGHT.toInt(),
-            Character.DIRECTIONALITY_RIGHT_TO_LEFT.toInt(),
-            Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC.toInt(),
-        )
+        private val STRONG =
+            setOf(
+                Character.DIRECTIONALITY_LEFT_TO_RIGHT.toInt(),
+                Character.DIRECTIONALITY_RIGHT_TO_LEFT.toInt(),
+                Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC.toInt(),
+            )
     }
 }
 
@@ -99,7 +123,9 @@ class PaintMeasurer(density: Float) : PlatformMeasurer {
  * from their CSS family lists. The measurer fills it and the painter reads it,
  * so text is drawn in exactly the font it was measured in.
  */
-internal class FontTable(density: Float) {
+internal class FontTable(
+    density: Float,
+) {
     private val faces = HashMap<UInt, FontFace>()
     private val paints = HashMap<UInt, TextPaint>()
 
@@ -125,13 +151,14 @@ internal class FontTable(density: Float) {
         for ((id, face) in faces) paints[id]?.textSize = face.size * density
     }
 
-    private fun paint(face: FontFace) = TextPaint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
-        typeface = typeface(face)
-        // Not `density` alone: inside `apply` that is `TextPaint.density`.
-        textSize = face.size * this@FontTable.density
+    private fun paint(face: FontFace) =
+        TextPaint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
+            typeface = typeface(face)
+            // Not `density` alone: inside `apply` that is `TextPaint.density`.
+            textSize = face.size * this@FontTable.density
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) hinting = Paint.HINTING_OFF
-    }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) hinting = Paint.HINTING_OFF
+        }
 
     private companion object {
         /** The CSS weight from which faces before Android 9 use the bold style. */
@@ -148,19 +175,24 @@ internal class FontTable(density: Float) {
         }
 
         /** The typeface style before Android 9 had weights. */
-        fun style(bold: Boolean, italic: Boolean): Int = when {
-            bold && italic -> Typeface.BOLD_ITALIC
-            bold -> Typeface.BOLD
-            italic -> Typeface.ITALIC
-            else -> Typeface.NORMAL
-        }
+        fun style(
+            bold: Boolean,
+            italic: Boolean,
+        ): Int =
+            when {
+                bold && italic -> Typeface.BOLD_ITALIC
+                bold -> Typeface.BOLD
+                italic -> Typeface.ITALIC
+                else -> Typeface.NORMAL
+            }
 
         /** [name] as a typeface, mapping CSS generic families to Android's. */
-        fun family(name: String): Typeface? = when (name.lowercase()) {
-            "system-ui", "ui-sans-serif", "sans-serif", "-apple-system", "blinkmacsystemfont" -> Typeface.SANS_SERIF
-            "ui-monospace", "monospace" -> Typeface.MONOSPACE
-            "ui-serif", "serif" -> Typeface.SERIF
-            else -> Typeface.create(name, Typeface.NORMAL).takeUnless { it == Typeface.DEFAULT }
-        }
+        fun family(name: String): Typeface? =
+            when (name.lowercase()) {
+                "system-ui", "ui-sans-serif", "sans-serif", "-apple-system", "blinkmacsystemfont" -> Typeface.SANS_SERIF
+                "ui-monospace", "monospace" -> Typeface.MONOSPACE
+                "ui-serif", "serif" -> Typeface.SERIF
+                else -> Typeface.create(name, Typeface.NORMAL).takeUnless { it == Typeface.DEFAULT }
+            }
     }
 }

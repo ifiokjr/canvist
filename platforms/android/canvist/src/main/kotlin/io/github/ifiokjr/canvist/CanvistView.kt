@@ -89,14 +89,15 @@ open class CanvistView(
     private val inputMethods = context.getSystemService(InputMethodManager::class.java)
 
     private val blink = Handler(Looper.getMainLooper())
-    private val blinkCaret = object : Runnable {
-        override fun run() {
-            caretOn = !caretOn
-            editor.setCaretVisible(caretOn)
-            invalidate()
-            blink.postDelayed(this, BLINK_MILLIS)
+    private val blinkCaret =
+        object : Runnable {
+            override fun run() {
+                caretOn = !caretOn
+                editor.setCaretVisible(caretOn)
+                invalidate()
+                blink.postDelayed(this, BLINK_MILLIS)
+            }
         }
-    }
     private var caretOn = true
     private var observer: ULong? = null
     private var theme: ThemeOptions? = null
@@ -153,10 +154,11 @@ open class CanvistView(
     /** Follow the system's dark theme and font scale. */
     private fun applyTheme() {
         val night = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        val theme = defaultThemeOptions().copy(
-            dark = night == Configuration.UI_MODE_NIGHT_YES,
-            fontSize = baseFontSize * resources.configuration.fontScale,
-        )
+        val theme =
+            defaultThemeOptions().copy(
+                dark = night == Configuration.UI_MODE_NIGHT_YES,
+                fontSize = baseFontSize * resources.configuration.fontScale,
+            )
 
         if (theme == this.theme) return
 
@@ -203,7 +205,10 @@ open class CanvistView(
     // Scrolling
     private val maxScroll get() = max(contentHeight - height, 0)
 
-    override fun scrollTo(x: Int, y: Int) {
+    override fun scrollTo(
+        x: Int,
+        y: Int,
+    ) {
         super.scrollTo(0, y.coerceIn(0, maxScroll))
     }
 
@@ -222,14 +227,22 @@ open class CanvistView(
 
     internal fun fling(velocityY: Float) {
         scroller.fling(
-            /* startX = */ 0,
-            /* startY = */ scrollY,
-            /* velocityX = */ 0,
-            /* velocityY = */ -velocityY.roundToInt(),
-            /* minX = */ 0,
-            /* maxX = */ 0,
-            /* minY = */ 0,
-            /* maxY = */ maxScroll,
+            // startX =
+            0,
+            // startY =
+            scrollY,
+            // velocityX =
+            0,
+            // velocityY =
+            -velocityY.roundToInt(),
+            // minX =
+            0,
+            // maxX =
+            0,
+            // minY =
+            0,
+            // maxY =
+            maxScroll,
         )
         postInvalidateOnAnimation()
     }
@@ -251,6 +264,7 @@ open class CanvistView(
     }
 
     // Coordinates
+
     /** A document rectangle (dp) in content pixels, before scrolling. */
     internal fun contentRect(bounds: Bounds): Rect {
         val rect = RectF()
@@ -266,6 +280,7 @@ open class CanvistView(
     internal fun documentY(y: Float) = (y + scrollY - paddingTop) / density
 
     // Changes
+
     /** The editor changed: repaint, and tell the input method and TalkBack. */
     internal fun editorChanged(change: EditorChange) {
         if (!input.inBatch) reportToInputMethod()
@@ -292,7 +307,10 @@ open class CanvistView(
     }
 
     /** Run [body], counted as a call from the input method, logging why it failed. */
-    internal fun <T> fromInput(name: String, body: () -> T): T? {
+    internal fun <T> fromInput(
+        name: String,
+        body: () -> T,
+    ): T? {
         input.calls += 1
 
         try {
@@ -306,12 +324,16 @@ open class CanvistView(
      * Run [body], logging why it failed. Input method and drawing calls cannot
      * throw, and a failed edit must not stop the next keystroke.
      */
-    internal fun <T> attempt(name: String, body: () -> T): T? = try {
-        body()
-    } catch (error: CanvistException) {
-        Log.e(TAG, "$name failed", error)
-        null
-    }
+    internal fun <T> attempt(
+        name: String,
+        body: () -> T,
+    ): T? =
+        try {
+            body()
+        } catch (error: CanvistException) {
+            Log.e(TAG, "$name failed", error)
+            null
+        }
 
     // Focus and the caret
     override fun onCheckIsTextEditor() = true
@@ -322,7 +344,11 @@ open class CanvistView(
             input.connection = connection
         }
 
-    override fun onFocusChanged(gainFocus: Boolean, direction: Int, previouslyFocusedRect: Rect?) {
+    override fun onFocusChanged(
+        gainFocus: Boolean,
+        direction: Int,
+        previouslyFocusedRect: Rect?,
+    ) {
         super.onFocusChanged(gainFocus, direction, previouslyFocusedRect)
         editor.setFocused(gainFocus)
 
@@ -354,12 +380,12 @@ open class CanvistView(
     }
 
     // Touch and keys
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        return selection.onTouchEvent(event) || super.onTouchEvent(event)
-    }
+    override fun onTouchEvent(event: MotionEvent): Boolean = selection.onTouchEvent(event) || super.onTouchEvent(event)
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
-        onKey(event) || super.onKeyDown(keyCode, event)
+    override fun onKeyDown(
+        keyCode: Int,
+        event: KeyEvent,
+    ): Boolean = onKey(event) || super.onKeyDown(keyCode, event)
 
     /** Run the editor's binding for [event], a clipboard shortcut, or type its character. */
     private fun onKey(event: KeyEvent): Boolean {
@@ -455,12 +481,13 @@ open class CanvistView(
          * Options for an editor this view drives: [extensions], Control as `Mod`
          * in key bindings, and the caret and selection in the display list.
          */
-        fun editorOptions(extensions: ExtensionSet): EditorOptions = defaultEditorOptions().copy(
-            extensions = extensions.names,
-            platform = KeyPlatform.OTHER,
-            drawsSelection = true,
-            overscan = OVERSCAN,
-        )
+        fun editorOptions(extensions: ExtensionSet): EditorOptions =
+            defaultEditorOptions().copy(
+                extensions = extensions.names,
+                platform = KeyPlatform.OTHER,
+                drawsSelection = true,
+                overscan = OVERSCAN,
+            )
     }
 }
 
@@ -481,7 +508,9 @@ internal class InputState {
  * Forwards the editor's change notifications to the view on the main thread.
  * It holds the view weakly, because the editor holds it strongly.
  */
-private class ChangeRelay(view: CanvistView) : EditorObserver {
+private class ChangeRelay(
+    view: CanvistView,
+) : EditorObserver {
     private val view = WeakReference(view)
     private val main = Handler(Looper.getMainLooper())
 

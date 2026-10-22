@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -33,7 +34,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -93,7 +93,10 @@ fun SampleApp(markdown: String) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditorScreen(model: EditorModel, padding: PaddingValues) {
+fun EditorScreen(
+    model: EditorModel,
+    padding: PaddingValues,
+) {
     Column(Modifier.fillMaxSize().padding(padding)) {
         TopAppBar(
             title = { Text("Canvist") },
@@ -122,13 +125,14 @@ fun FormatBar(model: EditorModel) {
             val weight = if (format == Format.BOLD) FontWeight.Bold else FontWeight.Normal
             TextButton(
                 onClick = { model.toggle(format) },
-                modifier = Modifier
-                    .size(width = 44.dp, height = 40.dp)
-                    .background(highlight, RoundedCornerShape(8.dp))
-                    .semantics {
-                        contentDescription = format.title
-                        selected = active
-                    },
+                modifier =
+                    Modifier
+                        .size(width = 44.dp, height = 40.dp)
+                        .background(highlight, RoundedCornerShape(8.dp))
+                        .semantics {
+                            contentDescription = format.title
+                            selected = active
+                        },
                 contentPadding = PaddingValues(0.dp),
             ) {
                 Text(format.label, fontWeight = weight)
@@ -139,7 +143,10 @@ fun FormatBar(model: EditorModel) {
 
 /** Two editors joined over Yjs. */
 @Composable
-fun CollaborationScreen(model: CollaborationModel, padding: PaddingValues) {
+fun CollaborationScreen(
+    model: CollaborationModel,
+    padding: PaddingValues,
+) {
     Column(Modifier.fillMaxSize().padding(padding)) {
         Peer(model.alice, Modifier.weight(1f))
         HorizontalDivider()
@@ -148,7 +155,10 @@ fun CollaborationScreen(model: CollaborationModel, padding: PaddingValues) {
 }
 
 @Composable
-private fun Peer(model: EditorModel, modifier: Modifier) {
+private fun Peer(
+    model: EditorModel,
+    modifier: Modifier,
+) {
     Column(modifier) {
         Text(
             model.label,
@@ -162,7 +172,8 @@ private fun Peer(model: EditorModel, modifier: Modifier) {
 /** The bottom bar's tabs: a title and an icon. */
 private val TABS = listOf("Editor" to "✎", "Collaborate" to "⇄")
 
-private val WELCOME = """
+private val WELCOME =
+    """
     # Welcome to canvist
 
     This text is laid out by **Rust** and painted on an Android *Canvas*. Select it, format it, and undo it like any other text.
@@ -171,4 +182,4 @@ private val WELCOME = """
     - [ ] Try `##` and a space for a heading
 
     > Every change is a step that collaborators merge.
-""".trimIndent()
+    """.trimIndent()

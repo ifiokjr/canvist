@@ -1,0 +1,15 @@
+# ktlint reads its code style from here (dprint owns the other extensions'
+# formatting). `ktlint_official` is the canonical style the formatter enforces.
+root = true
+
+[*.{kt,kts}]
+ktlint_code_style = ktlint_official
+
+# Generated and vendored trees are never linted or formatted: `build.sh`
+# writes the UniFFI bindings to canvist_ffi.kt and the sample app's build
+# output lands under build/.
+ktlint_excludes = **/build/**,**/.gradle/**,**/node_modules/**,**/canvist_ffi.kt
+
+# Jetpack Compose functions are PascalCase by convention.
+[platforms/android/sample/**.{kt,kts}]
+ktlint_standard_function-naming = disabled

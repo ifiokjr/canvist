@@ -11,13 +11,31 @@ import android.widget.FrameLayout
  * the host's id, and reporting what changed through [listener], which the
  * host turns into events.
  */
-class CanvistHostView(context: Context) : FrameLayout(context) {
+class CanvistHostView(
+    context: Context,
+) : FrameLayout(context) {
     /** What the host reports, which the view manager turns into events. */
     interface Listener {
-        fun onReady(view: CanvistHostView, editorId: String)
-        fun onChange(view: CanvistHostView, change: EditorChange)
-        fun onFocusChange(view: CanvistHostView, focused: Boolean)
-        fun onError(view: CanvistHostView, code: String, message: String)
+        fun onReady(
+            view: CanvistHostView,
+            editorId: String,
+        )
+
+        fun onChange(
+            view: CanvistHostView,
+            change: EditorChange,
+        )
+
+        fun onFocusChange(
+            view: CanvistHostView,
+            focused: Boolean,
+        )
+
+        fun onError(
+            view: CanvistHostView,
+            code: String,
+            message: String,
+        )
     }
 
     var listener: Listener? = null
@@ -38,15 +56,21 @@ class CanvistHostView(context: Context) : FrameLayout(context) {
      * [format] (when both are given). Later calls do nothing: a view's editor
      * is fixed once created.
      */
-    fun start(editorId: String, extensions: List<String>, format: String?, content: String?) {
+    fun start(
+        editorId: String,
+        extensions: List<String>,
+        format: String?,
+        content: String?,
+    ) {
         if (editorView != null) return
 
-        val view = try {
-            CanvistView(context, ExtensionSet(extensions))
-        } catch (error: Exception) {
-            report(error)
-            return
-        }
+        val view =
+            try {
+                CanvistView(context, ExtensionSet(extensions))
+            } catch (error: Exception) {
+                report(error)
+                return
+            }
 
         view.contentDescription = label
         view.onChange = { change -> listener?.onChange(this, change) }
@@ -96,7 +120,13 @@ class CanvistHostView(context: Context) : FrameLayout(context) {
         editorView?.contentDescription = contentDescription
     }
 
-    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+    override fun onLayout(
+        changed: Boolean,
+        left: Int,
+        top: Int,
+        right: Int,
+        bottom: Int,
+    ) {
         editorView?.let(::layOut)
     }
 

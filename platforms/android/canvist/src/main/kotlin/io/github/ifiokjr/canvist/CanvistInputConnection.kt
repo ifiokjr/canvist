@@ -27,7 +27,9 @@ import android.view.inputmethod.SurroundingText
  * change goes through the editor, so key bindings, input rules, and undo
  * apply as they do for typing.
  */
-internal class CanvistInputConnection(private val view: CanvistView) : BaseInputConnection(view, false) {
+internal class CanvistInputConnection(
+    private val view: CanvistView,
+) : BaseInputConnection(view, false) {
     private val editor get() = view.editor
 
     /** What the input method asked for with [requestCursorUpdates]. */
@@ -60,19 +62,28 @@ internal class CanvistInputConnection(private val view: CanvistView) : BaseInput
         return OffsetRange(minOf(selection.anchor, selection.head), maxOf(selection.anchor, selection.head))
     }
 
-    private fun text(start: Int, end: Int): String {
+    private fun text(
+        start: Int,
+        end: Int,
+    ): String {
         val length = editor.textLength().toInt()
 
         return editor.textIn(OffsetRange(start.coerceIn(0, length).toUInt(), end.coerceIn(0, length).toUInt()))
     }
 
-    override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence {
+    override fun getTextBeforeCursor(
+        n: Int,
+        flags: Int,
+    ): CharSequence {
         val start = selectionRange().start.toInt()
 
         return text(start - n, start)
     }
 
-    override fun getTextAfterCursor(n: Int, flags: Int): CharSequence {
+    override fun getTextAfterCursor(
+        n: Int,
+        flags: Int,
+    ): CharSequence {
         val end = selectionRange().end.toInt()
 
         return text(end, end + n)
@@ -84,10 +95,16 @@ internal class CanvistInputConnection(private val view: CanvistView) : BaseInput
         return if (range.start == range.end) null else editor.textIn(range)
     }
 
-    override fun getSurroundingText(beforeLength: Int, afterLength: Int, flags: Int): SurroundingText? =
-        surrounding(beforeLength, afterLength)
+    override fun getSurroundingText(
+        beforeLength: Int,
+        afterLength: Int,
+        flags: Int,
+    ): SurroundingText? = surrounding(beforeLength, afterLength)
 
-    private fun surrounding(before: Int, after: Int): SurroundingText? {
+    private fun surrounding(
+        before: Int,
+        after: Int,
+    ): SurroundingText? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
 
         val range = selectionRange()
@@ -103,7 +120,10 @@ internal class CanvistInputConnection(private val view: CanvistView) : BaseInput
         return TextUtils.getCapsMode(before, before.length, reqModes)
     }
 
-    override fun getExtractedText(request: ExtractedTextRequest?, flags: Int): ExtractedText {
+    override fun getExtractedText(
+        request: ExtractedTextRequest?,
+        flags: Int,
+    ): ExtractedText {
         val range = selectionRange()
 
         return ExtractedText().apply {
@@ -117,54 +137,75 @@ internal class CanvistInputConnection(private val view: CanvistView) : BaseInput
     }
 
     // Composing
-    override fun setComposingText(text: CharSequence, newCursorPosition: Int): Boolean = edit("setComposingText") {
-        val caret = cursorWithin(text.length, newCursorPosition).toUInt()
-        editor.setMarkedText(text.toString(), OffsetRange(caret, caret))
-    }
+    override fun setComposingText(
+        text: CharSequence,
+        newCursorPosition: Int,
+    ): Boolean =
+        edit("setComposingText") {
+            val caret = cursorWithin(text.length, newCursorPosition).toUInt()
+            editor.setMarkedText(text.toString(), OffsetRange(caret, caret))
+        }
 
-    override fun setComposingRegion(start: Int, end: Int): Boolean = edit("setComposingRegion") {
-        editor.setComposingRegion(OffsetRange(minOf(start, end).toUInt(), maxOf(start, end).toUInt()))
-    }
+    override fun setComposingRegion(
+        start: Int,
+        end: Int,
+    ): Boolean =
+        edit("setComposingRegion") {
+            editor.setComposingRegion(OffsetRange(minOf(start, end).toUInt(), maxOf(start, end).toUInt()))
+        }
 
     override fun finishComposingText(): Boolean = edit("finishComposingText") { editor.unmarkText() }
 
-    override fun commitText(text: CharSequence, newCursorPosition: Int): Boolean = edit("commitText") {
-        editor.insertText(text.toString())
+    override fun commitText(
+        text: CharSequence,
+        newCursorPosition: Int,
+    ): Boolean =
+        edit("commitText") {
+            editor.insertText(text.toString())
 
-        if (newCursorPosition != 1) {
-            val end = editor.selection().head.toInt()
-            val caret = (end - text.length + cursorWithin(text.length, newCursorPosition)).coerceAtLeast(0).toUInt()
-            editor.select(caret, caret)
+            if (newCursorPosition != 1) {
+                val end = editor.selection().head.toInt()
+                val caret = (end - text.length + cursorWithin(text.length, newCursorPosition)).coerceAtLeast(0).toUInt()
+                editor.select(caret, caret)
+            }
         }
-    }
 
     /** Where [newCursorPosition] puts the caret, relative to the start of text [length] long. */
-    private fun cursorWithin(length: Int, newCursorPosition: Int) =
-        if (newCursorPosition > 0) length + newCursorPosition - 1 else newCursorPosition
+    private fun cursorWithin(
+        length: Int,
+        newCursorPosition: Int,
+    ) = if (newCursorPosition > 0) length + newCursorPosition - 1 else newCursorPosition
 
     override fun commitCompletion(text: CompletionInfo?): Boolean = commitText(text?.text ?: "", 1)
 
     override fun commitCorrection(correctionInfo: CorrectionInfo?): Boolean = true
 
     // Deleting
-    override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean = edit("deleteSurroundingText") {
-        val range = selectionRange()
-        val backspace = beforeLength == 1 && afterLength == 0 && range.start == range.end
+    override fun deleteSurroundingText(
+        beforeLength: Int,
+        afterLength: Int,
+    ): Boolean =
+        edit("deleteSurroundingText") {
+            val range = selectionRange()
+            val backspace = beforeLength == 1 && afterLength == 0 && range.start == range.end
 
-        if (backspace && editor.markedRange() == null) {
-            // Backspace: at the start of a list item it lifts the item.
-            editor.deleteBackward()
+            if (backspace && editor.markedRange() == null) {
+                // Backspace: at the start of a list item it lifts the item.
+                editor.deleteBackward()
 
-            return@edit
+                return@edit
+            }
+
+            val end = range.end.toInt()
+            val start = range.start.toInt()
+            editor.replace(OffsetRange(end.toUInt(), (end + afterLength).toUInt()), "")
+            editor.replace(OffsetRange(maxOf(start - beforeLength, 0).toUInt(), start.toUInt()), "")
         }
 
-        val end = range.end.toInt()
-        val start = range.start.toInt()
-        editor.replace(OffsetRange(end.toUInt(), (end + afterLength).toUInt()), "")
-        editor.replace(OffsetRange(maxOf(start - beforeLength, 0).toUInt(), start.toUInt()), "")
-    }
-
-    override fun deleteSurroundingTextInCodePoints(beforeLength: Int, afterLength: Int): Boolean {
+    override fun deleteSurroundingTextInCodePoints(
+        beforeLength: Int,
+        afterLength: Int,
+    ): Boolean {
         val before = getTextBeforeCursor(beforeLength * 2, 0).toString()
         val after = getTextAfterCursor(afterLength * 2, 0).toString()
         val beforeUnits = before.length - before.offsetByCodePoints(before.length, -codePoints(before, beforeLength))
@@ -174,18 +215,26 @@ internal class CanvistInputConnection(private val view: CanvistView) : BaseInput
     }
 
     /** [count] code points, or as many as [text] has. */
-    private fun codePoints(text: String, count: Int) = minOf(count, text.codePointCount(0, text.length))
+    private fun codePoints(
+        text: String,
+        count: Int,
+    ) = minOf(count, text.codePointCount(0, text.length))
 
     // Selection and actions
-    override fun setSelection(start: Int, end: Int): Boolean = edit("setSelection") {
-        editor.select(start.toUInt(), end.toUInt())
-    }
+    override fun setSelection(
+        start: Int,
+        end: Int,
+    ): Boolean =
+        edit("setSelection") {
+            editor.select(start.toUInt(), end.toUInt())
+        }
 
     override fun sendKeyEvent(event: KeyEvent): Boolean = view.dispatchKeyEvent(event)
 
-    override fun performEditorAction(editorAction: Int): Boolean = edit("performEditorAction") {
-        editor.press("Enter", Modifiers(shift = false, ctrl = false, alt = false, meta = false))
-    }
+    override fun performEditorAction(editorAction: Int): Boolean =
+        edit("performEditorAction") {
+            editor.press("Enter", Modifiers(shift = false, ctrl = false, alt = false, meta = false))
+        }
 
     override fun performContextMenuAction(id: Int): Boolean {
         when (id) {
@@ -215,7 +264,10 @@ internal class CanvistInputConnection(private val view: CanvistView) : BaseInput
 
     override fun clearMetaKeyStates(states: Int): Boolean = false
 
-    override fun performPrivateCommand(action: String?, data: Bundle?): Boolean = false
+    override fun performPrivateCommand(
+        action: String?,
+        data: Bundle?,
+    ): Boolean = false
 
     override fun closeConnection() {
         view.fromInput("closeConnection") { editor.unmarkText() }
@@ -238,9 +290,11 @@ internal class CanvistInputConnection(private val view: CanvistView) : BaseInput
         if (cursorUpdates == 0) return
 
         val selection = selectionRange()
-        val builder = CursorAnchorInfo.Builder()
-            .setSelectionRange(selection.start.toInt(), selection.end.toInt())
-            .setMatrix(screenMatrix())
+        val builder =
+            CursorAnchorInfo
+                .Builder()
+                .setSelectionRange(selection.start.toInt(), selection.end.toInt())
+                .setMatrix(screenMatrix())
         editor.caretRect(editor.selection().head)?.let { caret ->
             val rect = view.contentRect(caret)
             val top = (rect.top - view.scrollY).toFloat()
@@ -263,7 +317,10 @@ internal class CanvistInputConnection(private val view: CanvistView) : BaseInput
     }
 
     /** Run [body] as one edit from the input method. */
-    private fun edit(name: String, body: () -> Unit): Boolean {
+    private fun edit(
+        name: String,
+        body: () -> Unit,
+    ): Boolean {
         beginBatchEdit()
         val done = view.fromInput(name, body) != null
         endBatchEdit()
