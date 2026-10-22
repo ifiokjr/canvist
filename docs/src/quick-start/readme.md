@@ -20,10 +20,10 @@ Every platform runs the same Rust core, so documents, extensions, and commands b
 | iOS                              | `Canvist` Swift package                            | Available | [iOS](./ios.md)                      |
 | Android                          | `canvist-android`                                  | Available | [Android](./android.md)              |
 | macOS, Windows, Linux            | `canvist_desktop`                                  | Available | [Desktop](./desktop.md)              |
-| React Native                     | `@canvist/react-native`                            | Available | [React Native](./react-native.md)    |
-| Lynx                             | `@canvist/lynx`                                    | Available | [Lynx](./lynx.md)                    |
+| React Native                     | `@canvist/react-native`                            | Preview   | [React Native](./react-native.md)    |
+| Lynx                             | `@canvist/lynx`                                    | Preview   | [Lynx](./lynx.md)                    |
 
-**Available** means the package works and its tests run on every change. canvist hasn't had its first release yet, so every quick start shows how to install from GitHub, and the registry command for after the release.
+**Available** means the package works and its tests run on every change. canvist hasn't had its first release yet, so every quick start shows how to install from GitHub, and the registry command for after the release. **Preview** means the same, except the package stays on GitHub after the first release: React Native and Lynx build on the iOS and Android editors, which aren't on CocoaPods or Maven Central yet.
 
 ## Which one do I need?
 

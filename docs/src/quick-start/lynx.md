@@ -2,7 +2,7 @@
 
 In this guide you add a canvist editor to a [Lynx](https://lynxjs.org) app, give it a toolbar that follows the selection, and save what people write. It takes about fifteen minutes, most of it building the native editors and wiring them into your host apps.
 
-**Status: available.** `@canvist/lynx` shows the native iOS and Android editors as a `<canvist-editor>` element, not a web view. Typing goes through each platform's own text input, and the Rust engine lays out and paints every line. Commands and queries are typed from the extensions you register, with the same API as [`@canvist/react-native`](./react-native.md) and [`@canvist/web`](./web.md), and they answer synchronously.
+**Status: preview.** `@canvist/lynx` works and its tests run on every change, but it won't be on npm in canvist's first release, because the native editors it builds on aren't on CocoaPods or Maven Central yet. Install it from GitHub, as below. It shows the native iOS and Android editors as a `<canvist-editor>` element, not a web view. Typing goes through each platform's own text input, and the Rust engine lays out and paints every line. Commands and queries are typed from the extensions you register, with the same API as [`@canvist/react-native`](./react-native.md) and [`@canvist/web`](./web.md), and they answer synchronously.
 
 ## 1. Install
 

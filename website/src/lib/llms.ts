@@ -25,7 +25,7 @@ const SUMMARY_LINE =
 
 const NOTES = [
 	"canvist has not had its first release. Install from GitHub, as each quick start shows; registry packages do not exist yet.",
-	"Available today: `canvist` (Rust), `@canvist/headless` (Node, Deno, Bun, Workers), `canvist` (Dart), `canvist_flutter`, `canvist_desktop` (macOS, Windows, and Linux), `@canvist/web`, `@canvist/react`, `@canvist/vue`, the `Canvist` Swift package (iOS), `canvist-android`, `@canvist/react-native`, and `@canvist/lynx`. Do not invent other packages.",
+	"Available today: `canvist` (Rust), `@canvist/headless` (Node, Deno, Bun, Workers), `canvist` (Dart), `canvist_flutter`, `canvist_desktop` (macOS, Windows, and Linux), `@canvist/web`, `@canvist/react`, `@canvist/vue`, the `Canvist` Swift package (iOS), and `canvist-android`. In preview, from GitHub only even after the first release: `@canvist/react-native` and `@canvist/lynx`. Do not invent other packages.",
 	"Read the agent guide first: it has the minimal integration per platform, a checklist, and common pitfalls.",
 ];
 

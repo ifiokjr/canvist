@@ -21,8 +21,8 @@ canvist hasn't had its first release, so nothing is on a package registry yet. D
 | Desktop: macOS, Windows, Linux | `canvist_desktop` ([how](../quick-start/desktop.md))                                                                     | Yes           |
 | iOS                            | `Canvist` Swift package: `CanvistView` ([how](../quick-start/ios.md))                                                    | Yes           |
 | Android                        | `canvist-android`: `CanvistView` ([how](../quick-start/android.md))                                                      | Yes           |
-| React Native                   | `@canvist/react-native`: `CanvistEditor` ([how](../quick-start/react-native.md))                                         | Yes           |
-| Lynx                           | `@canvist/lynx`: `<canvist-editor>` ([how](../quick-start/lynx.md))                                                      | Yes           |
+| React Native                   | `@canvist/react-native`: `CanvistEditor` ([how](../quick-start/react-native.md))                                         | Yes, preview  |
+| Lynx                           | `@canvist/lynx`: `<canvist-editor>` ([how](../quick-start/lynx.md))                                                      | Yes, preview  |
 
 Don't invent packages beyond this table, such as `@canvist/core` or `@canvist/ssr`.
 

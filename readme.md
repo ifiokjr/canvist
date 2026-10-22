@@ -74,10 +74,10 @@ One core runs everywhere, so a document exports byte for byte the same in Rust, 
 | Desktop: macOS, Windows, Linux | [`canvist_desktop`](./crates/canvist_desktop)                                       | Available |
 | iOS                            | [`Canvist`](./platforms/apple) Swift package                                        | Available |
 | Android                        | [`canvist-android`](./platforms/android)                                            | Available |
-| React Native                   | [`@canvist/react-native`](./packages/canvist-react-native)                          | Available |
-| Lynx                           | [`@canvist/lynx`](./packages/canvist-lynx)                                          | Available |
+| React Native                   | [`@canvist/react-native`](./packages/canvist-react-native)                          | Preview   |
+| Lynx                           | [`@canvist/lynx`](./packages/canvist-lynx)                                          | Preview   |
 
-canvist hasn't had its first release yet. Each [quick start](./docs/src/quick-start/readme.md) shows how to install from GitHub until it does.
+canvist hasn't had its first release yet. Each [quick start](./docs/src/quick-start/readme.md) shows how to install from GitHub until it does. **Preview** packages work and are tested on every change, but stay on GitHub after the first release, until the native libraries they build on are on CocoaPods and Maven Central.
 
 ## Learn more
 

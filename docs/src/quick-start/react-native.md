@@ -2,7 +2,7 @@
 
 In this guide you add a canvist editor to a React Native app, give it a toolbar that follows the selection, and save what people write. It takes about ten minutes, most of it building the native editors once.
 
-**Status: available.** `@canvist/react-native` shows the native iOS and Android editors as a Fabric component, not a WebView. Typing goes through each platform's own text input, so the keyboard, input methods, autocorrect, dictation, selection handles, VoiceOver, and TalkBack all work as they do in a native text view. Commands and queries are typed from the extensions you register, with the same API as [`@canvist/web`](./web.md), and they answer synchronously.
+**Status: preview.** `@canvist/react-native` works and its tests run on every change, but it won't be on npm in canvist's first release, because the native editors it builds on aren't on CocoaPods or Maven Central yet. Install it from GitHub, as below. It shows the native iOS and Android editors as a Fabric component, not a WebView. Typing goes through each platform's own text input, so the keyboard, input methods, autocorrect, dictation, selection handles, VoiceOver, and TalkBack all work as they do in a native text view. Commands and queries are typed from the extensions you register, with the same API as [`@canvist/web`](./web.md), and they answer synchronously.
 
 ## 1. Install
 
@@ -13,6 +13,7 @@ git clone https://github.com/canvist/canvist
 canvist/platforms/apple/build.sh                                         # the iOS engine
 canvist/platforms/android/build.sh                                       # the Android engine
 (cd canvist/platforms/android && ./gradlew :canvist:publishToMavenLocal) # canvist-android, to Maven Local
+(cd canvist/packages/canvist-headless && npm ci && npm run build:wasm && npm run build)
 ```
 
 Then add the package, and point your app at the native editors:
