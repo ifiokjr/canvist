@@ -421,13 +421,15 @@ async fn start_server() -> TestResult<Server> {
 
 	let port = free_port().await;
 
-	// The package's own vite, not `npx`: package-manager shims daemonize on
-	// some machines, and a dev server that outlives its child confuses the
-	// health check. Its output lands in the log the error message names.
+	// Node running vite's own entry point: the package's shim is a
+	// symlink to a script, which Linux will not exec, and package-manager
+	// wrappers daemonize on some machines. The output lands in the log the
+	// error message names.
 	let vite_log = root.join("target/canvist-testkit/dom.vite.log");
-	let vite = Command::new(web.join("node_modules/.bin/vite"))
+	let vite = Command::new("node")
+		.arg(web.join("node_modules/vite/bin/vite.js"))
 		.arg("--config")
-		.arg("tests/vite.config.ts")
+		.arg(web.join("tests/vite.config.ts"))
 		.arg("--port")
 		.arg(port.to_string())
 		.arg("--strictPort")
