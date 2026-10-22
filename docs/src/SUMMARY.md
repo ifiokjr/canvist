@@ -16,7 +16,8 @@
   - [iOS](./quick-start/ios.md)
   - [Android](./quick-start/android.md)
   - [Desktop](./quick-start/desktop.md)
-  - [React Native and Lynx](./quick-start/react-native.md)
+  - [React Native](./quick-start/react-native.md)
+  - [Lynx](./quick-start/lynx.md)
 
 # Core concepts
 

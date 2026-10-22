@@ -23,8 +23,13 @@ canvist has not had its first release. Nothing is on crates.io, npm, JSR, or pub
 | React, Vue               | `@canvist/react`, `@canvist/vue` | Build `@canvist/web` as above, then `npm ci && npm pack` in `packages/canvist-react` or `packages/canvist-vue`                                                                              |
 | Server-side rendering    | `@canvist/headless/ssr`          | Part of `@canvist/headless`: `createRenderer({ theme }).html(content, { width })`                                                                                                           |
 | Design canvas            | `@canvist/canvas`                | In `packages/canvist-canvas`: `npm ci && npm run build:wasm && npm pack`; `mountCanvas(canvas, { scene })`                                                                                  |
+| iOS                      | `Canvist` Swift package          | `platforms/apple/build.sh`, then add `platforms/apple` as a local package. `CanvistView` (UIKit), `CanvistEditor` (SwiftUI)                                                                 |
+| Android                  | `canvist-android`                | `platforms/android/build.sh`, then `./gradlew :canvist:publishToMavenLocal`. `CanvistView` (Views, Compose)                                                                                 |
+| React Native             | `@canvist/react-native`          | Preview, from GitHub only: build both native editors as above, install `packages/canvist-react-native`, add the `Canvist` pod and Maven Local                                               |
+| Lynx                     | `@canvist/lynx`                  | Preview, from GitHub only: build both native editors, install `packages/canvist-lynx`, register `CanvistLynxModule` and `CanvistLynx.behavior()`                                            |
+| Desktop                  | `canvist_desktop`                | `cargo add canvist_desktop --git https://github.com/canvist/canvist`                                                                                                                        |
 
-These **do not exist yet**: `@canvist/core`, `@canvist/ssr` (server rendering is `@canvist/headless/ssr`), `@canvist/react-native`, or `@canvist/lynx`. If asked for one, say it is coming soon and offer the closest working path (Flutter for mobile, `@canvist/headless` on the server, `@canvist/web` in a browser).
+These **do not exist**: `@canvist/core` and `@canvist/ssr` (server rendering is `@canvist/headless/ssr`). If asked for one, say so and offer the closest working path.
 
 ## 2. Integrate
 
