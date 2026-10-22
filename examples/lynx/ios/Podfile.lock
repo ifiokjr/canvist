@@ -1,0 +1,86 @@
+PODS:
+  - Canvist (0.1.0)
+  - CanvistLynx (0.1.0):
+    - Canvist (= 0.1.0)
+    - Lynx
+  - Lynx (4.1.0):
+    - Lynx/Framework (= 4.1.0)
+  - Lynx/Framework (4.1.0):
+    - Lynx/Gfx
+    - Lynx/ReleaseResource
+    - LynxBase/Framework
+    - LynxServiceAPI
+    - PrimJS/napi/env
+    - PrimJS/napi/jsc
+    - PrimJS/napi/quickjs
+    - PrimJS/quickjs (= 4.1.1)
+  - Lynx/Gfx (4.1.0):
+    - LynxBase/Framework
+  - Lynx/ReleaseResource (4.1.0)
+  - LynxBase (4.1.0):
+    - LynxBase/Framework (= 4.1.0)
+  - LynxBase/Framework (4.1.0):
+    - LynxServiceAPI/Core
+  - LynxServiceAPI (4.1.0):
+    - LynxServiceAPI/Core (= 4.1.0)
+    - LynxServiceAPI/Native (= 4.1.0)
+  - LynxServiceAPI/Core (4.1.0):
+    - LynxServiceAPI/Native
+  - LynxServiceAPI/Native (4.1.0)
+  - PrimJS/log (4.1.1)
+  - PrimJS/napi (4.1.1):
+    - PrimJS/napi/adapter (= 4.1.1)
+    - PrimJS/napi/core (= 4.1.1)
+    - PrimJS/napi/env (= 4.1.1)
+    - PrimJS/napi/jsc (= 4.1.1)
+    - PrimJS/napi/quickjs (= 4.1.1)
+  - PrimJS/napi/adapter (4.1.1):
+    - PrimJS/napi/core
+    - PrimJS/napi/env
+  - PrimJS/napi/core (4.1.1)
+  - PrimJS/napi/env (4.1.1):
+    - PrimJS/napi/core
+  - PrimJS/napi/jsc (4.1.1):
+    - PrimJS/log
+    - PrimJS/napi/core
+    - PrimJS/quickjs
+  - PrimJS/napi/quickjs (4.1.1):
+    - PrimJS/napi/core
+    - PrimJS/quickjs
+  - PrimJS/quickjs (4.1.1):
+    - PrimJS/log
+
+DEPENDENCIES:
+  - Canvist (from `../../../platforms/apple`)
+  - CanvistLynx (from `../../../packages/canvist-lynx`)
+  - Lynx/Framework (= 4.1.0)
+  - LynxBase (= 4.1.0)
+  - LynxServiceAPI (= 4.1.0)
+  - PrimJS/napi (= 4.1.1)
+  - PrimJS/quickjs (= 4.1.1)
+
+SPEC REPOS:
+  https://github.com/lynx-family/Specs.git:
+    - Lynx
+    - LynxBase
+    - LynxServiceAPI
+  trunk:
+    - PrimJS
+
+EXTERNAL SOURCES:
+  Canvist:
+    :path: "../../../platforms/apple"
+  CanvistLynx:
+    :path: "../../../packages/canvist-lynx"
+
+SPEC CHECKSUMS:
+  Canvist: 29c5d504c3f6a58eea274e737af70be7e31c605c
+  CanvistLynx: f74b783239e80079144dfbe80cfff2ad404c37c0
+  Lynx: b9a0812cb5b0f1ff6efba8cc1d1d5c094a23f632
+  LynxBase: 4d2fdb403f161e8fce8af3db8bddee50c8f1fe3e
+  LynxServiceAPI: 79446ba6dcea4353b8e2e5b77ec9f34603c0a054
+  PrimJS: 2bb7f0e0c314cc81f6dc53aa814082b66f149e7c
+
+PODFILE CHECKSUM: 71967d3f8300a69f23c909f6cba811cd95dc8ea7
+
+COCOAPODS: 1.16.2

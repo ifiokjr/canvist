@@ -1,0 +1,35 @@
+// The Lynx glue for canvist's Android editor (`io.github.ifiokjr:canvist-android`).
+// The element is Java so Lynx's annotation processor, which generates its
+// attribute setters, runs without kapt; the module is Kotlin, which Lynx
+// reaches by reflection.
+import groovy.json.JsonSlurper
+
+plugins {
+  id "com.android.library"
+}
+
+// The editor is released in step with this package, so they share a version.
+def canvistVersion = new JsonSlurper().parse(file("../package.json")).version
+def lynxVersion = rootProject.findProperty("lynxVersion") ?: "4.1.0"
+
+android {
+  namespace "io.github.ifiokjr.canvist.lynx"
+  compileSdk 37
+
+  defaultConfig {
+    minSdk 24
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+dependencies {
+  api "io.github.ifiokjr:canvist-android:${canvistVersion}"
+  implementation "androidx.annotation:annotation:1.9.1"
+  // The app brings Lynx itself.
+  compileOnly "org.lynxsdk.lynx:lynx:${lynxVersion}"
+  annotationProcessor "org.lynxsdk.lynx:lynx-processor:${lynxVersion}"
+}

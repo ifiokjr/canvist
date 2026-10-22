@@ -1,0 +1,24 @@
+# Time the synchronous calls from JavaScript into the native editor and check
+# them against their budgets (see `src/benchmark.ts`).
+appId: dev.canvist.lynx.example
+name: Bridge benchmark
+env:
+  PERF_SLACK: "1"
+---
+- launchApp:
+    clearState: true
+    # Multiplies the budgets on slow CI devices (`CANVIST_PERF_SLACK`).
+    arguments:
+      perfSlack: "${PERF_SLACK}"
+- extendedWaitUntil:
+    visible: "31 words"
+    timeout: 30000
+- tapOn: "Benchmark"
+- tapOn: "Run benchmark"
+- extendedWaitUntil:
+    visible: "(Within|Over) budget"
+    timeout: 30000
+- takeScreenshot: benchmark
+- assertVisible: "Within budget"
+# The benchmark puts the note back as it found it.
+- assertVisible: "31 words"

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+# Copied from dist/ by e2e/test.sh into each host app.
+ios/CanvistLynxExample/main.lynx.bundle
+android/app/src/main/assets/main.lynx.bundle
+# Produced by xcodegen from ios/project.yml.
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+ios/Pods/
+android/.gradle/
+android/.kotlin/
+android/local.properties
