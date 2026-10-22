@@ -148,6 +148,9 @@ jobs:
         env:
           # The benchmark's budgets, on a shared runner's simulator.
           CANVIST_PERF_SLACK: "3"
+          # Maestro's XCTest driver can take minutes to start on a shared
+          # runner's simulator (milliseconds; the default is two minutes).
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "600000"
 
       - name: upload maestro results
         if: failure()

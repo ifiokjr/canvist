@@ -1,0 +1,42 @@
+# Lynx publishes its pods to its own Specs repository; PrimJS and the rest
+# come from CocoaPods.
+source 'https://cdn.cocoapods.org/'
+source 'https://github.com/lynx-family/Specs.git'
+
+# canvist's iOS editor needs iOS 17.
+platform :ios, '17.0'
+
+target 'CanvistLynxExample' do
+  # 4.1.0 is the newest Lynx with published iOS artifacts. Lynx takes its
+  # sibling pods at any version, so pin them too.
+  pod 'Lynx', '4.1.0', :subspecs => ['Framework']
+  pod 'LynxBase', '4.1.0'
+  pod 'LynxServiceAPI', '4.1.0'
+  pod 'PrimJS', '4.1.1', :subspecs => ['quickjs', 'napi']
+
+  # `@canvist/lynx` and the `Canvist` pod it depends on, which is not on a
+  # registry yet: build it from the repository (`platforms/apple/build.sh`).
+  pod 'Canvist', :path => '../../../platforms/apple'
+  pod 'CanvistLynx', :path => '../../../packages/canvist-lynx'
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      # Lynx's pods declare iOS 9 and 10, which current Xcode no longer builds for.
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
+
+      # Lynx compiles with -Werror, tuned for the Xcode it ships with: newer
+      # Clang warns about ignored results, and the raised deployment target
+      # about deprecated APIs. That is Lynx's code, so its warnings stay
+      # warnings here.
+      # (Lynx's own -Werror comes later on the command line, so only
+      # per-warning flags survive it.)
+      if target.name.start_with?('Lynx')
+        lenient = '$(inherited) -Wno-error=unused-result -Wno-error=deprecated-declarations -Wno-error=deprecated-implementations'
+        config.build_settings['OTHER_CFLAGS'] = lenient
+        config.build_settings['OTHER_CPLUSPLUSFLAGS'] = lenient
+      end
+    end
+  end
+end

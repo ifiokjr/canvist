@@ -233,6 +233,12 @@ path = "packages/canvist-react-native"
 type = "npm"
 publish = { enabled = false }
 
+# The editor for Lynx, over the same native views as React Native.
+[package."@canvist/lynx"]
+path = "packages/canvist-lynx"
+type = "npm"
+publish = { enabled = false }
+
 # Dart packages. `mode = "external"` leaves publishing them to the `pub` job
 # in `publish.yml`, which runs after crates.io has the crates the `canvist`
 # build hook compiles (its Rust crate pins them through `canvist_headless`'s
@@ -253,6 +259,7 @@ publish = { enabled = true, mode = "external" }
 packages = [
 	"@canvist/canvas",
 	"@canvist/headless",
+	"@canvist/lynx",
 	"@canvist/react",
 	"@canvist/react-native",
 	"@canvist/vue",

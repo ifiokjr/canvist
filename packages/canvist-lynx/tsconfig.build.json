@@ -1,0 +1,13 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"declaration": true,
+		"rewriteRelativeImportExtensions": true,
+		// The app's ReactLynx compiler turns the JSX into its element snapshots.
+		"jsx": "preserve",
+		"rootDir": "src",
+		"outDir": "dist"
+	},
+	"include": ["src"]
+}

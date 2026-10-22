@@ -1,0 +1,23 @@
+{
+	"name": "canvist-lynx-example",
+	"private": true,
+	"type": "module",
+	"description": "A notes app on @canvist/lynx: the native iOS and Android editors in Lynx with a formatting toolbar, the host apps that load it, and the end-to-end flows CI runs on a simulator and an emulator.",
+	"scripts": {
+		"build": "rspeedy build",
+		"dev": "rspeedy dev",
+		"check:types": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@canvist/headless": "file:../../packages/canvist-headless",
+		"@canvist/lynx": "file:../../packages/canvist-lynx",
+		"@lynx-js/react": "^0.127.0"
+	},
+	"devDependencies": {
+		"@lynx-js/react-rsbuild-plugin": "^0.20.3",
+		"@lynx-js/rspeedy": "^0.18.0",
+		"@lynx-js/types": "^4.3.0",
+		"@types/react": "^19.2.0",
+		"typescript": "^6.0.3"
+	}
+}

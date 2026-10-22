@@ -1,0 +1,26 @@
+# Type into the native editor, format from the JavaScript toolbar, and read
+# the document back through the typed API.
+appId: dev.canvist.lynx.example
+name: Editing
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "33 words"
+    timeout: 30000
+# The editor's center is below the text: the caret lands at the end of the
+# last checklist item, which is short enough to end left of the tap, and
+# Enter starts a new one.
+- tapOn: "Note"
+# Keys sent before the keyboard has connected are dropped.
+- waitForAnimationToEnd
+- pressKey: Enter
+- inputText: "today"
+- pressKey: Enter
+- assertVisible: "34 words"
+- tapOn: "Bold"
+- inputText: "loud"
+- tapOn: "Markdown"
+- assertVisible: "(?s).*- \\[ \\] today\\n- \\[ \\] \\*\\*loud\\*\\*.*"
+- tapOn: "Undo"
+- assertNotVisible: "(?s).*\\*\\*loud\\*\\*.*"

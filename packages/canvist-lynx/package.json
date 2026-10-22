@@ -1,0 +1,56 @@
+{
+	"name": "@canvist/lynx",
+	"version": "0.1.0",
+	"description": "The canvist rich-text editor for Lynx: the native iOS and Android editors as a Lynx element, with commands and queries typed from the extensions you register.",
+	"license": "Unlicense",
+	"homepage": "https://github.com/canvist/canvist/tree/main/packages/canvist-lynx#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/canvist/canvist.git",
+		"directory": "packages/canvist-lynx"
+	},
+	"bugs": {
+		"url": "https://github.com/canvist/canvist/issues",
+		"email": "support@canvist.dev"
+	},
+	"keywords": ["lynx", "reactlynx", "rich-text", "editor", "ios", "android"],
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/mod.d.ts",
+			"default": "./dist/mod.js"
+		}
+	},
+	"files": [
+		"dist",
+		"ios",
+		"android/build.gradle",
+		"android/src/main",
+		"CanvistLynx.podspec"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"check:types": "tsc --noEmit",
+		"test": "rstest run",
+		"build": "tsc -p tsconfig.build.json",
+		"prepack": "npm run build"
+	},
+	"dependencies": {
+		"@canvist/headless": "file:../canvist-headless"
+	},
+	"peerDependencies": {
+		"@lynx-js/react": ">=0.120.0",
+		"@lynx-js/types": ">=4.1.0"
+	},
+	"devDependencies": {
+		"@lynx-js/react": "^0.127.0",
+		"@lynx-js/react-rsbuild-plugin": "^0.20.3",
+		"@lynx-js/types": "^4.3.0",
+		"@rstest/core": "^0.12.1",
+		"@testing-library/dom": "^10.4.1",
+		"@testing-library/jest-dom": "^7.0.0",
+		"@types/react": "^19.2.0",
+		"jsdom": "^27.4.0",
+		"typescript": "^7.0.2"
+	}
+}

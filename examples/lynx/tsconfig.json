@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "es2022",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"lib": ["es2024"],
+		"types": ["@lynx-js/rspeedy/client"],
+		"strict": true,
+		"exactOptionalPropertyTypes": true,
+		"noUncheckedIndexedAccess": true,
+		"verbatimModuleSyntax": true,
+		"allowImportingTsExtensions": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"jsx": "react-jsx",
+		"jsxImportSource": "@lynx-js/react"
+	},
+	"include": ["src", "lynx.config.ts"]
+}
