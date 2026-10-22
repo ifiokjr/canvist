@@ -198,10 +198,16 @@ impl DomBackend {
 	}
 
 	pub(crate) async fn select_all(&mut self) -> TestResult<()> {
+		// `Mod` as the page means it: Meta on Apple keyboards, Control
+		// elsewhere. Linux passes Meta through as a typed character, which
+		// left the whole-document selection with an 'a' in it.
+		let apple = self.platform == Platform::Apple;
+
 		self.press(
 			"a",
 			Modifiers {
-				meta: self.platform == Platform::Apple,
+				meta: apple,
+				ctrl: !apple,
 				..press_defaults()
 			},
 		)
