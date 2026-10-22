@@ -27,6 +27,10 @@
 			"types": "./dist/full.d.ts",
 			"default": "./dist/full.js"
 		},
+		"./native": {
+			"types": "./dist/native.d.ts",
+			"default": "./dist/native.js"
+		},
 		"./scene": {
 			"types": "./dist/scene.d.ts",
 			"default": "./dist/scene.js"

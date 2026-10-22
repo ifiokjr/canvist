@@ -220,6 +220,14 @@ path = "packages/canvist-canvas"
 type = "npm"
 publish = { enabled = false }
 
+# The editor for React Native, over the iOS and Android `CanvistView`s. Like
+# `@canvist/canvas`, it publishes once its npm name is bootstrapped and its
+# trusted publisher set up.
+[package."@canvist/react-native"]
+path = "packages/canvist-react-native"
+type = "npm"
+publish = { enabled = false }
+
 # Dart packages. `mode = "external"` leaves publishing them to the `pub` job
 # in `publish.yml`, which runs after crates.io has the crates the `canvist`
 # build hook compiles (its Rust crate pins them through `canvist_headless`'s
@@ -241,6 +249,7 @@ packages = [
 	"@canvist/canvas",
 	"@canvist/headless",
 	"@canvist/react",
+	"@canvist/react-native",
 	"@canvist/vue",
 	"@canvist/web",
 	"canvist-dart",

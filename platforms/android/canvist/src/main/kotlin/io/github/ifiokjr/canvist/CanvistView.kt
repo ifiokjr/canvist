@@ -69,6 +69,9 @@ open class CanvistView(
     /** Called on the main thread after every change, for example to update a toolbar or send collaboration updates. */
     var onChange: ((EditorChange) -> Unit)? = null
 
+    /** Called on the main thread when the view gains (`true`) or loses focus. */
+    var onFocusChange: ((Boolean) -> Unit)? = null
+
     /** The body text size in sp, before the user's font scale. */
     var baseFontSize = DEFAULT_FONT_SIZE
         set(value) {
@@ -325,14 +328,14 @@ open class CanvistView(
 
         if (gainFocus) {
             restartBlink()
-
-            return
+        } else {
+            blink.removeCallbacks(blinkCaret)
+            fromInput("unmark") { editor.unmarkText() }
+            selection.dismiss()
+            invalidate()
         }
 
-        blink.removeCallbacks(blinkCaret)
-        fromInput("unmark") { editor.unmarkText() }
-        selection.dismiss()
-        invalidate()
+        onFocusChange?.invoke(gainFocus)
     }
 
     /** Show the caret, and blink it from now on. */

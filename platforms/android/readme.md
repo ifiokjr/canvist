@@ -30,7 +30,7 @@ canvist's rich-text editor for Android: `CanvistView`, a native editor for Views
 - **Typed commands.** `StarterKit` and `Extensions` hand out typed handles (`kit.heading.toggleHeading(level = 2)`), generated from the extension metadata.
 - **TalkBack** reads and moves through the text by character, word, line, and paragraph, through an `AccessibilityNodeProvider` with a node per block.
 - **Collaboration** over Yjs updates or y-sync.
-- **Embeddable.** `CanvistView` is a plain `View` with no activity or fragment, so Compose, React Native, and Lynx can host it. `PaintMeasurer` and `Editor` also work without the view.
+- **Embeddable.** `CanvistView` is a plain `View` with no activity or fragment, so Compose, React Native, and Lynx can host it. `CanvistHostView` and `HostedEditors` are what [`@canvist/react-native`](../../packages/canvist-react-native) builds on: a view started from a JavaScript element's props, and its editor reachable by id from JavaScript's thread. `PaintMeasurer` and `Editor` also work without the view.
 
 ```kotlin
 val kit = StarterKit()

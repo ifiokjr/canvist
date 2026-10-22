@@ -6,6 +6,7 @@
 		".": "./src/mod.ts",
 		"./extensions": "./src/extensions.generated.ts",
 		"./full": "./src/full.ts",
+		"./native": "./src/native.ts",
 		"./scene": "./src/scene.ts",
 		"./ssr": "./src/ssr.ts"
 	},

@@ -32,6 +32,8 @@ open class CanvistView: UIScrollView {
     /// Called on the main thread after every change, for example to update a
     /// toolbar or send collaboration updates.
     public var onChange: ((EditorChange) -> Void)?
+    /// Called on the main thread when the view gains (`true`) or loses focus.
+    public var onFocusChange: ((Bool) -> Void)?
 
     /// Space between the view's edges and the text.
     public var textInsets = CanvistView.defaultTextInsets {

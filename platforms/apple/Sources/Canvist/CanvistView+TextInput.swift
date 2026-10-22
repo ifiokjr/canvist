@@ -15,6 +15,7 @@ extension CanvistView: UITextInput {
             editor.setFocused(focused: true)
             revealCaret = true
             setNeedsLayout()
+            onFocusChange?(true)
         }
 
         return became
@@ -27,6 +28,7 @@ extension CanvistView: UITextInput {
         if resigned {
             _ = fromInput("unmark") { try editor.unmarkText() }
             editor.setFocused(focused: false)
+            onFocusChange?(false)
         }
 
         return resigned
