@@ -588,6 +588,63 @@ final class ImageHandle extends ExtensionHandle {
   });
 }
 
+/// The commands and queries of `ink`.
+final class InkHandle extends ExtensionHandle {
+  InkHandle._(super.registration) : super._();
+
+  /// Insert an empty drawing at the selection.
+  ///
+  /// [height]: The height in drawing units, from 1 to 4000.
+  Command insertInk({int? height}) =>
+      _command('insertInk', {'height': ?height});
+
+  /// Add a stroke to a drawing.
+  ///
+  /// [ink]: Which drawing, by its place in `inks`, from zero.
+  ///
+  /// [points]: `x, y` pairs in drawing units.
+  ///
+  /// [color]: A `#rrggbb` colour, or null for the text colour.
+  ///
+  /// [width]: The width in drawing units, or null for the theme's.
+  Command addInkStroke({
+    required int ink,
+    required List<double> points,
+    String? color,
+    double? width,
+  }) => _command('addInkStroke', {
+    'ink': ink,
+    'points': points,
+    'color': ?color,
+    'width': ?width,
+  });
+
+  /// Remove the last stroke of a drawing.
+  ///
+  /// [ink]: Which drawing, by its place in `inks`, from zero.
+  Command undoInkStroke({required int ink}) =>
+      _command('undoInkStroke', {'ink': ink});
+
+  /// Remove every stroke of a drawing.
+  ///
+  /// [ink]: Which drawing, by its place in `inks`, from zero.
+  Command clearInk({required int ink}) => _command('clearInk', {'ink': ink});
+
+  /// Every drawing in the document, in order, with its height and how many strokes it has.
+  Query<List<({int height, int strokes})>> inks() => _query(
+    'inks',
+    (json) => [
+      for (final item0 in json! as List<Object?>)
+        switch (item0! as Map<String, Object?>) {
+          final map1 => (
+            height: (map1['height']! as num).toInt(),
+            strokes: (map1['strokes']! as num).toInt(),
+          ),
+        },
+    ],
+  );
+}
+
 /// The commands and queries of `italic`.
 final class ItalicHandle extends ExtensionHandle {
   ItalicHandle._(super.registration) : super._();
@@ -603,6 +660,30 @@ final class ItalicHandle extends ExtensionHandle {
 
   /// Whether the mark is active at the selection.
   Query<bool> isItalic() => _query('isItalic', (json) => json! as bool);
+}
+
+/// The commands and queries of `kinetic`.
+final class KineticHandle extends ExtensionHandle {
+  KineticHandle._(super.registration) : super._();
+
+  /// Make the selection move.
+  ///
+  /// [effect]: How the text moves: wave, shake, pulse, or rainbow. One of wave, shake, pulse, rainbow.
+  Command setKinetic({String? effect}) =>
+      _command('setKinetic', {'effect': ?effect});
+
+  /// Make the selection move, or still when it already does.
+  ///
+  /// [effect]: How the text moves: wave, shake, pulse, or rainbow. One of wave, shake, pulse, rainbow.
+  Command toggleKinetic({String? effect}) =>
+      _command('toggleKinetic', {'effect': ?effect});
+
+  /// Make the selection still.
+  Command unsetKinetic() => _command('unsetKinetic', const {});
+
+  /// How the text at the selection moves, or null when it is still.
+  Query<String?> kineticEffect() =>
+      _query('kineticEffect', (json) => json == null ? null : json as String);
 }
 
 /// The commands and queries of `lineHeight`.
@@ -1283,12 +1364,27 @@ final class ImageExtension extends Extension<ImageHandle> {
   ImageHandle _handle(Registration registration) => ImageHandle._(registration);
 }
 
+/// Registers `ink`.
+final class InkExtension extends Extension<InkHandle> {
+  const InkExtension._() : super('ink');
+  @override
+  InkHandle _handle(Registration registration) => InkHandle._(registration);
+}
+
 /// Registers `italic`.
 final class ItalicExtension extends Extension<ItalicHandle> {
   const ItalicExtension._() : super('italic');
   @override
   ItalicHandle _handle(Registration registration) =>
       ItalicHandle._(registration);
+}
+
+/// Registers `kinetic`.
+final class KineticExtension extends Extension<KineticHandle> {
+  const KineticExtension._() : super('kinetic');
+  @override
+  KineticHandle _handle(Registration registration) =>
+      KineticHandle._(registration);
 }
 
 /// Registers `lineHeight`.
@@ -1529,8 +1625,14 @@ abstract final class Extensions {
   /// The `image` extension.
   static const image = ImageExtension._();
 
+  /// The `ink` extension.
+  static const ink = InkExtension._();
+
   /// The `italic` extension.
   static const italic = ItalicExtension._();
+
+  /// The `kinetic` extension.
+  static const kinetic = KineticExtension._();
 
   /// The `lineHeight` extension.
   static const lineHeight = LineHeightExtension._();
@@ -1641,7 +1743,9 @@ abstract final class Extensions {
     history,
     horizontalRule,
     image,
+    ink,
     italic,
+    kinetic,
     lineHeight,
     link,
     listItem,

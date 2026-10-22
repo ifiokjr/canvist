@@ -22,6 +22,7 @@ use crate::Rect;
 use crate::text::slice;
 
 mod build;
+mod motion;
 
 /// What a rectangle is for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -139,6 +140,23 @@ pub enum DisplayItem {
 		/// The block it belongs to.
 		block: BlockId,
 	},
+	/// A freehand stroke, drawn as straight segments with round caps and
+	/// joins through its points: `x, y` pairs in document pixels, read with
+	/// [`DisplayList::stroke_points`]. The points live in the list rather
+	/// than the item, so no item but a text run owns memory and the bulk
+	/// of every list stays cheap to build and drop.
+	Stroke {
+		/// The stroke's range of [`DisplayList::points`].
+		points: Range<u32>,
+		/// The line width in pixels.
+		width: f32,
+		/// The colour.
+		color: Color,
+		/// The area the stroke paints, its round caps included.
+		bounds: Rect,
+		/// The block it belongs to.
+		block: BlockId,
+	},
 	/// A rectangle reserved for a host-rendered view.
 	Slot {
 		/// What the slot holds.
@@ -159,7 +177,9 @@ impl DisplayItem {
 		match self {
 			Self::Rect { block, .. } => *block,
 			Self::Text(run) => Some(run.block),
-			Self::Decoration { block, .. } | Self::Slot { block, .. } => Some(*block),
+			Self::Decoration { block, .. }
+			| Self::Stroke { block, .. }
+			| Self::Slot { block, .. } => Some(*block),
 		}
 	}
 
@@ -176,6 +196,7 @@ impl DisplayItem {
 				thickness,
 				..
 			} => Rect::new(*x, y - thickness * 2.0, *width, thickness * 4.0),
+			Self::Stroke { bounds, .. } => *bounds,
 		}
 	}
 }
@@ -196,6 +217,11 @@ pub struct DisplayOptions {
 	/// Placeholder text for empty text blocks, such as "Write something …",
 	/// drawn at the block's start in its text colour, faded.
 	pub placeholders: Vec<(BlockId, Arc<str>)>,
+	/// The animation clock in seconds, for kinetic text. `None` keeps all
+	/// text still: pass it only while animating, and never to readers who
+	/// prefer reduced motion. [`DisplayList::animated`] says whether a
+	/// later frame would differ.
+	pub time: Option<f32>,
 }
 
 impl DisplayOptions {
@@ -230,6 +256,13 @@ impl DisplayOptions {
 		self
 	}
 
+	/// Move kinetic text as it is at `seconds` on the animation clock.
+	#[must_use]
+	pub fn time(mut self, seconds: f32) -> Self {
+		self.time = Some(seconds);
+		self
+	}
+
 	/// Show `text` in `block` while it is empty.
 	#[must_use]
 	pub fn placeholder(mut self, block: BlockId, text: &str) -> Self {
@@ -249,9 +282,24 @@ pub struct DisplayList {
 	/// The painted area: the full document width between the requested top
 	/// and bottom.
 	pub bounds: Rect,
+	/// Whether kinetic text is in view, so a host animating it should keep
+	/// asking for frames, and one that is not knows it could.
+	pub animated: bool,
+	/// The points of every stroke, as `x, y` pairs, each stroke's at the
+	/// range it holds.
+	pub points: Vec<f32>,
 }
 
 impl DisplayList {
+	/// A stroke's points, as `x, y` pairs, from the range it holds; empty
+	/// for a range outside this list.
+	#[must_use]
+	pub fn stroke_points(&self, range: &Range<u32>) -> &[f32] {
+		self.points
+			.get(range.start as usize..range.end as usize)
+			.unwrap_or_default()
+	}
+
 	/// The areas that differ between `previous` and `self`.
 	///
 	/// Items are grouped by block (plus one group for the selection and
@@ -267,7 +315,7 @@ impl DisplayList {
 		for (key, group) in &now {
 			let old = before.get(key);
 
-			if old.is_some_and(|old| old.items == group.items) {
+			if old.is_some_and(|old| same_items(previous, &old.items, self, &group.items)) {
 				continue;
 			}
 
@@ -283,6 +331,41 @@ impl DisplayList {
 
 		rects
 	}
+}
+
+/// Whether two groups paint the same, comparing strokes by their points
+/// rather than their ranges, which differ from list to list.
+fn same_items(
+	previous: &DisplayList,
+	old: &[&DisplayItem],
+	list: &DisplayList,
+	new: &[&DisplayItem],
+) -> bool {
+	old.len() == new.len()
+		&& old.iter().zip(new).all(|(old, new)| {
+			match (old, new) {
+				(
+					DisplayItem::Stroke {
+						points: old_points,
+						width: old_width,
+						color: old_color,
+						bounds: old_bounds,
+						block: old_block,
+					},
+					DisplayItem::Stroke {
+						points,
+						width,
+						color,
+						bounds,
+						block,
+					},
+				) => {
+					(old_width, old_color, old_bounds, old_block) == (width, color, bounds, block)
+						&& previous.stroke_points(old_points) == list.stroke_points(points)
+				}
+				_ => old == new,
+			}
+		})
 }
 
 struct Group<'a> {
@@ -304,4 +387,53 @@ fn groups(list: &DisplayList) -> FxHashMap<Option<BlockId>, Group<'_>> {
 	}
 
 	groups
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	fn list_with_stroke(points: Vec<f32>) -> DisplayList {
+		let bounds = Rect::new(0.0, 0.0, 10.0, 10.0);
+		DisplayList {
+			fonts: Vec::new(),
+			items: vec![DisplayItem::Stroke {
+				points: 0..points.len() as u32,
+				width: 2.0,
+				color: Color::rgb(0, 0, 0),
+				bounds,
+				block: BlockId::new(1, 0),
+			}],
+			bounds,
+			animated: false,
+			points,
+		}
+	}
+
+	#[test]
+	fn strokes_compare_by_their_points_not_their_ranges() {
+		let before = list_with_stroke(vec![1.0, 2.0, 3.0, 4.0]);
+		let moved = list_with_stroke(vec![1.0, 2.0, 5.0, 6.0]);
+
+		assert!(
+			list_with_stroke(vec![1.0, 2.0, 3.0, 4.0])
+				.damage(&before)
+				.is_empty()
+		);
+		assert_eq!(
+			moved.damage(&before),
+			[
+				Rect::new(0.0, 0.0, 10.0, 10.0),
+				Rect::new(0.0, 0.0, 10.0, 10.0)
+			]
+		);
+	}
+
+	#[test]
+	fn a_range_outside_the_list_reads_as_no_points() {
+		assert_eq!(
+			list_with_stroke(vec![1.0, 2.0]).stroke_points(&(2..6)),
+			[0.0; 0]
+		);
+	}
 }

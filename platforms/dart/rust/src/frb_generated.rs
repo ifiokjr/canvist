@@ -3520,6 +3520,18 @@ impl SseDecode for Vec<Vec<u8>> {
 	}
 }
 
+impl SseDecode for Vec<f32> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+		let mut len_ = <i32>::sse_decode(deserializer);
+		let mut ans_ = Vec::with_capacity(len_ as usize);
+		for idx_ in 0..len_ {
+			ans_.push(<f32>::sse_decode(deserializer));
+		}
+		return ans_;
+	}
+}
+
 impl SseDecode for Vec<u32> {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -3798,6 +3810,8 @@ impl SseDecode for crate::api::view::ViewItem {
 		let mut var_letterSpacing = <f32>::sse_decode(deserializer);
 		let mut var_rtl = <bool>::sse_decode(deserializer);
 		let mut var_checked = <bool>::sse_decode(deserializer);
+		let mut var_points = <Vec<f32>>::sse_decode(deserializer);
+		let mut var_lineWidth = <f32>::sse_decode(deserializer);
 		return crate::api::view::ViewItem {
 			kind: var_kind,
 			x: var_x,
@@ -3812,6 +3826,8 @@ impl SseDecode for crate::api::view::ViewItem {
 			letter_spacing: var_letterSpacing,
 			rtl: var_rtl,
 			checked: var_checked,
+			points: var_points,
+			line_width: var_lineWidth,
 		};
 	}
 }
@@ -3831,9 +3847,10 @@ impl SseDecode for crate::api::view::ViewItemKind {
 			7 => crate::api::view::ViewItemKind::Underline,
 			8 => crate::api::view::ViewItemKind::Strike,
 			9 => crate::api::view::ViewItemKind::Squiggle,
-			10 => crate::api::view::ViewItemKind::Checkbox,
-			11 => crate::api::view::ViewItemKind::Slot,
-			12 => crate::api::view::ViewItemKind::Composition,
+			10 => crate::api::view::ViewItemKind::Stroke,
+			11 => crate::api::view::ViewItemKind::Checkbox,
+			12 => crate::api::view::ViewItemKind::Slot,
+			13 => crate::api::view::ViewItemKind::Composition,
 			_ => unreachable!("Invalid variant for ViewItemKind: {}", inner),
 		};
 	}
@@ -4327,6 +4344,8 @@ impl flutter_rust_bridge::IntoDart for crate::api::view::ViewItem {
 			self.letter_spacing.into_into_dart().into_dart(),
 			self.rtl.into_into_dart().into_dart(),
 			self.checked.into_into_dart().into_dart(),
+			self.points.into_into_dart().into_dart(),
+			self.line_width.into_into_dart().into_dart(),
 		]
 		.into_dart()
 	}
@@ -4351,9 +4370,10 @@ impl flutter_rust_bridge::IntoDart for crate::api::view::ViewItemKind {
 			Self::Underline => 7.into_dart(),
 			Self::Strike => 8.into_dart(),
 			Self::Squiggle => 9.into_dart(),
-			Self::Checkbox => 10.into_dart(),
-			Self::Slot => 11.into_dart(),
-			Self::Composition => 12.into_dart(),
+			Self::Stroke => 10.into_dart(),
+			Self::Checkbox => 11.into_dart(),
+			Self::Slot => 12.into_dart(),
+			Self::Composition => 13.into_dart(),
 			_ => unreachable!(),
 		}
 	}
@@ -4641,6 +4661,16 @@ impl SseEncode for Vec<Vec<u8>> {
 	}
 }
 
+impl SseEncode for Vec<f32> {
+	// Codec=Sse (Serialization based), see doc to use other codecs
+	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+		<i32>::sse_encode(self.len() as _, serializer);
+		for item in self {
+			<f32>::sse_encode(item, serializer);
+		}
+	}
+}
+
 impl SseEncode for Vec<u32> {
 	// Codec=Sse (Serialization based), see doc to use other codecs
 	fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -4872,6 +4902,8 @@ impl SseEncode for crate::api::view::ViewItem {
 		<f32>::sse_encode(self.letter_spacing, serializer);
 		<bool>::sse_encode(self.rtl, serializer);
 		<bool>::sse_encode(self.checked, serializer);
+		<Vec<f32>>::sse_encode(self.points, serializer);
+		<f32>::sse_encode(self.line_width, serializer);
 	}
 }
 
@@ -4890,9 +4922,10 @@ impl SseEncode for crate::api::view::ViewItemKind {
 				crate::api::view::ViewItemKind::Underline => 7,
 				crate::api::view::ViewItemKind::Strike => 8,
 				crate::api::view::ViewItemKind::Squiggle => 9,
-				crate::api::view::ViewItemKind::Checkbox => 10,
-				crate::api::view::ViewItemKind::Slot => 11,
-				crate::api::view::ViewItemKind::Composition => 12,
+				crate::api::view::ViewItemKind::Stroke => 10,
+				crate::api::view::ViewItemKind::Checkbox => 11,
+				crate::api::view::ViewItemKind::Slot => 12,
+				crate::api::view::ViewItemKind::Composition => 13,
 				_ => {
 					unimplemented!("");
 				}

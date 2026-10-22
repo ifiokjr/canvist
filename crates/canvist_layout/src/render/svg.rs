@@ -78,6 +78,12 @@ pub fn to_svg(list: &DisplayList) -> String {
 				let line = Rect::new(*x, y - thickness / 2.0, *width, *thickness);
 				rect_element(&mut out, &line, *color, 0.0);
 			}
+			DisplayItem::Stroke {
+				points,
+				width,
+				color,
+				..
+			} => stroke_element(&mut out, list.stroke_points(points), *width, *color),
 			DisplayItem::Slot {
 				kind, block, rect, ..
 			} => slot(&mut out, kind, &block.to_string(), rect),
@@ -95,6 +101,27 @@ fn fill(out: &mut String, color: Color) {
 	if color.a != 255 {
 		let _ = write!(out, " fill-opacity=\"{}\"", num(f32::from(color.a) / 255.0));
 	}
+}
+
+fn stroke_element(out: &mut String, points: &[f32], width: f32, color: Color) {
+	let opaque = Color { a: 255, ..color };
+	let _ = write!(
+		out,
+		"<path d=\"{}\" fill=\"none\" stroke=\"{opaque}\" stroke-width=\"{}\" \
+		 stroke-linecap=\"round\" stroke-linejoin=\"round\"",
+		super::stroke_path(points),
+		num(width)
+	);
+
+	if color.a != 255 {
+		let _ = write!(
+			out,
+			" stroke-opacity=\"{}\"",
+			num(f32::from(color.a) / 255.0)
+		);
+	}
+
+	out.push_str("/>");
 }
 
 fn rect_element(out: &mut String, rect: &Rect, color: Color, radius: f32) {

@@ -76,6 +76,9 @@ fn block(schema: &Schema, tree: &BlockTree, marker: char) -> String {
 		TreeContent::Blocks(children) => container(schema, name, &tree.attrs, children, marker),
 
 		TreeContent::Leaf if name == "horizontalRule" => "---".to_owned(),
+		TreeContent::Leaf if cfg!(feature = "ink") && (name == "ink") => {
+			super::html_write::to_html(schema, &Slice::new(vec![tree.clone()]))
+		}
 		TreeContent::Leaf => media(name, &tree.attrs),
 	}
 }

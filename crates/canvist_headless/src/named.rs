@@ -59,7 +59,7 @@ const STARTER_KIT: [&str; 17] = [
 
 /// Extensions beyond the StarterKit, compiled with the `extras` feature.
 #[cfg(feature = "extras")]
-const EXTRA: [&str; 30] = [
+const EXTRA: [&str; 32] = [
 	"subscript",
 	"superscript",
 	"highlight",
@@ -90,6 +90,8 @@ const EXTRA: [&str; 30] = [
 	"comments",
 	"dragHandle",
 	"clearFormatting",
+	"ink",
+	"kinetic",
 ];
 
 #[cfg(not(feature = "extras"))]
@@ -246,6 +248,8 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 	use canvist_extensions::Hashtag;
 	use canvist_extensions::Highlight;
 	use canvist_extensions::Image;
+	use canvist_extensions::Ink;
+	use canvist_extensions::Kinetic;
 	use canvist_extensions::LineHeight;
 	use canvist_extensions::Mathematics;
 	use canvist_extensions::Mention;
@@ -350,6 +354,12 @@ fn register_extra(builder: &mut EditorBuilder, name: &str) {
 		}
 		"clearFormatting" => {
 			builder.add(ClearFormatting);
+		}
+		"ink" => {
+			builder.add(Ink);
+		}
+		"kinetic" => {
+			builder.add(Kinetic);
 		}
 		_ => unreachable!("`Extensions::parse` admits only known names"),
 	}

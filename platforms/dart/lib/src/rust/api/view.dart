@@ -379,6 +379,12 @@ class ViewItem {
   /// Whether a checkbox is checked.
   final bool checked;
 
+  /// A stroke's points, as `x, y` pairs.
+  final Float32List points;
+
+  /// A stroke's line width.
+  final double lineWidth;
+
   const ViewItem({
     required this.kind,
     required this.x,
@@ -393,6 +399,8 @@ class ViewItem {
     required this.letterSpacing,
     required this.rtl,
     required this.checked,
+    required this.points,
+    required this.lineWidth,
   });
 
   @override
@@ -409,7 +417,9 @@ class ViewItem {
       baseline.hashCode ^
       letterSpacing.hashCode ^
       rtl.hashCode ^
-      checked.hashCode;
+      checked.hashCode ^
+      points.hashCode ^
+      lineWidth.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -428,7 +438,9 @@ class ViewItem {
           baseline == other.baseline &&
           letterSpacing == other.letterSpacing &&
           rtl == other.rtl &&
-          checked == other.checked;
+          checked == other.checked &&
+          points == other.points &&
+          lineWidth == other.lineWidth;
 }
 
 /// What a [`ViewItem`] draws.
@@ -462,6 +474,11 @@ enum ViewItemKind {
 
   /// A wavy line from `x` to `x + width` along `y`, `height` thick.
   squiggle,
+
+  /// An ink stroke: a polyline through [`ViewItem::points`],
+  /// [`ViewItem::line_width`] wide, with round caps and joins. Its
+  /// rectangle bounds the points and caps.
+  stroke,
 
   /// A task item's checkbox.
   checkbox,

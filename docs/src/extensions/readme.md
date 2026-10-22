@@ -723,6 +723,49 @@ The commands behind a drag handle. The handle is your app's UI: place it with th
 
 `unsetAllMarks` removes every mark from the selection, or at a caret from what is typed next. `clearNodes` turns the selected blocks into paragraphs and lifts them out of quotes, callouts, and lists. `clearFormatting` does both as one undo step, on `Mod-\`, as in Google Docs.
 
+## Canvas-native
+
+Extensions only a canvas editor can offer cheaply. They are not in TipTap or Remirror; [the parity page](./parity.md#canvas-native-ideas) explains the ideas behind them.
+
+### Ink
+
+Freehand drawings in the flow of the document. Adds the `ink` block: a drawing area 1000 units wide and `height` units tall (400 by default), whose `strokes` are each a `points` list of `x, y` pairs with an optional `color` and `width`. Layout draws the strokes itself and scales the drawing with its column, so a sketch keeps its shape on a phone and a wide screen.
+
+| Commands                                                                  | Queries |
+| ------------------------------------------------------------------------- | ------- |
+| `insertInk({ height? })`, `addInkStroke({ ink, points, color?, width? })` | `inks`  |
+| `undoInkStroke({ ink })`, `clearInk({ ink })`                             |         |
+
+Your app captures pointer input over the block's rectangle, converts it to drawing units (`x * 1000 / width`), and adds each finished stroke with `addInkStroke`. Each stroke is one undo step and one Yjs update. Commands name a drawing by its place among the document's drawings, as `inks` lists them. HTML writes a `<figure data-type="ink" role="img" aria-label="Drawing">` holding an SVG of the drawing, and Markdown writes the same HTML. A drawing's strokes are one attribute, so when two collaborators add a stroke to the same drawing at the same moment, one of the two strokes is kept.
+
+```ts
+import { createEngine, ink } from "@canvist/headless/full";
+
+const doc = (await createEngine([ink])).create();
+doc.commands.insertInk({ height: 200 });
+doc.commands.addInkStroke({ ink: 0, points: [100, 100, 900, 100] });
+console.log(doc.query.inks());
+// [ { height: 200, strokes: 1 } ]
+```
+
+### Kinetic type
+
+Text that moves. Adds the `kinetic` mark, whose `effect` is `wave`, `shake`, `pulse`, or `rainbow`. The document stores only the mark. The motion happens when your app draws a display list with a time: layout places each glyph where its effect puts it at that moment, and `DisplayList::animated` says whether kinetic text is in view, so you keep asking for frames only while it is on screen. Pass no time to readers who prefer reduced motion, and the text stays still. The server renderer animates the HTML with CSS and turns the animation off under `prefers-reduced-motion`.
+
+| Commands                                                                | Queries         |
+| ----------------------------------------------------------------------- | --------------- |
+| `setKinetic({ effect? })`, `toggleKinetic({ effect? })`, `unsetKinetic` | `kineticEffect` |
+
+```ts
+import { createEngine, kinetic } from "@canvist/headless/full";
+
+const doc = (await createEngine([kinetic])).parse("text", "Say hello");
+doc.select({ path: [0], offset: 4 }, { path: [0], offset: 9 });
+doc.commands.setKinetic({ effect: "wave" });
+console.log(doc.export("html"));
+// <p>Say <span data-kinetic="wave">hello</span></p>
+```
+
 ## Coming soon
 
 These extensions are planned, in roughly this order. Each will follow the same pattern: typed commands, queries, and TipTap-compatible JSON.

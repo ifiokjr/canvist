@@ -145,6 +145,10 @@ pub enum ViewItemKind {
 	Strike,
 	/// A wavy line from `x` to `x + width` along `y`, `height` thick.
 	Squiggle,
+	/// An ink stroke: a polyline through [`ViewItem::points`],
+	/// [`ViewItem::line_width`] wide, with round caps and joins. Its
+	/// rectangle bounds the points and caps.
+	Stroke,
 	/// A task item's checkbox.
 	Checkbox,
 	/// Space reserved for a view the host renders, such as an image.
@@ -186,6 +190,10 @@ pub struct ViewItem {
 	pub rtl: bool,
 	/// Whether a checkbox is checked.
 	pub checked: bool,
+	/// A stroke's points, as `x, y` pairs.
+	pub points: Vec<f32>,
+	/// A stroke's line width.
+	pub line_width: f32,
 }
 
 impl ViewItem {
@@ -204,6 +212,8 @@ impl ViewItem {
 			letter_spacing: 0.0,
 			rtl: false,
 			checked: false,
+			points: Vec::new(),
+			line_width: 0.0,
 		}
 	}
 }
@@ -964,7 +974,7 @@ impl ViewState {
 
 	/// `list` for the host, with the composition underlined.
 	fn display(&self, doc: &Doc, list: &DisplayList) -> ViewDisplay {
-		let mut items: Vec<ViewItem> = list.items.iter().map(item).collect();
+		let mut items: Vec<ViewItem> = list.items.iter().map(|entry| item(list, entry)).collect();
 		let chrome = self.theme.chrome();
 
 		if let Some(selection) = composition_selection(doc) {
@@ -1024,7 +1034,7 @@ fn history_key(doc: &Doc, key: &str, modifiers: Modifiers) -> Option<History> {
 }
 
 /// A display item for the host.
-pub(crate) fn item(item: &DisplayItem) -> ViewItem {
+pub(crate) fn item(list: &DisplayList, item: &DisplayItem) -> ViewItem {
 	match item {
 		DisplayItem::Rect {
 			rect,
@@ -1071,6 +1081,18 @@ pub(crate) fn item(item: &DisplayItem) -> ViewItem {
 				DecorationKind::Squiggle => (ViewItemKind::Squiggle, *y),
 			};
 			ViewItem::rect(kind, Rect::new(*x, top, *width, *thickness), *color)
+		}
+		DisplayItem::Stroke {
+			points,
+			width,
+			color,
+			..
+		} => {
+			ViewItem {
+				points: list.stroke_points(points).to_vec(),
+				line_width: *width,
+				..ViewItem::rect(ViewItemKind::Stroke, item.bounds(), *color)
+			}
 		}
 		DisplayItem::Slot { kind, rect, .. } => {
 			let (kind, checked) = match kind {

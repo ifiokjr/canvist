@@ -202,6 +202,8 @@ fn split_layers(
 			fonts: list.fonts.clone(),
 			items,
 			bounds,
+			animated: list.animated,
+			points: list.points.clone(),
 		}
 	};
 	let blocks = doc

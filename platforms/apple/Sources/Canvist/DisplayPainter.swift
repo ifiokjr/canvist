@@ -49,6 +49,8 @@ final class DisplayPainter {
         case .line(let kind, let x, let y, let width, let thickness, let color):
             let start = CGPoint(x: CGFloat(x) + origin.x, y: CGFloat(y) + origin.y)
             drawLine(kind, from: start, width: CGFloat(width), thickness: CGFloat(thickness), color: UIColor(color))
+        case .stroke(let points, let width, let color, _):
+            drawStroke(points, width: CGFloat(width), color: UIColor(color), origin: origin)
         case .checkbox(let bounds, let checked):
             drawCheckbox(Self.rect(bounds).offsetBy(dx: origin.x, dy: origin.y), checked: checked)
         case .slot(let bounds, _):
@@ -127,6 +129,29 @@ final class DisplayPainter {
         path.stroke()
     }
 
+    /// An ink stroke: a polyline through `points`, as `x, y` pairs, with
+    /// round caps and joins. The first point is drawn to as well, so one
+    /// point leaves a dot.
+    private func drawStroke(_ points: [Float], width: CGFloat, color: UIColor, origin: CGPoint) {
+        let path = UIBezierPath()
+
+        for index in stride(from: 0, to: points.count - 1, by: 2) {
+            let point = CGPoint(x: CGFloat(points[index]) + origin.x, y: CGFloat(points[index + 1]) + origin.y)
+
+            if index == 0 {
+                path.move(to: point)
+            }
+
+            path.addLine(to: point)
+        }
+
+        color.setStroke()
+        path.lineWidth = width
+        path.lineCapStyle = .round
+        path.lineJoinStyle = .round
+        path.stroke()
+    }
+
     private func drawCheckbox(_ rect: CGRect, checked: Bool) {
         let inset = Self.checkboxBorderWidth / 2
         let box = UIBezierPath(roundedRect: rect.insetBy(dx: inset, dy: inset), cornerRadius: Self.checkboxRadius)
@@ -160,7 +185,7 @@ final class DisplayPainter {
     /// reach outside their line box.
     static func bounds(of item: DisplayItem) -> CGRect {
         switch item {
-        case .fill(let bounds, _, _, _), .checkbox(let bounds, _), .slot(let bounds, _):
+        case .fill(let bounds, _, _, _), .checkbox(let bounds, _), .slot(let bounds, _), .stroke(_, _, _, let bounds):
             return rect(bounds)
         case .text(_, _, _, _, _, _, _, _, let bounds):
             return rect(bounds).insetBy(dx: -Self.glyphOverhang, dy: -Self.glyphOverhang)

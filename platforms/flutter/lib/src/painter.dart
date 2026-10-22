@@ -60,6 +60,8 @@ final class DisplayPainter {
         _text(canvas, item, fontSpecs);
       case ViewItemKind.squiggle:
         _squiggle(canvas, item);
+      case ViewItemKind.stroke:
+        _stroke(canvas, item);
       case ViewItemKind.checkbox:
         _checkbox(canvas, rect, checked: item.checked);
       case ViewItemKind.slot:
@@ -149,6 +151,34 @@ final class DisplayPainter {
     }
 
     return paragraph;
+  }
+
+  /// An ink stroke: a polyline through the item's points, with round caps
+  /// and joins. The first point is drawn to as well, so one point leaves a
+  /// dot.
+  void _stroke(Canvas canvas, ViewItem item) {
+    final points = item.points;
+    final path = Path();
+
+    for (var index = 0; index + 1 < points.length; index += 2) {
+      final (x, y) = (points[index], points[index + 1]);
+
+      if (index == 0) {
+        path.moveTo(x, y);
+      }
+
+      path.lineTo(x, y);
+    }
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = item.lineWidth
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = Color(item.color),
+    );
   }
 
   void _squiggle(Canvas canvas, ViewItem item) {

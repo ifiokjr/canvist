@@ -40,6 +40,7 @@ internal class DisplayPainter(private val fonts: FontTable) {
             is DisplayItem.Fill -> fill(canvas, item.bounds, item.color.argb(), item.radius, density)
             is DisplayItem.Text -> text(canvas, item, density)
             is DisplayItem.Line -> line(canvas, item, density)
+            is DisplayItem.Stroke -> ink(canvas, item, density)
             is DisplayItem.Checkbox -> checkbox(canvas, item.bounds, item.checked, density)
             is DisplayItem.Slot -> fill(canvas, item.bounds, slotFill, SLOT_RADIUS, density)
         }
@@ -96,6 +97,30 @@ internal class DisplayPainter(private val fonts: FontTable) {
         squiggle(left, y, width, thickness)
         stroke.color = line.color.argb()
         stroke.strokeWidth = thickness
+        canvas.drawPath(path, stroke)
+    }
+
+    /**
+     * An ink stroke: a polyline through the item's points, `x, y` pairs,
+     * with round caps and joins. The first point is drawn to as well, so
+     * one point leaves a dot.
+     */
+    private fun ink(canvas: Canvas, ink: DisplayItem.Stroke, density: Float) {
+        val points = ink.points
+        path.reset()
+
+        for (index in 0 until points.size - 1 step 2) {
+            val x = points[index] * density
+            val y = points[index + 1] * density
+
+            if (index == 0) path.moveTo(x, y)
+            path.lineTo(x, y)
+        }
+
+        stroke.color = ink.color.argb()
+        stroke.strokeWidth = ink.width * density
+        stroke.strokeCap = Paint.Cap.ROUND
+        stroke.strokeJoin = Paint.Join.ROUND
         canvas.drawPath(path, stroke)
     }
 

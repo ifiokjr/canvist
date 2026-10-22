@@ -273,7 +273,7 @@ impl Painter {
 		self.fill_surface(background);
 
 		for item in &list.items {
-			self.item(item, top);
+			self.item(list, item, top);
 		}
 	}
 
@@ -293,7 +293,7 @@ impl Painter {
 			let bounds = inflate(item.bounds(), overhang);
 
 			if rects.iter().any(|rect| rect.intersects(&bounds)) {
-				self.item(item, top);
+				self.item(list, item, top);
 			}
 		}
 
@@ -335,7 +335,7 @@ impl Painter {
 		);
 	}
 
-	fn item(&mut self, item: &DisplayItem, top: f32) {
+	fn item(&mut self, list: &DisplayList, item: &DisplayItem, top: f32) {
 		self.drawn += 1;
 
 		match item {
@@ -359,6 +359,12 @@ impl Painter {
 				color,
 				..
 			} => self.squiggle((*x, *y - top), *width, *thickness, *color),
+			DisplayItem::Stroke {
+				points,
+				width,
+				color,
+				..
+			} => self.stroke(list.stroke_points(points), top, *width, *color),
 			DisplayItem::Decoration {
 				x,
 				y,
@@ -451,6 +457,30 @@ impl Painter {
 		let color = self.color(color);
 		context.set_stroke_style_str(&color);
 		context.set_line_width(f64::from(thickness));
+		context.stroke();
+	}
+
+	/// An ink stroke: straight segments through `points`, shifted up by
+	/// `top`, with round caps and joins. A single point is a dot.
+	fn stroke(&mut self, points: &[f32], top: f32, width: f32, color: Color) {
+		let context = self.context.clone();
+		context.begin_path();
+
+		for (index, point) in points.chunks_exact(2).enumerate() {
+			let (x, y) = (f64::from(point[0]), f64::from(point[1] - top));
+
+			if index == 0 {
+				context.move_to(x, y);
+			}
+
+			context.line_to(x, y);
+		}
+
+		let color = self.color(color);
+		context.set_stroke_style_str(&color);
+		context.set_line_width(f64::from(width));
+		context.set_line_cap("round");
+		context.set_line_join("round");
 		context.stroke();
 	}
 

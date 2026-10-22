@@ -23,6 +23,8 @@ use canvist_model::Value;
 use rustc_hash::FxHashMap;
 
 use super::grid::Grid;
+#[cfg(feature = "ink")]
+use super::ink::InkDrawing;
 use crate::geometry::to_units;
 use crate::style::StyleId;
 use crate::style::Styles;
@@ -32,6 +34,7 @@ use crate::text::Align;
 use crate::text::Direction;
 use crate::text::Previous;
 use crate::text::TextLayout;
+use crate::theme::INK_WIDTH;
 use crate::theme::LeafStyle;
 use crate::theme::MarkerKind;
 #[cfg(feature = "tables")]
@@ -98,6 +101,9 @@ pub(crate) struct Row {
 	pub(crate) table: Option<u32>,
 	/// The row's top relative to its grid's top, when it has one.
 	pub(crate) grid_y: i64,
+	/// The strokes of an ink drawing row.
+	#[cfg(feature = "ink")]
+	pub(crate) ink: Option<Arc<InkDrawing>>,
 }
 
 impl Row {
@@ -616,6 +622,8 @@ impl Flattener<'_> {
 			marker: placement.marker,
 			table: None,
 			grid_y: 0,
+			#[cfg(feature = "ink")]
+			ink: self.ink(block, placement.style),
 		});
 		self.flat.row_of.insert(block.id(), key);
 		self.pending = 0;
@@ -627,6 +635,18 @@ impl Flattener<'_> {
 		let index = *self.previous_index.get(&id)?;
 
 		self.previous.get_mut(index as usize).and_then(Option::take)
+	}
+
+	/// The drawing of an ink block, styled as one.
+	#[cfg(feature = "ink")]
+	fn ink(&self, block: &Block, style: StyleId) -> Option<Arc<InkDrawing>> {
+		let is_ink = matches!(self.styles.get(style).leaf, LeafStyle::Ink { .. });
+
+		if !(is_ink && matches!(block.content(), Content::Leaf)) {
+			return None;
+		}
+
+		InkDrawing::from_attrs(block.attrs())
 	}
 
 	fn content_width(&self, style: StyleId, width: f32) -> f32 {
@@ -641,7 +661,10 @@ impl Flattener<'_> {
 
 		let content = match kind {
 			RowKind::Empty => 0.0,
-			RowKind::Leaf => leaf_height(block, resolved.leaf),
+			RowKind::Leaf => {
+				let width = self.content_width(placement.style, placement.frame.width);
+				leaf_height(block, resolved.leaf, width)
+			}
 			RowKind::Text => {
 				let width = self.content_width(placement.style, placement.frame.width);
 				estimated_text_height(block, &resolved.text, width)
@@ -689,12 +712,16 @@ pub(crate) fn align(doc: &Document, block: &Block) -> Align {
 	Align::from_attr(attr(block.attrs(), defaults, "textAlign").and_then(Value::as_str))
 }
 
-/// The height of a leaf block's content: a rule's thickness, or a slot's
-/// `height` attribute falling back to the theme's default.
-fn leaf_height(block: &Block, leaf: LeafStyle) -> f32 {
+/// The height of a leaf block's content at `width`: a rule's thickness, a
+/// slot's `height` attribute falling back to the theme's default, or an ink
+/// drawing's height in drawing units, scaled to the width.
+fn leaf_height(block: &Block, leaf: LeafStyle, width: f32) -> f32 {
 	match leaf {
 		LeafStyle::Rule { thickness, .. } => thickness,
 		LeafStyle::Slot { height } => attr_px(block.attrs(), "height").unwrap_or(height),
+		LeafStyle::Ink { height, .. } => {
+			attr_px(block.attrs(), "height").unwrap_or(height) * width / INK_WIDTH
+		}
 	}
 }
 

@@ -29,6 +29,24 @@ expression: "html.css.replace('}', \"}\\n\")"
 .cv-doc .cv-mk-b2::before{content:"▪"}
 .cv-doc .cv-check{appearance:none;-webkit-appearance:none;position:absolute;right:100%;margin:0 6.4px 0 0;width:14px;height:14px;box-sizing:border-box;border:1px solid #8a8580;border-radius:3px;background:none}
 .cv-doc .cv-check:checked{background:#2e2b29}
+@keyframes cv-k-wave{0%,100%{top:0}
+50%{top:-0.16em}
+}
+@keyframes cv-k-shake{0%{left:0;top:0}
+25%{left:0.05em;top:-0.04em}
+50%{left:-0.04em;top:0.05em}
+75%{left:0.04em;top:0.03em}
+100%{left:0;top:0}
+}
+@keyframes cv-k-pulse{0%,100%{opacity:1}
+50%{opacity:0.35}
+}
+@keyframes cv-k-rainbow{from{filter:hue-rotate(0deg)}
+to{filter:hue-rotate(360deg)}
+}
+@media (prefers-reduced-motion:reduce){.cv-doc [style*="cv-k-"]{animation:none!important}
+}
+.cv-doc .cv-ink{display:block;width:100%;height:100%;overflow:visible}
 .cv-doc .cv-m-bold{font-weight:700;}
 .cv-doc .cv-m-italic{font-style:italic;}
 .cv-doc .cv-m-underline{text-decoration-line:underline;text-decoration-style:solid;}
@@ -40,6 +58,7 @@ expression: "html.css.replace('}', \"}\\n\")"
 .cv-doc .cv-m-comment{background-color:rgba(232, 89, 12, 0.122);text-decoration-line:underline;text-decoration-style:solid;}
 .cv-doc .cv-m-subscript{font-size:0.75em;vertical-align:-0.25em;}
 .cv-doc .cv-m-superscript{font-size:0.75em;vertical-align:0.5em;}
+.cv-doc .cv-m-kinetic{}
 .cv-doc .cv-e-mention{color:#6a00f5;background-color:#eeeeff;}
 .cv-doc .cv-e-inlineMath{background-color:#eeeeff;}
 .cv-doc .cv-e-emoji{}

@@ -169,13 +169,21 @@ pub(super) fn starts_block(line: &str) -> bool {
 		|| item(line).is_some()
 		|| cfg!(feature = "mathematics") && line.trim() == "$$"
 		|| cfg!(feature = "details") && details_open(line).is_some()
-		|| html_table(line)
+		|| html_block(line).is_some()
 }
 
-/// Whether `line` opens an HTML table, as Markdown writes a table a pipe
-/// table cannot hold.
-fn html_table(line: &str) -> bool {
-	line.trim_start().starts_with("<table")
+/// The closing tag of an HTML block `line` opens, as Markdown writes a
+/// table a pipe table cannot hold and an ink drawing.
+fn html_block(line: &str) -> Option<&'static str> {
+	let line = line.trim_start();
+
+	if cfg!(feature = "table") && line.starts_with("<table") {
+		Some("</table>")
+	} else if cfg!(feature = "ink") && line.starts_with("<figure data-type=\"ink\"") {
+		Some("</figure>")
+	} else {
+		None
+	}
 }
 
 /// Parse a run of lines into blocks.
@@ -319,8 +327,8 @@ fn block_at(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>) 
 		return details(build, lines, open);
 	}
 
-	if html_table(line) {
-		return table_html(build, lines);
+	if let Some(close) = html_block(line) {
+		return block_html(build, lines, close);
 	}
 
 	list(build, lines)
@@ -360,11 +368,11 @@ fn block_math(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>
 	(used, vec![tree])
 }
 
-/// An HTML table, through the line that closes it, read as HTML.
-fn table_html(build: &mut Builder<'_>, lines: &[&str]) -> (usize, Vec<BlockTree>) {
+/// An HTML block, through the line holding its `close` tag, read as HTML.
+fn block_html(build: &mut Builder<'_>, lines: &[&str], close: &str) -> (usize, Vec<BlockTree>) {
 	let used = lines
 		.iter()
-		.position(|line| line.contains("</table>"))
+		.position(|line| line.contains(close))
 		.map_or(lines.len(), |index| index + 1);
 	let html = lines[..used].join("\n");
 	let trees = super::html_read::from_html(build.schema, &html)

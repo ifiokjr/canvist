@@ -74,6 +74,49 @@ pub struct TextStyle {
 	/// CSS `vertical-align` with a length. Superscripts are positive and
 	/// subscripts negative.
 	pub baseline_shift: f32,
+	/// How the text moves when the host asks for motion.
+	pub motion: Motion,
+}
+
+/// How kinetic text moves, glyph by glyph, when the host passes a time in
+/// [`DisplayOptions::time`](crate::DisplayOptions::time). Without one, text
+/// is still, as it is for readers who prefer reduced motion.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Motion {
+	/// Still.
+	#[default]
+	None,
+	/// Each glyph rises and falls a little after the one before it.
+	Wave,
+	/// Glyphs jitter, as if shivering.
+	Shake,
+	/// Glyphs fade in and out in a ripple.
+	Pulse,
+	/// Glyphs cycle through the colour wheel.
+	Rainbow,
+}
+
+impl Motion {
+	/// Every motion that moves.
+	pub const ALL: [Self; 4] = [Self::Wave, Self::Shake, Self::Pulse, Self::Rainbow];
+
+	/// The attribute value naming the motion, such as `wave`.
+	#[must_use]
+	pub const fn name(self) -> &'static str {
+		match self {
+			Self::None => "none",
+			Self::Wave => "wave",
+			Self::Shake => "shake",
+			Self::Pulse => "pulse",
+			Self::Rainbow => "rainbow",
+		}
+	}
+
+	/// The motion named `name`.
+	#[must_use]
+	pub fn from_name(name: &str) -> Option<Self> {
+		Self::ALL.into_iter().find(|motion| motion.name() == name)
+	}
 }
 
 impl TextStyle {
@@ -309,7 +352,22 @@ pub enum LeafStyle {
 		/// The default height in pixels.
 		height: f32,
 	},
+	/// A freehand drawing that layout draws itself, from the block's
+	/// `strokes` attribute: each a `points` list of `x, y` pairs, with an
+	/// optional `color` and `width`. Coordinates are in a space
+	/// [`INK_WIDTH`] wide, so a drawing scales with its column; the block's
+	/// `height` attribute, in the same units, overrides `height`.
+	Ink {
+		/// The default height, in drawing units.
+		height: f32,
+		/// The default stroke width, in drawing units.
+		stroke: f32,
+	},
 }
+
+/// The width of an ink drawing's coordinate space: a drawing this many
+/// units wide fills its column.
+pub const INK_WIDTH: f32 = 1000.0;
 
 /// A partial block style contributed by a [`BlockRule`].
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -469,6 +527,8 @@ pub enum AttrBinding {
 	/// A unitless number, such as `1.5` or `"1.5"`, sets the line height as a
 	/// multiple of the font size.
 	LineHeight(Arc<str>),
+	/// A [`Motion`] name, such as `wave`, sets how the text moves.
+	Motion(Arc<str>),
 }
 
 /// Styles one mark type.

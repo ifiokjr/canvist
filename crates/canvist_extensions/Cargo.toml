@@ -58,6 +58,8 @@ extras = [
 	"find-and-replace",
 	"hashtag",
 	"highlight",
+	"ink",
+	"kinetic",
 	"mathematics",
 	"media",
 	"mention",
@@ -112,6 +114,8 @@ find-and-replace = []
 comments = []
 drag-handle = []
 clear-formatting = []
+ink = []
+kinetic = []
 # Images, YouTube and Twitch videos, audio, and file attachments.
 media = ["audio", "file", "image", "twitch", "youtube"]
 audio = []

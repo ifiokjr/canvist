@@ -25,6 +25,7 @@ use crate::theme::EmbedStyle;
 use crate::theme::LeafStyle;
 use crate::theme::MarkRule;
 use crate::theme::MarkerKind;
+use crate::theme::Motion;
 use crate::theme::TableRole;
 use crate::theme::TextStyle;
 use crate::theme::Theme;
@@ -447,6 +448,14 @@ fn apply_binding(style: &mut TextStyle, binding: &AttrBinding, attrs: &Attrs) {
 		AttrBinding::LineHeight(key) => {
 			override_with(&mut style.line_height, line_height(attrs, key));
 		}
+		AttrBinding::Motion(key) if cfg!(feature = "kinetic") => {
+			let motion = attrs
+				.get(key)
+				.and_then(Value::as_str)
+				.and_then(Motion::from_name);
+			override_with(&mut style.motion, motion);
+		}
+		AttrBinding::Motion(_) => {}
 	}
 }
 

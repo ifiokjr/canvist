@@ -16,6 +16,7 @@ pub(crate) use self::grid::table_cells;
 #[cfg(feature = "tables")]
 pub(crate) use self::grid::table_map;
 use self::heights::Heights;
+pub(crate) use self::ink::InkDrawing;
 pub(crate) use self::query::Origin;
 use self::rows::Flat;
 use self::rows::GridPart;
@@ -47,6 +48,7 @@ mod dump;
 mod edits;
 mod grid;
 mod heights;
+mod ink;
 mod query;
 mod rows;
 mod splice;

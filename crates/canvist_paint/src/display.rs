@@ -56,8 +56,8 @@ impl DisplayStyle {
 }
 
 /// Paint every item of `list` in order: rectangles, text runs (as bars
-/// where they would be too small to read), and decoration lines. Slots are
-/// left empty for the host's own views.
+/// where they would be too small to read), decoration lines, and ink
+/// strokes. Slots are left empty for the host's own views.
 pub fn paint_display_list<P: Painter + ?Sized>(
 	painter: &mut P,
 	list: &DisplayList,
@@ -104,8 +104,59 @@ fn paint_item<P: Painter + ?Sized>(
 			let color = style.fill.unwrap_or_else(|| convert::layout_color(*color));
 			fill(painter, &line.to_path(tolerance()), color, style);
 		}
+		DisplayItem::Stroke {
+			points,
+			width,
+			color,
+			..
+		} => {
+			// A drawing keeps its own ink, whatever fill a text frame sets.
+			paint_stroke(
+				painter,
+				list.stroke_points(points),
+				*width,
+				convert::layout_color(*color),
+				style,
+			);
+		}
 		DisplayItem::Slot { .. } => {}
 	}
+}
+
+/// An ink stroke: a polyline through `points`, as `x, y` pairs, with round
+/// caps and joins.
+fn paint_stroke<P: Painter + ?Sized>(
+	painter: &mut P,
+	points: &[f32],
+	width: f32,
+	color: Color,
+	style: &DisplayStyle,
+) {
+	let mut path = BezPath::new();
+
+	for (index, point) in points.chunks_exact(2).enumerate() {
+		let point = kurbo::Point::new(f64::from(point[0]), f64::from(point[1]));
+
+		if index == 0 {
+			path.move_to(point);
+		}
+
+		path.line_to(point);
+	}
+
+	let pen = kurbo::Stroke::new(f64::from(width))
+		.with_caps(kurbo::Cap::Round)
+		.with_join(kurbo::Join::Round);
+	let brush = Brush::Solid(color);
+	painter.stroke(
+		&Draw {
+			path: &path,
+			transform: style.transform,
+			brush: &brush,
+			brush_transform: None,
+		},
+		&pen,
+	);
 }
 
 /// One text run, or a bar where it is too small to read.

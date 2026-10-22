@@ -147,4 +147,9 @@ A canvas editor draws every glyph itself, so it can do things a DOM editor can't
 | **Minimap**       | A zoomed-out overview of the whole document beside the editor.                                                                          | The display list draws at any scale, so the minimap is the same paint call with a transform.                                                                       |
 | **Margin notes**  | Notes laid out in the margin next to the text they belong to, pushed apart so they never overlap.                                       | Layout knows the exact position of every anchor, so notes can be placed in the same pass.                                                                          |
 
-canvist builds **Ink** and **Kinetic type** first. They change how people use an editor (circling and underlining by hand, text that moves to make a point), and both fall out of what layout already knows.
+canvist builds **Ink** and **Kinetic type** first. They change how people use an editor (sketching by hand, text that moves to make a point), and both fall out of what layout already knows.
+
+Both now ship:
+
+- **[Ink](./readme.md#ink)** ships as drawing blocks in the flow of the document. Layout draws their strokes as display-list strokes, which every canvas renderer paints, and scales them with the column. Strokes anchored over the text, so a circled word stays circled through reflow, are the next step on the same strokes.
+- **[Kinetic type](./readme.md#kinetic-type)** ships as the `kinetic` mark with wave, shake, pulse, and rainbow effects. Layout moves each glyph for the time the host passes and reports when a frame is animated. A screen of moving text builds its display list in about 23 µs.

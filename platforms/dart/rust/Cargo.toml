@@ -20,7 +20,7 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 canvist_headless = { version = "=0.1.0", default-features = false, features = ["collab", "full", "journal", "ssr"] }
-canvist_layout = { version = "=0.1.0", default-features = false, features = ["editor", "tables", "theme-extensions"] }
+canvist_layout = { version = "=0.1.0", default-features = false, features = ["editor", "ink", "kinetic", "tables", "theme-extensions"] }
 flutter_rust_bridge = { version = "=2.13.0" }
 serde_json = { version = "^1", default-features = false, features = ["std"] }
 unicode-segmentation = { version = "^1", default-features = false }

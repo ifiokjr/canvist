@@ -52,7 +52,18 @@ fn write_block(schema: &Schema, tree: &BlockTree, html: &mut String) {
 		}
 
 		TreeContent::Leaf if name == "horizontalRule" => html.push_str("<hr>"),
-		TreeContent::Leaf if write_media(name, &tree.attrs, html) => {}
+		TreeContent::Leaf
+			if cfg!(any(
+				feature = "image",
+				feature = "youtube",
+				feature = "twitch",
+				feature = "audio",
+				feature = "file",
+				feature = "mathematics"
+			)) && (write_media(name, &tree.attrs, html)) => {}
+		TreeContent::Leaf if cfg!(feature = "ink") && (name == "ink") => {
+			write_ink(&tree.attrs, html);
+		}
 		TreeContent::Leaf => {
 			html.push_str("<div data-type=\"");
 			html.push_str(&escape(name));
@@ -161,6 +172,93 @@ fn write_media(name: &str, attrs: &Attrs, html: &mut String) -> bool {
 
 	html.push_str(close);
 	true
+}
+
+/// An ink drawing as a `<figure>` carrying its strokes as JSON, which the
+/// reader takes back, around an SVG of them that any browser shows.
+fn write_ink(attrs: &Attrs, html: &mut String) {
+	// A malformed height would make the viewBox invalid.
+	let height = attr_int(attrs, "height").unwrap_or(400).max(1);
+	let strokes = attrs
+		.get("strokes")
+		.and_then(Value::as_array)
+		.unwrap_or_default();
+	let json = canvist_editor::value_to_json(&Value::from(strokes.to_vec())).to_string();
+	let _ = write!(
+		html,
+		"<figure data-type=\"ink\" data-height=\"{height}\" data-strokes=\"{}\" role=\"img\" \
+		 aria-label=\"Drawing\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1000 \
+		 {height}\">",
+		escape(&json)
+	);
+
+	for stroke in strokes.iter().filter_map(Value::as_map) {
+		let points: Vec<f64> = stroke
+			.get("points")
+			.and_then(Value::as_array)
+			.unwrap_or_default()
+			.iter()
+			.filter_map(|point| {
+				match point {
+					Value::Int(number) => Some(*number as f64),
+					Value::Float(number) => Some(*number),
+					_ => None,
+				}
+			})
+			.collect();
+
+		// A stroke without one whole point draws nothing.
+		if points.len() < 2 {
+			continue;
+		}
+
+		let color = stroke
+			.get("color")
+			.and_then(Value::as_str)
+			.unwrap_or("currentColor");
+		let width = match stroke.get("width") {
+			Some(Value::Float(width)) => *width,
+			Some(Value::Int(width)) => *width as f64,
+			_ => 4.0,
+		};
+		let _ = write!(
+			html,
+			"<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"{}\" \
+			 stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
+			path_data(&points),
+			escape(color),
+			float_text(width).unwrap_or_default()
+		);
+	}
+
+	html.push_str("</svg></figure>");
+}
+
+/// SVG path data through `x, y` pairs; one point is a zero-length segment.
+fn path_data(points: &[f64]) -> String {
+	let mut path = String::new();
+
+	for (index, point) in points.chunks_exact(2).enumerate() {
+		let command = if index == 0 { 'M' } else { 'L' };
+		let (x, y) = (float_text(point[0]), float_text(point[1]));
+		let _ = write!(
+			path,
+			"{command}{} {}",
+			x.unwrap_or_default(),
+			y.unwrap_or_default()
+		);
+	}
+
+	if let [x, y] = points {
+		let _ = write!(
+			path,
+			"L{} {}",
+			float_text(*x).unwrap_or_default(),
+			float_text(*y).unwrap_or_default()
+		);
+	}
+
+	path
 }
 
 /// A finite number as HTML writes it: whole numbers without a fraction.
@@ -324,10 +422,21 @@ fn mark_tags(schema: &Schema, mark: &Mark) -> (String, &'static str) {
 				.unwrap_or_default();
 			(format!("<a href=\"{}\">", escape(href)), "</a>")
 		}
-		"subscript" => ("<sub>".to_owned(), "</sub>"),
-		"superscript" => ("<sup>".to_owned(), "</sup>"),
-		"highlight" => (highlight_tag(&mark.attrs), "</mark>"),
-		"textStyle" => (text_style_tag(&mark.attrs), "</span>"),
+		"subscript" if cfg!(feature = "subscript") => ("<sub>".to_owned(), "</sub>"),
+		"superscript" if cfg!(feature = "superscript") => ("<sup>".to_owned(), "</sup>"),
+		"highlight" if cfg!(feature = "highlight") => (highlight_tag(&mark.attrs), "</mark>"),
+		"textStyle" if cfg!(feature = "text-style") => (text_style_tag(&mark.attrs), "</span>"),
+		"kinetic" if cfg!(feature = "kinetic") => {
+			let effect = mark
+				.attrs
+				.get("effect")
+				.and_then(Value::as_str)
+				.unwrap_or("wave");
+			(
+				format!("<span data-kinetic=\"{}\">", escape(effect)),
+				"</span>",
+			)
+		}
 		"comment" if cfg!(feature = "comments") => {
 			let threads: Vec<&str> = mark
 				.attrs

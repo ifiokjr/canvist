@@ -86,7 +86,7 @@ pub(crate) fn mark_active(state: &EditorState, name: &str) -> bool {
 /// Attribute `key` of mark `name` where every selected character (or the
 /// caret's active marks) carries the mark with that one value, so a query
 /// never reports the first run's colour for a mixed selection.
-#[cfg(any(feature = "highlight", feature = "text-style"))]
+#[cfg(any(feature = "highlight", feature = "kinetic", feature = "text-style"))]
 pub(crate) fn shared_mark_attr(state: &EditorState, name: &str, key: &str) -> Option<Value> {
 	let kind = state.schema().mark_type(name)?;
 
@@ -109,7 +109,7 @@ pub(crate) fn shared_mark_attr(state: &EditorState, name: &str, key: &str) -> Op
 }
 
 /// The value of `key` on mark `kind` in each run of `range` of `block`.
-#[cfg(any(feature = "highlight", feature = "text-style"))]
+#[cfg(any(feature = "highlight", feature = "kinetic", feature = "text-style"))]
 fn run_attrs(
 	state: &EditorState,
 	block: BlockId,

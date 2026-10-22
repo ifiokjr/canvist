@@ -68,6 +68,8 @@
 //! | [`TableOfContents`] | `tableOfContents`  | the headings as an outline               |
 //! | [`Comments`]        | `comments`         | `comment`, thread ids on text            |
 //! | [`DragHandle`]      | `dragHandle`       | move blocks, Alt-↑ and Alt-↓             |
+//! | [`Ink`]             | `ink`              | `ink`, freehand strokes the canvas draws |
+//! | [`Kinetic`]         | `kinetic`          | `kinetic`, text that moves               |
 //! | [`ClearFormatting`] | `clearFormatting`  | marks off, blocks to paragraphs, `Mod-\` |
 //!
 //! `docs/src/extensions/parity.md` compares the whole set with Remirror and
@@ -171,6 +173,10 @@ mod comments;
 mod drag_handle;
 #[cfg(feature = "find-and-replace")]
 mod find;
+#[cfg(feature = "ink")]
+mod ink;
+#[cfg(feature = "kinetic")]
+mod kinetic;
 mod paragraph;
 mod resolve;
 mod starter_kit;
@@ -267,6 +273,20 @@ pub use history::HistoryHandle;
 pub use horizontal_rule::HorizontalRule;
 #[cfg(feature = "horizontal-rule")]
 pub use horizontal_rule::HorizontalRuleHandle;
+#[cfg(feature = "ink")]
+pub use ink::INK_WIDTH;
+#[cfg(feature = "ink")]
+pub use ink::Ink;
+#[cfg(feature = "ink")]
+pub use ink::InkHandle;
+#[cfg(feature = "ink")]
+pub use ink::InkStroke;
+#[cfg(feature = "kinetic")]
+pub use kinetic::Kinetic;
+#[cfg(feature = "kinetic")]
+pub use kinetic::KineticEffect;
+#[cfg(feature = "kinetic")]
+pub use kinetic::KineticHandle;
 #[cfg(feature = "link")]
 pub use link::Link;
 #[cfg(feature = "link")]

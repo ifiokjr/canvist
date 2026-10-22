@@ -2058,6 +2058,281 @@ export const clearFormatting = {
 	"queries": []
 } as const satisfies ExtensionDescriptor;
 
+/** The `ink` extension. */
+export const ink = {
+	"commands": [
+		/** Insert an empty drawing at the selection. */
+		{
+			"args": [
+				/** The height in drawing units, from 1 to 4000. */
+				{
+					"default": 400,
+					"name": "height",
+					"type": {
+						"type": "int"
+					}
+				}
+			],
+			"name": "insertInk"
+		},
+		/** Add a stroke to a drawing. */
+		{
+			"args": [
+				/** Which drawing, by its place in `inks`, from zero. */
+				{
+					"name": "ink",
+					"type": {
+						"type": "int"
+					}
+				},
+				/** `x, y` pairs in drawing units. */
+				{
+					"name": "points",
+					"type": {
+						"of": {
+							"type": "float"
+						},
+						"type": "list"
+					}
+				},
+				/** A `#rrggbb` colour, or null for the text colour. */
+				{
+					"default": null,
+					"name": "color",
+					"type": {
+						"of": {
+							"type": "string"
+						},
+						"type": "nullable"
+					}
+				},
+				/** The width in drawing units, or null for the theme's. */
+				{
+					"default": null,
+					"name": "width",
+					"type": {
+						"of": {
+							"type": "float"
+						},
+						"type": "nullable"
+					}
+				}
+			],
+			"name": "addInkStroke"
+		},
+		/** Remove the last stroke of a drawing. */
+		{
+			"args": [
+				/** Which drawing, by its place in `inks`, from zero. */
+				{
+					"name": "ink",
+					"type": {
+						"type": "int"
+					}
+				}
+			],
+			"name": "undoInkStroke"
+		},
+		/** Remove every stroke of a drawing. */
+		{
+			"args": [
+				/** Which drawing, by its place in `inks`, from zero. */
+				{
+					"name": "ink",
+					"type": {
+						"type": "int"
+					}
+				}
+			],
+			"name": "clearInk"
+		}
+	],
+	"name": "ink",
+	"nodes": [
+		{
+			"attrs": [
+				/** The height in drawing units; the width is always 1000. */
+				{
+					"default": 400,
+					"name": "height",
+					"type": {
+						"type": "int"
+					}
+				},
+				/** The strokes, oldest first. */
+				{
+					"default": [],
+					"name": "strokes",
+					"type": {
+						"of": {
+							"fields": [
+								/** `x, y` pairs in drawing units. */
+								{
+									"name": "points",
+									"type": {
+										"of": {
+											"type": "float"
+										},
+										"type": "list"
+									}
+								},
+								/** A `#rrggbb` colour, or null for the text colour. */
+								{
+									"default": null,
+									"name": "color",
+									"type": {
+										"of": {
+											"type": "string"
+										},
+										"type": "nullable"
+									}
+								},
+								/** The width in drawing units, or null for the theme's. */
+								{
+									"default": null,
+									"name": "width",
+									"type": {
+										"of": {
+											"type": "float"
+										},
+										"type": "nullable"
+									}
+								}
+							],
+							"type": "record"
+						},
+						"type": "list"
+					}
+				}
+			],
+			"kind": "block",
+			"name": "ink"
+		}
+	],
+	"queries": [
+		/** Every drawing in the document, in order, with its height and how many strokes it has. */
+		{
+			"args": [],
+			"name": "inks",
+			"returns": {
+				"of": {
+					"fields": [
+						/** The height in drawing units. */
+						{
+							"name": "height",
+							"type": {
+								"type": "int"
+							}
+						},
+						/** How many strokes it has. */
+						{
+							"name": "strokes",
+							"type": {
+								"type": "int"
+							}
+						}
+					],
+					"type": "record"
+				},
+				"type": "list"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
+/** The `kinetic` extension. */
+export const kinetic = {
+	"commands": [
+		/** Make the selection move. */
+		{
+			"args": [
+				/** How the text moves: wave, shake, pulse, or rainbow. */
+				{
+					"default": "wave",
+					"name": "effect",
+					"type": {
+						"enum": [
+							"wave",
+							"shake",
+							"pulse",
+							"rainbow"
+						],
+						"type": "string"
+					}
+				}
+			],
+			"name": "setKinetic"
+		},
+		/** Make the selection move, or still when it already does. */
+		{
+			"args": [
+				/** How the text moves: wave, shake, pulse, or rainbow. */
+				{
+					"default": "wave",
+					"name": "effect",
+					"type": {
+						"enum": [
+							"wave",
+							"shake",
+							"pulse",
+							"rainbow"
+						],
+						"type": "string"
+					}
+				}
+			],
+			"name": "toggleKinetic"
+		},
+		/** Make the selection still. */
+		{
+			"args": [],
+			"name": "unsetKinetic"
+		}
+	],
+	"name": "kinetic",
+	"nodes": [
+		{
+			"attrs": [
+				/** How the text moves: wave, shake, pulse, or rainbow. */
+				{
+					"default": "wave",
+					"name": "effect",
+					"type": {
+						"enum": [
+							"wave",
+							"shake",
+							"pulse",
+							"rainbow"
+						],
+						"type": "string"
+					}
+				}
+			],
+			"kind": "mark",
+			"name": "kinetic"
+		}
+	],
+	"queries": [
+		/** How the text at the selection moves, or null when it is still. */
+		{
+			"args": [],
+			"name": "kineticEffect",
+			"returns": {
+				"of": {
+					"enum": [
+						"wave",
+						"shake",
+						"pulse",
+						"rainbow"
+					],
+					"type": "string"
+				},
+				"type": "nullable"
+			}
+		}
+	]
+} as const satisfies ExtensionDescriptor;
+
 /** The `typography` extension. */
 export const typography = {
 	"commands": [],
@@ -2355,7 +2630,7 @@ export const table = {
 } as const satisfies ExtensionDescriptor;
 
 /** Every extension beyond the StarterKit, which `@canvist/headless/full` compiles in. */
-export const extras = [textStyle, mention, details, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, image, youtube, twitch, audio, file, callout, mathematics, findAndReplace, tableOfContents, comments, dragHandle, clearFormatting, typography, table] as const;
+export const extras = [textStyle, mention, details, subscript, superscript, highlight, color, backgroundColor, fontFamily, fontSize, lineHeight, textAlign, characterCount, placeholder, hashtag, emoji, image, youtube, twitch, audio, file, callout, mathematics, findAndReplace, tableOfContents, comments, dragHandle, clearFormatting, ink, kinetic, typography, table] as const;
 
 /** Every optional extension canvist ships, the StarterKit's included. */
 export const allExtensions = [...starterKit, ...extras] as const;

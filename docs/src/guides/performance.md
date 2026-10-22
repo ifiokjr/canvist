@@ -22,6 +22,7 @@ Every number below has a budget, and a test fails the build when an operation go
 | Relayout one edited paragraph, 10k or 100k blocks    | < 100 µs                                    | 2.5 µs               |
 | Relayout after a keystroke in a 100 KB paragraph     | < 100 µs                                    | 25 µs                |
 | Relayout after a keystroke in a table of 1,000 cells | < 100 µs                                    | 7 µs                 |
+| Display list, one screen of moving kinetic text      | < 100 µs                                    | 23 µs                |
 | Relayout after Enter, 10k / 100k blocks ¹            | < 200 µs / < 2 ms                           | 83 µs / 1.4 ms       |
 | Hit test / caret rectangle                           | < 5 µs / < 2 µs                             | 0.8 µs / 0.01 µs     |
 | Display list for one screen                          | < 100 µs                                    | 5 µs                 |
@@ -40,7 +41,8 @@ Every number below has a budget, and a test fails the build when an operation go
 | Headless: create a StarterKit document               | < 250 µs                                    | 56 µs                |
 | Headless: apply one Yjs keystroke, 10k paragraphs    | < 20 µs                                     | 2.3 µs               |
 | Headless TypeScript: one command / Yjs update        | < 5 µs / < 30 µs                            | 0.71 µs / 4.6 µs     |
-| Headless TypeScript wasm module, after `wasm-opt`    | < 1,400 KB raw                              | 1,303 KB (534 KB gz) |
+| Headless TypeScript wasm module, after `wasm-opt`    | < 1,200 KB raw                              | 1,060 KB (444 KB gz) |
+| Headless TypeScript full module (`/full`)            | < 1,400 KB raw                              | 1,321 KB (551 KB gz) |
 | Headless Dart: one command / Yjs update              | < 10 µs / < 30 µs                           | 2.0 µs / 3.5 µs      |
 | Keystroke → paint on the web, p95 ⁴                  | < 8 ms                                      | 0.5 / 2 / 2 ms       |
 | Typing burst: 1,000 key events on the web ⁴          | no crash, no dropped input, ≤ 2 frames late | 1,000 of 1,000       |
@@ -54,13 +56,13 @@ Every number below has a budget, and a test fails the build when an operation go
 | Desktop: keystroke → frame, 100 KB paragraph ⁸       | < 4 ms                                      | 0.56 ms              |
 | Desktop: open 10k paragraphs → first frame           | < 100 ms                                    | 26 ms                |
 | Desktop: typing burst, 1,000 keys with a frame each  | no crash, < 1.5 s                           | 0.23 s               |
-| Web bundle (core + StarterKit), gzipped              | < 350 KB                                    | 349.6 KB ³           |
+| Web bundle (core + StarterKit), gzipped              | < 359 KB                                    | 358.5 KB ³           |
 
 ¹ Pressing Enter grows slowly with document size, about 10 ns per block, because every later line moves down one row. It stays well under a frame at 100,000 blocks.
 
 ² Structural edits, such as splitting or joining blocks, cost time in proportion to the number of blocks beside them, because Yjs walks the list of siblings. Budgets use 10,000 top-level blocks.
 
-³ Measured as an app ships it: a Vite build of a page that creates an editor, minified and gzipped (335 KB of WebAssembly, 14 KB of script). CI fails above the budget. The module is optimized without inlining, which gzips smaller even though it is larger raw. Line breaking's Unicode data is 13.6 KB of it, and browsers offer no line-break segmenter to use instead.
+³ Measured as an app ships it: a Vite build of a page that creates an editor, minified and gzipped (344 KB of WebAssembly, 14 KB of script). CI fails above the budget. The module is optimized without inlining, which gzips smaller even though it is larger raw. Line breaking's Unicode data is 13.6 KB of it, and browsers offer no line-break segmenter to use instead.
 
 ⁴ Chromium / Firefox / WebKit on an Apple silicon Mac, measured by `editor.inputLatency()` in canvist's Playwright tests: from each input event's timestamp until the change is painted on the canvas, in the same task. Firefox and WebKit round timestamps to 1 ms. In the burst, every key is painted in its own task, so none waits for a later frame; the 95th percentile is 0.4 / 3 / 1 ms. The browser's Event Timing API also counts the wait for the next frame, and reports only events that took 16 ms or more, so it can't resolve an 8 ms budget. The tests record its slow entries beside these numbers.
 
@@ -136,7 +138,7 @@ Measure sizes the same way, with `node tools/bench/size.ts build --root . --grou
 - **Build one engine and share it.** Creating an engine registers its extensions. A document from an existing engine takes about 60 µs.
 - **Reuse a `Renderer` per thread.** It caches text measurements, so the second render of similar text is much cheaper.
 - **Store JSON.** It keeps block ids, so collaborators and comments don't have to re-anchor after a reload.
-- **Mind the WebAssembly size.** The TypeScript package's module is 433 KB gzipped. Collaboration is most of it: the core without it is 196 KB.
+- **Mind the WebAssembly size.** The TypeScript package's StarterKit module is 444 KB gzipped, and `@canvist/headless/full` is 551 KB. Collaboration is most of it: the core without it is 196 KB.
 - **Batch updates on the server.** `takeUpdates()` returns everything since the last call, so you can send one message per tick instead of one per keystroke.
 
 ## Measure it yourself

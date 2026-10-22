@@ -15,6 +15,7 @@ use super::LeafStyle;
 use super::MarkRule;
 use super::MarkerKind;
 use super::MarkerStyle;
+use super::Motion;
 use super::TableRole;
 use super::TextPatch;
 use super::TextStyle;
@@ -61,6 +62,8 @@ struct Palette {
 	table_header: Color,
 	/// The tint under commented text.
 	comment: Color,
+	/// The paper behind an ink drawing.
+	ink_paper: Color,
 }
 
 const LIGHT: Palette = Palette {
@@ -82,6 +85,7 @@ const LIGHT: Palette = Palette {
 	],
 	table_header: Color::rgb(0xf7, 0xf6, 0xf5),
 	comment: Color::rgba(0xe8, 0x59, 0x0c, 0x1f),
+	ink_paper: Color::rgb(0xfa, 0xf9, 0xf7),
 };
 
 const DARK: Palette = Palette {
@@ -103,6 +107,7 @@ const DARK: Palette = Palette {
 	],
 	table_header: Color::rgb(0x24, 0x21, 0x1f),
 	comment: Color::rgba(0xff, 0xa9, 0x4d, 0x2e),
+	ink_paper: Color::rgb(0x21, 0x1f, 0x1d),
 };
 
 /// What [`Theme::starter_kit_with`] varies: the colour scheme, the font
@@ -310,6 +315,7 @@ fn base_style(options: &StarterKitOptions, palette: &Palette) -> TextStyle {
 		decorations: Decorations::default(),
 		letter_spacing: options.letter_spacing,
 		baseline_shift: 0.0,
+		motion: Motion::None,
 	}
 }
 
@@ -331,6 +337,20 @@ fn block_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<BlockRule>
 		rules.extend(table_rules(palette));
 	}
 
+	if cfg!(feature = "ink") {
+		rules.push(BlockRule::new(
+			"ink",
+			BlockPatch::new()
+				.leaf(LeafStyle::Ink {
+					height: INK_HEIGHT,
+					stroke: INK_STROKE,
+				})
+				.background(palette.ink_paper, 0.5 * REM)
+				.space(FIGURE_SPACE, FIGURE_SPACE)
+				.tag("figure"),
+		));
+	}
+
 	rules
 }
 
@@ -344,6 +364,11 @@ fn media_rules() -> [BlockRule; 5] {
 		media_rule("blockMath", MATH_HEIGHT),
 	]
 }
+
+/// An ink drawing's default height and stroke width, in drawing units: a
+/// 5:2 sketch area drawn with a fine pen.
+const INK_HEIGHT: f32 = 400.0;
+const INK_STROKE: f32 = 4.0;
 
 /// Tables: a grid of hairlines, padded cells, and tinted header cells.
 fn table_rules(palette: &Palette) -> Vec<BlockRule> {
@@ -599,6 +624,13 @@ fn mark_rules(options: &StarterKitOptions, palette: &Palette) -> Vec<MarkRule> {
 					.baseline_shift(SUPERSCRIPT_SHIFT),
 			),
 		]);
+	}
+
+	if cfg!(feature = "kinetic") {
+		rules.push(
+			MarkRule::new("kinetic", "span", TextPatch::new())
+				.bind(AttrBinding::Motion(Arc::from("effect"))),
+		);
 	}
 
 	rules

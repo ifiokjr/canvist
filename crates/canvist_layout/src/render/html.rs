@@ -24,6 +24,7 @@ use super::attribute;
 use super::escape_into;
 use super::num;
 use crate::Color;
+use crate::document::InkDrawing;
 #[cfg(feature = "tables")]
 use crate::document::column_widths;
 use crate::document::span_attr;
@@ -41,8 +42,10 @@ use crate::text::slice;
 use crate::theme::AttrBinding;
 use crate::theme::EmbedStyle;
 use crate::theme::FontSize;
+use crate::theme::INK_WIDTH;
 use crate::theme::LeafStyle;
 use crate::theme::MarkerKind;
+use crate::theme::Motion;
 use crate::theme::TableRole;
 use crate::theme::TextPatch;
 use crate::theme::TextStyle;
@@ -212,6 +215,17 @@ impl Writer<'_> {
 			inline_style.push_str("display:flow-root;");
 		}
 
+		let inner = (width - resolved.inset_left() - resolved.inset_right()).max(0.0);
+
+		if let (Content::Leaf, LeafStyle::Ink { height, .. }) = (block.content(), resolved.leaf) {
+			let height = attr_px(block.attrs(), "height").unwrap_or(height) * inner / INK_WIDTH;
+			let _ = write!(inline_style, "height:{}px;", num(height));
+			// To assistive technology a drawing is one image; its strokes
+			// carry no text of their own.
+			attribute(&mut self.out, "role", "img");
+			attribute(&mut self.out, "aria-label", "Drawing");
+		}
+
 		if !inline_style.is_empty() {
 			attribute(&mut self.out, "style", &inline_style);
 		}
@@ -238,10 +252,47 @@ impl Writer<'_> {
 		match block.content() {
 			Content::Inline(inline) => self.inline(inline, &resolved.text),
 			Content::Blocks(_) => self.child_blocks(block, (style, &resolved), (lists, width)),
-			Content::Leaf => {}
+			Content::Leaf => self.ink(block, &resolved),
 		}
 
 		let _ = write!(self.out, "</{tag}>");
+	}
+
+	/// An ink block's drawing, as an SVG filling it: strokes in the text
+	/// colour and the theme's width unless they set their own.
+	fn ink(&mut self, block: &Block, resolved: &BlockStyle) {
+		let LeafStyle::Ink { height, stroke } = resolved.leaf else {
+			return;
+		};
+		let Some(drawing) = cfg!(feature = "ink")
+			.then(|| InkDrawing::from_attrs(block.attrs()))
+			.flatten()
+		else {
+			return;
+		};
+		let height = attr_px(block.attrs(), "height").unwrap_or(height);
+		let _ = write!(
+			self.out,
+			"<svg class=\"cv-ink\" viewBox=\"0 0 {} {}\" preserveAspectRatio=\"none\" \
+			 aria-hidden=\"true\">",
+			num(INK_WIDTH),
+			num(height)
+		);
+
+		for line in &drawing.strokes {
+			let color = line
+				.color
+				.map_or_else(|| "currentColor".to_owned(), |color| color.to_string());
+			let _ = write!(
+				self.out,
+				"<path d=\"{}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{}\" \
+				 stroke-linecap=\"round\" stroke-linejoin=\"round\"/>",
+				super::stroke_path(&line.points),
+				num(line.width.unwrap_or(stroke))
+			);
+		}
+
+		self.out.push_str("</svg>");
 	}
 
 	/// Write a container's children, inside its insets.
@@ -689,8 +740,39 @@ fn binding_css(binding: &AttrBinding, mark: &Mark) -> Option<String> {
 		AttrBinding::LineHeight(key) => {
 			line_height(&mark.attrs, key).map(|height| format!("line-height:{};", num(height)))
 		}
+		AttrBinding::Motion(key) if cfg!(feature = "kinetic") => {
+			string(key).and_then(Motion::from_name).map(motion_css)
+		}
+		AttrBinding::Motion(_) => None,
 	}
 }
+
+/// The animation of kinetic text in HTML. CSS cannot move each glyph on
+/// its own without wrapping it, so the whole run moves together; offsets
+/// come from `position: relative`, which leaves line breaking alone.
+fn motion_css(motion: Motion) -> String {
+	let timing = match motion {
+		Motion::Shake => "0.4s steps(4)",
+		Motion::Pulse => "1.25s ease-in-out",
+		Motion::Rainbow => "4s linear",
+		Motion::Wave | Motion::None => "1.1s ease-in-out",
+	};
+
+	format!(
+		"position:relative;animation:cv-k-{} {timing} infinite;",
+		motion.name()
+	)
+}
+
+/// The keyframes kinetic text animates with, and the rule that keeps it
+/// still for readers who prefer reduced motion.
+const MOTION_CSS: &str = "@keyframes cv-k-wave{0%,100%{top:0}50%{top:-0.16em}}@keyframes \
+                          cv-k-shake{0%{left:0;top:0}25%{left:0.05em;top:-0.04em}50%{left:-0.04em;\
+                          top:0.05em}75%{left:0.04em;top:0.03em}100%{left:0;top:0}}@keyframes \
+                          cv-k-pulse{0%,100%{opacity:1}50%{opacity:0.35}}@keyframes \
+                          cv-k-rainbow{from{filter:hue-rotate(0deg)}to{filter:\
+                          hue-rotate(360deg)}}@media (prefers-reduced-motion:reduce){.cv-doc \
+                          [style*=\"cv-k-\"]{animation:none!important}}";
 
 /// The stylesheet for every style `styles` resolved, plus the fixed rules of
 /// the CSS contract.
@@ -735,6 +817,28 @@ fn stylesheet(styles: &Styles, width: f32) -> String {
 	}
 
 	marker_css(&mut css, theme);
+
+	let schema = styles.schema();
+	let moves = theme.mark_rules().iter().any(|rule| {
+		schema.mark_type(&rule.mark).is_some()
+			&& rule
+				.bindings
+				.iter()
+				.any(|binding| matches!(binding, AttrBinding::Motion(_)))
+	});
+
+	if moves {
+		css.push_str(MOTION_CSS);
+	}
+
+	let draws = theme.block_rules().iter().any(|rule| {
+		schema.block_type(&rule.block).is_some()
+			&& matches!(rule.patch.leaf, Some(LeafStyle::Ink { .. }))
+	});
+
+	if draws {
+		css.push_str(".cv-doc .cv-ink{display:block;width:100%;height:100%;overflow:visible}");
+	}
 
 	for rule in theme.mark_rules() {
 		let _ = write!(

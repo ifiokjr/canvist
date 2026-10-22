@@ -43,6 +43,12 @@ use canvist_extensions::HeaderPart;
 use canvist_extensions::Highlight;
 use canvist_extensions::HighlightHandle;
 use canvist_extensions::Image;
+use canvist_extensions::Ink;
+use canvist_extensions::InkHandle;
+use canvist_extensions::InkStroke;
+use canvist_extensions::Kinetic;
+use canvist_extensions::KineticEffect;
+use canvist_extensions::KineticHandle;
 use canvist_extensions::LineHeight;
 use canvist_extensions::MarkHandle;
 use canvist_extensions::Mathematics;
@@ -104,6 +110,8 @@ struct Extras {
 	comments: CommentsHandle,
 	drag: DragHandleHandle,
 	clear: ClearFormattingHandle,
+	ink: InkHandle,
+	kinetic: KineticHandle,
 }
 
 /// The StarterKit plus every other extension, built through the typed path.
@@ -140,6 +148,8 @@ fn full() -> (Editor, Extras) {
 		comments: builder.add(Comments),
 		drag: builder.add(DragHandle),
 		clear: builder.add(ClearFormatting),
+		ink: builder.add(Ink),
+		kinetic: builder.add(Kinetic),
 	};
 	builder.add(Typography::default());
 
@@ -169,9 +179,12 @@ fn every_command_runs_with_sample_arguments_and_rejects_missing_ones() {
 	let metadata = typist.editor.metadata().to_vec();
 
 	for command in metadata.iter().flat_map(|extension| &extension.commands) {
+		// Optional arguments keep their defaults: a sample of a type, such as
+		// "sample" for a colour, need not be a valid value of the argument.
 		let args: Attrs = command
 			.args
 			.iter()
+			.filter(|arg| arg.default.is_none())
 			.map(|arg| (arg.name, arg.ty.sample()))
 			.collect();
 		let built = typist.editor.command_named(command.name, &args);
@@ -409,6 +422,61 @@ fn document_tool_handles_agree_with_their_named_commands() {
 	);
 	same_as_named(|kit| kit.drag.up(), "moveBlockUp", &none);
 	same_as_named(|kit| kit.clear.clear(), "clearFormatting", &none);
+	same_as_named(
+		|kit| kit.ink.insert(300),
+		"insertInk",
+		&Attrs::new().with("height", 300),
+	);
+	same_as_named(
+		|kit| kit.kinetic.set(KineticEffect::Pulse),
+		"setKinetic",
+		&Attrs::new().with("effect", "pulse"),
+	);
+}
+
+#[test]
+fn canvas_native_handles_read_what_commands_set() {
+	let (mut typist, kit) = typed_with("moving words[Mod-a]");
+	let editor = &mut typist.editor;
+
+	editor
+		.run(&kit.kinetic.set(KineticEffect::Shake), &mut env())
+		.expect("kinetic");
+	assert_eq!(
+		kit.kinetic.effect(editor.state()),
+		Some(KineticEffect::Shake)
+	);
+
+	editor.run(&kit.ink.insert(200), &mut env()).expect("ink");
+	let drawing = kit.ink.drawings(editor.state())[0];
+	let stroke = InkStroke {
+		points: &[1.0, 2.0, 3.0, 4.0],
+		color: None,
+		width: Some(8.0),
+	};
+	editor
+		.run(
+			&kit.ink
+				.add_stroke(drawing, &stroke)
+				.expect("a valid stroke"),
+			&mut env(),
+		)
+		.expect("stroke");
+	editor
+		.run(&kit.ink.undo_stroke(drawing), &mut env())
+		.expect("undo");
+	assert!(
+		kit.ink
+			.add_stroke(
+				drawing,
+				&InkStroke {
+					points: &[1.0],
+					color: None,
+					width: None
+				}
+			)
+			.is_err()
+	);
 }
 
 #[test]
