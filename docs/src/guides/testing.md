@@ -5,7 +5,7 @@ Read this page to test a canvist editor the way a person uses it: type, press, p
 The framework is `canvist_testkit`, a crate in this repository. One test, written once, runs against every target the machine has:
 
 ```rust
-use canvist_headless::Format;
+use canvist::headless::Format;
 use canvist_testkit::EditorHarness;
 use canvist_testkit::cross_test;
 
@@ -51,6 +51,9 @@ Everything runs headless by default: the browser without a window, the simulator
 Tests can restrict themselves, because platforms honestly differ:
 
 ```rust
+use canvist_testkit::EditorHarness;
+use canvist_testkit::cross_test;
+
 cross_test! {
 	/// IME composition, on the targets whose input path has it.
 	composition_commits, targets = [headless, loopback, ios, android], async fn compose(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
@@ -68,12 +71,19 @@ cross_test! {
 An extension proves nothing alone; it proves itself next to the others. The testkit's tests state their extension set, and the same set is registered on every target — by name, the way the JavaScript, Dart, Swift, and Kotlin bindings register them:
 
 ```rust
+use canvist_testkit::EditorHarness;
+use canvist_testkit::cross_test;
+
 cross_test! {
 	/// Two marks on one word: whichever toggles second does not undo the first.
 	two_marks_stack,
-	config = |config: &mut canvist_testkit::EditorConfig| *config = canvist_testkit::EditorConfig::with_extensions(&["bold", "italic", "history"]),
+	extensions = ["bold", "italic", "history"],
 	async fn stacking(editor: &mut EditorHarness) -> canvist_testkit::TestResult<()> {
-		// ...
+		editor.load_text("bold me").await?;
+		editor.select_all().await?;
+		editor.press("Mod-b").await?;
+
+		editor.assert_markdown("**bold me**").await?;
 		Ok(())
 	}
 }

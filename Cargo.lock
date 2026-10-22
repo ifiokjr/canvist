@@ -813,7 +813,9 @@ version = "0.1.0"
 dependencies = [
  "canvist",
  "canvist_desktop",
+ "canvist_testkit",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

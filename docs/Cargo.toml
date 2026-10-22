@@ -13,7 +13,10 @@ description = "The canvist docs, with their Rust samples run as doc tests"
 [dev-dependencies]
 canvist = { workspace = true, features = ["collab", "ssr"] }
 canvist_desktop = { workspace = true }
+canvist_testkit = { workspace = true, features = ["collab"] }
 serde_json = { workspace = true, features = ["std"] }
+# The testkit's `cross_test!` expands to `#[tokio::test]`.
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [lints]
 workspace = true
