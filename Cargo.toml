@@ -105,7 +105,6 @@ canvist_layout = { path = "./crates/canvist_layout", version = "0.1.0", default-
 canvist_model = { path = "./crates/canvist_model", version = "0.1.0" }
 canvist_paint = { path = "./crates/canvist_paint", version = "0.1.0" }
 canvist_scene = { path = "./crates/canvist_scene", version = "0.1.0" }
-canvist_testkit = { path = "./crates/canvist_testkit", version = "0.1.0" }
 canvist_web = { path = "./crates/canvist_web", version = "0.1.0" }
 
 # `platforms/dart/rust` ships in a pub.dev archive, so it names canvist crates
