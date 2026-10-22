@@ -1,0 +1,67 @@
+name: playwright browsers
+description: >-
+  Install Playwright browsers with a cache and retries. Browser downloads and
+  their apt dependencies have stalled CI runners for the full step timeout, so
+  the browsers are cached per runner OS and Playwright version, and each
+  install attempt is retried before the job fails.
+inputs:
+  browsers:
+    description: Space-separated browsers to install, such as `chromium firefox`.
+    required: true
+  command:
+    description: >-
+      The Playwright CLI to run, without arguments. Defaults to `npx playwright`;
+      pass `node node_modules/@playwright/test/cli.js` where npx is unavailable.
+    required: false
+    default: npx playwright
+  working-directory:
+    description: Where `command` resolves Playwright from.
+    required: false
+    default: .
+  with-deps:
+    description: Also install the browsers' system packages (Linux only).
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: read the playwright version
+      id: version
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        version=$(${{ inputs.command }} --version | awk '{print $NF}')
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    - name: cache the browsers
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/ms-playwright
+          ~/Library/Caches/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.version.outputs.version }}-${{ inputs.browsers }}
+
+    # Up to three attempts of five minutes each: a stalled download fails fast
+    # and retries instead of holding the job for its whole timeout. `perl`'s
+    # alarm stands in for `timeout`, which macOS runners don't have.
+    - name: install the browsers
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -uo pipefail
+        deps=""
+        if [ "${{ inputs.with-deps }}" = "true" ] && [ "$RUNNER_OS" = "Linux" ]; then
+          deps="--with-deps"
+        fi
+        for attempt in 1 2 3; do
+          # shellcheck disable=SC2086 # `command`, `deps` and `browsers` split into words
+          if perl -e 'alarm shift; exec @ARGV' 300 ${{ inputs.command }} install $deps ${{ inputs.browsers }}; then
+            exit 0
+          fi
+          echo "::warning::playwright install attempt $attempt failed; retrying"
+          sleep $((attempt * 15))
+        done
+        echo "::error::playwright install failed after 3 attempts"
+        exit 1

@@ -132,9 +132,11 @@ jobs:
         run: npx tsc --noEmit
 
       - name: install browsers
-        working-directory: examples/web
-        timeout-minutes: 10
-        run: npx playwright install --with-deps chromium firefox webkit
+        timeout-minutes: 20
+        uses: ./.github/actions/playwright-browsers
+        with:
+          working-directory: examples/web
+          browsers: chromium firefox webkit
 
       - name: test the examples
         working-directory: examples/web
@@ -196,9 +198,11 @@ jobs:
         run: npm run build:wasm
 
       - name: install the browser
-        working-directory: packages/canvist-web
-        timeout-minutes: 10
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+        timeout-minutes: 20
+        uses: ./.github/actions/playwright-browsers
+        with:
+          working-directory: packages/canvist-web
+          browsers: ${{ matrix.browser }}
 
       - name: pixel parity, editing, and input latency
         working-directory: packages/canvist-web

@@ -134,8 +134,12 @@ jobs:
         run: deno task check:links
 
       - name: install playwright chromium
-        timeout-minutes: 10
-        run: node node_modules/@playwright/test/cli.js install --with-deps chromium
+        timeout-minutes: 20
+        uses: ./.github/actions/playwright-browsers
+        with:
+          working-directory: website
+          command: node node_modules/@playwright/test/cli.js
+          browsers: chromium
 
       - name: end-to-end tests
         run: deno task test:e2e
@@ -265,8 +269,13 @@ jobs:
         run: deno task build
 
       - name: install playwright chromium
-        timeout-minutes: 10
-        run: node node_modules/@playwright/test/cli.js install chromium
+        timeout-minutes: 20
+        uses: ./.github/actions/playwright-browsers
+        with:
+          working-directory: website
+          command: node node_modules/@playwright/test/cli.js
+          browsers: chromium
+          with-deps: "false"
 
       - name: visual snapshots
         run: deno task test:e2e tests/e2e/visual.spec.ts
