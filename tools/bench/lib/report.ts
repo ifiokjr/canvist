@@ -15,6 +15,11 @@ const TIME_UNITS = [
 	{ unit: "ns", nanoseconds: 1 },
 ] as const;
 const SIGNIFICANT_DIGITS = 4;
+const COUNT_UNITS = [
+	{ suffix: "G", size: 1e9 },
+	{ suffix: "M", size: 1e6 },
+	{ suffix: "K", size: 1e3 },
+] as const;
 
 const SPEED_MARKS: Readonly<Record<SpeedRow["verdict"], string>> = {
 	regressed: "❌ regressed",
@@ -44,6 +49,17 @@ export function formatDuration(nanoseconds: number | undefined): string {
 	} ${scale.unit}`;
 }
 
+/** An instruction count such as `965.3 M`, with no unit for small ones. */
+export function formatCount(count: number | undefined): string {
+	if (count === undefined) return "—";
+
+	const scale = COUNT_UNITS.find((unit) => count >= unit.size);
+
+	return scale === undefined
+		? `${count}`
+		: `${Number((count / scale.size).toPrecision(3))} ${scale.suffix}`;
+}
+
 export function formatChange(change: number | undefined): string {
 	if (change === undefined) return "—";
 
@@ -71,10 +87,14 @@ function table(header: readonly string[], rows: readonly string[][]): string {
 }
 
 function speedCells(benchmark: SpeedRow): string[] {
+	const format = benchmark.unit === "instructions"
+		? formatCount
+		: formatDuration;
+
 	return [
 		`\`${benchmark.id}\``,
-		formatDuration(benchmark.baseNs),
-		formatDuration(benchmark.headNs),
+		format(benchmark.baseNs),
+		format(benchmark.headNs),
 		formatChange(benchmark.change),
 		`±${benchmark.threshold}%`,
 		SPEED_MARKS[benchmark.verdict],

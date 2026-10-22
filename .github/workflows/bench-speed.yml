@@ -62,6 +62,20 @@ jobs:
         id: plan
         run: node tools/bench/speed.ts plan --base "${{ steps.revs.outputs.base }}" ${{ github.event_name != 'pull_request' && '--all' || '' }}
 
+      # The instruction-count suites (canvist_headless's `counts`) run their
+      # benches under valgrind's callgrind, through gungraun's runner binary.
+      # The runner's version must equal the gungraun the lockfile resolved.
+      - name: install valgrind and gungraun-runner
+        if: steps.plan.outputs.suites != ''
+        run: |
+          sudo apt-get update && sudo apt-get install -y valgrind
+          version=$(awk '
+            /^name = "gungraun-runner"$/ { getline; sub(/^version = "/, ""); sub(/"$/, ""); print; exit }
+          ' Cargo.lock)
+          if ! gungraun-runner --version 2>/dev/null | grep -q "$version"; then
+            cargo install gungraun-runner --version "$version" --locked
+          fi
+
       - name: report that no suite is affected
         if: steps.plan.outputs.suites == ''
         run: node tools/bench/speed.ts skip --comment speed

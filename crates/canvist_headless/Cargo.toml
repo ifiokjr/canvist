@@ -64,6 +64,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 base64 = { version = "^0.22", default-features = false, features = ["alloc"] }
 divan = { workspace = true }
+gungraun = { workspace = true }
 serde_json = { workspace = true, features = ["std"] }
 
 [[example]]
@@ -77,6 +78,11 @@ required-features = ["starter-kit"]
 [[example]]
 name = "merge_updates"
 required-features = ["collab", "starter-kit"]
+
+[[bench]]
+name = "counts"
+harness = false
+required-features = ["starter-kit"]
 
 [[bench]]
 name = "headless"

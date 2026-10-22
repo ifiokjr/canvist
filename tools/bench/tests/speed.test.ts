@@ -37,7 +37,7 @@ test("an exact id beats a pattern, and a longer pattern beats a shorter one", ()
 });
 
 test("a slowdown beyond the threshold with separated runs regresses", () => {
-	const row = judge("model/type_char/100", {
+	const row = judge("model/type_char/100", "time", {
 		base: [100, 101, 99, 100, 102],
 		head: [120, 119, 121, 122, 118],
 	}, 10);
@@ -49,7 +49,7 @@ test("a slowdown beyond the threshold with separated runs regresses", () => {
 });
 
 test("a large median change with overlapping runs is noise", () => {
-	const row = judge("scene/to_json/1000", {
+	const row = judge("scene/to_json/1000", "time", {
 		base: [100, 100, 100, 100, 300],
 		head: [130, 130, 130, 130, 90],
 	}, 10);
@@ -58,7 +58,7 @@ test("a large median change with overlapping runs is noise", () => {
 });
 
 test("separated runs within the threshold are unchanged", () => {
-	const row = judge("model/type_char/100", {
+	const row = judge("model/type_char/100", "time", {
 		base: [100, 100, 100],
 		head: [105, 105, 105],
 	}, 10);
@@ -67,7 +67,7 @@ test("separated runs within the threshold are unchanged", () => {
 });
 
 test("a speedup beyond the threshold with separated runs improves", () => {
-	const row = judge("model/type_char/100", {
+	const row = judge("model/type_char/100", "time", {
 		base: [100, 100, 100],
 		head: [50, 51, 49],
 	}, 10);
@@ -76,8 +76,11 @@ test("a speedup beyond the threshold with separated runs improves", () => {
 });
 
 test("benchmarks on one side only are new or removed, and never fail", () => {
-	assert.equal(judge("a", { base: [], head: [1] }, 10).verdict, "new");
-	assert.equal(judge("a", { base: [1], head: [] }, 10).verdict, "removed");
+	assert.equal(judge("a", "time", { base: [], head: [1] }, 10).verdict, "new");
+	assert.equal(
+		judge("a", "time", { base: [1], head: [] }, 10).verdict,
+		"removed",
+	);
 });
 
 test("the report leads with what changed and keeps every row", () => {
