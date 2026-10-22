@@ -6,6 +6,7 @@
 		"canvas/build_index/*": 15,
 		"canvas/drag_step/*": 20,
 		"headless/export/*": 20,
+		"headless/export/html": 30,
 		"headless/run_command/*": 20,
 		"model/toggle_bold/*": 20,
 		"scene/set_prop/*": 20
