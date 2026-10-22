@@ -2,8 +2,9 @@ name: playwright browsers
 description: >-
   Install Playwright browsers with a cache and retries. Browser downloads and
   their apt dependencies have stalled CI runners for the full step timeout, so
-  the system packages are best effort, the browsers are cached per runner OS
-  and Playwright version, and each download attempt is retried.
+  the browsers are cached per runner OS and Playwright version, and both the
+  downloads and the system package installs are capped and retried, with a
+  fallback from the runner's Azure apt mirror to the canonical Ubuntu archive.
 inputs:
   browsers:
     description: Space-separated browsers to install, such as `chromium firefox`.
@@ -43,13 +44,20 @@ runs:
           ~/Library/Caches/ms-playwright
         key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.version.outputs.version }}-${{ inputs.browsers }}
 
-    # Ubuntu's apt mirrors have hung `apt-get update` for the whole step
-    # timeout. The runner images already carry most of what the browsers need,
-    # so this is best effort: one attempt, capped at six minutes, with short
-    # per-fetch timeouts. If it doesn't finish, the job goes on, and a browser
-    # that really lacks a library fails its tests with Playwright's own
-    # "missing dependencies" error. apt runs only once, so a capped attempt
-    # can't leave the dpkg lock held for a later one.
+    # Ubuntu's apt mirrors have hung `apt-get update` for the step timeout
+    # and crawled at ~100 KiB/s for hours, and WebKit's GTK4 and GStreamer
+    # packages are not on the runner image, so deps that do not install fail
+    # that browser's tests with Playwright's own "missing dependencies"
+    # error. Up to three capped attempts: apt keeps every fully downloaded
+    # package in /var/cache/apt/archives, so a later attempt resumes instead
+    # of restarting, and after the first timeout the Azure mirror the runner
+    # ships with is swapped for the canonical Ubuntu archive. The timeout
+    # kills the Playwright CLI's whole process group, but sudo (use_pty on
+    # the runner images) runs apt-get in a session of its own that survives
+    # it still holding the dpkg lock, so each retry kills any leftover
+    # apt-get and runs `dpkg --configure -a` to finish a package caught
+    # mid-unpack. If no attempt finishes, the job still goes on with the
+    # runner image's packages.
     - name: install the system packages
       if: inputs.with-deps == 'true' && runner.os == 'Linux'
       shell: bash
@@ -58,18 +66,29 @@ runs:
         set -uo pipefail
         printf 'Acquire::Retries "3";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' |
           sudo tee /etc/apt/apt.conf.d/80-ci-retries >/dev/null
-        # shellcheck disable=SC2086 # `command` and `browsers` split into words
-        if ! perl -e '
-          my $seconds = shift;
-          my $pid = fork() // die "fork: $!";
-          if ($pid == 0) { setpgrp(0, 0); exec @ARGV or die "exec: $!" }
-          $SIG{ALRM} = sub { kill "-TERM", $pid; sleep 5; kill "-KILL", $pid; exit 124 };
-          alarm $seconds;
-          waitpid($pid, 0);
-          exit($? >> 8);
-        ' 360 ${{ inputs.command }} install-deps ${{ inputs.browsers }}; then
-          echo "::warning::playwright install-deps did not finish; relying on the runner image's packages"
-        fi
+        for attempt in 1 2 3; do
+          # shellcheck disable=SC2086 # `command` and `browsers` split into words
+          if perl -e '
+            my $seconds = shift;
+            my $pid = fork() // die "fork: $!";
+            if ($pid == 0) { setpgrp(0, 0); exec @ARGV or die "exec: $!" }
+            $SIG{ALRM} = sub { kill "-TERM", $pid; sleep 5; kill "-KILL", $pid; exit 124 };
+            alarm $seconds;
+            waitpid($pid, 0);
+            exit($? >> 8);
+          ' 360 ${{ inputs.command }} install-deps ${{ inputs.browsers }}; then
+            exit 0
+          fi
+          echo "::warning::playwright install-deps attempt $attempt failed"
+          sudo pkill -KILL -x apt-get >/dev/null 2>&1 || true
+          sudo dpkg --configure -a >/dev/null 2>&1 || true
+          if [ "$attempt" -eq 1 ]; then
+            sudo grep -rl 'azure.archive.ubuntu.com' /etc/apt/sources.list /etc/apt/sources.list.d/ /etc/apt/apt-mirrors.txt 2>/dev/null |
+              sudo xargs -r sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g'
+          fi
+          sleep $((attempt * 15))
+        done
+        echo "::warning::playwright install-deps did not finish; relying on the runner image's packages"
 
     # Up to three attempts of five minutes each, so a stalled download is
     # retried instead of holding the job for its whole timeout. The attempt
