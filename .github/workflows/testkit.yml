@@ -60,6 +60,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/devenv
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # What the page needs, built the way the web workflow builds it; the
+      # daemon's own preparation then finds everything and skips.
+      - name: build @canvist/headless
+        working-directory: packages/canvist-headless
+        run: |
+          npm ci
+          npm run build:wasm
+          npm run build
+        shell: devenv shell -c -- bash -e {0}
+      - name: install dependencies
+        working-directory: packages/canvist-web
+        run: npm ci
+      - name: build wasm
+        working-directory: packages/canvist-web
+        run: npm run build:wasm
+        shell: devenv shell -c -- bash -e {0}
+
       - name: Browser target
         run: |
           CANVIST_TEST_TARGET=dom cargo nextest run -p canvist_testkit --features dom
