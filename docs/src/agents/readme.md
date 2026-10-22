@@ -14,7 +14,7 @@ canvist hasn't had its first release, and several platforms are still coming. Do
 | Node, Deno, Bun, Workers                              | Build `packages/canvist-headless` and install the tarball ([how](../quick-start/server-typescript.md)) | Yes           |
 | Dart                                                  | Git dependency on `platforms/dart` ([how](../quick-start/server-dart.md))                              | Yes           |
 | Flutter                                               | Git dependency on `platforms/flutter`: `CanvistEditor` ([how](../quick-start/flutter.md))              | Yes           |
-| Browser editor                                        | `createEditor` from the [web preview](../quick-start/web.md)                                           | Preview       |
+| Browser editor                                        | `createEditor` from [`@canvist/web`](../quick-start/web.md)                                            | Preview       |
 | React, Vue, iOS, Android, desktop, React Native, Lynx | None                                                                                                   | No            |
 
 If the user asks for a platform marked "No", say so. Offer the closest working path, such as Flutter for mobile or `@canvist/headless` on the server, rather than inventing `@canvist/react` or `CanvistView`.

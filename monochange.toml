@@ -117,7 +117,7 @@ Deployment, infrastructure, and implementation notes for the website and canvist
 # SDK packages
 # =============================================================================
 
-# Published v2 crates.
+# Published crates.
 [package.canvist_model]
 path = "crates/canvist_model"
 
@@ -190,29 +190,6 @@ path = "crates/canvist_web"
 publish = { enabled = false }
 changelog = false
 
-# The v1 engine, slated for removal. It still inherits the workspace version,
-# so it stays in the group to keep `workspace.dependencies` consistent, but it
-# is never published.
-[package.canvist_v1]
-path = "crates/canvist"
-publish = { enabled = false }
-changelog = false
-
-[package.canvist_core]
-path = "crates/canvist_core"
-publish = { enabled = false }
-changelog = false
-
-[package.canvist_render]
-path = "crates/canvist_render"
-publish = { enabled = false }
-changelog = false
-
-[package.canvist_wasm]
-path = "crates/canvist_wasm"
-publish = { enabled = false }
-changelog = false
-
 # npm owns `packages/canvist-headless` (one owner per path); the release
 # workflow publishes the same version to JSR with `deno publish`, and the
 # `deno.json` version moves with it through the group's versioned files.
@@ -266,12 +243,10 @@ packages = [
 	"@canvist/react",
 	"@canvist/vue",
 	"@canvist/web",
-	"canvist_v1",
 	"canvist-dart",
 	"canvist_canvas",
 	"canvist_canvas_wasm",
 	"canvist_collab",
-	"canvist_core",
 	"canvist_desktop",
 	"canvist_editor",
 	"canvist_extensions",
@@ -282,9 +257,7 @@ packages = [
 	"canvist_layout",
 	"canvist_model",
 	"canvist_paint",
-	"canvist_render",
 	"canvist_scene",
-	"canvist_wasm",
 	"canvist_web",
 ]
 tag = true

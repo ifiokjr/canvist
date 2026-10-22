@@ -34,7 +34,6 @@ const readmes = defineCollection({
 		pattern: [
 			"crates/*/readme.md",
 			"packages/*/readme.md",
-			"packages/*/README.md",
 		],
 		generateId: ({ entry }) => entry,
 	}),

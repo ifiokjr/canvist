@@ -27,7 +27,7 @@ export const platforms: Platform[] = [
 		name: "Web",
 		how: "wasm and Canvas2D, input through EditContext",
 		status: "live",
-		statusText: "v1 live · v2 host in M3",
+		statusText: "available · @canvist/web",
 	},
 	{
 		id: "desktop",

@@ -49,12 +49,12 @@ The hero shows the rest of the deck fanned behind the film poster as plain colou
   - The platform frames crossfade.
   - The fan opens once on load.
 - **Loops run only on screen:** the caret demos run only while visible. The live editor starts only when its section is on screen and scrolling has paused, so its start-up never lands on a scrolling frame.
-- **Reduced motion:** nothing animates, and Rive and the wasm engine are never requested. Every section's resting state is its final state, so nothing is missing without motion.
+- **Reduced motion:** nothing animates, Rive is never requested, and the editor loads only when the visitor asks for it. Every section's resting state is its final state, so nothing is missing without motion.
 
 ## Performance rules
 
-- Static HTML with inlined CSS. Scripts are small modules per section, and anything heavy (Rive, the v1 wasm engine) loads only when it's needed.
-- The v1 engine (about 420 KB gzipped) loads only when its section is on screen and scrolling has paused, and never on Save-Data or reduced motion.
+- Static HTML with inlined CSS. Scripts are small modules per section, and anything heavy (Rive, the wasm editor) loads only when it's needed.
+- The editor (`@canvist/web`, under 350 KB gzipped) loads only when its section is on screen and scrolling has paused. Under Save-Data or reduced motion it loads only when the visitor presses the document or its button.
 - Scrolling the landing page stays inside one 60 Hz frame with no long tasks, on desktop and with the CPU throttled 4× (`deno task perf:scroll`, reported in CI).
 - Nothing may be cut off at any common screen size. A Playwright check scrolls every page across nine viewports, from 360 × 640 to 2560 × 1440 including landscape phones. It fails on clipped content or horizontal overflow.
 - CI runs Lighthouse on every PR (`deno task lighthouse`) and prints the scores in the run summary. Desktop must reach 95+ in every category, LCP under 1.5 s and CLS 0. Mobile (slow 4G, 4× CPU) must reach the scores and CLS 0, and LCP over 1.5 s shows as a warning.

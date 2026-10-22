@@ -15,7 +15,7 @@ import { docsRoute } from "./rehype-docs-links.ts";
 export interface DocsPage {
 	/**
 	 * Docs path, such as `guides/performance.md`. Readmes use a virtual one:
-	 * `crates/canvist_core.md` for `crates/canvist_core/readme.md`.
+	 * `crates/canvist_model.md` for `crates/canvist_model/readme.md`.
 	 */
 	path: string;
 	/** The file in the repository, for edit links. */
@@ -45,7 +45,7 @@ interface GroupRule {
 	title: string;
 	/** Top-level folders whose pages belong here; `""` is the docs root. */
 	folders: readonly string[];
-	/** A summary-title prefix that repeats the group name, such as `v2 `. */
+	/** A summary-title prefix that repeats the group name, such as `canvist Cloud: `. */
 	trim?: RegExp;
 }
 
@@ -115,7 +115,7 @@ function plainText(markdown: string): string {
 	return markdown
 		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
 		.replace(/[`*]/g, "")
-		// Underscores mark emphasis only around words; `canvist_core` keeps its own.
+		// Underscores mark emphasis only around words; `canvist_model` keeps its own.
 		.replace(/(^|[^\w])_([^_]+)_(?=[^\w]|$)/g, "$1$2")
 		.replace(/\s+/g, " ")
 		.trim();

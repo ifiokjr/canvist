@@ -1,4 +1,4 @@
-# canvist v2 roadmap
+# canvist roadmap
 
 The work is split into milestones that can each ship as their own stack of pull requests. The milestones on one row of the dependency graph can run in parallel. [The architecture](./architecture.md) explains the decisions behind them.
 
@@ -108,7 +108,6 @@ See [the business model](./business.md).
 - **AI skill:** a `canvist` agent skill that teaches coding agents to add canvist to any app on any platform, with an eval suite that scores agents on real integration tasks.
 - **Final logo** (choose from the alternatives) and brand.
 - **Release:** crates.io, npm/JSR, pub.dev, Swift Package, and Maven.
-- **Cleanup:** delete the v1 crates (`canvist_core`, `canvist_render`, `canvist_wasm`) once M3 reaches parity with the v1 demo.
 
 ## Headless libraries (servers, scripts, tests)
 

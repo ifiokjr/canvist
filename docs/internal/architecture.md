@@ -1,6 +1,6 @@
-# canvist v2 architecture
+# canvist architecture
 
-canvist is a rich-text editor that owns every pixel. One Rust core holds the document, the editing logic, and text layout. Thin hosts on each platform turn native input into editor commands and paint a display list with the platform's own drawing API. This page records the decisions behind v2 and why they were made. [The roadmap](./roadmap.md) splits the work into milestones, and [the research brief](./research/editor-landscape.md) holds the evidence.
+canvist is a rich-text editor that owns every pixel. One Rust core holds the document, the editing logic, and text layout. Thin hosts on each platform turn native input into editor commands and paint a display list with the platform's own drawing API. This page records the decisions behind it and why they were made. [The roadmap](./roadmap.md) splits the work into milestones, and [the research brief](./research/editor-landscape.md) holds the evidence.
 
 ## Goals
 
@@ -55,7 +55,7 @@ Inline atoms such as mentions, inline images, and hard breaks are embeds. Each o
 **Rejected alternatives:**
 
 - **A ProseMirror-style inline node tree.** It costs more memory and gains nothing for rich text.
-- **A flat text model** (canvist v1). It can't represent lists, tables, or drag-and-drop of blocks.
+- **A flat text model.** It can't represent lists, tables, or drag-and-drop of blocks.
 
 ## Decision 2: invertible steps that map one-to-one to CRDT operations
 
@@ -229,6 +229,6 @@ Every change is judged on speed as well as correctness. The rules for every pull
 
 - `cargo nextest`, doc tests, and property tests for every crate. Every step kind is checked for invariants, for undo restoring the original exactly, and for failed steps changing nothing.
 - `test:perf`: release-mode budget tests, which fail CI when a hot path regresses past its budget.
-- `monostyle check --fail-under 90` for both readability and complexity on every v2 crate (`lint:style`).
+- `monostyle check --fail-under 90` for both readability and complexity on every crate (`lint:style`).
 - `clippy` (pedantic) and `dprint`.
 - Platform end-to-end suites: Playwright for the web, including the SSR → hydrate pixel diff; XCTest on the iOS Simulator; androidx.test on an emulator; Flutter `integration_test`.

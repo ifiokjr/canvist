@@ -31,7 +31,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: lint clippy
-        run: cargo clippy --workspace --exclude canvist_wasm --exclude canvist_test --all-features --all-targets
+        run: cargo clippy --workspace --all-features --all-targets
         shell: devenv shell -c -- bash -e {0}
 
       - name: lint formatting
@@ -96,7 +96,7 @@ jobs:
         shell: devenv shell -c -- bash -e {0}
 
       - name: benchmarks compile
-        run: cargo bench --workspace --exclude canvist_wasm --exclude canvist_test --no-run
+        run: cargo bench --workspace --no-run
         shell: devenv shell -c -- bash -e {0}
 
   build:

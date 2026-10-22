@@ -1,6 +1,6 @@
 /**
  * Numbers from the performance budget table in
- * `docs/src/v2/architecture.md`, where each budget is a release-mode test.
+ * `docs/src/guides/performance.md`, where each budget is a release-mode test.
  * Each bar is the whole budget; the paint inside it is today's number.
  */
 
@@ -157,7 +157,7 @@ export function Bench({ footage, stage, duration }: SceneProps) {
 					);
 				})}
 				<TypedText
-					text="docs/src/v2/architecture.md · tests/perf_budgets.rs in every crate"
+					text="docs/src/guides/performance.md · tests/perf_budgets.rs in every crate"
 					start={70}
 					rate={70}
 					size={20}
