@@ -18,7 +18,9 @@ import android.widget.Magnifier
  * the caret, the floating text toolbar offers cut, copy, paste, select all,
  * and formatting.
  */
-internal class SelectionController(private val view: CanvistView) {
+internal class SelectionController(
+    private val view: CanvistView,
+) {
     private val editor get() = view.editor
     private val gestures = GestureDetector(view.context, Gestures())
     private val handles = SelectionHandles.from(view)
@@ -98,21 +100,34 @@ internal class SelectionController(private val view: CanvistView) {
             selectWord(event)
         }
 
-        override fun onScroll(start: MotionEvent?, event: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+        override fun onScroll(
+            start: MotionEvent?,
+            event: MotionEvent,
+            distanceX: Float,
+            distanceY: Float,
+        ): Boolean {
             view.scrollBy(0, distanceY.toInt())
             actionMode?.hide(ActionMode.DEFAULT_HIDE_DURATION.toLong())
 
             return true
         }
 
-        override fun onFling(start: MotionEvent?, event: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
+        override fun onFling(
+            start: MotionEvent?,
+            event: MotionEvent,
+            velocityX: Float,
+            velocityY: Float,
+        ): Boolean {
             view.fling(velocityY)
 
             return true
         }
     }
 
-    private fun offsetAt(x: Float, y: Float): UInt? = editor.offsetAt(view.documentX(x), view.documentY(y))
+    private fun offsetAt(
+        x: Float,
+        y: Float,
+    ): UInt? = editor.offsetAt(view.documentX(x), view.documentY(y))
 
     private fun selectWord(event: MotionEvent) {
         val offset = offsetAt(event.x, event.y) ?: return
@@ -133,7 +148,10 @@ internal class SelectionController(private val view: CanvistView) {
     }
 
     /** The task checkbox at document point ([x], [y]), with some slop for fingers. */
-    private fun checkboxAt(x: Float, y: Float): DisplayItem.Checkbox? {
+    private fun checkboxAt(
+        x: Float,
+        y: Float,
+    ): DisplayItem.Checkbox? {
         val boxes = view.items.filterIsInstance<DisplayItem.Checkbox>()
 
         return boxes.firstOrNull { box ->
@@ -145,13 +163,17 @@ internal class SelectionController(private val view: CanvistView) {
     }
 
     // Handles
-    private fun handleAt(x: Float, y: Float): Handle? {
+    private fun handleAt(
+        x: Float,
+        y: Float,
+    ): Handle? {
         val contentX = x.toInt()
         val contentY = (y + view.scrollY).toInt()
 
-        val (handle, _) = visibleHandles()
-            .firstOrNull { (_, bounds) -> bounds.contains(contentX, contentY) }
-            ?: return null
+        val (handle, _) =
+            visibleHandles()
+                .firstOrNull { (_, bounds) -> bounds.contains(contentX, contentY) }
+                ?: return null
 
         dragOffsetX = x - handle.point.first
         dragOffsetY = y + view.scrollY - handle.point.second
@@ -168,7 +190,11 @@ internal class SelectionController(private val view: CanvistView) {
         }
     }
 
-    private fun dragTo(handle: Handle, x: Float, y: Float) {
+    private fun dragTo(
+        handle: Handle,
+        x: Float,
+        y: Float,
+    ) {
         val offset = offsetAt(x, y) ?: return
 
         moveEnd(handle.end, offset)
@@ -184,7 +210,10 @@ internal class SelectionController(private val view: CanvistView) {
     }
 
     /** Move one end of the selection to [offset], keeping the other. */
-    private fun moveEnd(end: End, offset: UInt) {
+    private fun moveEnd(
+        end: End,
+        offset: UInt,
+    ) {
         val selection = editor.selection()
         val start = minOf(selection.anchor, selection.head)
         val finish = maxOf(selection.anchor, selection.head)
@@ -207,14 +236,15 @@ internal class SelectionController(private val view: CanvistView) {
 
         if (collapsed && !showInsertionHandle) return emptyList()
 
-        val ends = if (collapsed) {
-            listOf(End.CARET to selection.head)
-        } else {
-            listOf(
-                End.START to minOf(selection.anchor, selection.head),
-                End.END to maxOf(selection.anchor, selection.head),
-            )
-        }
+        val ends =
+            if (collapsed) {
+                listOf(End.CARET to selection.head)
+            } else {
+                listOf(
+                    End.START to minOf(selection.anchor, selection.head),
+                    End.END to maxOf(selection.anchor, selection.head),
+                )
+            }
 
         return ends.mapNotNull { (end, offset) ->
             editor.caretRect(offset)?.let { caret -> handles.place(end, view, caret) }
@@ -251,7 +281,10 @@ internal class SelectionController(private val view: CanvistView) {
     }
 
     private inner class Toolbar : ActionMode.Callback2() {
-        override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+        override fun onCreateActionMode(
+            mode: ActionMode,
+            menu: Menu,
+        ): Boolean {
             val selected = editor.selection().let { it.anchor != it.head }
 
             if (selected) {
@@ -277,9 +310,15 @@ internal class SelectionController(private val view: CanvistView) {
             }
         }
 
-        override fun onPrepareActionMode(mode: ActionMode, menu: Menu) = false
+        override fun onPrepareActionMode(
+            mode: ActionMode,
+            menu: Menu,
+        ) = false
 
-        override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+        override fun onActionItemClicked(
+            mode: ActionMode,
+            item: MenuItem,
+        ): Boolean {
             // Select all keeps the toolbar up, now for the whole text.
             if (item.itemId == android.R.id.selectAll) return true.also { view.selectAll() }
 
@@ -293,7 +332,11 @@ internal class SelectionController(private val view: CanvistView) {
             if (actionMode === mode) actionMode = null
         }
 
-        override fun onGetContentRect(mode: ActionMode, view: View, outRect: Rect) {
+        override fun onGetContentRect(
+            mode: ActionMode,
+            view: View,
+            outRect: Rect,
+        ) {
             val selection = editor.selection()
 
             val bounds = editor.selectionBounds() ?: editor.caretRect(selection.head) ?: return
@@ -303,7 +346,11 @@ internal class SelectionController(private val view: CanvistView) {
     }
 
     /** A formatting command the toolbar offers, and the extension it needs. */
-    private class Format(val title: String, val extension: String, val command: () -> Command)
+    private class Format(
+        val title: String,
+        val extension: String,
+        val command: () -> Command,
+    )
 
     private companion object {
         const val SELECTION = "selection"
@@ -312,12 +359,13 @@ internal class SelectionController(private val view: CanvistView) {
         const val FORMAT_IDS = 0x0CA4_0000
         const val FORMAT_ORDER = 10
 
-        val FORMATS = listOf(
-            Format("Bold", Extensions.bold.name) { Extensions.bold.handle.toggleBold() },
-            Format("Italic", Extensions.italic.name) { Extensions.italic.handle.toggleItalic() },
-            Format("Underline", Extensions.underline.name) { Extensions.underline.handle.toggleUnderline() },
-            Format("Strikethrough", Extensions.strike.name) { Extensions.strike.handle.toggleStrike() },
-            Format("Code", Extensions.code.name) { Extensions.code.handle.toggleCode() },
-        )
+        val FORMATS =
+            listOf(
+                Format("Bold", Extensions.bold.name) { Extensions.bold.handle.toggleBold() },
+                Format("Italic", Extensions.italic.name) { Extensions.italic.handle.toggleItalic() },
+                Format("Underline", Extensions.underline.name) { Extensions.underline.handle.toggleUnderline() },
+                Format("Strikethrough", Extensions.strike.name) { Extensions.strike.handle.toggleStrike() },
+                Format("Code", Extensions.code.name) { Extensions.code.handle.toggleCode() },
+            )
     }
 }

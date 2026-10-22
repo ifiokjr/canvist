@@ -20,16 +20,16 @@ import SwiftUI
 /// }
 /// ```
 public struct CanvistEditor: UIViewRepresentable {
-    private let view: CanvistView
+  private let view: CanvistView
 
-    /// Show `view`.
-    public init(_ view: CanvistView) {
-        self.view = view
-    }
+  /// Show `view`.
+  public init(_ view: CanvistView) {
+    self.view = view
+  }
 
-    public func makeUIView(context: Context) -> CanvistView {
-        view
-    }
+  public func makeUIView(context: Context) -> CanvistView {
+    view
+  }
 
-    public func updateUIView(_ view: CanvistView, context: Context) {}
+  public func updateUIView(_ view: CanvistView, context: Context) {}
 }

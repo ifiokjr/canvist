@@ -11,7 +11,9 @@ import android.graphics.RectF
  * text with, so every glyph lands where layout measured it. Items are in
  * dp; [origin] is where document (0, 0) is, in pixels.
  */
-internal class DisplayPainter(private val fonts: FontTable) {
+internal class DisplayPainter(
+    private val fonts: FontTable,
+) {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val rect = RectF()
@@ -23,7 +25,14 @@ internal class DisplayPainter(private val fonts: FontTable) {
     var slotFill = SLOT_FILL
 
     /** Fill [area] with [page], then draw every item. */
-    fun paint(canvas: Canvas, area: RectF, items: List<DisplayItem>, page: Rgba, originX: Float, originY: Float) {
+    fun paint(
+        canvas: Canvas,
+        area: RectF,
+        items: List<DisplayItem>,
+        page: Rgba,
+        originX: Float,
+        originY: Float,
+    ) {
         fill.color = page.argb()
         canvas.drawRect(area, fill)
         val density = fonts.density
@@ -35,7 +44,11 @@ internal class DisplayPainter(private val fonts: FontTable) {
         canvas.restoreToCount(saved)
     }
 
-    private fun draw(canvas: Canvas, item: DisplayItem, density: Float) {
+    private fun draw(
+        canvas: Canvas,
+        item: DisplayItem,
+        density: Float,
+    ) {
         when (item) {
             is DisplayItem.Fill -> fill(canvas, item.bounds, item.color.argb(), item.radius, density)
             is DisplayItem.Text -> text(canvas, item, density)
@@ -46,7 +59,13 @@ internal class DisplayPainter(private val fonts: FontTable) {
         }
     }
 
-    private fun fill(canvas: Canvas, bounds: Bounds, color: Int, radius: Float, density: Float) {
+    private fun fill(
+        canvas: Canvas,
+        bounds: Bounds,
+        color: Int,
+        radius: Float,
+        density: Float,
+    ) {
         fill.color = color
         rect.set(bounds, density)
 
@@ -57,7 +76,11 @@ internal class DisplayPainter(private val fonts: FontTable) {
         }
     }
 
-    private fun text(canvas: Canvas, run: DisplayItem.Text, density: Float) {
+    private fun text(
+        canvas: Canvas,
+        run: DisplayItem.Text,
+        density: Float,
+    ) {
         val paint = fonts.paint(run.font) ?: return
         val color = paint.color
         val spacing = paint.letterSpacing
@@ -66,22 +89,35 @@ internal class DisplayPainter(private val fonts: FontTable) {
 
         val length = run.text.length
         canvas.drawTextRun(
-            /* text = */ run.text,
-            /* start = */ 0,
-            /* end = */ length,
-            /* contextStart = */ 0,
-            /* contextEnd = */ length,
-            /* x = */ run.x * density,
-            /* y = */ run.baseline * density,
-            /* isRtl = */ run.rtl,
-            /* paint = */ paint,
+            // text =
+            run.text,
+            // start =
+            0,
+            // end =
+            length,
+            // contextStart =
+            0,
+            // contextEnd =
+            length,
+            // x =
+            run.x * density,
+            // y =
+            run.baseline * density,
+            // isRtl =
+            run.rtl,
+            // paint =
+            paint,
         )
 
         paint.color = color
         paint.letterSpacing = spacing
     }
 
-    private fun line(canvas: Canvas, line: DisplayItem.Line, density: Float) {
+    private fun line(
+        canvas: Canvas,
+        line: DisplayItem.Line,
+        density: Float,
+    ) {
         val left = line.x * density
         val y = line.y * density
         val width = line.width * density
@@ -105,7 +141,11 @@ internal class DisplayPainter(private val fonts: FontTable) {
      * with round caps and joins. The first point is drawn to as well, so
      * one point leaves a dot.
      */
-    private fun ink(canvas: Canvas, ink: DisplayItem.Stroke, density: Float) {
+    private fun ink(
+        canvas: Canvas,
+        ink: DisplayItem.Stroke,
+        density: Float,
+    ) {
         val points = ink.points
         path.reset()
 
@@ -125,7 +165,12 @@ internal class DisplayPainter(private val fonts: FontTable) {
     }
 
     /** A wavy line along [y] from [left], rising and falling in turn. */
-    private fun squiggle(left: Float, y: Float, width: Float, thickness: Float) {
+    private fun squiggle(
+        left: Float,
+        y: Float,
+        width: Float,
+        thickness: Float,
+    ) {
         val amplitude = thickness * SQUIGGLE_AMPLITUDE
         val half = amplitude * SQUIGGLE_WAVELENGTH / 2
         var x = left
@@ -142,7 +187,12 @@ internal class DisplayPainter(private val fonts: FontTable) {
         }
     }
 
-    private fun checkbox(canvas: Canvas, bounds: Bounds, checked: Boolean, density: Float) {
+    private fun checkbox(
+        canvas: Canvas,
+        bounds: Bounds,
+        checked: Boolean,
+        density: Float,
+    ) {
         val border = CHECKBOX_BORDER_WIDTH * density
         val radius = CHECKBOX_RADIUS * density
         rect.set(bounds, density)
@@ -194,7 +244,10 @@ internal class DisplayPainter(private val fonts: FontTable) {
 internal fun Rgba.argb(): Int = Color.argb(a.toInt(), r.toInt(), g.toInt(), b.toInt())
 
 /** [bounds] in dp, scaled to pixels. */
-internal fun RectF.set(bounds: Bounds, density: Float) {
+internal fun RectF.set(
+    bounds: Bounds,
+    density: Float,
+) {
     val x = bounds.x * density
     val y = bounds.y * density
 

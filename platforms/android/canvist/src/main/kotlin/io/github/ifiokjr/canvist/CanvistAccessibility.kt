@@ -17,7 +17,9 @@ import android.view.accessibility.AccessibilityNodeProvider
  * block on screen is also a child node, so exploring by touch reads the
  * block under the finger and headings are navigable as headings.
  */
-internal class CanvistAccessibility(private val view: CanvistView) : AccessibilityNodeProvider() {
+internal class CanvistAccessibility(
+    private val view: CanvistView,
+) : AccessibilityNodeProvider() {
     private val editor get() = view.editor
     private val manager = view.context.getSystemService(AccessibilityManager::class.java)
 
@@ -93,7 +95,11 @@ internal class CanvistAccessibility(private val view: CanvistView) : Accessibili
         return info
     }
 
-    override fun performAction(virtualViewId: Int, action: Int, arguments: Bundle?): Boolean {
+    override fun performAction(
+        virtualViewId: Int,
+        action: Int,
+        arguments: Bundle?,
+    ): Boolean {
         if (virtualViewId != View.NO_ID) return performOnBlock(virtualViewId, action)
 
         return when (action) {
@@ -110,7 +116,10 @@ internal class CanvistAccessibility(private val view: CanvistView) : Accessibili
         }
     }
 
-    private fun performOnBlock(virtualViewId: Int, action: Int): Boolean {
+    private fun performOnBlock(
+        virtualViewId: Int,
+        action: Int,
+    ): Boolean {
         val block = blocks.getOrNull(virtualViewId - 1) ?: return false
 
         return when (action) {
@@ -119,11 +128,15 @@ internal class CanvistAccessibility(private val view: CanvistView) : Accessibili
                 view.showKeyboard()
                 true
             }
+
             AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS -> {
                 send(virtualViewId, AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED)
                 true
             }
-            else -> false
+
+            else -> {
+                false
+            }
         }
     }
 
@@ -137,7 +150,10 @@ internal class CanvistAccessibility(private val view: CanvistView) : Accessibili
     }
 
     /** Move the caret (or extend the selection) by one unit of [arguments]' granularity. */
-    private fun move(arguments: Bundle?, forward: Boolean): Boolean {
+    private fun move(
+        arguments: Bundle?,
+        forward: Boolean,
+    ): Boolean {
         arguments ?: return false
 
         val granularity = arguments.getInt(AccessibilityNodeInfo.ACTION_ARGUMENT_MOVEMENT_GRANULARITY_INT)
@@ -151,35 +167,67 @@ internal class CanvistAccessibility(private val view: CanvistView) : Accessibili
         return true
     }
 
-    private fun next(from: UInt, granularity: Int, forward: Boolean): UInt? {
+    private fun next(
+        from: UInt,
+        granularity: Int,
+        forward: Boolean,
+    ): UInt? {
         val length = editor.textLength()
 
         return when (granularity) {
-            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_CHARACTER -> character(from, forward, length)
-            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD -> word(from, forward, length)
-            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_LINE -> editor.lineEdgeOffset(from, forward)
-                ?.takeIf { it != from } ?: editor.verticalOffset(from, !forward, null)
-            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_PARAGRAPH -> paragraph(from, forward, length)
-            else -> null
+            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_CHARACTER -> {
+                character(from, forward, length)
+            }
+
+            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD -> {
+                word(from, forward, length)
+            }
+
+            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_LINE -> {
+                editor
+                    .lineEdgeOffset(from, forward)
+                    ?.takeIf { it != from } ?: editor.verticalOffset(from, !forward, null)
+            }
+
+            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_PARAGRAPH -> {
+                paragraph(from, forward, length)
+            }
+
+            else -> {
+                null
+            }
         }
     }
 
-    private fun character(from: UInt, forward: Boolean, length: UInt): UInt? = when {
-        forward -> (from + 1u).coerceAtMost(length)
-        from > 0u -> from - 1u
-        else -> null
-    }
+    private fun character(
+        from: UInt,
+        forward: Boolean,
+        length: UInt,
+    ): UInt? =
+        when {
+            forward -> (from + 1u).coerceAtMost(length)
+            from > 0u -> from - 1u
+            else -> null
+        }
 
     /** The far edge of the word after (or before) [from], or `null` at the end of the text. */
-    private fun word(from: UInt, forward: Boolean, length: UInt): UInt? {
-        if (forward && from >= length || !forward && from == 0u) return null
+    private fun word(
+        from: UInt,
+        forward: Boolean,
+        length: UInt,
+    ): UInt? {
+        if ((forward && from >= length) || (!forward && from == 0u)) return null
 
         val range = editor.wordRange(if (forward) from else from - 1u)
 
         return if (forward) range.end else range.start
     }
 
-    private fun paragraph(from: UInt, forward: Boolean, length: UInt): UInt? {
+    private fun paragraph(
+        from: UInt,
+        forward: Boolean,
+        length: UInt,
+    ): UInt? {
         val block = editor.blockRange(from)
 
         return when {
@@ -225,7 +273,10 @@ internal class CanvistAccessibility(private val view: CanvistView) : Accessibili
         view.parent?.requestSendAccessibilityEvent(view, event.also(::fill))
     }
 
-    private fun send(virtualViewId: Int, type: Int) {
+    private fun send(
+        virtualViewId: Int,
+        type: Int,
+    ) {
         val event = event(type)
         fill(event)
         event.setSource(view, virtualViewId)
@@ -240,21 +291,23 @@ internal class CanvistAccessibility(private val view: CanvistView) : Accessibili
 
     /** A node for the view or one of its virtual children. */
     @Suppress("DEPRECATION")
-    private fun node(virtualViewId: Int): AccessibilityNodeInfo = when {
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && virtualViewId == View.NO_ID -> AccessibilityNodeInfo(view)
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> AccessibilityNodeInfo(view, virtualViewId)
-        virtualViewId == View.NO_ID -> AccessibilityNodeInfo.obtain(view)
-        else -> AccessibilityNodeInfo.obtain(view, virtualViewId)
-    }
+    private fun node(virtualViewId: Int): AccessibilityNodeInfo =
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && virtualViewId == View.NO_ID -> AccessibilityNodeInfo(view)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> AccessibilityNodeInfo(view, virtualViewId)
+            virtualViewId == View.NO_ID -> AccessibilityNodeInfo.obtain(view)
+            else -> AccessibilityNodeInfo.obtain(view, virtualViewId)
+        }
 
     @Suppress("DEPRECATION")
     private fun event(type: Int): AccessibilityEvent =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) AccessibilityEvent(type) else AccessibilityEvent.obtain(type)
 
     private companion object {
-        const val GRANULARITIES = AccessibilityNodeInfo.MOVEMENT_GRANULARITY_CHARACTER or
-            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD or
-            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_LINE or
-            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_PARAGRAPH
+        const val GRANULARITIES =
+            AccessibilityNodeInfo.MOVEMENT_GRANULARITY_CHARACTER or
+                AccessibilityNodeInfo.MOVEMENT_GRANULARITY_WORD or
+                AccessibilityNodeInfo.MOVEMENT_GRANULARITY_LINE or
+                AccessibilityNodeInfo.MOVEMENT_GRANULARITY_PARAGRAPH
     }
 }

@@ -42,6 +42,14 @@ jobs:
         run: lint:style
         shell: devenv shell -c -- bash -e {0}
 
+      - name: lint kotlin
+        run: lint:kotlin
+        shell: devenv shell -c -- bash -e {0}
+
+      - name: lint shell
+        run: lint:shell
+        shell: devenv shell -c -- bash -e {0}
+
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
