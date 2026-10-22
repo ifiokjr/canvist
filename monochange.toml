@@ -215,19 +215,15 @@ type = "npm"
 path = "packages/canvist-vue"
 type = "npm"
 
-# The design canvas for the browser, over `canvist_canvas_wasm`. It is built
-# and its tarball checked like the other npm packages, but npm only allows
-# trusted publishing once a package exists: publish it when the name has
-# been bootstrapped (`mc step placeholder-publish --package @canvist/canvas`)
-# and its trusted publisher set up on npmjs.com.
+# The design canvas for the browser, over `canvist_canvas_wasm`.
 [package."@canvist/canvas"]
 path = "packages/canvist-canvas"
 type = "npm"
-publish = { enabled = false }
 
-# The editor for React Native, over the iOS and Android `CanvistView`s. Like
-# `@canvist/canvas`, it publishes once its npm name is bootstrapped and its
-# trusted publisher set up.
+# The editor for React Native, over the iOS and Android `CanvistView`s. It
+# stays unpublished until its native libraries are installable: the `Canvist`
+# pod on CocoaPods and `canvist-android` on Maven Central. Then bootstrap its
+# npm name and set up its trusted publisher on npmjs.com.
 [package."@canvist/react-native"]
 path = "packages/canvist-react-native"
 type = "npm"
