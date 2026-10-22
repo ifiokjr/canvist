@@ -46,6 +46,9 @@ allow = [
 	"MPL-2.0",
 	"Unicode-DFS-2016",
 	"OpenSSL",
+	# webpki-roots ships Mozilla's CC-licensed root certificate list; the
+	# testkit's Playwright connection reads it.
+	"CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.8
 
