@@ -107,7 +107,7 @@ jobs:
   ios:
     name: ios (simulator)
     needs: javascript
-    timeout-minutes: 90
+    timeout-minutes: 130
     runs-on: macos-latest
     steps:
       - name: checkout repository
@@ -150,12 +150,17 @@ jobs:
           curl -fsSL "https://get.maestro.mobile.dev" | MAESTRO_VERSION=2.11.0 bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
+      # Lynx's pods compile its C++ from source, which takes most of an hour
+      # on a shared runner.
       - name: build and test on the simulator
-        timeout-minutes: 60
+        timeout-minutes: 100
         run: examples/lynx/e2e/test.sh ios
         env:
           # The benchmark's budgets, on a shared runner's simulator.
           CANVIST_PERF_SLACK: "3"
+          # Maestro's XCTest driver can take minutes to start on a shared
+          # runner's simulator (milliseconds; the default is two minutes).
+          MAESTRO_DRIVER_STARTUP_TIMEOUT: "600000"
 
       - name: upload maestro results
         if: failure()
