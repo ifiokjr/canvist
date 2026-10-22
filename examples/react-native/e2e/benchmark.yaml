@@ -11,7 +11,7 @@ env:
     arguments:
       perfSlack: "${PERF_SLACK}"
 - extendedWaitUntil:
-    visible: "31 words"
+    visible: "33 words"
     timeout: 30000
 - tapOn:
     id: "footer-Benchmark"
@@ -24,4 +24,4 @@ env:
 - takeScreenshot: benchmark
 - assertVisible: "Within budget"
 # The benchmark puts the note back as it found it.
-- assertVisible: "31 words"
+- assertVisible: "33 words"

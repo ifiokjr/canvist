@@ -6,10 +6,10 @@ name: Editing
 - launchApp:
     clearState: true
 - extendedWaitUntil:
-    visible: "31 words"
+    visible: "33 words"
     timeout: 30000
-# Below the text: the caret lands at the end of the last checklist item, and
-# Enter starts a new one.
+# Below the text: the caret lands at the end of the last checklist item, which
+# is short enough to end left of the tap, and Enter starts a new one.
 - tapOn:
     id: "editor"
 # Keys sent before the keyboard has connected are dropped.
@@ -17,7 +17,7 @@ name: Editing
 - pressKey: Enter
 - inputText: "today"
 - pressKey: Enter
-- assertVisible: "32 words"
+- assertVisible: "34 words"
 - tapOn:
     id: "tool-Bold"
 - assertVisible:
