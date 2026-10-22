@@ -119,6 +119,15 @@ public struct ExtensionSet: Sendable, Hashable {
     /// An empty set: paragraphs and the base key bindings only.
     public init() {}
 
+    /// The extensions `names` names, for hosts that choose them at run time,
+    /// such as React Native and Lynx. There are no handles: run commands by
+    /// name. An editor fails to start with a name it does not know.
+    public init(names: [String]) {
+        for name in names where !self.names.contains(name) {
+            self.names.append(name)
+        }
+    }
+
     /// Register `extension` and return its handle.
     public mutating func add<Handle>(_ extension: Extension<Handle>) -> Handle {
         if !names.contains(`extension`.name) {

@@ -29,6 +29,17 @@ android {
     }
 }
 
+// Apps on older Kotlin compilers must be able to read this library: React
+// Native 0.88 builds with Kotlin 2.2. Compile for the 2.2 language and API,
+// against the 2.2 standard library.
+kotlin {
+    coreLibrariesVersion = "2.2.0"
+    compilerOptions {
+        languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2
+        apiVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_2
+    }
+}
+
 dependencies {
     // UniFFI's Kotlin bindings call into Rust through JNA.
     api("${libs.jna.get()}@aar")

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+# Written when an app builds the Android library.
+android/build/
+android/.cxx/
+android/.gradle/

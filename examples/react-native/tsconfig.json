@@ -1,0 +1,12 @@
+{
+	"extends": "@react-native/typescript-config",
+	"compilerOptions": {
+		"types": [],
+		"strict": true,
+		"exactOptionalPropertyTypes": true,
+		"noUncheckedIndexedAccess": true,
+		"verbatimModuleSyntax": true
+	},
+	"include": ["*.ts", "*.tsx"],
+	"exclude": ["node_modules", "ios", "android"]
+}

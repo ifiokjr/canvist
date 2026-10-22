@@ -56,7 +56,10 @@
 		"platforms/flutter/example/android/**",
 		"platforms/flutter/example/ios/**",
 		"platforms/apple/.build/**",
-		"platforms/android/**/build/**"
+		"platforms/android/**/build/**",
+		"examples/react-native/ios/Pods/**",
+		"examples/react-native/**/build/**",
+		"packages/canvist-react-native/android/build/**"
 	],
 	"plugins": [
 		"https://plugins.dprint.dev/typescript-0.95.13.wasm",

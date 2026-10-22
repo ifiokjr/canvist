@@ -1,0 +1,240 @@
+name: "react-native"
+
+# `@canvist/react-native`: its JavaScript (types and Jest), and the example app
+# in Release on an iOS Simulator and an Android emulator, driven by Maestro.
+#
+# The device jobs take 15-30 minutes on scarce runners, so pull requests only
+# run this workflow when they touch the package, its example, the headless
+# types it builds on, or the native editors and engine under it. Every push to
+# `main` and a nightly run cover the rest.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/react-native.yml"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "crates/**"
+      - "examples/react-native/**"
+      - "packages/canvist-headless/src/**"
+      - "packages/canvist-headless/package.json"
+      - "packages/canvist-react-native/**"
+      - "platforms/android/**"
+      - "platforms/apple/**"
+      - "rust-toolchain.toml"
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "30 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  javascript:
+    name: javascript
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
+
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # The package reads its types and extension metadata from
+      # @canvist/headless, which its tsc build checks against the wasm modules.
+      - name: build @canvist/headless
+        working-directory: packages/canvist-headless
+        run: |
+          npm ci
+          npm run build:wasm
+          npm run build
+
+      - name: share @canvist/headless with the device jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: canvist-headless-dist
+          path: packages/canvist-headless/dist
+          retention-days: 1
+
+      - name: install dependencies
+        working-directory: packages/canvist-react-native
+        run: npm ci
+
+      - name: type-check, including the type-level tests
+        working-directory: packages/canvist-react-native
+        run: npx tsc --noEmit
+
+      - name: jest
+        working-directory: packages/canvist-react-native
+        run: npx jest --ci
+
+      - name: build the type declarations
+        working-directory: packages/canvist-react-native
+        run: npm run build
+
+      - name: type-check the example
+        working-directory: examples/react-native
+        run: |
+          npm ci
+          npx tsc --noEmit
+
+  ios:
+    name: ios (simulator)
+    needs: javascript
+    timeout-minutes: 90
+    runs-on: macos-latest
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: cache rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: native-apple
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: download @canvist/headless
+        uses: actions/download-artifact@v4
+        with:
+          name: canvist-headless-dist
+          path: packages/canvist-headless/dist
+
+      - name: install the example's dependencies
+        working-directory: examples/react-native
+        run: npm ci
+
+      - name: cache pods
+        uses: actions/cache@v4
+        with:
+          path: examples/react-native/ios/Pods
+          key: pods-${{ hashFiles('examples/react-native/ios/Podfile.lock') }}
+
+      - name: install maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | MAESTRO_VERSION=2.11.0 bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: build and test on the simulator
+        timeout-minutes: 60
+        run: examples/react-native/e2e/test.sh ios
+        env:
+          # The benchmark's budgets, on a shared runner's simulator.
+          CANVIST_PERF_SLACK: "3"
+
+      - name: upload maestro results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-native-ios-maestro
+          path: examples/react-native/build/e2e-ios
+
+  android:
+    name: android (emulator)
+    needs: javascript
+    timeout-minutes: 90
+    # Pinned for the same KVM and emulator setup `native.yml` verifies.
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
+      - name: enable kvm
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: setup java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: cache rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: native-android
+
+      - name: install cargo-run-bin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-run-bin
+
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: download @canvist/headless
+        uses: actions/download-artifact@v4
+        with:
+          name: canvist-headless-dist
+          path: packages/canvist-headless/dist
+
+      - name: install the example's dependencies
+        working-directory: examples/react-native
+        run: npm ci
+
+      # Outside the emulator step, so a slow engine build cannot eat into the
+      # emulator's time.
+      - name: build the android editor
+        timeout-minutes: 20
+        run: |
+          platforms/android/build.sh
+          (cd platforms/android && ./gradlew :canvist:publishToMavenLocal --console=plain)
+
+      - name: install maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | MAESTRO_VERSION=2.11.0 bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: build and test on the emulator
+        timeout-minutes: 60
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: default
+          disable-animations: true
+          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot-save -gpu swiftshader_indirect
+          # A software-rendered emulator: the benchmark's budgets get slack, as
+          # the native tests' do.
+          script: CANVIST_SKIP_ENGINE_BUILD=1 CANVIST_PERF_SLACK=6 examples/react-native/e2e/test.sh android
+
+      - name: upload maestro results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-native-android-maestro
+          path: examples/react-native/build/e2e-android

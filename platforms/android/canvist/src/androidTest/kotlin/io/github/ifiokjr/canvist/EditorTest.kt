@@ -49,6 +49,17 @@ class EditorTest {
     }
 
     @Test
+    fun extensionSetsFromNamesKeepTheirOrderOnce() {
+        val extensions = ExtensionSet(listOf("bold", "heading", "bold"))
+
+        assertEquals(listOf("bold", "heading"), extensions.names)
+        Editor(CanvistView.editorOptions(extensions), PaintMeasurer(density)).close()
+        assertThrows(CanvistException::class.java) {
+            Editor(CanvistView.editorOptions(ExtensionSet(listOf("nope"))), PaintMeasurer(density)).close()
+        }
+    }
+
+    @Test
     fun invalidArgumentsThrowTheSharedCode() = editor("text").use { editor ->
         val error = assertThrows(CanvistException.Failed::class.java) {
             editor.run(kit.heading.toggleHeading(level = INVALID_LEVEL))

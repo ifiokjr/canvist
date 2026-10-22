@@ -21,8 +21,19 @@ class Extension<H> internal constructor(
  * view.editor.run(bold.toggleBold())
  * ```
  */
-class ExtensionSet {
+class ExtensionSet() {
     private val registered = mutableListOf<String>()
+
+    /**
+     * The extensions [names] names, for hosts that choose them at run time,
+     * such as React Native and Lynx. There are no handles: run commands by
+     * name. An editor fails to start with a name it does not know.
+     */
+    constructor(names: Iterable<String>) : this() {
+        for (name in names) {
+            if (name !in registered) registered += name
+        }
+    }
 
     /** The registered extensions' names, in registration order. */
     val names: List<String> get() = registered.toList()

@@ -40,6 +40,18 @@ final class EditorTests: XCTestCase {
         XCTAssertNil(try editor.query(kit.link.linkHref()))
     }
 
+    func testExtensionSetsFromNamesKeepTheirOrderOnce() throws {
+        let extensions = ExtensionSet(names: ["bold", "heading", "bold"])
+
+        XCTAssertEqual(extensions.names, ["bold", "heading"])
+
+        var options = defaultEditorOptions()
+        options.extensions = extensions.names
+        XCTAssertNoThrow(try Editor(options: options, measurer: CoreTextMeasurer()))
+        options.extensions = ExtensionSet(names: ["nope"]).names
+        XCTAssertThrowsError(try Editor(options: options, measurer: CoreTextMeasurer()))
+    }
+
     func testInvalidArgumentsThrowTheSharedCode() throws {
         let editor = try editor("text")
 

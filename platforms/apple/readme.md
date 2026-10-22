@@ -30,7 +30,7 @@ canvist's rich-text editor for iOS: `CanvistView`, a native UIKit editor (with `
 - **Typed commands.** `StarterKit` and `Extensions` hand out typed handles (`kit.heading.toggleHeading(level: 2)`), generated from the extension metadata.
 - **VoiceOver** reads the document line by line, with a headings rotor.
 - **Collaboration** over Yjs updates or y-sync.
-- **Embeddable.** `CanvistView` is a plain `UIScrollView` with no view controller, so SwiftUI, React Native, and Lynx can host it. `CoreTextMeasurer` and `Editor` also work without the view.
+- **Embeddable.** `CanvistView` is a plain `UIScrollView` with no view controller, so SwiftUI, React Native, and Lynx can host it. `CanvistHostView` and `HostedEditors` are what [`@canvist/react-native`](../../packages/canvist-react-native) builds on: a view started from a JavaScript element's props, and its editor reachable by id from JavaScript's thread. `CoreTextMeasurer` and `Editor` also work without the view.
 
 ```swift
 let kit = StarterKit()
