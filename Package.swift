@@ -13,25 +13,25 @@
 import PackageDescription
 
 let package = Package(
-    name: "Canvist",
-    platforms: [.iOS(.v17)],
-    products: [
-        .library(name: "Canvist", targets: ["Canvist"]),
-    ],
-    targets: [
-        .binaryTarget(
-            name: "CanvistFFI",
-            path: "platforms/apple/Frameworks/CanvistFFI.xcframework"
-        ),
-        .target(
-            name: "Canvist",
-            dependencies: ["CanvistFFI"],
-            path: "platforms/apple/Sources/Canvist"
-        ),
-        .testTarget(
-            name: "CanvistTests",
-            dependencies: ["Canvist"],
-            path: "platforms/apple/Tests/CanvistTests"
-        ),
-    ]
+  name: "Canvist",
+  platforms: [.iOS(.v17)],
+  products: [
+    .library(name: "Canvist", targets: ["Canvist"])
+  ],
+  targets: [
+    .binaryTarget(
+      name: "CanvistFFI",
+      path: "platforms/apple/Frameworks/CanvistFFI.xcframework"
+    ),
+    .target(
+      name: "Canvist",
+      dependencies: ["CanvistFFI"],
+      path: "platforms/apple/Sources/Canvist"
+    ),
+    .testTarget(
+      name: "CanvistTests",
+      dependencies: ["Canvist"],
+      path: "platforms/apple/Tests/CanvistTests"
+    ),
+  ]
 )

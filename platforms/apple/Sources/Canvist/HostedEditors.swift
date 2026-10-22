@@ -111,7 +111,10 @@ extension Editor {
         do {
             range = try JSONDecoder().decode(Range.self, from: Data(json.utf8))
         } catch {
-            throw HostedEditorError(code: "invalidPosition", reason: "invalid range \(json): \(error.localizedDescription)")
+            throw HostedEditorError(
+                code: "invalidPosition",
+                reason: "invalid range \(json): \(error.localizedDescription)"
+            )
         }
 
         return try selectPositions(

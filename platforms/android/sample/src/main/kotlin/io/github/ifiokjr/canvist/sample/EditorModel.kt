@@ -15,13 +15,18 @@ import io.github.ifiokjr.canvist.StarterKit
 import io.github.ifiokjr.canvist.query
 
 /** One editor and the state its toolbar shows. */
-class EditorModel(context: Context, markdown: String, val label: String) {
+class EditorModel(
+    context: Context,
+    markdown: String,
+    val label: String,
+) {
     val kit = StarterKit()
-    val view = CanvistView(context, kit.extensions).apply {
-        contentDescription = label
-        tag = "${label.lowercase()}-editor"
-        editor.load(DocFormat.MARKDOWN, markdown)
-    }
+    val view =
+        CanvistView(context, kit.extensions).apply {
+            contentDescription = label
+            tag = "${label.lowercase()}-editor"
+            editor.load(DocFormat.MARKDOWN, markdown)
+        }
 
     var active by mutableStateOf(emptySet<Format>())
         private set
@@ -69,7 +74,10 @@ class EditorModel(context: Context, markdown: String, val label: String) {
 }
 
 /** The toolbar's formats: a typed command, and the query that says whether it applies to the selection. */
-enum class Format(val label: String, val title: String) {
+enum class Format(
+    val label: String,
+    val title: String,
+) {
     BOLD("B", "Bold"),
     ITALIC("I", "Italic"),
     UNDERLINE("U", "Underline"),
@@ -81,33 +89,40 @@ enum class Format(val label: String, val title: String) {
     CODE("{ }", "Code block"),
     ;
 
-    fun command(kit: StarterKit): Command = when (this) {
-        BOLD -> kit.bold.toggleBold()
-        ITALIC -> kit.italic.toggleItalic()
-        UNDERLINE -> kit.underline.toggleUnderline()
-        STRIKE -> kit.strike.toggleStrike()
-        HEADING -> kit.heading.toggleHeading(level = 2)
-        BULLET_LIST -> kit.bulletList.toggleBulletList()
-        TASK_LIST -> kit.taskList.toggleTaskList()
-        QUOTE -> kit.blockquote.toggleBlockquote()
-        CODE -> kit.codeBlock.toggleCodeBlock()
-    }
+    fun command(kit: StarterKit): Command =
+        when (this) {
+            BOLD -> kit.bold.toggleBold()
+            ITALIC -> kit.italic.toggleItalic()
+            UNDERLINE -> kit.underline.toggleUnderline()
+            STRIKE -> kit.strike.toggleStrike()
+            HEADING -> kit.heading.toggleHeading(level = 2)
+            BULLET_LIST -> kit.bulletList.toggleBulletList()
+            TASK_LIST -> kit.taskList.toggleTaskList()
+            QUOTE -> kit.blockquote.toggleBlockquote()
+            CODE -> kit.codeBlock.toggleCodeBlock()
+        }
 
-    fun isActive(kit: StarterKit, editor: Editor): Boolean = when (this) {
-        BOLD -> editor.query(kit.bold.isBold())
-        ITALIC -> editor.query(kit.italic.isItalic())
-        UNDERLINE -> editor.query(kit.underline.isUnderline())
-        STRIKE -> editor.query(kit.strike.isStrike())
-        HEADING -> editor.query(kit.heading.headingLevel()) != null
-        BULLET_LIST -> editor.query(kit.bulletList.isBulletList())
-        TASK_LIST -> editor.query(kit.taskList.isTaskList())
-        QUOTE -> editor.query(kit.blockquote.isBlockquote())
-        CODE -> editor.query(kit.codeBlock.isCodeBlock())
-    }
+    fun isActive(
+        kit: StarterKit,
+        editor: Editor,
+    ): Boolean =
+        when (this) {
+            BOLD -> editor.query(kit.bold.isBold())
+            ITALIC -> editor.query(kit.italic.isItalic())
+            UNDERLINE -> editor.query(kit.underline.isUnderline())
+            STRIKE -> editor.query(kit.strike.isStrike())
+            HEADING -> editor.query(kit.heading.headingLevel()) != null
+            BULLET_LIST -> editor.query(kit.bulletList.isBulletList())
+            TASK_LIST -> editor.query(kit.taskList.isTaskList())
+            QUOTE -> editor.query(kit.blockquote.isBlockquote())
+            CODE -> editor.query(kit.codeBlock.isCodeBlock())
+        }
 }
 
 /** Two editors joined over Yjs in memory, as two devices would be over a network. */
-class CollaborationModel(context: Context) {
+class CollaborationModel(
+    context: Context,
+) {
     val alice = EditorModel(context, "# Shared notes\n\nType in either editor.", "Alice")
     val bob = EditorModel(context, "", "Bob")
 
@@ -119,7 +134,11 @@ class CollaborationModel(context: Context) {
     }
 
     /** Deliver [from]'s new Yjs updates to [to]. */
-    private fun send(change: EditorChange, from: Editor, to: Editor) {
+    private fun send(
+        change: EditorChange,
+        from: Editor,
+        to: Editor,
+    ) {
         if (!change.updates) return
 
         for (update in from.takeUpdates()) to.applyUpdate(update)

@@ -18,16 +18,25 @@ in
       cargo-run-bin
       deno
       dprint
+      # The lint scripts enumerate files with `git ls-files`; the devenv shell
+      # resets PATH, so provide git even where the host installs it elsewhere.
+      git
       extra.monochange
       extra.monostyle
+      ktlint
       mdbook
       nixfmt
       rustup
+      shellcheck
       shfmt
+      swift-format
       wasm-pack
     ]
     ++ lib.optionals stdenv.isDarwin [
       coreutils
+      # SwiftLint shells out to sourcekitd from a Swift toolchain, which only
+      # exists here through Xcode; Linux CI lints Swift on the macOS job.
+      swiftlint
       xcodegen
     ];
 
@@ -299,12 +308,45 @@ in
       description = "Require readability and complexity scores of at least 90 in each crate and package.";
       binary = "bash";
     };
+    "lint:swift" = {
+      exec = ''
+        set -e
+        # SwiftLint shells out to sourcekitd from the Xcode toolchain. The
+        # devenv shell points DEVELOPER_DIR at the nix apple_sdk, which has no
+        # Swift compiler, so restore the Xcode selection before resolving it.
+        unset DEVELOPER_DIR
+        export PATH="$(dirname "$(xcrun --find swift)"):$PATH"
+        swiftlint lint --strict
+      '';
+      description = "Lint Swift sources with SwiftLint (macOS only).";
+      binary = "bash";
+    };
+    "lint:kotlin" = {
+      exec = ''
+        set -e
+        # `*.generated.kt` is produced by the extension handle generator with
+        # its own formatting, enforced by the canvist_ffi handles tests.
+        git ls-files '*.kt' '*.kts' | grep -v 'platforms/flutter/example' | grep -v '\.generated\.kt$' | ktlint --patterns-from-stdin
+      '';
+      description = "Lint tracked Kotlin sources with ktlint (generated files are untracked and skipped).";
+      binary = "bash";
+    };
+    "lint:shell" = {
+      exec = ''
+        set -e
+        git ls-files '*.sh' | xargs shellcheck
+      '';
+      description = "Lint shell scripts with shellcheck.";
+      binary = "bash";
+    };
     "lint:all" = {
       exec = ''
         set -e
         lint:clippy
         lint:format
         lint:style
+        lint:kotlin
+        lint:shell
         deny:check
       '';
       description = "Run all checks.";

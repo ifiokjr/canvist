@@ -11,21 +11,21 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.action.ViewActions.longClick
 import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.action.ViewActions.longClick
 import androidx.test.espresso.action.ViewActions.typeTextIntoFocusedView
 import androidx.test.espresso.matcher.ViewMatchers.withTagValue
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.ifiokjr.canvist.CanvistView
 import io.github.ifiokjr.canvist.DocFormat
 import org.hamcrest.Matchers.`is`
-import java.util.concurrent.atomic.AtomicReference
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * The sample as a person uses it: tapping into the editor, typing on the
@@ -52,7 +52,10 @@ class MainActivityTest {
      * shows, as a person would: keys sent while the input method is still
      * starting are dropped by the input method before they reach the view.
      */
-    private fun typeInto(tag: String, text: String) {
+    private fun typeInto(
+        tag: String,
+        text: String,
+    ) {
         onView(withTagValue(`is`(tag))).perform(click())
         val deadline = SystemClock.uptimeMillis() + KEYBOARD_TIMEOUT_MILLIS
 
@@ -65,7 +68,10 @@ class MainActivityTest {
     }
 
     /** Read the editor tagged [tag] on the main thread. */
-    private fun <T> read(tag: String, body: (CanvistView) -> T): T {
+    private fun <T> read(
+        tag: String,
+        body: (CanvistView) -> T,
+    ): T {
         val result = AtomicReference<T>()
         scenario.onActivity { activity -> result.set(body(activity.window.decorView.findViewWithTag(tag))) }
 

@@ -1,10 +1,10 @@
 package io.github.ifiokjr.canvist
 
-import java.lang.ref.WeakReference
-import java.util.concurrent.ConcurrentHashMap
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.lang.ref.WeakReference
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The editors of views a JavaScript host shows, such as React Native or Lynx,
@@ -20,7 +20,10 @@ object HostedEditors {
     private val editors = ConcurrentHashMap<String, WeakReference<Editor>>()
 
     /** Find [editor] by [id] from now on. */
-    fun register(id: String, editor: Editor) {
+    fun register(
+        id: String,
+        editor: Editor,
+    ) {
         editors[id] = WeakReference(editor)
     }
 
@@ -30,13 +33,18 @@ object HostedEditors {
     }
 
     /** Run [body] on the editor [id] names, with every failure as a [HostedEditorException]. */
-    fun <T> call(id: String, body: (Editor) -> T): T = try {
-        val editor = editors[id]?.get()
-            ?: throw HostedEditorException("editor", "no mounted editor has the id `$id`")
-        body(editor)
-    } catch (error: Exception) {
-        throw HostedEditorException.of(error)
-    }
+    fun <T> call(
+        id: String,
+        body: (Editor) -> T,
+    ): T =
+        try {
+            val editor =
+                editors[id]?.get()
+                    ?: throw HostedEditorException("editor", "no mounted editor has the id `$id`")
+            body(editor)
+        } catch (error: Exception) {
+            throw HostedEditorException.of(error)
+        }
 }
 
 /**
@@ -44,26 +52,31 @@ object HostedEditors {
  * binding shares. Its message is `[canvist:<code>] <reason>`, the form
  * JavaScript reads the code from (`@canvist/headless/native`).
  */
-class HostedEditorException(val code: String, val reason: String, cause: Throwable? = null) :
-    RuntimeException("[canvist:$code] $reason", cause) {
+class HostedEditorException(
+    val code: String,
+    val reason: String,
+    cause: Throwable? = null,
+) : RuntimeException("[canvist:$code] $reason", cause) {
     companion object {
         /** [error] with its code: an engine error keeps its own, anything else is an `editor` error. */
-        fun of(error: Exception): HostedEditorException = when (error) {
-            is HostedEditorException -> error
-            is CanvistException.Failed -> HostedEditorException(error.code, error.reason, error)
-            else -> HostedEditorException("editor", error.message ?: error.toString(), error)
-        }
+        fun of(error: Exception): HostedEditorException =
+            when (error) {
+                is HostedEditorException -> error
+                is CanvistException.Failed -> HostedEditorException(error.code, error.reason, error)
+                else -> HostedEditorException("editor", error.message ?: error.toString(), error)
+            }
     }
 }
 
 /** The format a JavaScript name stands for: `json`, `html`, `markdown`, or `text`. */
-fun docFormat(name: String): DocFormat = when (name) {
-    "json" -> DocFormat.JSON
-    "html" -> DocFormat.HTML
-    "markdown" -> DocFormat.MARKDOWN
-    "text" -> DocFormat.TEXT
-    else -> throw HostedEditorException("invalidArgs", "unknown format `$name`")
-}
+fun docFormat(name: String): DocFormat =
+    when (name) {
+        "json" -> DocFormat.JSON
+        "html" -> DocFormat.HTML
+        "markdown" -> DocFormat.MARKDOWN
+        "text" -> DocFormat.TEXT
+        else -> throw HostedEditorException("invalidArgs", "unknown format `$name`")
+    }
 
 /**
  * The selection as JSON, `{"anchor": position, "head": position}` with
@@ -81,19 +94,21 @@ fun Editor.selectionJson(): String {
 
 /** Select the JSON range [json], as [selectionJson] writes it. Returns whether the selection moved. */
 fun Editor.selectRangeJson(json: String): Boolean {
-    val (anchor, head) = try {
-        val range = JSONObject(json)
-        decodePosition(range.getJSONObject("anchor")) to decodePosition(range.getJSONObject("head"))
-    } catch (error: JSONException) {
-        throw HostedEditorException("invalidPosition", "invalid range $json: ${error.message}", error)
-    }
+    val (anchor, head) =
+        try {
+            val range = JSONObject(json)
+            decodePosition(range.getJSONObject("anchor")) to decodePosition(range.getJSONObject("head"))
+        } catch (error: JSONException) {
+            throw HostedEditorException("invalidPosition", "invalid range $json: ${error.message}", error)
+        }
 
     return selectPositions(anchor, head)
 }
 
-private fun positionJson(position: DocPosition): JSONObject = JSONObject()
-    .put("path", JSONArray(position.path.map { it.toLong() }))
-    .put("offset", position.offset.toLong())
+private fun positionJson(position: DocPosition): JSONObject =
+    JSONObject()
+        .put("path", JSONArray(position.path.map { it.toLong() }))
+        .put("offset", position.offset.toLong())
 
 private fun decodePosition(json: JSONObject): DocPosition {
     val path = json.getJSONArray("path")

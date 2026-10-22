@@ -1,6 +1,6 @@
 import React
-import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import React_RCTAppDelegate
 import UIKit
 
 class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate {
@@ -19,16 +19,16 @@ class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate
     dependencyProvider = RCTAppDependencyProvider()
     reactNativeFactory = RCTReactNativeFactory(delegate: self)
     window = UIWindow(windowScene: windowScene)
-    
+
     #if DEBUG
-    let devMenuConfiguration = RCTDevMenuConfiguration(
-      devMenuEnabled: true,
-      shakeGestureEnabled: true,
-      keyboardShortcutsEnabled: true
-    )
-    reactNativeFactory?.devMenuConfiguration = devMenuConfiguration
+      let devMenuConfiguration = RCTDevMenuConfiguration(
+        devMenuEnabled: true,
+        shakeGestureEnabled: true,
+        keyboardShortcutsEnabled: true
+      )
+      reactNativeFactory?.devMenuConfiguration = devMenuConfiguration
     #endif
-    
+
     // `perfSlack` multiplies the benchmark's budgets on slow CI simulators;
     // Maestro passes it as a launch argument.
     let perfSlack = UserDefaults.standard.double(forKey: "perfSlack")
@@ -50,9 +50,9 @@ class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate
 
   override func bundleURL() -> URL? {
     #if DEBUG
-    RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
+      RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
     #else
-    Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+      Bundle.main.url(forResource: "main", withExtension: "jsbundle")
     #endif
   }
 }

@@ -17,7 +17,10 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class EditorTest {
     private val kit = StarterKit()
-    private val density = InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density
+    private val density =
+        InstrumentationRegistry
+            .getInstrumentation()
+            .targetContext.resources.displayMetrics.density
 
     private fun editor(markdown: String = ""): Editor {
         val options = defaultEditorOptions().copy(extensions = kit.extensions.names)
@@ -29,24 +32,26 @@ class EditorTest {
     }
 
     @Test
-    fun typingRunsInputRules() = editor().use { editor ->
-        "## Title".forEach { character -> editor.insertText(character.toString()) }
+    fun typingRunsInputRules() =
+        editor().use { editor ->
+            "## Title".forEach { character -> editor.insertText(character.toString()) }
 
-        assertEquals("## Title", editor.export(DocFormat.MARKDOWN))
-        assertEquals(2, editor.query(kit.heading.headingLevel()))
-    }
+            assertEquals("## Title", editor.export(DocFormat.MARKDOWN))
+            assertEquals(2, editor.query(kit.heading.headingLevel()))
+        }
 
     @Test
-    fun typedCommandsAndQueries() = editor("Hello world").use { editor ->
-        editor.select(6u, 11u)
+    fun typedCommandsAndQueries() =
+        editor("Hello world").use { editor ->
+            editor.select(6u, 11u)
 
-        assertTrue(editor.can(kit.bold.toggleBold()))
-        assertTrue(editor.run(kit.bold.toggleBold()))
-        assertTrue(editor.query(kit.bold.isBold()))
-        assertTrue(editor.run(kit.codeBlock.toggleCodeBlock(language = "kotlin")))
-        assertEquals("kotlin", editor.query(kit.codeBlock.codeBlockLanguage()))
-        assertNull(editor.query(kit.link.linkHref()))
-    }
+            assertTrue(editor.can(kit.bold.toggleBold()))
+            assertTrue(editor.run(kit.bold.toggleBold()))
+            assertTrue(editor.query(kit.bold.isBold()))
+            assertTrue(editor.run(kit.codeBlock.toggleCodeBlock(language = "kotlin")))
+            assertEquals("kotlin", editor.query(kit.codeBlock.codeBlockLanguage()))
+            assertNull(editor.query(kit.link.linkHref()))
+        }
 
     @Test
     fun extensionSetsFromNamesKeepTheirOrderOnce() {
@@ -60,13 +65,15 @@ class EditorTest {
     }
 
     @Test
-    fun invalidArgumentsThrowTheSharedCode() = editor("text").use { editor ->
-        val error = assertThrows(CanvistException.Failed::class.java) {
-            editor.run(kit.heading.toggleHeading(level = INVALID_LEVEL))
-        }
+    fun invalidArgumentsThrowTheSharedCode() =
+        editor("text").use { editor ->
+            val error =
+                assertThrows(CanvistException.Failed::class.java) {
+                    editor.run(kit.heading.toggleHeading(level = INVALID_LEVEL))
+                }
 
-        assertEquals("invalidArgs", error.code)
-    }
+            assertEquals("invalidArgs", error.code)
+        }
 
     @Test
     fun commandArgumentsAreJson() {
@@ -75,39 +82,42 @@ class EditorTest {
     }
 
     @Test
-    fun composingTextCommits() = editor().use { editor ->
-        editor.setMarkedText("h", OffsetRange(1u, 1u))
-        editor.setMarkedText("hel", OffsetRange(3u, 3u))
-        assertEquals(OffsetRange(0u, 3u), editor.markedRange())
-        editor.insertText("hello")
+    fun composingTextCommits() =
+        editor().use { editor ->
+            editor.setMarkedText("h", OffsetRange(1u, 1u))
+            editor.setMarkedText("hel", OffsetRange(3u, 3u))
+            assertEquals(OffsetRange(0u, 3u), editor.markedRange())
+            editor.insertText("hello")
 
-        assertNull(editor.markedRange())
-        assertEquals("hello", editor.plainText())
-        assertEquals(TextSelection(5u, 5u), editor.selection())
-    }
+            assertNull(editor.markedRange())
+            assertEquals("hello", editor.plainText())
+            assertEquals(TextSelection(5u, 5u), editor.selection())
+        }
 
     @Test
-    fun framesPaintTextInTheMeasuredFont() = editor("# Big\n\nsmall").use { editor ->
-        val frame = editor.frame()
-        val runs = frame.items.orEmpty().filterIsInstance<DisplayItem.Text>()
+    fun framesPaintTextInTheMeasuredFont() =
+        editor("# Big\n\nsmall").use { editor ->
+            val frame = editor.frame()
+            val runs = frame.items.orEmpty().filterIsInstance<DisplayItem.Text>()
 
-        assertEquals(listOf("Big", "small"), runs.map { it.text })
-        assertNotEquals(runs[0].font, runs[1].font)
-        assertTrue(frame.height > 0f)
-    }
+            assertEquals(listOf("Big", "small"), runs.map { it.text })
+            assertNotEquals(runs[0].font, runs[1].font)
+            assertTrue(frame.height > 0f)
+        }
 
     @Test
     fun measuredAdvancesAddUpToTheRunWidth() {
         val fonts = FontTable(density)
         fonts.register(FontFace(0u, listOf("system-ui"), BODY_SIZE, REGULAR, false))
         val paint = checkNotNull(fonts.paint(0u))
-        val samples = listOf(
-            "Typography office" to false,
-            "naïve café" to false,
-            "👩🏽‍💻 ok" to false,
-            "مرحبا بالعالم" to true,
-            "漢字かな" to false,
-        )
+        val samples =
+            listOf(
+                "Typography office" to false,
+                "naïve café" to false,
+                "👩🏽‍💻 ok" to false,
+                "مرحبا بالعالم" to true,
+                "漢字かな" to false,
+            )
 
         for ((text, rtl) in samples) {
             val advances = mutableListOf<Float>()
@@ -157,13 +167,19 @@ class EditorTest {
             val median = samples[samples.size / 2]
             val p95 = samples[samples.size * P95 / 100]
 
-            Log.i(TAG, "PERF kotlin(${build()}, ${Build.SUPPORTED_ABIS[0]}) keystroke-to-frame median=${median.toLong()}µs p95=${p95.toLong()}µs")
+            Log.i(
+                TAG,
+                "PERF kotlin(${build()}, ${Build.SUPPORTED_ABIS[0]}) keystroke-to-frame median=${median.toLong()}µs p95=${p95.toLong()}µs",
+            )
             assertTrue("keystroke-to-frame p95 ${p95}µs is over its budget", p95 < BUDGET_MICROS * perfSlack)
         }
     }
 
     /** Type a character, or delete one, and build the frame; returns microseconds. */
-    private fun keystroke(editor: Editor, typing: Boolean): Double {
+    private fun keystroke(
+        editor: Editor,
+        typing: Boolean,
+    ): Double {
         val start = System.nanoTime()
 
         if (typing) editor.insertText("x") else editor.deleteBackward()
@@ -174,7 +190,10 @@ class EditorTest {
     }
 
     private fun build(): String {
-        val flags = InstrumentationRegistry.getInstrumentation().targetContext.applicationInfo.flags
+        val flags =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext.applicationInfo.flags
 
         return if (flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) "debug" else "release"
     }
