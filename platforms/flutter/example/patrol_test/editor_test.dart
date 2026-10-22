@@ -104,6 +104,15 @@ Offset _fraction(PatrolIntegrationTester $, Offset point) {
   return Offset(point.dx / screen.width, point.dy / screen.height);
 }
 
+/// Put the on-screen keyboard away before a native gesture: with it up,
+/// XCUITest can spend the gesture's whole timeout reading the keyboard's
+/// keys on a busy runner.
+Future<void> _hideKeyboard(PatrolIntegrationTester $) async {
+  FocusManager.instance.primaryFocus?.unfocus();
+  await $.pumpAndSettle();
+  await $.pump(_relay);
+}
+
 String _text(CanvistController controller) => controller.export(Format.text);
 
 String _markdown(CanvistController controller) =>
@@ -131,7 +140,7 @@ Future<void> _tapsCaret(PatrolIntegrationTester $) async {
   final controller = await _open($, 'alpha beta gamma');
   final target = _onScreen($, controller, const Position([0], 8));
   controller.select(const Position([0], 0));
-  await $.pump();
+  await _hideKeyboard($);
 
   await $.platform.mobile.tapAt(target);
   await $.pump(_relay);
@@ -202,9 +211,8 @@ Future<void> _scrolls(PatrolIntegrationTester $) async {
     $(Keys.editor).$(Scrollable).finder,
   );
 
-  // The editor is focused, and the app shrinks it above the on-screen
-  // keyboard: swipe within what is left of it, whatever the screen's size.
-  await $.pump(_relay);
+  // Swipe within the editor, whatever the screen's size.
+  await _hideKeyboard($);
   final editor = $.tester.getRect($(Keys.editor).finder);
 
   await $.platform.mobile.swipe(
