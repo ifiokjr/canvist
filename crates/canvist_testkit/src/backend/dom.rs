@@ -425,7 +425,10 @@ async fn start_server() -> TestResult<Server> {
 	// symlink to a script, which Linux will not exec, and package-manager
 	// wrappers daemonize on some machines. The output lands in the log the
 	// error message names.
-	let vite_log = root.join("target/canvist-testkit/dom.vite.log");
+	let vite_directory = root.join("target/canvist-testkit");
+	std::fs::create_dir_all(&vite_directory)
+		.map_err(|error| TestkitError::unavailable(Target::Dom, error.to_string()))?;
+	let vite_log = vite_directory.join("dom.vite.log");
 	let vite = Command::new("node")
 		.arg(web.join("node_modules/vite/bin/vite.js"))
 		.arg("--config")
