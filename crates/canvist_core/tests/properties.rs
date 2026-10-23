@@ -4,14 +4,14 @@
 
 mod support;
 
-use canvist_editor::Direction;
-use canvist_editor::EditorState;
-use canvist_editor::ParagraphNavigator;
-use canvist_editor::Unit;
-use canvist_editor::commands;
-use canvist_editor::commands::ListType;
-use canvist_editor::motion;
-use canvist_editor::position;
+use canvist_core::Direction;
+use canvist_core::EditorState;
+use canvist_core::ParagraphNavigator;
+use canvist_core::Unit;
+use canvist_core::commands;
+use canvist_core::commands::ListType;
+use canvist_core::motion;
+use canvist_core::position;
 use canvist_model::Attrs;
 use canvist_model::Block;
 use canvist_model::BlockId;
@@ -110,7 +110,7 @@ fn point(doc: &Document, block: usize, offset: usize) -> Option<Point> {
 	Some(Point::new(id, boundaries[offset % boundaries.len()] as u32))
 }
 
-fn run(state: &mut EditorState, op: &Op) -> canvist_editor::CommandResult {
+fn run(state: &mut EditorState, op: &Op) -> canvist_core::CommandResult {
 	match op {
 		Op::Type(text) => commands::insert_text(state, text),
 		Op::Backspace(unit) => {

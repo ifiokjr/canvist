@@ -1,6 +1,6 @@
 //! Building schema-valid slices from parsed content.
 
-use canvist_editor::Slice;
+use canvist_core::Slice;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::BlockTree;

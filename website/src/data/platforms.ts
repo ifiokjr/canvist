@@ -17,7 +17,8 @@ export interface Platform {
 	name: string;
 	/** How the host draws, in one line. */
 	how: string;
-	status: "live" | "building" | "planned";
+	/** `preview` works but stays on GitHub after the first release. */
+	status: "live" | "preview" | "planned";
 	statusText: string;
 }
 
@@ -60,15 +61,15 @@ export const platforms: Platform[] = [
 	{
 		id: "react-native",
 		name: "React Native",
-		how: "a native component via uniffi-bindgen-react-native",
-		status: "planned",
-		statusText: "coming soon",
+		how: "a Fabric component over the iOS and Android views",
+		status: "preview",
+		statusText: "preview · iOS, Android, from GitHub",
 	},
 	{
 		id: "lynx",
 		name: "Lynx",
 		how: "a custom native element over the iOS and Android views",
-		status: "planned",
-		statusText: "coming soon",
+		status: "preview",
+		statusText: "preview · iOS, Android, from GitHub",
 	},
 ];

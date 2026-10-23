@@ -9,24 +9,24 @@
 
 <p align="center">
   <a href="https://github.com/canvist/canvist/blob/main/docs/src/quick-start/server-rust.md"><strong>Quick start</strong></a> ·
-  <a href="https://docs.rs/canvist_editor"><strong>API</strong></a> ·
+  <a href="https://docs.rs/canvist_core"><strong>API</strong></a> ·
   <a href="https://github.com/canvist/canvist/blob/main/docs/src/readme.md"><strong>Docs</strong></a> ·
   <a href="https://github.com/canvist/canvist/blob/main/docs/src/reference/contributing.md"><strong>Contributing</strong></a> ·
   <a href="https://github.com/canvist/canvist"><strong>canvist</strong></a>
 </p>
 
 <p align="center">
-  <a href="https://crates.io/crates/canvist_editor"><img src="https://img.shields.io/crates/v/canvist_editor?color=3B2CF5" alt="crates.io version" /></a>
-  <a href="https://docs.rs/canvist_editor"><img src="https://img.shields.io/docsrs/canvist_editor" alt="docs.rs status" /></a>
+  <a href="https://crates.io/crates/canvist_core"><img src="https://img.shields.io/crates/v/canvist_core?color=3B2CF5" alt="crates.io version" /></a>
+  <a href="https://docs.rs/canvist_core"><img src="https://img.shields.io/docsrs/canvist_core" alt="docs.rs status" /></a>
   <a href="https://github.com/canvist/canvist/actions/workflows/ci.yml"><img src="https://github.com/canvist/canvist/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci status" /></a>
   <a href="https://unlicense.org"><img src="https://img.shields.io/badge/license-Unlicense-3B2CF5" alt="Unlicense" /></a>
 </p>
 
-# canvist_editor
+# canvist_core
 
 The platform-agnostic editing engine behind [canvist](https://github.com/canvist/canvist), built on [`canvist_model`](../canvist_model). It has no UI: hosts send it input and draw what it returns.
 
-Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::editor`: `cargo add canvist`.
+Most apps add it through [`canvist`](../canvist), the crate to install, as `canvist::core`: `cargo add canvist`.
 
 - **One state:** the document, selection, stored marks, and IME composition change through one path, so they never disagree.
 - **Commands:** typing, deleting by grapheme, word, or line, Enter and Backspace that understand lists and quotes, marks, block types, and copy and paste.

@@ -1,0 +1,138 @@
+name: "testkit"
+
+# Runs the cross-platform testkit: the same Rust tests against the headless
+# engine, the agent protocol, and a real browser through Playwright. The
+# simulator and emulator targets run there too, through the same jobs the
+# native workflow already pays for, once this workflow is merged alongside
+# them (see the comment in each job).
+#
+# Pull requests run the cheap targets on every change to the editor; the
+# browser job follows the web workflow's pattern of building what the page
+# needs first. The device targets are driven from this workflow on a nightly
+# cadence, and from `native`'s simulators whenever that workflow lands the
+# testkit agents on them.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/testkit.yml"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "conformance/**"
+      - "crates/**"
+      - "packages/canvist-headless/**"
+      - "packages/canvist-web/tests/pages/testkit.*"
+      - "platforms/**"
+      - "rust-toolchain.toml"
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  engine:
+    name: headless + loopback (ubuntu)
+    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/devenv
+      - name: Headless and loopback targets
+        run: |
+          cargo build -p canvist_testkit --bin canvist_testkit_daemon
+          CANVIST_TEST_TARGET=headless,loopback cargo nextest run -p canvist_testkit --features collab
+        shell: devenv shell -c -- bash -e {0}
+
+  dom:
+    name: dom (chromium)
+    timeout-minutes: 45
+    runs-on: ubuntu-24.04
+    # Not the devenv action: the page's build needs node and wasm-pack
+    # side by side, which the direct installs give and the devenv shell's
+    # clean environment does not. The web workflow does the same.
+    steps:
+      - uses: actions/checkout@v4
+      - name: install rust toolchain and the wasm target
+        run: |
+          rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+      - name: cache rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: wasm
+      - name: install wasm-pack
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+      - name: install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # What the page needs, built the way the web workflow builds it; the
+      # daemon's own preparation then finds everything and skips.
+      - name: build @canvist/headless
+        working-directory: packages/canvist-headless
+        run: |
+          npm ci
+          npm run build:wasm
+          npm run build
+      - name: install dependencies
+        working-directory: packages/canvist-web
+        run: npm ci
+      - name: build wasm
+        working-directory: packages/canvist-web
+        run: npm run build:wasm
+
+      - name: Browser target
+        run: CANVIST_TEST_TARGET=dom cargo test -p canvist_testkit --features dom --test typing --test extensions
+
+  ios:
+    name: ios (simulator)
+    timeout-minutes: 90
+    runs-on: macos-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/devenv
+      - name: Simulator target
+        run: |
+          cargo build -p canvist_testkit --features ios --bin canvist_testkit_daemon
+          CANVIST_TEST_TARGET=ios cargo test -p canvist_testkit --features ios --test typing -- --test-threads=1 --nocapture
+        shell: devenv shell -c -- bash -e {0}
+
+  android:
+    name: android (emulator)
+    timeout-minutes: 90
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/devenv
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Emulator target
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            cargo build -p canvist_testkit --features android --bin canvist_testkit_daemon
+            CANVIST_TEST_TARGET=android cargo test -p canvist_testkit --features android --test typing -- --test-threads=1 --nocapture
+          shell: devenv shell -c -- bash -e {0}

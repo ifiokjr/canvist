@@ -13,17 +13,17 @@
 
 use std::sync::Arc;
 
-use canvist_editor::CommandResult;
-use canvist_editor::EditKind;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::Extension;
-use canvist_editor::InputRule;
-use canvist_editor::Lookback;
-use canvist_editor::Registration;
-use canvist_editor::RuleMatch;
-use canvist_editor::TypedExtension;
-use canvist_editor::commands;
+use canvist_core::CommandResult;
+use canvist_core::EditKind;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::Extension;
+use canvist_core::InputRule;
+use canvist_core::Lookback;
+use canvist_core::Registration;
+use canvist_core::RuleMatch;
+use canvist_core::TypedExtension;
+use canvist_core::commands;
 use canvist_model::Point;
 use canvist_model::Schema;
 use canvist_model::Selection;

@@ -1,7 +1,7 @@
 //! Slices to Markdown (CommonMark with GitHub's strikethrough and task
 //! lists).
 
-use canvist_editor::Slice;
+use canvist_core::Slice;
 use canvist_model::Attrs;
 use canvist_model::BlockTree;
 use canvist_model::InlineText;

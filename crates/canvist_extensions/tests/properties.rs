@@ -109,7 +109,7 @@ proptest! {
 		prop_assert_eq!(&clipboard::to_markdown(&schema, &clipboard::from_markdown(&schema, &again)), &again);
 
 		let mut target = Typist::new();
-		target.editor.paste(from_html, &mut canvist_editor::Env::headless(std::time::Duration::ZERO)).expect("paste");
+		target.editor.paste(from_html, &mut canvist_core::Env::headless(std::time::Duration::ZERO)).expect("paste");
 		assert_valid(target.editor.state());
 	}
 }

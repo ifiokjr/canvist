@@ -21,7 +21,7 @@ use canvist_desktop::ScrollDelta;
 use canvist_desktop::Viewport;
 use canvist_headless::Engine;
 use canvist_headless::Format;
-use canvist_headless::canvist_editor::Platform;
+use canvist_headless::canvist_core::Platform;
 use kurbo::Point;
 
 /// The editor's size when a test does not care: a small laptop window.

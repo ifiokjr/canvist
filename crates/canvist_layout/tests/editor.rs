@@ -4,11 +4,11 @@
 
 mod support;
 
-use canvist_editor::Affinity;
-use canvist_editor::Caret;
-use canvist_editor::LineEdge;
-use canvist_editor::LineNavigator;
-use canvist_editor::VerticalDirection;
+use canvist_core::Affinity;
+use canvist_core::Caret;
+use canvist_core::LineEdge;
+use canvist_core::LineNavigator;
+use canvist_core::VerticalDirection;
 use canvist_layout::FixedMeasurer;
 use canvist_model::Point;
 use support::paragraphs;

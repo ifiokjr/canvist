@@ -60,23 +60,24 @@ editor.commands.toggleItalic(); // type error: italic isn't registered
 
 One core runs everywhere, so a document exports byte for byte the same in Rust, TypeScript, and Dart.
 
-| Platform                       | Package                                                                             | Status      |
-| ------------------------------ | ----------------------------------------------------------------------------------- | ----------- |
-| Web                            | [`@canvist/web`](./packages/canvist-web)                                            | Available   |
-| React                          | [`@canvist/react`](./packages/canvist-react)                                        | Available   |
-| Vue                            | [`@canvist/vue`](./packages/canvist-vue)                                            | Available   |
-| Servers: Node, Deno, Bun       | [`@canvist/headless`](./packages/canvist-headless)                                  | Available   |
-| Servers: Rust                  | [`canvist`](./crates/canvist)                                                       | Available   |
-| Server-side rendering          | [`@canvist/headless/ssr`](./docs/src/quick-start/ssr.md), `canvist` (`ssr` feature) | Available   |
-| Servers: Dart                  | [`canvist`](./platforms/dart)                                                       | Available   |
-| Flutter                        | [`canvist_flutter`](./platforms/flutter)                                            | Available   |
-| Design canvas                  | [`@canvist/canvas`](./packages/canvist-canvas)                                      | Available   |
-| Desktop: macOS, Windows, Linux | [`canvist_desktop`](./crates/canvist_desktop)                                       | Available   |
-| iOS                            | [`Canvist`](./platforms/apple) Swift package                                        | Available   |
-| Android                        | [`canvist-android`](./platforms/android)                                            | Available   |
-| React Native and Lynx          | `@canvist/react-native`, `@canvist/lynx`                                            | Coming soon |
+| Platform                       | Package                                                                             | Status    |
+| ------------------------------ | ----------------------------------------------------------------------------------- | --------- |
+| Web                            | [`@canvist/web`](./packages/canvist-web)                                            | Available |
+| React                          | [`@canvist/react`](./packages/canvist-react)                                        | Available |
+| Vue                            | [`@canvist/vue`](./packages/canvist-vue)                                            | Available |
+| Servers: Node, Deno, Bun       | [`@canvist/headless`](./packages/canvist-headless)                                  | Available |
+| Servers: Rust                  | [`canvist`](./crates/canvist)                                                       | Available |
+| Server-side rendering          | [`@canvist/headless/ssr`](./docs/src/quick-start/ssr.md), `canvist` (`ssr` feature) | Available |
+| Servers: Dart                  | [`canvist`](./platforms/dart)                                                       | Available |
+| Flutter                        | [`canvist_flutter`](./platforms/flutter)                                            | Available |
+| Design canvas                  | [`@canvist/canvas`](./packages/canvist-canvas)                                      | Available |
+| Desktop: macOS, Windows, Linux | [`canvist_desktop`](./crates/canvist_desktop)                                       | Available |
+| iOS                            | [`Canvist`](./platforms/apple) Swift package                                        | Available |
+| Android                        | [`canvist-android`](./platforms/android)                                            | Available |
+| React Native                   | [`@canvist/react-native`](./packages/canvist-react-native)                          | Preview   |
+| Lynx                           | [`@canvist/lynx`](./packages/canvist-lynx)                                          | Preview   |
 
-canvist hasn't had its first release yet. Each [quick start](./docs/src/quick-start/readme.md) shows how to install from GitHub until it does.
+canvist hasn't had its first release yet. Each [quick start](./docs/src/quick-start/readme.md) shows how to install from GitHub until it does. **Preview** packages work and are tested on every change, but stay on GitHub after the first release, until the native libraries they build on are on CocoaPods and Maven Central.
 
 ## Learn more
 

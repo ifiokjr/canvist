@@ -40,7 +40,7 @@ Every pull request that changes a package needs a file in `.changeset/`. Its fro
 
 ```markdown
 ---
-canvist_editor: feat
+canvist_core: feat
 ---
 
 # Add soft line breaks

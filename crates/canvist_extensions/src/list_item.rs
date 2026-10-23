@@ -1,16 +1,16 @@
 //! List items.
 
-use canvist_editor::Binding;
-use canvist_editor::Command;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditorError;
-use canvist_editor::Extension;
-use canvist_editor::NodeKind;
-use canvist_editor::NodeMeta;
-use canvist_editor::Platform;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
-use canvist_editor::commands;
+use canvist_core::Binding;
+use canvist_core::Command;
+use canvist_core::CommandSpec;
+use canvist_core::EditorError;
+use canvist_core::Extension;
+use canvist_core::NodeKind;
+use canvist_core::NodeMeta;
+use canvist_core::Platform;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
+use canvist_core::commands;
 use canvist_model::BlockSpec;
 use canvist_model::Schema;
 use canvist_model::SchemaBuilder;

@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-pub use canvist_headless::canvist_editor::Modifiers;
+pub use canvist_headless::canvist_core::Modifiers;
 use kurbo::Point;
 
 use crate::Clipboard;

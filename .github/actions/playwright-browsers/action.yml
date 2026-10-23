@@ -1,0 +1,181 @@
+name: playwright browsers
+description: >-
+  Install Playwright browsers with a cache and retries. Browser downloads and
+  their apt dependencies have stalled CI runners for the full step timeout, so
+  the browsers are cached per runner OS and Playwright version, the downloads
+  are retried, and on Linux the system packages are cached as .deb files and
+  reinstalled from that cache without the apt mirror, which has been slow and
+  flaky. A cache miss runs install-deps with no time cap so it finishes and
+  populates the cache. A browser that cannot get its system packages fails
+  the job instead of continuing without them.
+inputs:
+  browsers:
+    description: Space-separated browsers to install, such as `chromium firefox`.
+    required: true
+  command:
+    description: >-
+      The Playwright CLI to run, without arguments. Defaults to `npx playwright`;
+      pass `node node_modules/@playwright/test/cli.js` where npx is unavailable.
+    required: false
+    default: npx playwright
+  working-directory:
+    description: Where `command` resolves Playwright from.
+    required: false
+    default: .
+  with-deps:
+    description: Also install the browsers' system packages (Linux only).
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: read the playwright version
+      id: version
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        version=$(${{ inputs.command }} --version | awk '{print $NF}')
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+
+    - name: cache the browsers
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/ms-playwright
+          ~/Library/Caches/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.version.outputs.version }}-${{ inputs.browsers }}
+
+    # The .deb files install-deps downloads are a solution to "what this
+    # exact runner image is missing", so the cache key pins the runner OS
+    # (os-release, so 24.04 never shares a set with 26.04), the image build
+    # (ImageVersion, which rolls about weekly), the arch, the Playwright
+    # version, and the browser list. A hit is always the exact set to
+    # install, never a mix from a different image.
+    - name: prepare the system package cache
+      id: system-packages
+      if: inputs.with-deps == 'true' && runner.os == 'Linux'
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+        PLAYWRIGHT_VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        set -euo pipefail
+        . /etc/os-release
+        echo "dir=$RUNNER_TEMP/pw-system-debs" >> "$GITHUB_OUTPUT"
+        echo "key=pw-debs-${ID}-${VERSION_ID}-image${ImageVersion:-unknown}-${RUNNER_ARCH:-unknown}-pw${PLAYWRIGHT_VERSION}-$(echo "$BROWSERS" | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+
+    - name: cache the system packages
+      id: system-package-cache
+      if: inputs.with-deps == 'true' && runner.os == 'Linux'
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.system-packages.outputs.dir }}
+        key: ${{ steps.system-packages.outputs.key }}
+
+    # Ubuntu's apt mirrors have hung `apt-get update` for the step timeout
+    # and crawled at ~100 KiB/s for hours, and WebKit's GTK4 and GStreamer
+    # packages are not on the runner image, so a WebKit job without them
+    # fails every test with Playwright's own "missing dependencies" error.
+    # Most runs install the cached .debs with dpkg and never touch a mirror.
+    # A cache miss runs install-deps with no cap — a stalled transfer is
+    # still bounded by apt's own network timeouts and the step timeout — so
+    # it finishes and populates the cache; PR branches restore caches from
+    # main, so after one populating run on main most runs hit. The canonical
+    # Ubuntu archive replaces the runner's Azure mirror up front because
+    # that mirror is the known-bad actor, and three attempts ride out
+    # transient failures: apt keeps every fully downloaded package, so a
+    # later attempt resumes instead of restarting. A failed attempt can
+    # leave a sudo'd apt-get (its own session, via use_pty) holding the dpkg
+    # lock, so each retry kills any leftover apt-get and runs
+    # `dpkg --configure -a` to finish a package caught mid-unpack. If the
+    # packages still cannot be installed the job fails here with a clear
+    # error: continuing just moves the failure into the browser's tests,
+    # as WebKit's did.
+    - name: install the system packages
+      if: inputs.with-deps == 'true' && runner.os == 'Linux'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        DEB_CACHE_DIR: ${{ steps.system-packages.outputs.dir }}
+        DEB_CACHE_KEY: ${{ steps.system-packages.outputs.key }}
+        DEB_CACHE_HIT: ${{ steps.system-package-cache.outputs.cache-hit }}
+      run: |
+        set -uo pipefail
+        # Keep downloaded packages for the cache: the runner image ships
+        # docker-clean, which deletes /var/cache/apt/archives after every
+        # apt run.
+        printf 'APT::Keep-Downloaded-Packages "true";\n' |
+          sudo tee /etc/apt/apt.conf.d/80-ci-keep-downloaded-packages >/dev/null
+        for conf in /etc/apt/apt.conf.d/*; do
+          if grep -q 'rm -f /var/cache/apt/archives' "$conf" 2>/dev/null; then
+            echo "removing $conf, which deletes downloaded packages"
+            sudo rm -f "$conf"
+          fi
+        done
+
+        if [ "$DEB_CACHE_HIT" = "true" ]; then
+          shopt -s nullglob
+          set -- "$DEB_CACHE_DIR"/*.deb
+          shopt -u nullglob
+          if [ "$#" -eq 0 ]; then
+            echo "system package cache hit: nothing to install"
+            exit 0
+          fi
+          echo "system package cache hit: installing $# packages without the apt mirror"
+          if sudo dpkg -i "$@"; then
+            exit 0
+          fi
+          echo "::error::installing the cached system packages failed; delete the actions cache $DEB_CACHE_KEY and rerun to rebuild it"
+          exit 1
+        fi
+
+        printf 'Acquire::Retries "3";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' |
+          sudo tee /etc/apt/apt.conf.d/80-ci-retries >/dev/null
+        sudo grep -rl 'azure.archive.ubuntu.com' /etc/apt/sources.list /etc/apt/sources.list.d/ /etc/apt/apt-mirrors.txt 2>/dev/null |
+          sudo xargs -r sed -i 's|azure\.archive\.ubuntu\.com|archive.ubuntu.com|g'
+        for attempt in 1 2 3; do
+          # shellcheck disable=SC2086 # `command` and `browsers` split into words
+          if ${{ inputs.command }} install-deps ${{ inputs.browsers }}; then
+            mkdir -p "$DEB_CACHE_DIR"
+            find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t "$DEB_CACHE_DIR" {} +
+            echo "downloaded $(find "$DEB_CACHE_DIR" -maxdepth 1 -name '*.deb' | wc -l) system packages; caching them for the next run"
+            : > "$DEB_CACHE_DIR/cache-marker" # a non-hidden file, so even an empty set saves
+            exit 0
+          fi
+          echo "::warning::playwright install-deps attempt $attempt failed"
+          sudo pkill -KILL -x apt-get >/dev/null 2>&1 || true
+          sudo dpkg --configure -a >/dev/null 2>&1 || true
+          sleep $((attempt * 15))
+        done
+        echo "::error::playwright install-deps failed after 3 attempts, so the system packages for ${{ inputs.browsers }} could not be installed (the apt mirror is unavailable); rerun the job"
+        exit 1
+
+    # Up to three attempts of five minutes each, so a stalled download is
+    # retried instead of holding the job for its whole timeout. The attempt
+    # runs in its own process group, which a timeout kills whole; macOS
+    # runners have no `timeout`, so `perl` keeps the clock.
+    - name: install the browsers
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -uo pipefail
+        for attempt in 1 2 3; do
+          # shellcheck disable=SC2086 # `command` and `browsers` split into words
+          if perl -e '
+            my $seconds = shift;
+            my $pid = fork() // die "fork: $!";
+            if ($pid == 0) { setpgrp(0, 0); exec @ARGV or die "exec: $!" }
+            $SIG{ALRM} = sub { kill "-TERM", $pid; sleep 5; kill "-KILL", $pid; exit 124 };
+            alarm $seconds;
+            waitpid($pid, 0);
+            exit($? >> 8);
+          ' 300 ${{ inputs.command }} install ${{ inputs.browsers }}; then
+            exit 0
+          fi
+          echo "::warning::playwright install attempt $attempt failed; retrying"
+          sleep $((attempt * 15))
+        done
+        echo "::error::playwright install failed after 3 attempts"
+        exit 1

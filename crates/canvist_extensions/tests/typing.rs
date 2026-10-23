@@ -2,7 +2,7 @@
 
 mod support;
 
-use canvist_editor::Platform;
+use canvist_core::Platform;
 use insta::assert_json_snapshot;
 use support::Typist;
 use support::typed;

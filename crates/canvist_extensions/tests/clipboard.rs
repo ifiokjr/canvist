@@ -6,8 +6,8 @@ mod support;
 
 use std::time::Duration;
 
-use canvist_editor::Env;
-use canvist_editor::Slice;
+use canvist_core::Env;
+use canvist_core::Slice;
 use canvist_extensions::clipboard;
 use insta::assert_json_snapshot;
 use insta::assert_snapshot;

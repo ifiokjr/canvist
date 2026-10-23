@@ -4,8 +4,8 @@ members = [
 	"crates/canvist_canvas",
 	"crates/canvist_canvas_wasm",
 	"crates/canvist_collab",
+	"crates/canvist_core",
 	"crates/canvist_desktop",
-	"crates/canvist_editor",
 	"crates/canvist_extensions",
 	"crates/canvist_ffi",
 	"crates/canvist_headless",
@@ -14,6 +14,7 @@ members = [
 	"crates/canvist_model",
 	"crates/canvist_paint",
 	"crates/canvist_scene",
+	"crates/canvist_testkit",
 	"crates/canvist_web",
 	"docs",
 	"examples/desktop",
@@ -27,7 +28,7 @@ default-members = [
 	"crates/canvist_canvas",
 	"crates/canvist_canvas_wasm",
 	"crates/canvist_desktop",
-	"crates/canvist_editor",
+	"crates/canvist_core",
 	"crates/canvist_extensions",
 	"crates/canvist_ffi",
 	"crates/canvist_headless",
@@ -68,6 +69,7 @@ insta = { default-features = false, version = "^1" }
 js-sys = { default-features = false, version = "^0.3" }
 kurbo = { default-features = false, version = "^0.13" }
 log = { default-features = false, version = "^0.4" }
+playwright-rs = { default-features = false, version = "^0.20" }
 proptest = { default-features = false, version = "^1" }
 regex-lite = { default-features = false, version = "^0.1" }
 reqwest = { default-features = false, version = "^0.12" }
@@ -94,8 +96,8 @@ yrs = { default-features = false, version = "^0.28" }
 canvist = { path = "./crates/canvist", version = "0.1.0" }
 canvist_canvas = { path = "./crates/canvist_canvas", version = "0.1.0" }
 canvist_collab = { path = "./crates/canvist_collab", version = "0.1.0" }
+canvist_core = { path = "./crates/canvist_core", version = "0.1.0" }
 canvist_desktop = { path = "./crates/canvist_desktop", version = "0.1.0" }
-canvist_editor = { path = "./crates/canvist_editor", version = "0.1.0" }
 canvist_extensions = { path = "./crates/canvist_extensions", version = "0.1.0" }
 canvist_ffi = { path = "./crates/canvist_ffi", version = "0.1.0" }
 canvist_headless = { path = "./crates/canvist_headless", version = "0.1.0" }

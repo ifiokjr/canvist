@@ -4,42 +4,42 @@ mod support;
 
 use std::time::Duration;
 
-use canvist_editor::BaseKeymap;
-use canvist_editor::Binding;
-use canvist_editor::Caret;
-use canvist_editor::CommandResult;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditKind;
-use canvist_editor::Editor;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::Env;
-use canvist_editor::Extension;
-use canvist_editor::Field;
-use canvist_editor::HistoryConfig;
-use canvist_editor::InputRule;
-use canvist_editor::KeyPress;
-use canvist_editor::LineEdge;
-use canvist_editor::LineNavigator;
-use canvist_editor::Modifiers;
-use canvist_editor::NavigationError;
-use canvist_editor::ParagraphNavigator;
-use canvist_editor::PasteRule;
-use canvist_editor::Platform;
-use canvist_editor::QuerySpec;
-use canvist_editor::Slice;
-use canvist_editor::UndoHistory;
-use canvist_editor::UndoInputRule;
-use canvist_editor::Update;
-use canvist_editor::UpdateFilter;
-use canvist_editor::ValueType;
-use canvist_editor::VerticalDirection;
-use canvist_editor::VerticalMotion;
-use canvist_editor::block_type;
-use canvist_editor::command;
-use canvist_editor::commands;
-use canvist_editor::mark_type;
-use canvist_editor::undo;
+use canvist_core::BaseKeymap;
+use canvist_core::Binding;
+use canvist_core::Caret;
+use canvist_core::CommandResult;
+use canvist_core::CommandSpec;
+use canvist_core::EditKind;
+use canvist_core::Editor;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::Env;
+use canvist_core::Extension;
+use canvist_core::Field;
+use canvist_core::HistoryConfig;
+use canvist_core::InputRule;
+use canvist_core::KeyPress;
+use canvist_core::LineEdge;
+use canvist_core::LineNavigator;
+use canvist_core::Modifiers;
+use canvist_core::NavigationError;
+use canvist_core::ParagraphNavigator;
+use canvist_core::PasteRule;
+use canvist_core::Platform;
+use canvist_core::QuerySpec;
+use canvist_core::Slice;
+use canvist_core::UndoHistory;
+use canvist_core::UndoInputRule;
+use canvist_core::Update;
+use canvist_core::UpdateFilter;
+use canvist_core::ValueType;
+use canvist_core::VerticalDirection;
+use canvist_core::VerticalMotion;
+use canvist_core::block_type;
+use canvist_core::command;
+use canvist_core::commands;
+use canvist_core::mark_type;
+use canvist_core::undo;
 use canvist_model::Attrs;
 use canvist_model::BlockTypeId;
 use canvist_model::Document;
@@ -109,7 +109,7 @@ impl Extension for TestKit {
 		let heading = block_type(schema, self.name(), "heading")?;
 		let divider = block_type(schema, self.name(), "horizontalRule")?;
 		let bold = mark_type(schema, self.name(), "bold")?;
-		let level = |found: &canvist_editor::RuleMatch| {
+		let level = |found: &canvist_core::RuleMatch| {
 			let hashes = found.group(1).map_or(1, str::len);
 			Attrs::new().with("level", hashes as i64)
 		};
@@ -402,7 +402,7 @@ fn external_changes_edit_the_document_in_place_and_map_the_selection() {
 		.apply_external(&mut at(100), insert)
 		.expect("external");
 
-	assert_eq!(update.origin, canvist_editor::Origin::Remote);
+	assert_eq!(update.origin, canvist_core::Origin::Remote);
 	assert_eq!(render(editor.state()), "paragraph: Zab|");
 	assert!(
 		!editor.can_undo(),

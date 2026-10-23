@@ -2,14 +2,14 @@
 
 use std::sync::Arc;
 
-use canvist_editor::Extension;
+use canvist_core::Extension;
 
 /// Every extension beyond the StarterKit, each with its default
 /// configuration, ready to add after
 /// [`StarterKit::extensions`](crate::StarterKit::extensions).
 ///
 /// ```
-/// use canvist_editor::Editor;
+/// use canvist_core::Editor;
 /// use canvist_extensions::StarterKit;
 ///
 /// let editor = Editor::builder()
@@ -18,7 +18,7 @@ use canvist_editor::Extension;
 /// 	.build()?;
 ///
 /// assert!(editor.schema().mark_type("highlight").is_some());
-/// # Ok::<(), canvist_editor::EditorError>(())
+/// # Ok::<(), canvist_core::EditorError>(())
 /// ```
 #[must_use]
 pub fn extras() -> Vec<Arc<dyn Extension>> {

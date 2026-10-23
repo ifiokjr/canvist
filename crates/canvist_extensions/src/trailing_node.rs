@@ -1,10 +1,10 @@
 //! A trailing paragraph.
 
-use canvist_editor::CommandResult;
-use canvist_editor::EditKind;
-use canvist_editor::EditorState;
-use canvist_editor::Extension;
-use canvist_editor::Update;
+use canvist_core::CommandResult;
+use canvist_core::EditKind;
+use canvist_core::EditorState;
+use canvist_core::Extension;
+use canvist_core::Update;
 use canvist_model::BlockTree;
 use canvist_model::InlineText;
 
@@ -41,10 +41,10 @@ impl Extension for TrailingNode {
 	}
 }
 
-impl canvist_editor::TypedExtension for TrailingNode {
-	type Handle = canvist_editor::Registration;
+impl canvist_core::TypedExtension for TrailingNode {
+	type Handle = canvist_core::Registration;
 
-	fn handle(&self, registration: canvist_editor::Registration) -> canvist_editor::Registration {
+	fn handle(&self, registration: canvist_core::Registration) -> canvist_core::Registration {
 		registration
 	}
 }

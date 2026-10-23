@@ -46,7 +46,7 @@ The lesson across all of them: whoever owns the renderer and the data model owns
 │ Node, Props, Step, Transaction,      │ SceneBinding ⇄ yrs; text frames reuse │
 │ fractional keys, JSON                │ the block binding; one undo manager   │
 ├──────────────────────────────────────┴───────────────────────────────────────┤
-│ canvist_model (text frames) · canvist_editor · canvist_layout · kurbo        │
+│ canvist_model (text frames) · canvist_core · canvist_layout · kurbo          │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -134,13 +134,13 @@ Applying a step returns its inverse and the nodes it touched, and whether the tr
 
 **What:** a `text` node owns a `canvist_model::Document`. The scene stores documents beside the node tree, keyed by node id, and `RemoveNodes` carries them in its inverse. The canvas lays them out with `canvist_layout` at the frame's width and paints the resulting `DisplayList` inside the frame's transform.
 
-Editing a text frame borrows the real `canvist_editor::Editor`:
+Editing a text frame borrows the real `canvist_core::Editor`:
 
 1. Double-clicking a text frame opens a `TextSession`. The scene lends the frame's document to an `Editor` built with `EditorBuilder::build_with`; while it is lent, renderers and hit testing read it from the session.
 2. Keys, IME, clipboard, and selection go to the editor exactly as in the text editor. Each commit is forwarded to the collaboration binding, so collaborators see characters as they are typed.
 3. Closing the session returns the document and records one scene history entry, built from the session's composed undo steps. Remote changes during the session go through `Editor::apply_external`.
 
-**Why:** the text editor's schema, extensions, marks, lists, and links all work inside a frame because it is the same editor. No API changes are needed in `canvist_editor` or `canvist_model`.
+**Why:** the text editor's schema, extensions, marks, lists, and links all work inside a frame because it is the same editor. No API changes are needed in `canvist_core` or `canvist_model`.
 
 ## Decision C5: plugins are the same typed extensions
 
@@ -226,7 +226,7 @@ All additive:
 
 - **`canvist_collab`** gains a `scene` feature with `SceneBinding`. To bind a text frame's `Y.Array` inside the scene's Yjs document, the block binding's internals split into a mirror that works on whatever array its owner passes in, and the document-level parts (update outbox, undo manager, reorder buffer). `Binding`'s public API does not change. `CollabError` gains two variants behind the feature.
 - **`canvist_headless`** gains a `scene` feature.
-- **`canvist_editor`** gains `Editor::into_state`, so a host that lent a document to an editor (a text frame) can take it back.
+- **`canvist_core`** gains `Editor::into_state`, so a host that lent a document to an editor (a text frame) can take it back.
 - **`canvist_model`, `canvist_layout`:** no changes.
 
 ## Recorded tradeoffs

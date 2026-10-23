@@ -211,8 +211,8 @@ impl Editor {
 	/// Select the whole document.
 	pub fn select_all(&self) -> Result<bool> {
 		self.change(|session| {
-			let command = canvist_headless::canvist_editor::command(
-				canvist_headless::canvist_editor::commands::select_all,
+			let command = canvist_headless::canvist_core::command(
+				canvist_headless::canvist_core::commands::select_all,
 			);
 			session.edit(|editor, env| editor.run(&command, env))
 		})

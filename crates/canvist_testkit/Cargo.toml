@@ -1,0 +1,49 @@
+[package]
+name = "canvist_testkit"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish = false
+repository.workspace = true
+rust-version.workspace = true
+description = "Cross-platform integration tests for the canvist editor: one test, run against headless Rust, a real browser, an iOS Simulator, and an Android emulator"
+
+[features]
+default = ["starter-kit"]
+# The StarterKit extension names, for the default editor configuration.
+starter-kit = ["canvist_headless/starter-kit"]
+# Register every canvist_extensions extension by name (`Engine::named`).
+full = ["starter-kit", "canvist_headless/full"]
+# Collaborative-editing operations (`EditorHarness::share`, `sync_to`, ...).
+collab = ["canvist_headless/collab"]
+# The browser target: drives `@canvist/web` in real Chromium through
+# Playwright, with real keyboard events, headless by default.
+dom = ["dep:playwright-rs"]
+# The iOS Simulator target: drives the `Canvist` Swift package's FFI editor
+# through an XCTest agent on a booted simulator.
+ios = []
+# The Android emulator target: drives `canvist-android`'s FFI editor through
+# an instrumentation agent on a booted emulator.
+android = []
+
+[dependencies]
+base64 = { workspace = true, features = ["std"] }
+canvist_headless = { workspace = true }
+# rustls, not native-tls: CI runners have no OpenSSL to build against.
+playwright-rs = { version = "^0.20", optional = true, default-features = false, features = ["macros", "ring", "rustls-tls-webpki-roots"] }
+serde = { workspace = true, features = ["derive", "std"] }
+serde_json = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["fs", "io-util", "macros", "net", "process", "rt", "sync", "time"] }
+
+[[bin]]
+name = "canvist_testkit_daemon"
+path = "src/bin/daemon.rs"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+
+[lints]
+workspace = true

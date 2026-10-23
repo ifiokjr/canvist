@@ -1,10 +1,10 @@
 //! The clipboard: copy and cut write HTML and plain text, and paste
 //! prefers HTML, so formatting survives a round trip through other apps.
 
-use canvist_headless::canvist_editor::Slice;
-use canvist_headless::canvist_editor::command;
-use canvist_headless::canvist_editor::commands;
-use canvist_headless::canvist_editor::position;
+use canvist_headless::canvist_core::Slice;
+use canvist_headless::canvist_core::command;
+use canvist_headless::canvist_core::commands;
+use canvist_headless::canvist_core::position;
 use canvist_headless::canvist_extensions::clipboard;
 
 use crate::Context;

@@ -8,9 +8,9 @@ mod support;
 use std::sync::Arc;
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
-use canvist_editor::Extension;
+use canvist_core::Editor;
+use canvist_core::Env;
+use canvist_core::Extension;
 use canvist_extensions::CharacterCount;
 use canvist_extensions::Placeholder;
 use canvist_extensions::StarterKit;
@@ -256,12 +256,12 @@ fn a_character_limit_refuses_typing_and_pasting_past_it() {
 	typist.paste("xy");
 	assert_eq!(first_text(&typist), "abcxy");
 
-	let enter = canvist_editor::command(canvist_editor::commands::split_block);
+	let enter = canvist_core::command(canvist_core::commands::split_block);
 	assert!(
 		typist.editor.can(&enter, &mut env()).expect("can"),
 		"splitting adds no characters"
 	);
-	let type_z = canvist_editor::command(|state| canvist_editor::commands::insert_text(state, "z"));
+	let type_z = canvist_core::command(|state| canvist_core::commands::insert_text(state, "z"));
 	assert!(!typist.editor.can(&type_z, &mut env()).expect("can"));
 }
 

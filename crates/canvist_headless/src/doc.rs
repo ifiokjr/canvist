@@ -2,17 +2,17 @@
 
 use std::time::Duration;
 
-use canvist_editor::Command;
-use canvist_editor::CommandResult;
-use canvist_editor::Editor;
-use canvist_editor::EditorState;
-use canvist_editor::Env;
-use canvist_editor::KeyPress;
-use canvist_editor::LineNavigator;
-use canvist_editor::Update;
-use canvist_editor::commands;
-use canvist_editor::parse_binding;
-use canvist_editor::value_to_json;
+use canvist_core::Command;
+use canvist_core::CommandResult;
+use canvist_core::Editor;
+use canvist_core::EditorState;
+use canvist_core::Env;
+use canvist_core::KeyPress;
+use canvist_core::LineNavigator;
+use canvist_core::Update;
+use canvist_core::commands;
+use canvist_core::parse_binding;
+use canvist_core::value_to_json;
 use canvist_model::Attrs;
 #[cfg(feature = "journal")]
 use canvist_model::Commit;
@@ -66,7 +66,7 @@ pub struct Doc {
 	/// Which local changes join the shared history's previous undo step,
 	/// by the rule the editor's own history follows.
 	#[cfg(feature = "collab")]
-	pub(crate) grouping: canvist_editor::UndoGrouping,
+	pub(crate) grouping: canvist_core::UndoGrouping,
 }
 
 impl std::fmt::Debug for Doc {
@@ -88,7 +88,7 @@ impl Doc {
 			#[cfg(feature = "collab")]
 			shared: None,
 			#[cfg(feature = "collab")]
-			grouping: canvist_editor::UndoGrouping::default(),
+			grouping: canvist_core::UndoGrouping::default(),
 		}
 	}
 
@@ -181,7 +181,7 @@ impl Doc {
 
 	/// Select the whole document.
 	pub fn select_all(&mut self) -> Result<(), HeadlessError> {
-		self.run(&canvist_editor::command(commands::select_all))
+		self.run(&canvist_core::command(commands::select_all))
 			.map(drop)
 	}
 
@@ -254,14 +254,14 @@ impl Doc {
 		}
 
 		let text = text.to_owned();
-		let command = canvist_editor::command(move |state| commands::insert_text(state, &text));
+		let command = canvist_core::command(move |state| commands::insert_text(state, &text));
 		self.run(&command)
 	}
 
 	/// Delete the selected text or blocks, joining the blocks at the ends of
 	/// a text range. Returns whether there was a selection to delete.
 	pub fn delete_selection(&mut self) -> Result<bool, HeadlessError> {
-		self.run(&canvist_editor::command(commands::delete_selection))
+		self.run(&canvist_core::command(commands::delete_selection))
 	}
 
 	/// Type `text` one character at a time, as a keyboard would, so input

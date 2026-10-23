@@ -7,7 +7,7 @@
 "canvist_canvas_wasm": patch
 "canvist_cloud": patch
 "canvist_collab": patch
-"canvist_editor": patch
+"canvist_core": patch
 "canvist_extensions": patch
 "canvist_ffi": patch
 "canvist_layout": patch

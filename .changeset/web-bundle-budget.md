@@ -1,5 +1,5 @@
 ---
-"canvist_editor": fix
+"canvist_core": fix
 "canvist_extensions": fix
 "canvist_layout": fix
 "@canvist/web": fix

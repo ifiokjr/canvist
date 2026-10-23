@@ -1,7 +1,7 @@
 //! Input methods: preedit text lives in the document while it is composed,
 //! underlined, and the platform's candidate window sits under it.
 
-use canvist_headless::canvist_editor::Editor;
+use canvist_headless::canvist_core::Editor;
 use canvist_layout::Rect;
 
 use crate::DesktopEditor;

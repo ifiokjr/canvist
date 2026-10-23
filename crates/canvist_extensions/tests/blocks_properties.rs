@@ -10,12 +10,12 @@ mod support;
 use std::sync::Arc;
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
-use canvist_editor::Extension;
-use canvist_editor::KeyPress;
-use canvist_editor::Slice;
-use canvist_editor::parse_binding;
+use canvist_core::Editor;
+use canvist_core::Env;
+use canvist_core::Extension;
+use canvist_core::KeyPress;
+use canvist_core::Slice;
+use canvist_core::parse_binding;
 use canvist_extensions::Callout;
 use canvist_extensions::Details;
 use canvist_extensions::Mathematics;

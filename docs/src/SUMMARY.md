@@ -4,19 +4,20 @@
 
 - [Introduction](./readme.md)
 - [Pick your platform](./quick-start/readme.md)
-  - [Server: Rust](./quick-start/server-rust.md)
-  - [Server: TypeScript](./quick-start/server-typescript.md)
-  - [Server: Dart](./quick-start/server-dart.md)
-  - [Server-side rendering](./quick-start/ssr.md)
-  - [Flutter](./quick-start/flutter.md)
-  - [Web](./quick-start/web.md)
   - [React](./quick-start/react.md)
+  - [React Native](./quick-start/react-native.md)
   - [Vue](./quick-start/vue.md)
+  - [Web](./quick-start/web.md)
+  - [Server-side rendering](./quick-start/ssr.md)
+  - [Server: TypeScript](./quick-start/server-typescript.md)
   - [Design canvas](./quick-start/canvas.md)
+  - [Flutter](./quick-start/flutter.md)
+  - [Server: Dart](./quick-start/server-dart.md)
   - [iOS](./quick-start/ios.md)
   - [Android](./quick-start/android.md)
   - [Desktop](./quick-start/desktop.md)
-  - [React Native and Lynx](./quick-start/react-native.md)
+  - [Server: Rust](./quick-start/server-rust.md)
+  - [Lynx](./quick-start/lynx.md)
 
 # Core concepts
 
@@ -45,6 +46,7 @@
 - [Text input on the web](./guides/web-input.md)
 - [Rendering parity](./guides/rendering-parity.md)
 - [Performance](./guides/performance.md)
+- [Testing](./guides/testing.md)
 
 # AI agents
 

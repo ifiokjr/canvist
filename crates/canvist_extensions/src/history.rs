@@ -2,24 +2,24 @@
 
 use std::sync::Arc;
 
-use canvist_editor::Binding;
-use canvist_editor::Command;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditorError;
-use canvist_editor::Extension;
-use canvist_editor::Platform;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
+use canvist_core::Binding;
+use canvist_core::Command;
+use canvist_core::CommandSpec;
+use canvist_core::EditorError;
+use canvist_core::Extension;
+use canvist_core::Platform;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
 use canvist_model::Schema;
 
 /// `Mod-z` undoes; `Mod-Shift-z` and `Mod-y` redo. The history itself
-/// belongs to the editor (see [`canvist_editor::History`]), so a
+/// belongs to the editor (see [`canvist_core::History`]), so a
 /// collaborative history works with these keys too.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct History;
 
 /// Typed access to [`History`]. Ask the editor whether there is anything to
-/// undo with [`Editor::can_undo`](canvist_editor::Editor::can_undo).
+/// undo with [`Editor::can_undo`](canvist_core::Editor::can_undo).
 #[derive(Clone, Copy, Debug)]
 pub struct HistoryHandle {
 	_registration: Registration,
@@ -44,11 +44,11 @@ impl HistoryHandle {
 }
 
 fn undo() -> Command {
-	Arc::new(canvist_editor::undo)
+	Arc::new(canvist_core::undo)
 }
 
 fn redo() -> Command {
-	Arc::new(canvist_editor::redo)
+	Arc::new(canvist_core::redo)
 }
 
 impl Extension for History {

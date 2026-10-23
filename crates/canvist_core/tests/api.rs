@@ -5,23 +5,23 @@ mod support;
 use std::sync::Arc;
 use std::time::Duration;
 
-use canvist_editor::BaseKeymap;
-use canvist_editor::Command;
-use canvist_editor::CommandSpec;
-use canvist_editor::Editor;
-use canvist_editor::EditorError;
-use canvist_editor::Env;
-use canvist_editor::Extension;
-use canvist_editor::Field;
-use canvist_editor::NodeKind;
-use canvist_editor::NodeMeta;
-use canvist_editor::QuerySpec;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
-use canvist_editor::ValueType;
-use canvist_editor::command;
-use canvist_editor::commands;
-use canvist_editor::mark_type;
+use canvist_core::BaseKeymap;
+use canvist_core::Command;
+use canvist_core::CommandSpec;
+use canvist_core::Editor;
+use canvist_core::EditorError;
+use canvist_core::Env;
+use canvist_core::Extension;
+use canvist_core::Field;
+use canvist_core::NodeKind;
+use canvist_core::NodeMeta;
+use canvist_core::QuerySpec;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
+use canvist_core::ValueType;
+use canvist_core::command;
+use canvist_core::commands;
+use canvist_core::mark_type;
 use canvist_model::Attrs;
 use canvist_model::Block;
 use canvist_model::BlockId;
@@ -177,7 +177,7 @@ fn typed_handles_run_commands_and_answer_queries() {
 fn can_answers_without_changing_anything() {
 	let (mut editor, kit) = editor_with("paragraph: ^ab|");
 	let before = fingerprint(&editor);
-	let undo: Command = Arc::new(canvist_editor::undo);
+	let undo: Command = Arc::new(canvist_core::undo);
 
 	assert_eq!(editor.can(&kit.toggle_bold(), &mut env()), Ok(true));
 	assert_eq!(editor.can(&undo, &mut env()), Ok(false));
@@ -252,7 +252,7 @@ fn chains_are_all_or_nothing() {
 fn undo_cannot_be_chained() {
 	let (mut editor, kit) = editor_with("paragraph: ^ab|");
 	editor.run(&kit.toggle_bold(), &mut env()).expect("bold");
-	let undo: Command = Arc::new(canvist_editor::undo);
+	let undo: Command = Arc::new(canvist_core::undo);
 
 	assert_eq!(editor.chain().then(undo).run(&mut env()), Ok(None));
 	assert!(kit.is_bold(&editor));

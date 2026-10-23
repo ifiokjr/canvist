@@ -204,7 +204,7 @@ fn engines_register_starter_kit_extensions_by_name() -> Result<(), HeadlessError
 fn interactive_hosts_edit_with_their_own_clock() -> Result<(), HeadlessError> {
 	use std::time::Duration;
 
-	use canvist_headless::canvist_editor::ParagraphNavigator;
+	use canvist_headless::canvist_core::ParagraphNavigator;
 
 	let engine = Engine::starter_kit();
 	let mut doc = engine.create()?;
@@ -227,10 +227,10 @@ fn interactive_hosts_edit_with_their_own_clock() -> Result<(), HeadlessError> {
 fn key_bindings_follow_the_engine_platform() -> Result<(), HeadlessError> {
 	use std::time::Duration;
 
-	use canvist_headless::canvist_editor::KeyPress;
-	use canvist_headless::canvist_editor::Modifiers;
-	use canvist_headless::canvist_editor::ParagraphNavigator;
-	use canvist_headless::canvist_editor::Platform;
+	use canvist_headless::canvist_core::KeyPress;
+	use canvist_headless::canvist_core::Modifiers;
+	use canvist_headless::canvist_core::ParagraphNavigator;
+	use canvist_headless::canvist_core::Platform;
 
 	let cmd_b = KeyPress::new(
 		"b",

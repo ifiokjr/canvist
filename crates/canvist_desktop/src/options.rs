@@ -3,7 +3,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use canvist_headless::canvist_editor::Platform;
+use canvist_headless::canvist_core::Platform;
 use canvist_layout::Theme;
 
 use crate::FontSource;

@@ -17,19 +17,19 @@
 	allow(dead_code, reason = "each media type uses a different subset")
 )]
 
-use canvist_editor::Command;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditorError;
-use canvist_editor::Extension;
-use canvist_editor::Field;
-use canvist_editor::InputRule;
-use canvist_editor::NodeKind;
-use canvist_editor::NodeMeta;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
-use canvist_editor::ValueType;
-use canvist_editor::command;
-use canvist_editor::commands;
+use canvist_core::Command;
+use canvist_core::CommandSpec;
+use canvist_core::EditorError;
+use canvist_core::Extension;
+use canvist_core::Field;
+use canvist_core::InputRule;
+use canvist_core::NodeKind;
+use canvist_core::NodeMeta;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
+use canvist_core::ValueType;
+use canvist_core::command;
+use canvist_core::commands;
 use canvist_model::Attrs;
 use canvist_model::BlockSpec;
 use canvist_model::Schema;
@@ -345,10 +345,10 @@ const IMAGE_SYNTAX: &str = r#"(?:^|\s)(!\[([^\]]*)\]\((\S+)(?:\s+["'“‘]([^"'
 /// Replace typed `![alt](src "title")` with an image block.
 #[cfg(feature = "image")]
 fn typed_image(
-	state: &mut canvist_editor::EditorState,
-	found: &canvist_editor::RuleMatch,
+	state: &mut canvist_core::EditorState,
+	found: &canvist_core::RuleMatch,
 	kind: canvist_model::BlockTypeId,
-) -> canvist_editor::CommandResult {
+) -> canvist_core::CommandResult {
 	let (Some(Some(range)), Some(src)) = (found.groups.get(1).cloned(), found.group(3)) else {
 		return Ok(None);
 	};
@@ -360,7 +360,7 @@ fn typed_image(
 		.collect();
 
 	state.atomic(|state| {
-		let removed = state.change(canvist_editor::EditKind::InputRule, |tr| {
+		let removed = state.change(canvist_core::EditKind::InputRule, |tr| {
 			tr.delete_text(found.block, range.start..found.caret)?;
 			Ok(true)
 		})?;
@@ -424,7 +424,7 @@ macro_rules! media {
 fn media_rules(schema: &Schema, def: &'static MediaDef) -> Result<Vec<InputRule>, EditorError> {
 	#[cfg(feature = "image")]
 	if def.name == IMAGE.name {
-		let kind = canvist_editor::block_type(schema, IMAGE.name, IMAGE.name)?;
+		let kind = canvist_core::block_type(schema, IMAGE.name, IMAGE.name)?;
 		let rule = InputRule::new(IMAGE_SYNTAX, move |state, found| {
 			typed_image(state, found, kind)
 		})?;

@@ -17,10 +17,10 @@ description = "Headless interaction core for the canvist canvas: camera, spatial
 [features]
 default = []
 # Text frame editing sessions on the real canvist text editor.
-editor = ["dep:canvist_editor", "canvist_layout/editor"]
+editor = ["dep:canvist_core", "canvist_layout/editor"]
 
 [dependencies]
-canvist_editor = { workspace = true, optional = true }
+canvist_core = { workspace = true, optional = true }
 canvist_layout = { workspace = true, features = ["ink", "kinetic", "tables", "theme-extensions"] }
 canvist_model = { workspace = true }
 canvist_scene = { workspace = true }
@@ -32,7 +32,7 @@ serde_json = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-canvist_editor = { workspace = true }
+canvist_core = { workspace = true }
 canvist_extensions = { workspace = true, features = ["starter-kit"] }
 divan = { workspace = true }
 proptest = { workspace = true, features = ["std"] }

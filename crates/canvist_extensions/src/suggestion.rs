@@ -14,12 +14,12 @@
 
 use std::ops::Range;
 
-use canvist_editor::CommandResult;
-use canvist_editor::EditKind;
-use canvist_editor::EditorState;
-use canvist_editor::Field;
-use canvist_editor::ValueType;
-use canvist_editor::commands;
+use canvist_core::CommandResult;
+use canvist_core::EditKind;
+use canvist_core::EditorState;
+use canvist_core::Field;
+use canvist_core::ValueType;
+use canvist_core::commands;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::EMBED_CHAR;

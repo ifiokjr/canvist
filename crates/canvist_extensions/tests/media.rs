@@ -7,8 +7,8 @@ mod support;
 
 use std::time::Duration;
 
-use canvist_editor::Editor;
-use canvist_editor::Env;
+use canvist_core::Editor;
+use canvist_core::Env;
 use canvist_extensions::clipboard;
 use canvist_model::Attrs;
 use canvist_model::Value;
@@ -183,13 +183,13 @@ fn fractional_sizes_keep_their_fraction_and_whole_ones_drop_it() {
 // Commands, typed handles, and their failures.
 
 /// The whole document as a slice, for the clipboard writers.
-fn whole(doc: &canvist_model::Document) -> canvist_editor::Slice {
+fn whole(doc: &canvist_model::Document) -> canvist_core::Slice {
 	let blocks = doc
 		.children(None)
 		.iter()
 		.filter_map(|&id| doc.tree(id))
 		.collect();
-	canvist_editor::Slice::new(blocks)
+	canvist_core::Slice::new(blocks)
 }
 
 fn html(typist: &Typist) -> String {
@@ -352,7 +352,7 @@ fn media_commands_check_with_can_and_change_nothing() {
 
 fn invalid(editor: &mut Editor, name: &str, args: &Attrs) {
 	match editor.run_named(name, args, &mut env()) {
-		Err(canvist_editor::EditorError::InvalidArgs { name: failed, .. }) => {
+		Err(canvist_core::EditorError::InvalidArgs { name: failed, .. }) => {
 			assert_eq!(failed, name);
 		}
 		other => panic!("{name} {args:?}: expected invalid arguments, got {other:?}"),
@@ -425,7 +425,7 @@ fn media_handles_fail_on_a_schema_without_their_type() {
 			.run(&command, &mut env())
 			.expect_err("no such type");
 		assert!(
-			matches!(error, canvist_editor::EditorError::MissingType { .. }),
+			matches!(error, canvist_core::EditorError::MissingType { .. }),
 			"{error:?}"
 		);
 	}

@@ -1,9 +1,9 @@
 //! Moving between cells, and the keys that must not cross a cell's edge.
 
-use canvist_editor::CommandResult;
-use canvist_editor::EditKind;
-use canvist_editor::EditorState;
-use canvist_editor::position;
+use canvist_core::CommandResult;
+use canvist_core::EditKind;
+use canvist_core::EditorState;
+use canvist_core::position;
 use canvist_model::BlockId;
 use canvist_model::BlockTree;
 use canvist_model::Document;

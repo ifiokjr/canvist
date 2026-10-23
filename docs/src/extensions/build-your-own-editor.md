@@ -110,17 +110,17 @@ What else a Google Docs-style editor needs, and where it stands:
 When the catalogue doesn't have what you need, write an extension in Rust. This one inserts a signature. It adds a command, a keyboard shortcut, and a typed handle, so only engines that registered it can call it:
 
 ```rust
-use canvist::editor::BaseKeymap;
-use canvist::editor::Binding;
-use canvist::editor::Command;
-use canvist::editor::CommandSpec;
-use canvist::editor::EditorError;
-use canvist::editor::Extension;
-use canvist::editor::Platform;
-use canvist::editor::Registration;
-use canvist::editor::TypedExtension;
-use canvist::editor::command;
-use canvist::editor::commands;
+use canvist::core::BaseKeymap;
+use canvist::core::Binding;
+use canvist::core::Command;
+use canvist::core::CommandSpec;
+use canvist::core::EditorError;
+use canvist::core::Extension;
+use canvist::core::Platform;
+use canvist::core::Registration;
+use canvist::core::TypedExtension;
+use canvist::core::command;
+use canvist::core::commands;
 use canvist::extensions::Document;
 use canvist::extensions::Paragraph;
 use canvist::headless::Engine;

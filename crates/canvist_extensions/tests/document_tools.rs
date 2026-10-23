@@ -6,7 +6,7 @@
 
 mod support;
 
-use canvist_editor::Editor;
+use canvist_core::Editor;
 use canvist_extensions::clipboard;
 use canvist_model::Attrs;
 use canvist_model::Selection;
@@ -37,7 +37,7 @@ fn query(editor: &Editor, name: &str) -> Value {
 
 fn selected(typist: &Typist) -> String {
 	let doc = typist.editor.state().doc();
-	canvist_editor::position::selected_text(doc, typist.editor.state().selection())
+	canvist_core::position::selected_text(doc, typist.editor.state().selection())
 		.iter()
 		.filter_map(|(block, range)| {
 			doc.inline(*block)
@@ -229,7 +229,7 @@ fn comments_overlap_and_unset_removes_one_thread_everywhere() {
 	);
 
 	let block = typist.editor.state().doc().children(None)[0];
-	let end = canvist_editor::position::end_of(typist.editor.state().doc(), block);
+	let end = canvist_core::position::end_of(typist.editor.state().doc(), block);
 	typist
 		.editor
 		.select(Selection::caret(end), &mut env())

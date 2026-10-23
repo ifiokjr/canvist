@@ -6,7 +6,7 @@
 //! collaborators did since, so the [`Binding`] implements `History` on top
 //! of a yrs `UndoManager` that only tracks local changes.
 //!
-//! `canvist_editor` is expected to own this trait once its history lands;
+//! `canvist_core` is expected to own this trait once its history lands;
 //! it lives here until then so the binding can implement it.
 
 use canvist_model::Commit;

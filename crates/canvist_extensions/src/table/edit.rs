@@ -3,12 +3,12 @@
 //! table with the fewest steps it can, so collaborators editing other cells
 //! keep their work.
 
-use canvist_editor::CommandResult;
-use canvist_editor::EditKind;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::EditorTransaction;
-use canvist_editor::position;
+use canvist_core::CommandResult;
+use canvist_core::EditKind;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::EditorTransaction;
+use canvist_core::position;
 use canvist_model::Attrs;
 use canvist_model::BlockId;
 use canvist_model::BlockTree;

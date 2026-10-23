@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use canvist_headless::canvist_editor::Platform;
+use canvist_headless::canvist_core::Platform;
 use canvist_layout::BreakOverride;
 use canvist_layout::StarterKitOptions;
 use canvist_layout::Theme;

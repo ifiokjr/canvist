@@ -13,9 +13,9 @@
 	)
 )]
 
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::position;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::position;
 use canvist_model::BlockId;
 use canvist_model::BlockTypeId;
 #[cfg(any(feature = "emoji", feature = "mathematics", feature = "mention"))]
@@ -30,7 +30,7 @@ pub(crate) fn block(
 	extension: &'static str,
 	name: &'static str,
 ) -> Result<BlockTypeId, EditorError> {
-	canvist_editor::block_type(state.schema(), extension, name)
+	canvist_core::block_type(state.schema(), extension, name)
 }
 
 /// The mark type `name`, which extension `extension` needs.
@@ -39,7 +39,7 @@ pub(crate) fn mark(
 	extension: &'static str,
 	name: &'static str,
 ) -> Result<MarkTypeId, EditorError> {
-	canvist_editor::mark_type(state.schema(), extension, name)
+	canvist_core::mark_type(state.schema(), extension, name)
 }
 
 /// The embed type `name`, which extension `extension` needs.
@@ -49,7 +49,7 @@ pub(crate) fn embed(
 	extension: &'static str,
 	name: &'static str,
 ) -> Result<EmbedTypeId, EditorError> {
-	canvist_editor::embed_type(state.schema(), extension, name)
+	canvist_core::embed_type(state.schema(), extension, name)
 }
 
 /// The block holding the selection head (or the first selected block).
@@ -80,7 +80,7 @@ pub(crate) fn mark_active(state: &EditorState, name: &str) -> bool {
 	state
 		.schema()
 		.mark_type(name)
-		.is_some_and(|kind| canvist_editor::commands::is_mark_active(state, kind))
+		.is_some_and(|kind| canvist_core::commands::is_mark_active(state, kind))
 }
 
 /// Attribute `key` of mark `name` where every selected character (or the
@@ -90,7 +90,7 @@ pub(crate) fn mark_active(state: &EditorState, name: &str) -> bool {
 pub(crate) fn shared_mark_attr(state: &EditorState, name: &str, key: &str) -> Option<Value> {
 	let kind = state.schema().mark_type(name)?;
 
-	if !canvist_editor::commands::is_mark_active(state, kind) {
+	if !canvist_core::commands::is_mark_active(state, kind) {
 		return None;
 	}
 
@@ -101,7 +101,7 @@ pub(crate) fn shared_mark_attr(state: &EditorState, name: &str, key: &str) -> Op
 		.flat_map(|(block, range)| run_attrs(state, *block, range.clone(), kind, key));
 
 	let Some(first) = values.next() else {
-		let marks = canvist_editor::commands::active_marks(state);
+		let marks = canvist_core::commands::active_marks(state);
 		return marks.get(kind)?.attrs.get(key).cloned();
 	};
 

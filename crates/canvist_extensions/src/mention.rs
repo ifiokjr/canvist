@@ -1,22 +1,22 @@
 //! Mentions: `@Ada`, an atomic inline embed with an id and a label.
 
-use canvist_editor::Binding;
-use canvist_editor::Command;
-use canvist_editor::CommandResult;
-use canvist_editor::CommandSpec;
-use canvist_editor::EditKind;
-use canvist_editor::EditorError;
-use canvist_editor::EditorState;
-use canvist_editor::Extension;
-use canvist_editor::Field;
-use canvist_editor::NodeKind;
-use canvist_editor::NodeMeta;
-use canvist_editor::Platform;
-use canvist_editor::QuerySpec;
-use canvist_editor::Registration;
-use canvist_editor::TypedExtension;
-use canvist_editor::ValueType;
-use canvist_editor::command;
+use canvist_core::Binding;
+use canvist_core::Command;
+use canvist_core::CommandResult;
+use canvist_core::CommandSpec;
+use canvist_core::EditKind;
+use canvist_core::EditorError;
+use canvist_core::EditorState;
+use canvist_core::Extension;
+use canvist_core::Field;
+use canvist_core::NodeKind;
+use canvist_core::NodeMeta;
+use canvist_core::Platform;
+use canvist_core::QuerySpec;
+use canvist_core::Registration;
+use canvist_core::TypedExtension;
+use canvist_core::ValueType;
+use canvist_core::command;
 use canvist_model::Attrs;
 use canvist_model::Embed;
 use canvist_model::EmbedSpec;
@@ -114,7 +114,7 @@ impl Mention {
 
 		command(move |state| {
 			let kind = crate::resolve::embed(state, MENTION, MENTION)?;
-			let marks = canvist_editor::commands::active_marks(state);
+			let marks = canvist_core::commands::active_marks(state);
 			let embed = InlineText::embed(
 				Embed {
 					kind,
