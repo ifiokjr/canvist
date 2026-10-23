@@ -39,7 +39,7 @@ jobs:
       BASE_BINS: .bench/base
     steps:
       - name: checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
 
@@ -51,7 +51,7 @@ jobs:
           echo "head-tree=$(git rev-parse 'HEAD^{tree}')" >> "$GITHUB_OUTPUT"
 
       - name: install node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -84,7 +84,7 @@ jobs:
 
       - name: cache rust
         if: steps.plan.outputs.suites != ''
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: bench-speed
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -92,7 +92,7 @@ jobs:
       - name: restore the base's bench binaries
         id: base-cache
         if: steps.plan.outputs.suites != ''
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BINS }}
           key: bench-speed-bins-${{ steps.revs.outputs.base-tree }}
@@ -121,7 +121,7 @@ jobs:
 
       - name: cache the head's bench binaries for later pull requests
         if: steps.plan.outputs.suites != '' && github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.BINS }}
           key: bench-speed-bins-${{ steps.revs.outputs.head-tree }}
@@ -134,7 +134,7 @@ jobs:
 
       - name: upload every run's medians
         if: ${{ !cancelled() && steps.plan.outputs.suites != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bench-speed-samples
           path: .bench/samples.json
