@@ -21,7 +21,7 @@ import { docsRoute } from "./rehype-docs-links.ts";
  */
 
 const SUMMARY_LINE =
-	"canvist is a rich-text editor you build from plugins. A Rust core paints every pixel to a canvas, the same engine runs on servers (Rust, TypeScript, Dart), in native iOS, Android, React Native, Lynx, Flutter, and desktop apps, and in the browser, documents are Yjs-compatible, and typed APIs make calling an unregistered extension a compile error.";
+	"canvist is a rich-text editor you build from plugins. A Rust core paints every pixel to a canvas, the same engine runs in the browser (with React and Vue), in React Native, Flutter, iOS, Android, desktop, and Lynx apps, and on servers (TypeScript, Rust, Dart), documents are Yjs-compatible, and typed APIs make calling an unregistered extension a compile error.";
 
 const NOTES = [
 	"canvist has not had its first release. Install from GitHub, as each quick start shows; registry packages do not exist yet.",

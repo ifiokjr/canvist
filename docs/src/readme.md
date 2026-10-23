@@ -11,7 +11,7 @@
 
 - **You choose every feature.** Each feature is an extension: bold, headings, lists, tasks, links, and more. Register the ones you want and nothing else gets in. A comment box can be paragraphs and bold. A notes app can be the full StarterKit.
 - **It draws every pixel itself.** canvist doesn't use `contenteditable` or the platform's text view. A Rust core lays the text out and paints it to a canvas, the way Google Docs and Figma do. So the editor looks and behaves the same everywhere.
-- **One core, every platform.** The same engine runs on servers (Rust, TypeScript, Dart), in the browser (with React and Vue), and in Flutter, iOS, Android, React Native, Lynx, and desktop apps. [Check the status of your platform](./quick-start/readme.md).
+- **One core, every platform.** The same engine runs in the browser (with React and Vue), in React Native, Flutter, iOS, Android, desktop, and Lynx apps, and on servers (TypeScript, Rust, Dart). [Check the status of your platform](./quick-start/readme.md).
 - **Collaboration is built in.** Documents are [Yjs](https://yjs.dev)-compatible. Connect them to y-websocket, Hocuspocus, or [canvist Cloud](./cloud/readme.md).
 - **Typed, headless APIs.** canvist ships no toolbar. You call typed commands and build your own UI on top. If you call a command from an extension you didn't register, your code doesn't compile. That catches the mistakes people and AI agents make most.
 - **Free forever.** The code is released into the public domain under the [Unlicense](https://unlicense.org).
