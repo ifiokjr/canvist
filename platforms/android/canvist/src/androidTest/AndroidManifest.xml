@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The testkit agent (TestkitAgentTest) reaches the daemon over plain HTTP at
+  127.0.0.1, through `adb reverse`. A library declares no permissions of its
+  own, so the test APK asks for the network here, and apps targeting API 28
+  and later block cleartext traffic unless the manifest allows it.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application android:usesCleartextTraffic="true" />
+</manifest>

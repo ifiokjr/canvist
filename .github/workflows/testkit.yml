@@ -193,3 +193,8 @@ jobs:
             echo "=== ${log##*/} (last 200 lines) ==="
             tail -n 200 "$log" || true
           done
+      # Gradle says only that the agent's instrumented test failed; its
+      # results say why.
+      - name: show android test failures
+        if: failure()
+        run: grep -h -B2 -A25 "<failure" platforms/android/*/build/outputs/androidTest-results/connected/debug/*.xml || true
