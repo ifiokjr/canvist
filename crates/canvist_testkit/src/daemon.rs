@@ -19,6 +19,10 @@
 //!   this process for [`Target::Loopback`], an `XCTest` run on a simulator
 //!   for [`Target::Ios`], and a Gradle instrumentation run on an emulator
 //!   for [`Target::Android`].
+//!
+//! A device run that ends while work is still waiting fails that work at
+//! once: a build failure or a crashed agent reports itself immediately
+//! instead of letting every parked harness run out its timeout.
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -50,8 +54,10 @@ use crate::wire::Reply;
 /// How long an agent's `GET /next` holds before answering `wait`.
 const POLL_HOLD: Duration = Duration::from_secs(5);
 
-/// How long after the daemon starts before an idle `GET /next` may answer
-/// `done`, so a slow first harness does not end the run before it begins.
+/// How long with no work at all — no session, nothing queued or inflight —
+/// before an idle `GET /next` may answer `done`. Serial tests close one
+/// session and open the next within milliseconds; only a run that is really
+/// over stays quiet this long.
 const DONE_GRACE: Duration = Duration::from_secs(30);
 
 /// A handle on the running daemon for one target.
@@ -259,8 +265,8 @@ pub(crate) struct Shared {
 	generation: u64,
 	/// Woken when the queue grows, a session ends, or an agent exits.
 	notify: Notify,
-	/// When the daemon started and last served anything.
-	started: Instant,
+	/// When work last existed, and when the daemon last served anything.
+	last_busy: Instant,
 	last_served: Instant,
 }
 
@@ -275,7 +281,7 @@ impl Shared {
 			agent_live: false,
 			generation: 0,
 			notify: Notify::new(),
-			started: Instant::now(),
+			last_busy: Instant::now(),
 			last_served: Instant::now(),
 		}
 	}
@@ -308,6 +314,44 @@ impl Shared {
 		if let Some(sender) = self.inflight.remove(&reply.id) {
 			let _ =
 				sender.send(serde_json::to_value(reply).unwrap_or_else(|_| json!({ "ok": false })));
+		}
+	}
+
+	/// Fail every waiting harness call and end its session: no agent will
+	/// ever answer them.
+	fn fail_all(&mut self, error: &str) {
+		let failure = json!({ "ok": false, "error": error });
+
+		for pending in self.queue.drain(..) {
+			let _ = pending.reply.send(failure.clone());
+		}
+
+		for (_, sender) in self.inflight.drain() {
+			let _ = sender.send(failure.clone());
+		}
+
+		self.sessions.clear();
+		self.notify.notify_one();
+	}
+
+	/// Whether anything is waiting on an agent.
+	fn waiting(&self) -> bool {
+		!self.sessions.is_empty() || !self.queue.is_empty() || !self.inflight.is_empty()
+	}
+
+	/// The agent of `generation` is gone: a later session may bring a new
+	/// one up, and anything still waiting learns the run ended instead of
+	/// running out its timeout.
+	pub(crate) fn agent_gone(&mut self, generation: u64, how: &str) {
+		if self.generation != generation {
+			return;
+		}
+
+		self.agent_live = false;
+		self.notify.notify_one();
+
+		if self.waiting() {
+			self.fail_all(how);
 		}
 	}
 }
@@ -370,9 +414,7 @@ pub async fn run(target: Target, root: PathBuf, idle: Duration) -> std::io::Resu
 				// Never idle out under work: a session waiting for its
 				// agent, an agent owing a reply, or a device run still
 				// building — an iOS release build alone takes minutes.
-				let working = !shared.sessions.is_empty()
-					|| !shared.queue.is_empty()
-					|| !shared.inflight.is_empty();
+				let working = shared.waiting();
 
 				if !working && shared.last_served.elapsed() > context.idle {
 					std::fs::remove_file(&port_file).ok();
@@ -443,12 +485,17 @@ async fn next(context: &Arc<Context>, query: &[(String, String)]) -> Option<Json
 
 			if let Some(instruction) = shared.take_instruction() {
 				shared.agent_live = true;
+				shared.last_busy = Instant::now();
 				return serde_json::to_value(instruction).ok();
 			}
 
-			// No work: finish only once every session is closed and the
-			// first harness has had its chance.
-			if shared.started.elapsed() > DONE_GRACE && shared.sessions.is_empty() {
+			// No work now: finish only once a whole grace has passed with
+			// no work at all. Serial tests close one session and open the
+			// next within milliseconds; only a run that is really over
+			// stays quiet this long.
+			if shared.waiting() {
+				shared.last_busy = Instant::now();
+			} else if shared.last_busy.elapsed() > DONE_GRACE {
 				return Some(json!({ "kind": "done" }));
 			}
 		}
@@ -517,7 +564,12 @@ async fn start_session(context: &Arc<Context>, body: Option<Json>) -> Option<Jso
 
 	let answer = await_reply(receiver, startup_timeout(), context.target).await;
 
+	// A `start` the agent or the device run reported failed must fail the
+	// session, not hand out an id nothing will ever answer.
 	Some(match answer {
+		Ok(reply) if reply["ok"].as_bool() == Some(false) => {
+			json!({ "ok": false, "error": reply["error"] })
+		}
 		Ok(_) => json!({ "ok": true, "session": session }),
 		Err(error) => json!({ "ok": false, "error": error }),
 	})
@@ -678,26 +730,41 @@ mod runner {
 				.output()
 				.await;
 
-			let mut shared = state.lock().await;
-			if shared.generation == generation {
-				shared.agent_live = false;
-				shared.notify.notify_one();
-			}
-
 			let log = registry_dir(&root).join(format!("{target}.log"));
-			match output {
+			let ended = match &output {
 				Ok(output) => {
 					std::fs::write(&log, &output.stdout).ok();
 					std::fs::write(log.with_extension("err.log"), &output.stderr).ok();
 
 					if output.status.success() {
-						eprintln!("[testkit] {target} runner finished (daemon port {port})");
+						"finished".to_owned()
 					} else {
-						eprintln!(
-							"[testkit] {target} runner failed; logs in {}",
-							log.display()
-						);
+						format!("failed with {}", output.status)
 					}
+				}
+				Err(error) => format!("did not start: {error}"),
+			};
+
+			// A device run that ends with work still waiting never answers
+			// it: a build failure or a crashed agent tells every parked
+			// harness now, not at its timeout.
+			state.lock().await.agent_gone(
+				generation,
+				&format!(
+					"the {target} device run {ended}; see {} and its .err.log sibling",
+					log.display(),
+				),
+			);
+
+			match output {
+				Ok(output) if output.status.success() => {
+					eprintln!("[testkit] {target} runner finished (daemon port {port})");
+				}
+				Ok(_) => {
+					eprintln!(
+						"[testkit] {target} runner failed; logs in {}",
+						log.display()
+					);
 				}
 				Err(error) => {
 					eprintln!("[testkit] {target} runner did not start: {error}");

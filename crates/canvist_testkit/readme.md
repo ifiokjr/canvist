@@ -53,7 +53,7 @@ A test restricts itself with `targets = [headless, dom]`, and asks what a target
 
 The daemon (`canvist_testkit_daemon`) owns the instruction queue and the device run for one checkout and target, shared by every test binary, so cargo-nextest's process-per-test does not start a simulator per test. It exits by itself after `CANVIST_TESTKIT_IDLE` seconds (default 300) idle.
 
-Device runs are slow to start (a release build for iOS, an emulator boot for Android), so their tests live in one test binary and each `start` waits up to `CANVIST_TEST_STARTUP_TIMEOUT` seconds (default 900) for the first agent to come up.
+Device runs are slow to start (a release build for iOS, an emulator boot for Android), so their tests live in one test binary and each `start` waits up to `CANVIST_TEST_STARTUP_TIMEOUT` seconds (default 900) for the first agent to come up. A device run that ends while work is still waiting — a failed build, a crashed agent — fails that work at once, pointing at the run's logs under `target/canvist-testkit/`.
 
 ## The other kind of test
 
