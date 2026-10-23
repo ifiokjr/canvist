@@ -8,21 +8,22 @@ Machine-readable versions of these docs live at [`/llms.txt`](/llms.txt) (an ind
 
 canvist hasn't had its first release, so nothing is on a package registry yet. Don't guess package names. Use this table:
 
-| Target                         | Install                                                                                                                  | Exists today? |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| Rust                           | `cargo add canvist --git https://github.com/canvist/canvist`                                                             | Yes           |
-| Node, Deno, Bun, Workers       | Build `packages/canvist-headless` and install the tarball ([how](../quick-start/server-typescript.md))                   | Yes           |
-| Dart                           | Git dependency on `platforms/dart` ([how](../quick-start/server-dart.md))                                                | Yes           |
-| Flutter                        | Git dependency on `platforms/flutter`: `CanvistEditor` ([how](../quick-start/flutter.md))                                | Yes           |
-| Browser editor                 | Build `packages/canvist-web` and install the tarball ([how](../quick-start/web.md)): `createEditor`                      | Yes           |
-| React and Vue                  | `@canvist/react` and `@canvist/vue` over `@canvist/web` ([React](../quick-start/react.md), [Vue](../quick-start/vue.md)) | Yes           |
-| Server-side rendering          | `@canvist/headless/ssr` ([how](../quick-start/ssr.md))                                                                   | Yes           |
-| Design canvas                  | `@canvist/canvas` ([how](../quick-start/canvas.md))                                                                      | Yes           |
-| Desktop: macOS, Windows, Linux | `canvist_desktop` ([how](../quick-start/desktop.md))                                                                     | Yes           |
-| iOS                            | `Canvist` Swift package: `CanvistView` ([how](../quick-start/ios.md))                                                    | Yes           |
-| Android                        | `canvist-android`: `CanvistView` ([how](../quick-start/android.md))                                                      | Yes           |
-| React Native                   | `@canvist/react-native`: `CanvistEditor` ([how](../quick-start/react-native.md))                                         | Yes, preview  |
-| Lynx                           | `@canvist/lynx`: `<canvist-editor>` ([how](../quick-start/lynx.md))                                                      | Yes, preview  |
+| Target                         | Install                                                                                                | Exists today? |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------- |
+| React                          | `@canvist/react` over `@canvist/web` ([how](../quick-start/react.md))                                  | Yes           |
+| React Native                   | `@canvist/react-native`: `CanvistEditor` ([how](../quick-start/react-native.md))                       | Yes, preview  |
+| Vue                            | `@canvist/vue` over `@canvist/web` ([how](../quick-start/vue.md))                                      | Yes           |
+| Browser editor                 | Build `packages/canvist-web` and install the tarball ([how](../quick-start/web.md)): `createEditor`    | Yes           |
+| Server-side rendering          | `@canvist/headless/ssr` ([how](../quick-start/ssr.md))                                                 | Yes           |
+| Node, Deno, Bun, Workers       | Build `packages/canvist-headless` and install the tarball ([how](../quick-start/server-typescript.md)) | Yes           |
+| Design canvas                  | `@canvist/canvas` ([how](../quick-start/canvas.md))                                                    | Yes           |
+| Flutter                        | Git dependency on `platforms/flutter`: `CanvistEditor` ([how](../quick-start/flutter.md))              | Yes           |
+| Dart                           | Git dependency on `platforms/dart` ([how](../quick-start/server-dart.md))                              | Yes           |
+| iOS                            | `Canvist` Swift package: `CanvistView` ([how](../quick-start/ios.md))                                  | Yes           |
+| Android                        | `canvist-android`: `CanvistView` ([how](../quick-start/android.md))                                    | Yes           |
+| Desktop: macOS, Windows, Linux | `canvist_desktop` ([how](../quick-start/desktop.md))                                                   | Yes           |
+| Rust                           | `cargo add canvist --git https://github.com/canvist/canvist`                                           | Yes           |
+| Lynx                           | `@canvist/lynx`: `<canvist-editor>` ([how](../quick-start/lynx.md))                                    | Yes, preview  |
 
 Don't invent packages beyond this table, such as `@canvist/core` or `@canvist/ssr`.
 
