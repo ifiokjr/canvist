@@ -22,14 +22,18 @@ use crate::wire::Read;
 use crate::wire::Reply;
 
 /// Start the loopback agent loop for this daemon. It ends when the daemon
-/// says `done` or stops answering.
+/// says `done` or stops answering; either way the daemon learns, so a
+/// later session can bring a new agent up.
 pub(crate) fn spawn(context: &Arc<Context>, generation: u64) {
 	let context = Arc::clone(context);
 
 	tokio::spawn(async move {
-		if let Err(error) = agent(&context, generation).await {
-			eprintln!("[testkit] loopback agent ended: {error}");
-		}
+		let how = match agent(&context, generation).await {
+			Ok(()) => "the loopback agent ended".to_owned(),
+			Err(error) => format!("the loopback agent ended: {error}"),
+		};
+
+		context.state.lock().await.agent_gone(generation, &how);
 	});
 }
 

@@ -28,6 +28,10 @@ final class TestkitAgentTests: XCTestCase {
 			options.client = UInt32(instruction.client)
 			options.platform = instruction.apple ? .apple : .other
 			let editor = try Editor(options: options, measurer: CoreTextMeasurer())
+			// A phone-sized viewport, as a view would give it: line motions
+			// (Home, End, the vertical arrows) follow the laid-out lines, and
+			// a width of zero wraps every grapheme onto a line of its own.
+			editor.setViewport(width: 360, height: 720)
 
 			if instruction.load.format == "yjs" {
 				let state = Data(base64Encoded: instruction.load.content) ?? Data()
