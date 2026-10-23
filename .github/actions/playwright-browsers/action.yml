@@ -141,7 +141,7 @@ runs:
             mkdir -p "$DEB_CACHE_DIR"
             find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t "$DEB_CACHE_DIR" {} +
             echo "downloaded $(find "$DEB_CACHE_DIR" -maxdepth 1 -name '*.deb' | wc -l) system packages; caching them for the next run"
-            : > "$DEB_CACHE_DIR/.cache-marker" # an empty set still saves, so a hit skips the mirror too
+            : > "$DEB_CACHE_DIR/cache-marker" # a non-hidden file, so even an empty set saves
             exit 0
           fi
           echo "::warning::playwright install-deps attempt $attempt failed"
