@@ -104,27 +104,73 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/devenv
+      # Not the devenv action: its nix shell points DEVELOPER_DIR at a
+      # MacOSX-only SDK, where the daemon's runner finds no simctl, xcodebuild,
+      # or iOS toolchain. The native workflow's apple job builds the same
+      # scripts on the runner's own Xcode and rustup.
+      - name: cache rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: testkit-apple
+      # The step timeout leaves room for the log step below to run inside the
+      # job's budget instead of being cut off by it.
       - name: Simulator target
+        timeout-minutes: 75
         run: |
           cargo build -p canvist_testkit --features ios --bin canvist_testkit_daemon
           CANVIST_TEST_TARGET=ios cargo test -p canvist_testkit --features ios --test typing -- --test-threads=1 --nocapture
-        shell: devenv shell -c -- bash -e {0}
+      # The daemon parks its device-run output in target/canvist-testkit; a
+      # failed run says so, so the logs belong in the job log.
+      - name: show the device run logs
+        if: failure()
+        run: |
+          shopt -s nullglob
+          logs=(target/canvist-testkit/*.log)
+          if [ ${#logs[@]} -eq 0 ]; then
+            echo "no device run logs were written"
+          fi
+          for log in "${logs[@]}"; do
+            echo "=== ${log##*/} (last 200 lines) ==="
+            tail -n 200 "$log" || true
+          done
 
   android:
     name: android (emulator)
     timeout-minutes: 90
+    # Pinned: `ubuntu-latest` moves to 26.04 from 2026-10-19 and the emulator
+    # setup (KVM, x86_64 image) is only verified on 24.04.
     runs-on: ubuntu-24.04
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/devenv
-      - name: Enable KVM for the emulator
+      # Not the devenv action: its disk-space cleanup deletes the runner's
+      # Android SDK at /usr/local/lib/android, and the emulator runner then
+      # fails to recreate that root-owned path. The native workflow's android
+      # job sets the tools the device run needs up directly instead.
+      - name: enable kvm
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: setup java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: cache rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: testkit-android
+      # `cargo ndk` in platforms/android/build.sh resolves through the
+      # workspace's `bin` alias.
+      - name: install cargo-run-bin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-run-bin
       - name: Emulator target
+        timeout-minutes: 75
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -135,4 +181,15 @@ jobs:
           script: |
             cargo build -p canvist_testkit --features android --bin canvist_testkit_daemon
             CANVIST_TEST_TARGET=android cargo test -p canvist_testkit --features android --test typing -- --test-threads=1 --nocapture
-          shell: devenv shell -c -- bash -e {0}
+      - name: show the device run logs
+        if: failure()
+        run: |
+          shopt -s nullglob
+          logs=(target/canvist-testkit/*.log)
+          if [ ${#logs[@]} -eq 0 ]; then
+            echo "no device run logs were written"
+          fi
+          for log in "${logs[@]}"; do
+            echo "=== ${log##*/} (last 200 lines) ==="
+            tail -n 200 "$log" || true
+          done
