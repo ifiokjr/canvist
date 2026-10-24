@@ -396,6 +396,11 @@ async fn call(
 	Ok(reply)
 }
 
+/// The slack the client adds to the daemon's own waits: the daemon reports
+/// a failed wait with the device run's log paths, so outlasting it means
+/// the harness prints that diagnostic instead of its own timeout.
+const DAEMON_GRACE: std::time::Duration = std::time::Duration::from_secs(30);
+
 /// `CANVIST_TEST_STARTUP_TIMEOUT` in seconds, matching the daemon's.
 fn startup_timeout() -> std::time::Duration {
 	std::time::Duration::from_secs(
@@ -403,7 +408,7 @@ fn startup_timeout() -> std::time::Duration {
 			.ok()
 			.and_then(|value| value.parse().ok())
 			.unwrap_or(900),
-	)
+	) + DAEMON_GRACE
 }
 
 /// `CANVIST_TEST_OP_TIMEOUT` in seconds, matching the daemon's.
@@ -413,5 +418,5 @@ fn op_timeout() -> std::time::Duration {
 			.ok()
 			.and_then(|value| value.parse().ok())
 			.unwrap_or(120),
-	)
+	) + DAEMON_GRACE
 }

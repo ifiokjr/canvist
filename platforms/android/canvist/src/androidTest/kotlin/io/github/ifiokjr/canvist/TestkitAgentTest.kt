@@ -84,6 +84,10 @@ class TestkitAgentTest {
 			platform = if (start.apple) KeyPlatform.APPLE else KeyPlatform.OTHER,
 		)
 		val editor = Editor(options, PaintMeasurer(density))
+		// A phone-sized viewport, as a view would give it: line motions (Home,
+		// End, the vertical arrows) follow the laid-out lines, and a width of
+		// zero wraps every grapheme onto a line of its own.
+		editor.setViewport(360f, 720f)
 
 		if (start.load.format == "yjs") {
 			val state = android.util.Base64.decode(start.load.content, android.util.Base64.DEFAULT)
