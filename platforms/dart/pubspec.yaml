@@ -1,6 +1,6 @@
 name: canvist
 description: canvist's document model and editing engine in pure Dart (no Flutter), built from Rust by a build hook. Convert ProseMirror JSON, HTML, and Markdown, run typed commands, and serve Yjs collaboration.
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/canvist/canvist/tree/main/platforms/dart
 issue_tracker: https://github.com/canvist/canvist/issues
 topics:
