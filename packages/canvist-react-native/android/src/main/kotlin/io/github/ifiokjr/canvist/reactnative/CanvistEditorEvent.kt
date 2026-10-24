@@ -21,11 +21,12 @@ internal class CanvistEditorEvent(
         const val ERROR = "topEditorError"
 
         /** The JavaScript prop each event calls. */
-        val registrations = mapOf(
-            READY to "onEditorReady",
-            CHANGE to "onEditorChange",
-            FOCUS to "onEditorFocus",
-            ERROR to "onEditorError",
-        )
+        val registrations =
+            mapOf(
+                READY to "onEditorReady",
+                CHANGE to "onEditorChange",
+                FOCUS to "onEditorFocus",
+                ERROR to "onEditorError",
+            )
     }
 }

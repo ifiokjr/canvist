@@ -32,27 +32,41 @@ class CanvistEditorViewManager :
 
     override fun getName() = NAME
 
-    override fun createViewInstance(context: ThemedReactContext): CanvistHostView =
-        CanvistHostView(context).apply { listener = Events }
+    override fun createViewInstance(context: ThemedReactContext): CanvistHostView = CanvistHostView(context).apply { listener = Events }
 
-    override fun setEditorId(view: CanvistHostView, value: String?) {
+    override fun setEditorId(
+        view: CanvistHostView,
+        value: String?,
+    ) {
         pending.getOrPut(view, ::StartProps).editorId = value
     }
 
-    override fun setExtensions(view: CanvistHostView, value: ReadableArray?) {
+    override fun setExtensions(
+        view: CanvistHostView,
+        value: ReadableArray?,
+    ) {
         val names = value?.toArrayList()?.filterIsInstance<String>() ?: emptyList()
         pending.getOrPut(view, ::StartProps).extensions = names
     }
 
-    override fun setContentFormat(view: CanvistHostView, value: String?) {
+    override fun setContentFormat(
+        view: CanvistHostView,
+        value: String?,
+    ) {
         pending.getOrPut(view, ::StartProps).format = value
     }
 
-    override fun setContent(view: CanvistHostView, value: String?) {
+    override fun setContent(
+        view: CanvistHostView,
+        value: String?,
+    ) {
         pending.getOrPut(view, ::StartProps).content = value
     }
 
-    override fun setFontSize(view: CanvistHostView, value: Float) {
+    override fun setFontSize(
+        view: CanvistHostView,
+        value: Float,
+    ) {
         view.fontSize = value
     }
 
@@ -85,26 +99,39 @@ class CanvistEditorViewManager :
 
     /** Sends each host's reports to JavaScript as the view's events. */
     private object Events : CanvistHostView.Listener {
-        override fun onReady(view: CanvistHostView, editorId: String) =
-            dispatch(view, CanvistEditorEvent.READY) { putString("editorId", editorId) }
+        override fun onReady(
+            view: CanvistHostView,
+            editorId: String,
+        ) = dispatch(view, CanvistEditorEvent.READY) { putString("editorId", editorId) }
 
-        override fun onChange(view: CanvistHostView, change: EditorChange) =
-            dispatch(view, CanvistEditorEvent.CHANGE) {
-                putBoolean("document", change.document)
-                putBoolean("selection", change.selection)
-                putBoolean("composition", change.composition)
-            }
+        override fun onChange(
+            view: CanvistHostView,
+            change: EditorChange,
+        ) = dispatch(view, CanvistEditorEvent.CHANGE) {
+            putBoolean("document", change.document)
+            putBoolean("selection", change.selection)
+            putBoolean("composition", change.composition)
+        }
 
-        override fun onFocusChange(view: CanvistHostView, focused: Boolean) =
-            dispatch(view, CanvistEditorEvent.FOCUS) { putBoolean("focused", focused) }
+        override fun onFocusChange(
+            view: CanvistHostView,
+            focused: Boolean,
+        ) = dispatch(view, CanvistEditorEvent.FOCUS) { putBoolean("focused", focused) }
 
-        override fun onError(view: CanvistHostView, code: String, message: String) =
-            dispatch(view, CanvistEditorEvent.ERROR) {
-                putString("code", code)
-                putString("message", message)
-            }
+        override fun onError(
+            view: CanvistHostView,
+            code: String,
+            message: String,
+        ) = dispatch(view, CanvistEditorEvent.ERROR) {
+            putString("code", code)
+            putString("message", message)
+        }
 
-        private fun dispatch(view: CanvistHostView, name: String, payload: WritableMap.() -> Unit) {
+        private fun dispatch(
+            view: CanvistHostView,
+            name: String,
+            payload: WritableMap.() -> Unit,
+        ) {
             val context = view.context as? ReactContext ?: return
             val dispatcher = UIManagerHelper.getEventDispatcherForReactTag(context, view.id) ?: return
             val data = Arguments.createMap().apply(payload)

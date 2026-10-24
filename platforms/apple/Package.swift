@@ -7,14 +7,14 @@
 import PackageDescription
 
 let package = Package(
-    name: "Canvist",
-    platforms: [.iOS(.v17)],
-    products: [
-        .library(name: "Canvist", targets: ["Canvist"]),
-    ],
-    targets: [
-        .binaryTarget(name: "CanvistFFI", path: "Frameworks/CanvistFFI.xcframework"),
-        .target(name: "Canvist", dependencies: ["CanvistFFI"]),
-        .testTarget(name: "CanvistTests", dependencies: ["Canvist"]),
-    ]
+  name: "Canvist",
+  platforms: [.iOS(.v17)],
+  products: [
+    .library(name: "Canvist", targets: ["Canvist"])
+  ],
+  targets: [
+    .binaryTarget(name: "CanvistFFI", path: "Frameworks/CanvistFFI.xcframework"),
+    .target(name: "Canvist", dependencies: ["CanvistFFI"]),
+    .testTarget(name: "CanvistTests", dependencies: ["Canvist"]),
+  ]
 )

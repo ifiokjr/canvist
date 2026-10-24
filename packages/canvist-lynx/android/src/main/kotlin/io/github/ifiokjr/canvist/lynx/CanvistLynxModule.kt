@@ -19,37 +19,64 @@ import org.json.JSONObject
  * because Lynx reports native exceptions to the host rather than to
  * JavaScript.
  */
-class CanvistLynxModule(context: Context) : LynxModule(context) {
+class CanvistLynxModule(
+    context: Context,
+) : LynxModule(context) {
     @LynxMethod
-    fun run(editorId: String, name: String, args: String): String = reply(editorId) { it.run(Command(name, args)).json() }
+    fun run(
+        editorId: String,
+        name: String,
+        args: String,
+    ): String = reply(editorId) { it.run(Command(name, args)).json() }
 
     @LynxMethod
-    fun can(editorId: String, name: String, args: String): String = reply(editorId) { it.can(Command(name, args)).json() }
+    fun can(
+        editorId: String,
+        name: String,
+        args: String,
+    ): String = reply(editorId) { it.can(Command(name, args)).json() }
 
     @LynxMethod
-    fun query(editorId: String, name: String, args: String): String = reply(editorId) { it.query(name, args) }
+    fun query(
+        editorId: String,
+        name: String,
+        args: String,
+    ): String = reply(editorId) { it.query(name, args) }
 
     @LynxMethod
-    fun load(editorId: String, format: String, content: String): String = reply(editorId) {
-        it.load(docFormat(format), content)
-        "true"
-    }
+    fun load(
+        editorId: String,
+        format: String,
+        content: String,
+    ): String =
+        reply(editorId) {
+            it.load(docFormat(format), content)
+            "true"
+        }
 
     @LynxMethod
-    fun exportDocument(editorId: String, format: String): String =
-        reply(editorId) { JSONObject.quote(it.export(docFormat(format))) }
+    fun exportDocument(
+        editorId: String,
+        format: String,
+    ): String = reply(editorId) { JSONObject.quote(it.export(docFormat(format))) }
 
     @LynxMethod
     fun selection(editorId: String): String = reply(editorId) { it.selectionJson() }
 
     @LynxMethod
-    fun select(editorId: String, range: String): String = reply(editorId) { it.selectRangeJson(range).json() }
+    fun select(
+        editorId: String,
+        range: String,
+    ): String = reply(editorId) { it.selectRangeJson(range).json() }
 
     @LynxMethod
     fun selectAll(editorId: String): String = reply(editorId) { it.selectAll().json() }
 
     @LynxMethod
-    fun insertText(editorId: String, text: String): String = reply(editorId) { it.insertText(text).json() }
+    fun insertText(
+        editorId: String,
+        text: String,
+    ): String = reply(editorId) { it.insertText(text).json() }
 
     @LynxMethod
     fun undo(editorId: String): String = reply(editorId) { it.undo().json() }
@@ -69,10 +96,14 @@ class CanvistLynxModule(context: Context) : LynxModule(context) {
 }
 
 /** The envelope for [body]'s JSON answer on the editor [editorId] names, or for its failure. */
-private fun reply(editorId: String, body: (Editor) -> String): String = try {
-    "{\"value\":${HostedEditors.call(editorId, body)}}"
-} catch (error: HostedEditorException) {
-    "{\"error\":${JSONObject.quote(error.message)}}"
-}
+private fun reply(
+    editorId: String,
+    body: (Editor) -> String,
+): String =
+    try {
+        "{\"value\":${HostedEditors.call(editorId, body)}}"
+    } catch (error: HostedEditorException) {
+        "{\"error\":${JSONObject.quote(error.message)}}"
+    }
 
 private fun Boolean.json() = if (this) "true" else "false"

@@ -15,6 +15,16 @@
 			{
 				"command": "shfmt --filename {{file_path}} -i 0",
 				"exts": ["sh", "bash"]
+			},
+			{
+				"command": "tools/swift-format.sh",
+				"exts": ["swift"],
+				"cacheKeyFiles": [".swift-format", "tools/swift-format.sh"]
+			},
+			{
+				"command": "tools/ktlint-format.sh {{file_path}}",
+				"exts": ["kt", "kts"],
+				"cacheKeyFiles": [".editorconfig", "tools/ktlint-format.sh"]
 			}
 		]
 	},
@@ -56,6 +66,9 @@
 		"platforms/flutter/example/android/**",
 		"platforms/flutter/example/ios/**",
 		"platforms/apple/.build/**",
+		"platforms/android/canvist/src/main/kotlin/io/github/ifiokjr/canvist/canvist_ffi.kt",
+		"**/*.generated.swift",
+		"**/Extensions.generated.kt",
 		"platforms/android/**/build/**",
 		"examples/react-native/ios/Pods/**",
 		"examples/react-native/**/build/**",

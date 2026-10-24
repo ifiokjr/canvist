@@ -17,10 +17,11 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val lynxView = LynxViewBuilder()
-            .setTemplateProvider(BundleProvider(this))
-            .addBehavior(CanvistLynx.behavior())
-            .build(this)
+        val lynxView =
+            LynxViewBuilder()
+                .setTemplateProvider(BundleProvider(this))
+                .addBehavior(CanvistLynx.behavior())
+                .build(this)
         val container = FrameLayout(this)
         container.addView(lynxView)
         ViewCompat.setOnApplyWindowInsetsListener(container) { view, insets ->
@@ -31,8 +32,11 @@ class MainActivity : Activity() {
         setContentView(container)
         // `perfSlack` multiplies the benchmark's budgets on slow CI emulators;
         // Maestro passes it as an intent extra.
-        val initData = intent.extras?.getString("perfSlack")?.toDoubleOrNull()
-            ?.let { JSONObject().put("perfSlack", it).toString() }
+        val initData =
+            intent.extras
+                ?.getString("perfSlack")
+                ?.toDoubleOrNull()
+                ?.let { JSONObject().put("perfSlack", it).toString() }
         lynxView.renderTemplateUrl("main.lynx.bundle", initData ?: "")
     }
 }
