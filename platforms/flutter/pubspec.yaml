@@ -1,6 +1,6 @@
 name: canvist_flutter
 description: canvist's rich-text editor for Flutter, painted from a Rust layout. Typed extension commands, IME and touch selection, accessibility, and Yjs collaboration.
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/canvist/canvist/tree/main/platforms/flutter
 issue_tracker: https://github.com/canvist/canvist/issues
 topics:
@@ -14,7 +14,7 @@ environment:
   flutter: ">=3.47.0"
 
 dependencies:
-  canvist: ^0.1.0
+  canvist: ^0.2.0
   flutter:
     sdk: flutter
 

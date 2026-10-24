@@ -1,6 +1,6 @@
 {
 	"name": "@canvist/canvas",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "canvist's design canvas for the browser: shapes, frames, images, vector paths, and text frames on the real canvist editor, rendered by vello on WebGPU with a CPU fallback, and collaborative.",
 	"license": "Unlicense",
 	"homepage": "https://github.com/canvist/canvist/tree/main/packages/canvist-canvas#readme",
@@ -35,7 +35,7 @@
 		"prepack": "npm run build"
 	},
 	"dependencies": {
-		"@canvist/headless": "file:../canvist-headless"
+		"@canvist/headless": "^0.2.0"
 	},
 	"devDependencies": {
 		"typescript": "^7.0.2"

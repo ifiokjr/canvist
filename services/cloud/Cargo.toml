@@ -1,6 +1,6 @@
 [package]
 name = "canvist_cloud"
-version = "0.1.0"
+version = "0.1.1"
 authors.workspace = true
 categories = ["text-editors", "network-programming", "web-programming::websocket"]
 edition.workspace = true

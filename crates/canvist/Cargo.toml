@@ -1,6 +1,6 @@
 [package]
 name = "canvist"
-version.workspace = true
+version = "0.2.0"
 authors.workspace = true
 categories.workspace = true
 documentation = "https://docs.rs/canvist"
@@ -80,8 +80,8 @@ canvist_collab = { workspace = true, optional = true }
 canvist_core = { workspace = true }
 # Named by path: the workspace entries enable default features, and these
 # two leave theirs to this crate's features.
-canvist_extensions = { path = "../canvist_extensions", version = "0.1.0", default-features = false }
-canvist_headless = { path = "../canvist_headless", version = "0.1.0", optional = true, default-features = false }
+canvist_extensions = { path = "../canvist_extensions", version = "0.2.0", default-features = false }
+canvist_headless = { path = "../canvist_headless", version = "0.2.0", optional = true, default-features = false }
 canvist_layout = { workspace = true, optional = true }
 canvist_model = { workspace = true }
 canvist_paint = { workspace = true, optional = true }
